@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 
 	"encoding/json"
 	"github.com/18F/aws-broker/common"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +25,7 @@ var createInstanceReq = []byte(
 
 var brokerDB *gorm.DB
 
-func setup() *martini.ClassicMartini {
+func setup() *gin.Engine {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
 	var s config.Settings
@@ -37,16 +37,16 @@ func setup() *martini.ClassicMartini {
 	s.Environment = "test"
 	brokerDB, _ = db.InternalDBInit(&dbConfig)
 
-	m := App(&s, brokerDB)
+	r := App(&s, brokerDB)
 
-	return m
+	return r
 }
 
 /*
 	Mock Objects
 */
 
-func doRequest(m *martini.ClassicMartini, url string, method string, auth bool, body io.Reader) (*httptest.ResponseRecorder, *martini.ClassicMartini) {
+func doRequest(m *gin.Engine, url string, method string, auth bool, body io.Reader) (*httptest.ResponseRecorder, *gin.Engine) {
 	if m == nil {
 		m = setup()
 	}

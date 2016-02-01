@@ -1,4 +1,5 @@
 .env
+*.sw*
 gin-bin
 aws-broker
 .DS_Store
