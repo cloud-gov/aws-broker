@@ -4,4 +4,6 @@ gin-bin
 aws-broker
 .DS_Store
 secrets.yml
+catalog.yml
+catalog.yaml
 Godeps/_workspace/
