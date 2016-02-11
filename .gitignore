@@ -6,4 +6,5 @@ aws-broker
 secrets.yml
 catalog.yml
 catalog.yaml
+profile.cov
 Godeps/_workspace/
