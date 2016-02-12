@@ -99,7 +99,7 @@ func (i *RDSInstance) init(uuid string,
 	plan catalog.RDSPlan,
 	s *config.Settings) error {
 
-	i.Uuid = uuid
+	i.UUID = uuid
 	i.ServiceID = serviceID
 	i.PlanID = plan.ID
 	i.OrganizationGUID = orgGUID

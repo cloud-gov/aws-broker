@@ -9,12 +9,14 @@ import (
 	"net/http"
 )
 
+// API is a the struct to hold all the necessary data for the routes.
 type API struct {
 	brokerDb *gorm.DB
 	settings *config.Settings
 	c        *catalog.Catalog
 }
 
+// InitAPI registers the routes for the API
 func InitAPI(r *gin.RouterGroup, db *gorm.DB, settings *config.Settings, c *catalog.Catalog) {
 	api := &API{brokerDb: db, settings: settings, c: c}
 	v2 := r.Group("/v2")

@@ -25,8 +25,9 @@ const (
 	InstanceNotGone // 4
 )
 
+// Instance is the base that all instances should include
 type Instance struct {
-	Uuid string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
+	UUID string `gorm:"column:uuid;primary_key" sql:"type:varchar(255) PRIMARY KEY"`
 
 	request.Request
 
@@ -39,10 +40,10 @@ type Instance struct {
 	UpdatedAt time.Time
 }
 
-// FindBaseInstance is a helper function to find the base instance of the
+// FindBaseInstance is a helper function to find the base instance.
 func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response) {
 	instance := Instance{}
-	log.Println("Looking for instance with id " + id)
+	log.Println("Looking for base instance with id " + id)
 	err := brokerDb.Where("uuid = ?", id).First(&instance).Error
 	if err == nil {
 		return instance, nil

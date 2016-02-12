@@ -1,5 +1,7 @@
 ## Cloud Foundry AWS Service Broker
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/18F/aws-broker)](https://goreportcard.com/report/github.com/18F/aws-broker)
+
 Cloud Foundry Service Broker to manage instances of various AWS services.
 
 [![wercker status](https://app.wercker.com/status/9fd96a3ace53c3936c0111d34a1d889c/m "wercker status")](https://app.wercker.com/project/bykey/9fd96a3ace53c3936c0111d34a1d889c)

@@ -34,7 +34,7 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	// Create instance
 	resp = broker.CreateInstance(c, id, createRequest)
 	if resp.GetResponseType() != response.ErrorResponseType {
-		instance := base.Instance{Uuid: id, Request: createRequest}
+		instance := base.Instance{UUID: id, Request: createRequest}
 		brokerDb.NewRecord(instance)
 		brokerDb.Create(&instance)
 		// TODO check save error
