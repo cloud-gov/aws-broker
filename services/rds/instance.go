@@ -13,6 +13,11 @@ import (
 	"strconv"
 )
 
+var (
+	ErrNoSaltSet = errors.New("No salt set for instance")
+	ErrNoPassword = errors.New("No password set for instance")
+)
+
 // Instance represents the information of a RDS Service instance.
 type Instance struct {
 	base.Instance
@@ -52,8 +57,11 @@ func (i *Instance) setPassword(password, key string) error {
 }
 
 func (i *Instance) getPassword(key string) (string, error) {
-	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("Salt and password has to be set before writing the password")
+	if i.Salt == "" {
+		return "", ErrNoSaltSet
+	}
+	if i.Password == "" {
+		return "", ErrNoPassword
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
