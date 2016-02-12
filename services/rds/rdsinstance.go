@@ -126,3 +126,9 @@ func (i *RDSInstance) init(uuid string,
 
 	return nil
 }
+
+func (i RDSInstance) TableName() string {
+	// Older versions of the code had the table name as this because the struct name was "RDSInstance"
+	// In the future, we can add migrations to check and rename the database table.
+	return "r_d_s_instances"
+}
