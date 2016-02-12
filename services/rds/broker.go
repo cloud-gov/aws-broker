@@ -54,7 +54,7 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 }
 
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
-	newInstance := RDSInstance{}
+	newInstance := Instance{}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
@@ -112,7 +112,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+	existingInstance := Instance{}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
@@ -156,7 +156,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 }
 
 func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+	existingInstance := Instance{}
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {

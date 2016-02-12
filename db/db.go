@@ -25,5 +25,5 @@ func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 // MigrateDB is a wrapper function to call any migration needed for the database.
 func MigrateDB(DB *gorm.DB) {
 	// Automigrate!
-	DB.AutoMigrate(&rds.RDSInstance{}, &base.Instance{}) // Add all your models here to help setup the database tables
+	DB.AutoMigrate(&rds.Instance{}, &base.Instance{}) // Add all your models here to help setup the database tables
 }

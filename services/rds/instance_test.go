@@ -2,8 +2,8 @@ package rds_test
 
 import (
 	"database/sql"
-	"github.com/18F/aws-broker/services/rds"
 	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/services/rds"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
@@ -16,23 +16,23 @@ import (
 func rdsInstanceTest(t *testing.T, DB *gorm.DB) {
 
 	// Test create of database table
-	assert.False(t, DB.HasTable(&rds.RDSInstance{}))
+	assert.False(t, DB.HasTable(&rds.Instance{}))
 	db.MigrateDB(DB)
-	assert.True(t, DB.HasTable(&rds.RDSInstance{}))
+	assert.True(t, DB.HasTable(&rds.Instance{}))
 	// Test database name
-	assert.Equal(t, "r_d_s_instances", DB.NewScope(rds.RDSInstance{}).TableName())
+	assert.Equal(t, "r_d_s_instances", DB.NewScope(rds.Instance{}).TableName())
 
 	// Test column names
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("uuid"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("service_id"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("plan_id"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("organization_guid"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("space_guid"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("host"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("port"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("state"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("created_at"))
-	assert.True(t, DB.NewScope(rds.RDSInstance{}).HasColumn("updated_at"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("uuid"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("service_id"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("plan_id"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("organization_guid"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("space_guid"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("host"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("port"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("state"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("created_at"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("updated_at"))
 }
 
 func TestRDSInstanceMySQL(t *testing.T) {
@@ -78,4 +78,3 @@ func TestRDSInstancePostgresSQL(t *testing.T) {
 	defer c.KillRemove()
 	rdsInstanceTest(t, &DB)
 }
-

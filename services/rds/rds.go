@@ -15,9 +15,9 @@ import (
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, password string) (base.InstanceState, error)
-	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
-	deleteDB(i *RDSInstance) (base.InstanceState, error)
+	createDB(i *Instance, password string) (base.InstanceState, error)
+	bindDBToApp(i *Instance, password string) (map[string]string, error)
+	deleteDB(i *Instance) (base.InstanceState, error)
 }
 
 // MockDBAdapter is a struct meant for testing.
@@ -27,17 +27,17 @@ type dbAdapter interface {
 type mockDBAdapter struct {
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *mockDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
 
-func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *mockDBAdapter) bindDBToApp(i *Instance, password string) (map[string]string, error) {
 	// TODO
 	return i.getCredentials(password)
 }
 
-func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *mockDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -48,7 +48,7 @@ type sharedDBAdapter struct {
 	SharedDbConn *gorm.DB
 }
 
-func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *sharedDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
 	switch i.DbType {
 	case "postgres":
 		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", i.Database)); db.Error != nil {
@@ -82,11 +82,11 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 	return base.InstanceReady, nil
 }
 
-func (d *sharedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *sharedDBAdapter) bindDBToApp(i *Instance, password string) (map[string]string, error) {
 	return i.getCredentials(password)
 }
 
-func (d *sharedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *sharedDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
 	if db := d.SharedDbConn.Exec(fmt.Sprintf("DROP DATABASE %s;", i.Database)); db.Error != nil {
 		return base.InstanceNotGone, db.Error
 	}
@@ -100,7 +100,7 @@ type dedicatedDBAdapter struct {
 	InstanceClass string
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion("us-east-1"))
 	var rdsTags []*rds.Tag
 
@@ -150,7 +150,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	return base.InstanceNotCreated, nil
 }
 
-func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *dedicatedDBAdapter) bindDBToApp(i *Instance, password string) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
@@ -211,7 +211,7 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion("us-east-1"))
 	params := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(i.Database), // Required
