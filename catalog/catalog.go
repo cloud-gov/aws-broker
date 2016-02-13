@@ -132,6 +132,11 @@ func (c *Catalog) GetResources() Resources {
 	return c.resources
 }
 
+// SetResources sets the resources for the catalog.
+func (c *Catalog) SetResources(res Resources) {
+	c.resources = res
+}
+
 // InitCatalog initializes a Catalog struct that contains services and plans
 // defined in the catalog.yaml configuration file and returns a pointer to that catalog
 func InitCatalog(path string) *Catalog {

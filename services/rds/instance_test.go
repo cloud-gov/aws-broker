@@ -36,6 +36,7 @@ func rdsInstanceTest(t *testing.T, DB *gorm.DB) {
 }
 
 func TestRDSInstanceMySQL(t *testing.T) {
+	t.Parallel()
 	var DB gorm.DB
 	var c dockertest.ContainerID
 	var err error
@@ -58,6 +59,7 @@ func TestRDSInstanceMySQL(t *testing.T) {
 }
 
 func TestRDSInstancePostgresSQL(t *testing.T) {
+	t.Parallel()
 	var DB gorm.DB
 	var c dockertest.ContainerID
 	var err error

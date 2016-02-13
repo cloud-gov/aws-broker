@@ -11,7 +11,10 @@ import (
 
 	"errors"
 	"fmt"
+	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/helpers/response"
 	"log"
+	"net/http"
 )
 
 type dbAdapter interface {
@@ -20,29 +23,51 @@ type dbAdapter interface {
 	deleteDB(i *Instance) (base.InstanceState, error)
 }
 
-// MockDBAdapter is a struct meant for testing.
-// It should only be used in *_test.go files.
-// It is only here because *_test.go files are only compiled during "go test"
-// and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
-type mockDBAdapter struct {
-}
+var (
+	// ErrResponseAdapterNotFound is an error to describe that the adapter is not found or is nil.
+	ErrResponseAdapterNotFound = response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
+	// ErrResponseCatalogNotFound is an error to describe that the catalog could not be found or is nil.
+	ErrResponseCatalogNotFound = response.NewErrorResponse(http.StatusInternalServerError, "Catalog not found")
+	// ErrResponseRDSSettingsNotFound is an error to describe that the catalog could not be found or is nil.
+	ErrResponseRDSSettingsNotFound = response.NewErrorResponse(http.StatusInternalServerError, "RDS Settings not found")
+	// ErrResponseDBNotFound is an error to describe that the db connection could not be found or is nil.
+	ErrResponseDBNotFound = response.NewErrorResponse(http.StatusInternalServerError, "Shared DB not found")
+)
 
-func (d *mockDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
-}
+// initializeAdapter is the main function to create database instances
+func initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, response.Response) {
 
-func (d *mockDBAdapter) bindDBToApp(i *Instance, password string) (map[string]string, error) {
-	// TODO
-	return i.getCredentials(password)
-}
+	var dbAdapter dbAdapter
 
-func (d *mockDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceGone, nil
-}
+	switch plan.Adapter {
+	case "shared":
+		if c == nil {
+			return nil, ErrResponseCatalogNotFound
+		}
+		rdsSettings := c.GetResources().RdsSettings
+		if rdsSettings == nil {
+			return nil, ErrResponseRDSSettingsNotFound
+		}
+		setting, err := rdsSettings.GetRDSSettingByPlan(plan.ID)
+		if err != nil {
+			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		if setting.DB == nil {
+			return nil, ErrResponseDBNotFound
+		}
+		dbAdapter = &sharedDBAdapter{
+			SharedDbConn: setting.DB,
+		}
+	case "dedicated":
+		dbAdapter = &dedicatedDBAdapter{
+			InstanceClass: plan.InstanceClass,
+		}
+	default:
+		return nil, ErrResponseAdapterNotFound
+	}
 
-// END MockDBAdpater
+	return dbAdapter, nil
+}
 
 type sharedDBAdapter struct {
 	SharedDbConn *gorm.DB

@@ -15,39 +15,6 @@ type rdsBroker struct {
 	settings *config.Settings
 }
 
-// initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Catalog) (dbAdapter, response.Response) {
-
-	var dbAdapter dbAdapter
-	// For test environments, use a mock adapter.
-	if s.Environment == "test" {
-		dbAdapter = &mockDBAdapter{}
-		return dbAdapter, nil
-	}
-
-	switch plan.Adapter {
-	case "shared":
-		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
-		if err != nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
-		}
-		if setting.DB == nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, "An internal error occurred setting up shared databases.")
-		}
-		dbAdapter = &sharedDBAdapter{
-			SharedDbConn: setting.DB,
-		}
-	case "dedicated":
-		dbAdapter = &dedicatedDBAdapter{
-			InstanceClass: plan.InstanceClass,
-		}
-	default:
-		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
-	}
-
-	return dbAdapter, nil
-}
-
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 	return &rdsBroker{brokerDB, settings}
@@ -79,7 +46,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -131,7 +98,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -168,7 +135,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}

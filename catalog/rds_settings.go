@@ -33,6 +33,9 @@ func InitRDSSettings(secrets *Secrets) (*RDSSettings, error) {
 
 // AddRDSSetting adds an RDSSetting to the map of RDSSettings with the planID being the key.
 func (s *RDSSettings) AddRDSSetting(rdsSetting *RDSSetting, planID string) {
+	if s.databases == nil {
+		s.databases = make(map[string]*RDSSetting)
+	}
 	// TODO do additional checks to see if one already exists for that plan id.
 	s.databases[planID] = rdsSetting
 }
@@ -42,5 +45,10 @@ func (s *RDSSettings) GetRDSSettingByPlan(planID string) (*RDSSetting, error) {
 	if setting, ok := s.databases[planID]; ok {
 		return setting, nil
 	}
-	return nil, errors.New("Cannot find rds setting by plan id.")
+	return nil, ErrNoRDSSettingForID
 }
+
+var (
+	// ErrNoRDSSettingForID describes the error when no setting can be found
+	ErrNoRDSSettingForID = errors.New("Cannot find rds setting by plan id.")
+)

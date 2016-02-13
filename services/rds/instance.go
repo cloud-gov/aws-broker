@@ -14,7 +14,9 @@ import (
 )
 
 var (
+	// ErrNoSaltSet is an error to describe the no salt is set for the instance.
 	ErrNoSaltSet = errors.New("No salt set for instance")
+	// ErrNoPassword is an error to describe there is no password for the instance.
 	ErrNoPassword = errors.New("No password set for instance")
 )
 
