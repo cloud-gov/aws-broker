@@ -14,6 +14,39 @@ import (
 	"time"
 )
 
+func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, *gorm.DB){
+	var DB *gorm.DB
+	var dbURL string
+	var container dockertest.ContainerID
+	var err error
+	fn := func(url string) bool {
+		dbURL = url
+		dbSQL, err := sql.Open(dbType, url)
+		if err != nil {
+			return false
+		}
+		if dbSQL.Ping() == nil {
+			DB, _ = gorm.Open(dbType, dbSQL)
+			return true
+		}
+		return false
+	}
+	switch dbType {
+	case "mysql":
+		container, err = dockertest.ConnectToMySQL(60, time.Second, fn())
+	case "postgres":
+		container, err = dockertest.ConnectToPostgreSQL(60, time.Second, fn())
+	default:
+		return nil, "", nil
+	}
+
+	if err != nil {
+		t.Fatalf("Could not connect to database: %s", err)
+	}
+	// DB.LogMode(true)
+	return &container, dbURL, DB
+}
+
 func TestInitializeAdapter(t *testing.T) {
 	// Test Unknown Adapter type
 	dbAdapter, resp := initializeAdapter(catalog.RDSPlan{Adapter: "ultimate"}, nil)
@@ -59,7 +92,7 @@ func TestInitializeAdapter(t *testing.T) {
 	var container dockertest.ContainerID
 	var err error
 	if container, err = dockertest.ConnectToMySQL(60, time.Second, func(url string) bool {
-		dbSQL, err := sql.Open("mysql", url+"?charset=utf8&parseTime=True")
+		dbSQL, err := sql.Open("mysql", url)
 		if err != nil {
 			return false
 		}
@@ -79,6 +112,38 @@ func TestInitializeAdapter(t *testing.T) {
 	assert.IsType(t, new(sharedDBAdapter), dbAdapter)
 	assert.Nil(t, resp)
 	container.KillRemove()
+}
+
+func TestSharedDbCreateDb(t *testing.T) {
+	// Test nil instance case
+	adapter := sharedDBAdapter{SharedDbConn: nil}
+	state, err := adapter.createDB(nil, "pw")
+	assert.NotNil(t, err)
+	assert.Equal(t, ErrInstanceNotFound, err)
+	assert.Equal(t, state, base.InstanceNotCreated)
+
+	// Test no password case
+	adapter = sharedDBAdapter{SharedDbConn: nil}
+	state, err = adapter.createDB(&Instance{}, "")
+	assert.NotNil(t, err)
+	assert.Equal(t, ErrMissingPassword, err)
+	assert.Equal(t, base.InstanceNotCreated, state)
+
+	// Test nil db conn
+	adapter = sharedDBAdapter{SharedDbConn: nil}
+	state, err = adapter.createDB(&Instance{}, "pw")
+	assert.NotNil(t, err)
+	assert.Equal(t, ErrDatabaseNotFound, err)
+	assert.Equal(t, base.InstanceNotCreated, state)
+
+	// Test bad db conn
+	/*
+	adapter = sharedDBAdapter{SharedDbConn: &gorm.DB{}}
+	state, err = adapter.createDB(&Instance{}, "pw")
+	assert.NotNil(t, err)
+	assert.Equal(t, ErrDatabaseNotFound, err)
+	assert.Equal(t, base.InstanceNotCreated, state)
+	*/
 }
 
 // MockDBAdapter is a struct meant for testing.

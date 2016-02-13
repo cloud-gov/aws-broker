@@ -69,11 +69,30 @@ func initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, res
 	return dbAdapter, nil
 }
 
+var (
+	ErrInstanceNotFound = errors.New("Instance not found")
+	ErrMissingPassword = errors.New("Instance must be secured by password")
+	ErrDatabaseNotFound = errors.New("Database not found")
+	ErrCannotReachSharedDB = errors.New("Unable to reach instance")
+)
+
 type sharedDBAdapter struct {
 	SharedDbConn *gorm.DB
 }
 
 func (d *sharedDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
+	if i == nil {
+		return base.InstanceNotCreated, ErrInstanceNotFound
+	}
+	if password == "" {
+		return base.InstanceNotCreated, ErrMissingPassword
+	}
+	if d.SharedDbConn == nil || d.SharedDbConn.DB() == nil {
+		return base.InstanceNotCreated, ErrDatabaseNotFound
+	}
+	if d.SharedDbConn.DB().Ping() != nil {
+		return base.InstanceNotCreated, ErrCannotReachSharedDB
+	}
 	switch i.DbType {
 	case "postgres":
 		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", i.Database)); db.Error != nil {
