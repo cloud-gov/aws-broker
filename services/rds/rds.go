@@ -70,9 +70,10 @@ func initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, res
 }
 
 var (
-	ErrInstanceNotFound = errors.New("Instance not found")
-	ErrMissingPassword = errors.New("Instance must be secured by password")
-	ErrDatabaseNotFound = errors.New("Database not found")
+	ErrInstanceNotFound    = errors.New("Instance not found")
+	ErrIncompleteInstance  = errors.New("Incomplete instance details")
+	ErrMissingPassword     = errors.New("Instance must be secured by password")
+	ErrDatabaseNotFound    = errors.New("Database not found")
 	ErrCannotReachSharedDB = errors.New("Unable to reach instance")
 )
 
@@ -80,21 +81,33 @@ type sharedDBAdapter struct {
 	SharedDbConn *gorm.DB
 }
 
+func isDBConnectionAlive(db *gorm.DB) bool {
+	return db.Exec("SELECT 1;").Error == nil
+}
+
 func (d *sharedDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
+	// Sanity check for instance
 	if i == nil {
 		return base.InstanceNotCreated, ErrInstanceNotFound
 	}
-	if password == "" {
+	// Make sure we have all the details.
+	if len(i.Database) < 1 || len(i.Username) < 1 {
+		return base.InstanceNotCreated, ErrIncompleteInstance
+	}
+	// Make sure we have a password
+	if len(password) < 1 {
 		return base.InstanceNotCreated, ErrMissingPassword
 	}
+	// Check database and database connection.
 	if d.SharedDbConn == nil || d.SharedDbConn.DB() == nil {
 		return base.InstanceNotCreated, ErrDatabaseNotFound
 	}
-	if d.SharedDbConn.DB().Ping() != nil {
+	if d.SharedDbConn.DB().Ping() != nil || !isDBConnectionAlive(d.SharedDbConn) {
 		return base.InstanceNotCreated, ErrCannotReachSharedDB
 	}
 	switch i.DbType {
 	case "postgres":
+		// TODO sanitize for reserved postgres words, e.g. "CREATE USER user" would not work
 		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", i.Database)); db.Error != nil {
 			return base.InstanceNotCreated, db.Error
 		}
@@ -107,6 +120,7 @@ func (d *sharedDBAdapter) createDB(i *Instance, password string) (base.InstanceS
 			return base.InstanceNotCreated, db.Error
 		}
 	case "mysql":
+		// TODO sanitize for reserved mysql words
 		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", i.Database)); db.Error != nil {
 			return base.InstanceNotCreated, db.Error
 		}

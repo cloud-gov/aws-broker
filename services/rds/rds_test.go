@@ -12,39 +12,62 @@ import (
 	"net/http"
 	"testing"
 	"time"
+	"regexp"
+	"strconv"
+	"fmt"
 )
 
-func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, *gorm.DB){
-	var DB *gorm.DB
+func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, string, int, *gorm.DB) {
+	var DB gorm.DB
 	var dbURL string
+	var dbIP string
+	var dbPort int
 	var container dockertest.ContainerID
 	var err error
-	fn := func(url string) bool {
-		dbURL = url
-		dbSQL, err := sql.Open(dbType, url)
-		if err != nil {
-			return false
-		}
-		if dbSQL.Ping() == nil {
-			DB, _ = gorm.Open(dbType, dbSQL)
-			return true
-		}
-		return false
-	}
 	switch dbType {
 	case "mysql":
-		container, err = dockertest.ConnectToMySQL(60, time.Second, fn())
+		container, err = dockertest.ConnectToMySQL(60, time.Second, func(url string) bool {
+			dbSql, err := sql.Open("mysql", url)
+			if err != nil {
+				return false
+			}
+			if dbSql.Ping() == nil {
+				dbURL = url
+				re := regexp.MustCompile(`\(([0-9a-zA-Z.*]+):([[0-9]+)\)`)
+				match := re.FindStringSubmatch(dbURL)
+				dbIP = match[1]
+				dbPort, _ = strconv.Atoi(match[2])
+				DB, _ = gorm.Open("mysql", dbSql)
+				return true
+			}
+			return false
+		})
 	case "postgres":
-		container, err = dockertest.ConnectToPostgreSQL(60, time.Second, fn())
+		container, err = dockertest.ConnectToPostgreSQL(60, time.Second, func(url string) bool {
+			dbSql, err := sql.Open("postgres", url)
+			if err != nil {
+				return false
+			}
+			if dbSql.Ping() == nil {
+				dbURL = url
+				re := regexp.MustCompile(`([0-9a-zA-Z.*]+):([0-9]+)\/`)
+				match := re.FindStringSubmatch(dbURL)
+				dbIP = match[1]
+				dbPort, _ = strconv.Atoi(match[2])
+				DB, _ = gorm.Open("postgres", dbSql)
+				return true
+			}
+			return false
+		})
 	default:
-		return nil, "", nil
+		return nil, "", "", 0, nil
 	}
 
 	if err != nil {
 		t.Fatalf("Could not connect to database: %s", err)
 	}
-	// DB.LogMode(true)
-	return &container, dbURL, DB
+	//DB.LogMode(true)
+	return &container, dbURL, dbIP, dbPort, &DB
 }
 
 func TestInitializeAdapter(t *testing.T) {
@@ -88,24 +111,8 @@ func TestInitializeAdapter(t *testing.T) {
 	// Test Shared Adapter
 	c = &catalog.Catalog{}
 	rdsSettings = &catalog.RDSSettings{}
-	var DB gorm.DB
-	var container dockertest.ContainerID
-	var err error
-	if container, err = dockertest.ConnectToMySQL(60, time.Second, func(url string) bool {
-		dbSQL, err := sql.Open("mysql", url)
-		if err != nil {
-			return false
-		}
-		if dbSQL.Ping() == nil {
-			DB, _ = gorm.Open("mysql", dbSQL)
-			return true
-		}
-		return false
-	}); err != nil {
-		t.Fatalf("Could not connect to database: %s", err)
-	}
-	// DB.LogMode(true)
-	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: &DB, Config: common.DBConfig{}}, "my-plan-id")
+	container, _, _, _, DB := getDatabase(t, "mysql")
+	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: DB, Config: common.DBConfig{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
 	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
 	assert.NotNil(t, dbAdapter)
@@ -124,26 +131,95 @@ func TestSharedDbCreateDb(t *testing.T) {
 
 	// Test no password case
 	adapter = sharedDBAdapter{SharedDbConn: nil}
-	state, err = adapter.createDB(&Instance{}, "")
+	state, err = adapter.createDB(&Instance{Database: "db", Username: "user"}, "")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrMissingPassword, err)
 	assert.Equal(t, base.InstanceNotCreated, state)
 
 	// Test nil db conn
 	adapter = sharedDBAdapter{SharedDbConn: nil}
-	state, err = adapter.createDB(&Instance{}, "pw")
+	state, err = adapter.createDB(&Instance{Database: "db", Username: "user"}, "pw")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrDatabaseNotFound, err)
 	assert.Equal(t, base.InstanceNotCreated, state)
 
 	// Test bad db conn
 	/*
-	adapter = sharedDBAdapter{SharedDbConn: &gorm.DB{}}
-	state, err = adapter.createDB(&Instance{}, "pw")
-	assert.NotNil(t, err)
-	assert.Equal(t, ErrDatabaseNotFound, err)
-	assert.Equal(t, base.InstanceNotCreated, state)
+		adapter = sharedDBAdapter{SharedDbConn: &gorm.DB{}}
+		state, err = adapter.createDB(&Instance{}, "pw")
+		assert.NotNil(t, err)
+		assert.Equal(t, ErrDatabaseNotFound, err)
+		assert.Equal(t, base.InstanceNotCreated, state)
 	*/
+
+	// Test db conn gone bad mysql
+	container, _, _, _, DB := getDatabase(t, "mysql")
+	adapter = sharedDBAdapter{SharedDbConn: DB}
+	// Make sure it's live
+	assert.Nil(t, DB.DB().Ping())
+	// Remove the database
+	container.KillRemove()
+	state, err = adapter.createDB(&Instance{Database: "db", Username: "user", DbType: "mysql"}, "pw")
+	assert.NotNil(t, err)
+	assert.Equal(t, ErrCannotReachSharedDB, err)
+	assert.Equal(t, base.InstanceNotCreated, state)
+
+	// Test db conn gone bad postgres
+	container, _, _, _, DB = getDatabase(t, "postgres")
+	adapter = sharedDBAdapter{SharedDbConn: DB}
+	// Make sure it's live
+	assert.Nil(t, DB.DB().Ping())
+	// Remove the database
+	container.KillRemove()
+	state, err = adapter.createDB(&Instance{Database: "db", Username: "user", DbType: "postgres"}, "pw")
+	assert.NotNil(t, err)
+	assert.Equal(t, ErrCannotReachSharedDB, err)
+	assert.Equal(t, base.InstanceNotCreated, state)
+
+	// Test create db mysql
+	var url, ip string
+	var port int
+	container, url, ip, port, DB = getDatabase(t, "mysql")
+	_ = url
+	adapter = sharedDBAdapter{SharedDbConn: DB}
+	// Make sure it's live
+	assert.Nil(t, DB.DB().Ping())
+	// Remove the database
+	state, err = adapter.createDB(&Instance{Database: "db", Username: "username", DbType: "mysql"}, "pw")
+	//t.Log(url)
+	assert.Nil(t, err)
+	assert.Equal(t, base.InstanceReady, state)
+	// Check the database and user
+	mysqlAddr := fmt.Sprintf("username:pw@tcp(%s:%d)/db?charset=utf8&parseTime=True&loc=Local", ip, port)
+	//t.Log(mysqlAddr)
+	db, err := gorm.Open("mysql", mysqlAddr)
+	assert.Equal(t, "db", db.CurrentDatabase())
+	assert.Nil(t, err)
+	assert.True(t, isDBConnectionAlive(&db))
+	db.Close()
+	container.KillRemove()
+
+	// Test create db postgres
+	container, url, ip, port, DB = getDatabase(t, "postgres")
+	adapter = sharedDBAdapter{SharedDbConn: DB}
+	// Make sure it's live
+	assert.Nil(t, DB.DB().Ping())
+	// Remove the database
+	state, err = adapter.createDB(&Instance{Database: "db", Username: "username", DbType: "postgres"}, "pw")
+	//t.Log(url)
+	assert.Nil(t, err)
+	assert.Equal(t, base.InstanceReady, state)
+	// Check the database and user
+	pqsqlAddr := fmt.Sprintf("dbname=db user=username password=pw host=%s sslmode=disable port=%d", ip, port)
+	//t.Log(pqsqlAddr)
+	pqDB, err := gorm.Open("postgres", pqsqlAddr)
+	assert.Equal(t, "db", pqDB.CurrentDatabase())
+	assert.Nil(t, err)
+	assert.True(t, isDBConnectionAlive(&pqDB))
+	pqDB.Close()
+	container.KillRemove()
+
+	// Test invalid db type
 }
 
 // MockDBAdapter is a struct meant for testing.
