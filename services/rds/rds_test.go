@@ -2,6 +2,7 @@ package rds
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/common"
@@ -10,11 +11,10 @@ import (
 	"github.com/ory-am/dockertest"
 	"github.com/stretchr/testify/assert"
 	"net/http"
-	"testing"
-	"time"
 	"regexp"
 	"strconv"
-	"fmt"
+	"testing"
+	"time"
 )
 
 func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, string, int, *gorm.DB) {
@@ -27,34 +27,34 @@ func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, 
 	switch dbType {
 	case "mysql":
 		container, err = dockertest.ConnectToMySQL(60, time.Second, func(url string) bool {
-			dbSql, err := sql.Open("mysql", url)
+			dbSQL, err := sql.Open("mysql", url)
 			if err != nil {
 				return false
 			}
-			if dbSql.Ping() == nil {
+			if dbSQL.Ping() == nil {
 				dbURL = url
 				re := regexp.MustCompile(`\(([0-9a-zA-Z.*]+):([[0-9]+)\)`)
 				match := re.FindStringSubmatch(dbURL)
 				dbIP = match[1]
 				dbPort, _ = strconv.Atoi(match[2])
-				DB, _ = gorm.Open("mysql", dbSql)
+				DB, _ = gorm.Open("mysql", dbSQL)
 				return true
 			}
 			return false
 		})
 	case "postgres":
 		container, err = dockertest.ConnectToPostgreSQL(60, time.Second, func(url string) bool {
-			dbSql, err := sql.Open("postgres", url)
+			dbSQL, err := sql.Open("postgres", url)
 			if err != nil {
 				return false
 			}
-			if dbSql.Ping() == nil {
+			if dbSQL.Ping() == nil {
 				dbURL = url
 				re := regexp.MustCompile(`([0-9a-zA-Z.*]+):([0-9]+)\/`)
 				match := re.FindStringSubmatch(dbURL)
 				dbIP = match[1]
 				dbPort, _ = strconv.Atoi(match[2])
-				DB, _ = gorm.Open("postgres", dbSql)
+				DB, _ = gorm.Open("postgres", dbSQL)
 				return true
 			}
 			return false

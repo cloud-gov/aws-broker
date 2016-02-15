@@ -70,11 +70,16 @@ func initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, res
 }
 
 var (
-	ErrInstanceNotFound    = errors.New("Instance not found")
-	ErrIncompleteInstance  = errors.New("Incomplete instance details")
-	ErrMissingPassword     = errors.New("Instance must be secured by password")
-	ErrDatabaseNotFound    = errors.New("Database not found")
-	ErrCannotReachSharedDB = errors.New("Unable to reach instance")
+	// ErrInstanceNotFound represents that the instance is null.
+	ErrInstanceNotFound = errors.New("Instance not found")
+	// ErrIncompleteInstance represents the instance does not have all the necessary details for the operation.
+	ErrIncompleteInstance = errors.New("Incomplete instance details")
+	// ErrMissingPassword indicates there is an empty password being provided.
+	ErrMissingPassword = errors.New("Instance must be secured by password")
+	// ErrDatabaseNotFound indicates the database is null.
+	ErrDatabaseNotFound = errors.New("Database not found")
+	// ErrCannotReachSharedDB indicates the database is unreachable.
+	ErrCannotReachSharedDB = errors.New("Unable to reach shared database")
 )
 
 type sharedDBAdapter struct {
