@@ -86,24 +86,12 @@ func isDBConnectionAlive(db *gorm.DB) bool {
 }
 
 func (d *sharedDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
-	// Sanity check for instance
-	if i == nil {
-		return base.InstanceNotCreated, ErrInstanceNotFound
-	}
-	// Make sure we have all the details.
-	if len(i.Database) < 1 || len(i.Username) < 1 {
-		return base.InstanceNotCreated, ErrIncompleteInstance
-	}
 	// Make sure we have a password
 	if len(password) < 1 {
 		return base.InstanceNotCreated, ErrMissingPassword
 	}
-	// Check database and database connection.
-	if d.SharedDbConn == nil || d.SharedDbConn.DB() == nil {
-		return base.InstanceNotCreated, ErrDatabaseNotFound
-	}
-	if d.SharedDbConn.DB().Ping() != nil || !isDBConnectionAlive(d.SharedDbConn) {
-		return base.InstanceNotCreated, ErrCannotReachSharedDB
+	if err := checkSharedInputs(i, d.SharedDbConn); err != nil {
+		return base.InstanceNotCreated, err
 	}
 	switch i.DbType {
 	case "postgres":
@@ -145,6 +133,10 @@ func (d *sharedDBAdapter) bindDBToApp(i *Instance, password string) (map[string]
 }
 
 func (d *sharedDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
+	// Make sure we have all the details.
+	if err := checkSharedInputs(i, d.SharedDbConn); err != nil {
+		return base.InstanceNotGone, err
+	}
 	if db := d.SharedDbConn.Exec(fmt.Sprintf("DROP DATABASE %s;", i.Database)); db.Error != nil {
 		return base.InstanceNotGone, db.Error
 	}
@@ -152,6 +144,25 @@ func (d *sharedDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
 		return base.InstanceNotGone, db.Error
 	}
 	return base.InstanceGone, nil
+}
+
+func checkSharedInputs(i *Instance, db *gorm.DB) error {
+	// Sanity check for instance
+	if i == nil {
+		return ErrInstanceNotFound
+	}
+	// Make sure we have all the details.
+	if len(i.Database) < 1 || len(i.Username) < 1 {
+		return ErrIncompleteInstance
+	}
+	// Check database and database connection.
+	if db == nil || db.DB() == nil {
+		return ErrDatabaseNotFound
+	}
+	if db.DB().Ping() != nil || !isDBConnectionAlive(db) {
+		return ErrCannotReachSharedDB
+	}
+	return nil
 }
 
 type dedicatedDBAdapter struct {
