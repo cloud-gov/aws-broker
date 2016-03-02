@@ -17,6 +17,13 @@ import (
 	"net/http"
 )
 
+type dbFactory interface {
+	initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, response.Response)
+}
+
+type factory struct {
+}
+
 type dbAdapter interface {
 	createDB(i *Instance, password string) (base.InstanceState, error)
 	bindDBToApp(i *Instance, password string) (map[string]string, error)
@@ -35,8 +42,7 @@ var (
 )
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, response.Response) {
-
+func (f factory) initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbAdapter, response.Response) {
 	var dbAdapter dbAdapter
 
 	switch plan.Adapter {

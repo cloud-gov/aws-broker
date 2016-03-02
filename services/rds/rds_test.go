@@ -71,31 +71,33 @@ func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, 
 }
 
 func TestInitializeAdapter(t *testing.T) {
+	f := factory{}
 	// Test Unknown Adapter type
-	dbAdapter, resp := initializeAdapter(catalog.RDSPlan{Adapter: "ultimate"}, nil)
+	dbAdapter, resp := f.initializeAdapter(catalog.RDSPlan{Adapter: "ultimate"}, nil)
 	assert.Nil(t, dbAdapter)
 	assert.Equal(t, ErrResponseAdapterNotFound, resp)
 
 	// Test Dedicated Adapter Type
-	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "dedicated"}, nil)
+	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "dedicated"}, nil)
 	assert.NotNil(t, dbAdapter)
 	assert.Nil(t, resp)
 	assert.IsType(t, new(dedicatedDBAdapter), dbAdapter)
 
 	// Test Shared Adapter No Catalog
-	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, nil)
+	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, nil)
 	assert.Nil(t, dbAdapter)
 	assert.Equal(t, ErrResponseCatalogNotFound, resp)
 
 	// Test Shared Adapter No RDS Settings
-	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, &catalog.Catalog{})
+	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, &catalog.Catalog{})
 	assert.Nil(t, dbAdapter)
 	assert.Equal(t, ErrResponseRDSSettingsNotFound, resp)
 
 	// Test Shared Adapter No Plan
 	c := &catalog.Catalog{}
 	c.SetResources(catalog.Resources{RdsSettings: &catalog.RDSSettings{}})
-	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, c)
+
+	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, c)
 	assert.Nil(t, dbAdapter)
 	assert.Equal(t, response.NewErrorResponse(http.StatusInternalServerError, catalog.ErrNoRDSSettingForID.Error()), resp)
 
@@ -104,7 +106,7 @@ func TestInitializeAdapter(t *testing.T) {
 	rdsSettings := &catalog.RDSSettings{}
 	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: nil, Config: common.DBConfig{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
-	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
+	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
 	assert.Nil(t, dbAdapter)
 	assert.Equal(t, ErrResponseDBNotFound, resp)
 
@@ -114,7 +116,7 @@ func TestInitializeAdapter(t *testing.T) {
 	container, _, _, _, DB := getDatabase(t, "mysql")
 	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: DB, Config: common.DBConfig{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
-	dbAdapter, resp = initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
+	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
 	assert.NotNil(t, dbAdapter)
 	assert.IsType(t, new(sharedDBAdapter), dbAdapter)
 	assert.Nil(t, resp)

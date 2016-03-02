@@ -13,11 +13,12 @@ import (
 type rdsBroker struct {
 	brokerDB *gorm.DB
 	settings *config.Settings
+	factory  dbFactory
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &rdsBroker{brokerDB, settings}
+	return &rdsBroker{brokerDB, settings, factory{}}
 }
 
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
@@ -46,7 +47,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, c)
+	adapter, adapterErr := broker.factory.initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -98,7 +99,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := initializeAdapter(plan, c)
+	adapter, adapterErr := broker.factory.initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -135,7 +136,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, c)
+	adapter, adapterErr := broker.factory.initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
