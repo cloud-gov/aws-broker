@@ -3,22 +3,22 @@ package rds
 import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/18F/aws-broker/common/request"
 	"github.com/18F/aws-broker/common/response"
-	"github.com/18F/aws-broker/config"
 	"github.com/jinzhu/gorm"
 	"net/http"
 )
 
 type rdsBroker struct {
 	brokerDB *gorm.DB
-	settings *config.Settings
-	adapter DBAdapter
+	env *env.SystemEnv
+	adapter  DBAdapter
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &rdsBroker{brokerDB, settings, DefaultDBAdapter{}}
+func InitRDSBroker(brokerDB *gorm.DB, env *env.SystemEnv) base.Broker {
+	return &rdsBroker{brokerDB, env, DefaultDBAdapter{}}
 }
 
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
@@ -41,7 +41,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		createRequest.SpaceGUID,
 		createRequest.ServiceID,
 		plan,
-		broker.settings)
+		broker.env)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
@@ -93,7 +93,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 		return planErr
 	}
 
-	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	password, err := existingInstance.getPassword(broker.env.EncryptionKey)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}

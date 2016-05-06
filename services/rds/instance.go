@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/18F/aws-broker/common/crypto"
-	"github.com/18F/aws-broker/config"
 	"strconv"
 )
 
@@ -107,7 +107,7 @@ func (i *Instance) init(uuid string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RDSPlan,
-	s *config.Settings) error {
+	s *env.SystemEnv) error {
 
 	i.UUID = uuid
 	i.ServiceID = serviceID

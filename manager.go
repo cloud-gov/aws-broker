@@ -3,30 +3,30 @@ package main
 import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/18F/aws-broker/common/request"
 	"github.com/18F/aws-broker/common/response"
-	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/jinzhu/gorm"
 	"net/http"
 )
 
-func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings) (base.Broker, response.Response) {
+func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, env *env.SystemEnv) (base.Broker, response.Response) {
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
-		return rds.InitRDSBroker(brokerDb, settings), nil
+		return rds.InitRDSBroker(brokerDb, env), nil
 	}
 
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
-func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, env *env.SystemEnv) response.Response {
 	createRequest, resp := request.ExtractRequest(req)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(createRequest.ServiceID, c, brokerDb, settings)
+	broker, resp := findBroker(createRequest.ServiceID, c, brokerDb, env)
 	if resp != nil {
 		return resp
 	}
@@ -42,12 +42,12 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, env *env.SystemEnv) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, env)
 	if resp != nil {
 		return resp
 	}
@@ -55,12 +55,12 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	return broker.BindInstance(c, id, instance)
 }
 
-func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, env *env.SystemEnv) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, env)
 	if resp != nil {
 		return resp
 	}

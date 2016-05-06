@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 
@@ -12,13 +12,13 @@ import (
 // API is a the struct to hold all the necessary data for the routes.
 type API struct {
 	brokerDb *gorm.DB
-	settings *config.Settings
+	env *env.SystemEnv
 	c        *catalog.Catalog
 }
 
 // InitAPI registers the routes for the API
-func InitAPI(r *gin.RouterGroup, db *gorm.DB, settings *config.Settings, c *catalog.Catalog) {
-	api := &API{brokerDb: db, settings: settings, c: c}
+func InitAPI(r *gin.RouterGroup, db *gorm.DB, env *env.SystemEnv, c *catalog.Catalog) {
+	api := &API{brokerDb: db, env: env, c: c}
 	v2 := r.Group("/v2")
 	{
 		v2.GET("/catalog", api.getCatalog)
@@ -52,14 +52,14 @@ func (a *API) getCatalog(c *gin.Context) {
 //   "space_guid":        "space-guid-here"
 // }
 func (a *API) createInstance(c *gin.Context) {
-	resp := createInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.settings)
+	resp := createInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.env)
 	c.JSON(resp.GetStatusCode(), resp)
 }
 
 // bindInstance processes all requests for binding a service instance to an application.
 // URL: /v2/service_instances/:instance_id/service_bindings/:binding_id
 func (a *API) bindInstance(c *gin.Context) {
-	resp := bindInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.settings)
+	resp := bindInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.env)
 	c.JSON(resp.GetStatusCode(), resp)
 }
 
@@ -72,6 +72,6 @@ func (a *API) unbindInstance(c *gin.Context) {
 // deleteInstance processes all requests for deleting an existing service instance.
 // URL: /v2/service_instances/:instance_id
 func (a *API) deleteInstance(c *gin.Context) {
-	resp := deleteInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.settings)
+	resp := deleteInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.env)
 	c.JSON(resp.GetStatusCode(), resp)
 }

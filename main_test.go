@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/18F/aws-broker/common/db"
-	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -90,7 +90,7 @@ var brokerDB *gorm.DB
 func setup() *gin.Engine {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
-	var s config.Settings
+	var s env.SystemEnv
 	var dbConfig db.Config
 	s.DbConfig = dbConfig
 	dbConfig.DbType = "sqlite3"

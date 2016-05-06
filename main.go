@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -16,10 +16,10 @@ import (
 )
 
 func main() {
-	var settings config.Settings
+	var env env.SystemEnv
 
 	// Load settings from environment
-	if err := settings.LoadFromEnv(); err != nil {
+	if err := env.LoadFromEnv(); err != nil {
 		log.Println("There was an error loading settings")
 		log.Println(err)
 		return
@@ -30,7 +30,7 @@ func main() {
 	models = append(models, new(base.Instance))
 	models = append(models, new(rds.Instance))
 
-	DB, err := db.InternalDBInit(settings.DbConfig, models)
+	DB, err := db.InternalDBInit(env.DbConfig, models)
 	if err != nil {
 		log.Println("There was an error with the DB. Error: " + err.Error())
 		return
@@ -50,7 +50,7 @@ func main() {
 	}
 
 	// Try to connect and create the app.
-	if r := App(&settings, DB, catalogData, secretsData); r != nil {
+	if r := App(&env, DB, catalogData, secretsData); r != nil {
 		log.Println("Starting app...")
 		r.Run()
 	} else {
@@ -59,7 +59,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB, catalogData []byte, secretsData []byte) *gin.Engine {
+func App(env *env.SystemEnv, DB *gorm.DB, catalogData []byte, secretsData []byte) *gin.Engine {
 	c := catalog.InitCatalog(catalogData, secretsData)
 
 	r := gin.Default()
@@ -74,7 +74,7 @@ func App(settings *config.Settings, DB *gorm.DB, catalogData []byte, secretsData
 
 	log.Println("Loading Routes")
 
-	InitAPI(authorized, DB, settings, c)
+	InitAPI(authorized, DB, env, c)
 
 	log.Println("Loaded Routes")
 

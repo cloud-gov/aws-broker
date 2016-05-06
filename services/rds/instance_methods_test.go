@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/common/env"
 	"github.com/18F/aws-broker/common/request"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -46,7 +46,7 @@ func TestRDSInit(t *testing.T) {
 		"my-space-guid",
 		"my-service-guid",
 		catalog.RDSPlan{Plan: catalog.Plan{ID: "my-plan-id"}, Agent: "my-adapter"},
-		&config.Settings{EncryptionKey: "a"})
+		&env.SystemEnv{EncryptionKey: "a"})
 	assert.NotNil(t, err)
 	assert.IsType(t, *new(aes.KeySizeError), err)
 	assert.Equal(t, "crypto/aes: invalid key size 1", err.Error())
@@ -58,7 +58,7 @@ func TestRDSInit(t *testing.T) {
 		"my-space-guid",
 		"my-service-guid",
 		catalog.RDSPlan{Plan: catalog.Plan{ID: "my-plan-id"}, Agent: "my-adapter"},
-		&config.Settings{EncryptionKey: "abcdefghijklmnop"})
+		&env.SystemEnv{EncryptionKey: "abcdefghijklmnop"})
 	assert.Nil(t, err)
 	// Have to set the generated fields
 	expectedInstance := Instance{ClearPassword: i.ClearPassword, Salt: i.Salt, Username: i.Username, Password: i.Password,

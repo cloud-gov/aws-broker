@@ -1,4 +1,4 @@
-package config
+package env
 
 import (
 	"errors"
@@ -6,18 +6,16 @@ import (
 	"log"
 	"os"
 	"strconv"
-	//"github.com/18F/aws-broker/services/rds"
 )
 
-// Settings stores settings used to run the application
-type Settings struct {
+// SystemConfig stores settings used to run the application
+type SystemEnv struct {
 	EncryptionKey string
 	DbConfig      db.Config
-	//DbAdapter rds.DBAdapter
 }
 
 // LoadFromEnv loads settings from environment variables
-func (s *Settings) LoadFromEnv() error {
+func (s *SystemEnv) LoadFromEnv() error {
 	log.Println("Loading settings")
 
 	// Load DB Settings
