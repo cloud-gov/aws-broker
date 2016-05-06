@@ -18,13 +18,13 @@ import (
 )
 
 type DBAdapter interface {
-	initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbBrokerAgent, response.Response)
+	findBrokerAgent(plan catalog.RDSPlan, c *catalog.Catalog) (DbBrokerAgent, response.Response)
 }
 
 type DefaultDBAdapter struct {
 }
 
-type dbBrokerAgent interface {
+type DbBrokerAgent interface {
 	createDB(i *Instance, password string) (base.InstanceState, error)
 	bindDBToApp(i *Instance, password string) (map[string]string, error)
 	deleteDB(i *Instance) (base.InstanceState, error)
@@ -41,9 +41,9 @@ var (
 	ErrResponseDBNotFound = response.NewErrorResponse(http.StatusInternalServerError, "Shared DB not found")
 )
 
-// initializeAdapter is the main function to create database instances
-func (a DefaultDBAdapter) initializeAdapter(plan catalog.RDSPlan, c *catalog.Catalog) (dbBrokerAgent, response.Response) {
-	var dbAgent dbBrokerAgent
+// findBrokerAgent finds which agent to use depending on the plan.
+func (a DefaultDBAdapter) findBrokerAgent(plan catalog.RDSPlan, c *catalog.Catalog) (DbBrokerAgent, response.Response) {
+	var dbAgent DbBrokerAgent
 
 	switch plan.Agent {
 	case "shared":

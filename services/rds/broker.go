@@ -47,12 +47,12 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := broker.adapter.initializeAdapter(plan, c)
-	if adapterErr != nil {
-		return adapterErr
+	agent, agentErr := broker.adapter.findBrokerAgent(plan, c)
+	if agentErr != nil {
+		return agentErr
 	}
 	// Create the database instance.
-	status, err := adapter.createDB(&newInstance, newInstance.ClearPassword)
+	status, err := agent.createDB(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
 		desc := "There was an error creating the instance."
 		if err != nil {
@@ -99,15 +99,15 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := broker.adapter.initializeAdapter(plan, c)
-	if adapterErr != nil {
-		return adapterErr
+	agent, agentErr := broker.adapter.findBrokerAgent(plan, c)
+	if agentErr != nil {
+		return agentErr
 	}
 
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
-	if credentials, err = adapter.bindDBToApp(&existingInstance, password); err != nil {
+	if credentials, err = agent.bindDBToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
@@ -136,12 +136,12 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := broker.adapter.initializeAdapter(plan, c)
-	if adapterErr != nil {
-		return adapterErr
+	agent, agentErr := broker.adapter.findBrokerAgent(plan, c)
+	if agentErr != nil {
+		return agentErr
 	}
 	// Delete the database instance.
-	if status, err := adapter.deleteDB(&existingInstance); status == base.InstanceNotGone {
+	if status, err := agent.deleteDB(&existingInstance); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()

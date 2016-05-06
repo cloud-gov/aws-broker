@@ -6,12 +6,14 @@ import (
 	"log"
 	"os"
 	"strconv"
+	//"github.com/18F/aws-broker/services/rds"
 )
 
 // Settings stores settings used to run the application
 type Settings struct {
 	EncryptionKey string
 	DbConfig      db.Config
+	//DbAdapter rds.DBAdapter
 }
 
 // LoadFromEnv loads settings from environment variables
