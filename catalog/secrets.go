@@ -1,12 +1,10 @@
 package catalog
 
 import (
-	"github.com/18F/aws-broker/common"
+	"github.com/18F/aws-broker/common/db"
 	"gopkg.in/go-playground/validator.v8"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
-	"path/filepath"
 )
 
 // Secrets contains all the secrets for all the services.
@@ -23,19 +21,14 @@ type RDSSecret struct {
 
 // RDSDBSecret contains the config to connect to a database and the corresponding plan id.
 type RDSDBSecret struct {
-	common.DBConfig `yaml:",inline" validate:"required,dive,required"`
-	PlanID          string `yaml:"plan_id" validate:"required"`
+	db.Config `yaml:",inline" validate:"required,dive,required"`
+	PlanID    string `yaml:"plan_id" validate:"required"`
 }
 
 // InitSecrets initializes the secrets struct based on the yaml file.
-func InitSecrets(path string) *Secrets {
+func InitSecrets(data []byte) *Secrets {
 	var secrets Secrets
-	secretsFile := filepath.Join(path, "secrets.yml")
-	data, err := ioutil.ReadFile(secretsFile)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	err = yaml.Unmarshal(data, &secrets)
+	err := yaml.Unmarshal(data, &secrets)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}

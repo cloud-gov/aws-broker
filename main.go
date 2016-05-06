@@ -4,11 +4,15 @@ import (
 	"github.com/18F/aws-broker/config"
 	"github.com/jinzhu/gorm"
 
+	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/common/db"
+	"github.com/18F/aws-broker/services/rds"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -21,14 +25,32 @@ func main() {
 		return
 	}
 
-	DB, err := db.InternalDBInit(settings.DbConfig)
+	// Get the models to migrate.
+	var models []interface{}
+	models = append(models, new(base.Instance))
+	models = append(models, new(rds.Instance))
+
+	DB, err := db.InternalDBInit(settings.DbConfig, models)
 	if err != nil {
 		log.Println("There was an error with the DB. Error: " + err.Error())
 		return
 	}
 
+	// Load the catalog data
+	path, _ := os.Getwd()
+	catalogFile := filepath.Join(path, "catalog.yaml")
+	catalogData, err := ioutil.ReadFile(catalogFile)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	secretsFile := filepath.Join(path, "secrets.yml")
+	secretsData, err := ioutil.ReadFile(secretsFile)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
 	// Try to connect and create the app.
-	if r := App(&settings, DB); r != nil {
+	if r := App(&settings, DB, catalogData, secretsData); r != nil {
 		log.Println("Starting app...")
 		r.Run()
 	} else {
@@ -37,7 +59,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB) *gin.Engine {
+func App(settings *config.Settings, DB *gorm.DB, catalogData []byte, secretsData []byte) *gin.Engine {
 
 	r := gin.Default()
 
@@ -49,8 +71,7 @@ func App(settings *config.Settings, DB *gorm.DB) *gin.Engine {
 		username: password,
 	}))
 
-	path, _ := os.Getwd()
-	c := catalog.InitCatalog(path)
+	c := catalog.InitCatalog(catalogData, secretsData)
 
 	log.Println("Loading Routes")
 

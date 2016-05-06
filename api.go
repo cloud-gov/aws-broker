@@ -21,15 +21,15 @@ func InitAPI(r *gin.RouterGroup, db *gorm.DB, settings *config.Settings, c *cata
 	api := &API{brokerDb: db, settings: settings, c: c}
 	v2 := r.Group("/v2")
 	{
+		v2.GET("/catalog", api.getCatalog)
 		svcInstances := v2.Group("/service_instances")
 		{
-			svcInstances.PUT("/:id", api.createInstance)
+			svcInstances.PUT("/:instance_id", api.createInstance)
 			svcInstances.DELETE("/:instance_id", api.deleteInstance)
-
 			svcBindings := svcInstances.Group("/:instance_id/service_bindings")
 			{
-				svcBindings.PUT("/:id", api.bindInstance)
-				svcBindings.DELETE("/:id", api.unbindInstance)
+				svcBindings.PUT("/:binding_id", api.bindInstance)
+				svcBindings.DELETE("/:binding_id", api.unbindInstance)
 			}
 		}
 	}
@@ -52,7 +52,7 @@ func (a *API) getCatalog(c *gin.Context) {
 //   "space_guid":        "space-guid-here"
 // }
 func (a *API) createInstance(c *gin.Context) {
-	resp := createInstance(c.Request, a.c, a.brokerDb, c.Param("id"), a.settings)
+	resp := createInstance(c.Request, a.c, a.brokerDb, c.Param("instance_id"), a.settings)
 	c.JSON(resp.GetStatusCode(), resp)
 }
 

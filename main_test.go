@@ -4,9 +4,10 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"encoding/json"
-	"github.com/18F/aws-broker/common"
+	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/common/db"
 	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/services/rds"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
@@ -23,21 +24,84 @@ var createInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
+var catalogData = []byte(`
+rds:
+  id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
+  name: "rds"
+  description: "RDS Database Broker"
+  bindable: true
+  tags:
+    - "database"
+    - "RDS"
+    - "postgresql"
+    - "mysql"
+  metadata:
+    displayName: RDS Database Broker
+    imageUrl:
+    longDescription:
+    providerDisplayName: RDS
+    documentationUrl:
+    supportUrl:
+  plans:
+    -
+      id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
+      name: "shared-psql"
+      description: "Shared infrastructure for Postgres DB"
+      metadata:
+        bullets:
+          - "Shared RDS Instance"
+          - "Postgres instance"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "Free Shared Plan"
+      free: true
+      adapter: shared
+      dbType: sqlite3
+      securityGroup: sg-123456
+      subnetGroup: subnet-group
+      tags:
+        environment: "cf-env"
+        client: "the client"
+        service: "aws-broker"
+`)
+
+var secretsData = []byte(`
+rds:
+  service_id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
+  plans:
+  -
+    plan_id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
+    url: "test"
+    username: "theuser"
+    password: "thepassword"
+    db_name: "db_name"
+    db_type: "sqlite3"
+    ssl_mode: "disable"
+    port: 55
+`)
+
 var brokerDB *gorm.DB
 
 func setup() *gin.Engine {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
 	var s config.Settings
-	var dbConfig common.DBConfig
+	var dbConfig db.Config
 	s.DbConfig = &dbConfig
 	dbConfig.DbType = "sqlite3"
 	dbConfig.DbName = ":memory:"
 	s.EncryptionKey = "12345678901234567890123456789012"
 	s.Environment = "test"
-	brokerDB, _ = db.InternalDBInit(&dbConfig)
+	// Get the models to migrate.
+	var models []interface{}
+	models = append(models, new(base.Instance))
+	models = append(models, new(rds.Instance))
+	brokerDB, _ = db.InternalDBInit(&dbConfig, models)
 
-	r := App(&s, brokerDB)
+	r := App(&s, brokerDB, catalogData, secretsData)
 
 	return r
 }

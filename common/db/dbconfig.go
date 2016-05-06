@@ -1,4 +1,4 @@
-package common
+package db
 
 import (
 	// This is to init the mysql driver
@@ -14,7 +14,7 @@ import (
 	"log"
 )
 
-// DBConfig holds configuration information to connect to a database.
+// Config holds configuration information to connect to a database.
 // Parameters for the config.
 // * dbname - The name of the database to connect to
 // * user - The user to sign in as
@@ -27,7 +27,7 @@ import (
 //    * disable - No SSL
 //    * require - Always SSL (skip verification)
 //    * verify-full - Always SSL (require verification)
-type DBConfig struct {
+type Config struct {
 	DbType   string `yaml:"db_type" validate:"required"`
 	URL      string `yaml:"url" validate:"required"`
 	Username string `yaml:"username" validate:"required"`
@@ -37,12 +37,12 @@ type DBConfig struct {
 	Port     int64  `yaml:"port" validate:"required"` // Is int64 to match the type that rds.Endpoint.Port is in the AWS RDS SDK.
 }
 
-// DBInit is a generic helper function that will try to connect to a database with the config in the input.
+// Init is a generic helper function that will try to connect to a database with the config in the input.
 // Supported DB types:
 // * postgres
 // * mysql
 // * sqlite3
-func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
+func Init(dbConfig *Config) (*gorm.DB, error) {
 	var DB gorm.DB
 	var err error
 	/*

@@ -3,9 +3,9 @@ package base_test
 import (
 	"database/sql"
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/common/request"
+	"github.com/18F/aws-broker/common/response"
 	"github.com/18F/aws-broker/db"
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"

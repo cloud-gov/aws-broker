@@ -2,7 +2,7 @@ package request
 
 import (
 	"encoding/json"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/response"
 	"io/ioutil"
 	"net/http"
 )

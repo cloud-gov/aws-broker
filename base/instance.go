@@ -1,8 +1,8 @@
 package base
 
 import (
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/request"
+	"github.com/18F/aws-broker/common/response"
 	"github.com/jinzhu/gorm"
 	"log"
 	"net/http"
@@ -32,7 +32,7 @@ type Instance struct {
 	request.Request
 
 	Host string `sql:"size(255)"`
-	Port int64
+	Port int64  // TODO: change this UINT16
 
 	State InstanceState
 

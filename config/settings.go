@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"github.com/18F/aws-broker/common"
+	"github.com/18F/aws-broker/common/db"
 	"log"
 	"os"
 	"strconv"
@@ -11,7 +11,7 @@ import (
 // Settings stores settings used to run the application
 type Settings struct {
 	EncryptionKey string
-	DbConfig      *common.DBConfig
+	DbConfig      *db.Config
 	Environment   string
 }
 
@@ -20,7 +20,7 @@ func (s *Settings) LoadFromEnv() error {
 	log.Println("Loading settings")
 
 	// Load DB Settings
-	dbConfig := common.DBConfig{}
+	dbConfig := db.Config{}
 	dbConfig.DbType = os.Getenv("DB_TYPE")
 	dbConfig.URL = os.Getenv("DB_URL")
 	dbConfig.Username = os.Getenv("DB_USER")

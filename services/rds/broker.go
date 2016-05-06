@@ -3,9 +3,9 @@ package rds
 import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/request"
+	"github.com/18F/aws-broker/common/response"
 	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
 	"github.com/jinzhu/gorm"
 	"net/http"
 )

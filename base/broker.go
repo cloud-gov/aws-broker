@@ -2,8 +2,8 @@ package base
 
 import (
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/request"
+	"github.com/18F/aws-broker/common/response"
 )
 
 // Broker is the interface that every type of broker should implement.

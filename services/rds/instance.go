@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/crypto"
 	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/helpers"
 	"strconv"
 )
 
