@@ -38,7 +38,7 @@ func main() {
 
 	// Load the catalog data
 	path, _ := os.Getwd()
-	catalogFile := filepath.Join(path, "catalog.yaml")
+	catalogFile := filepath.Join(path, "catalog.yml")
 	catalogData, err := ioutil.ReadFile(catalogFile)
 	if err != nil {
 		log.Fatalf("error: %v", err)
@@ -60,6 +60,7 @@ func main() {
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
 func App(settings *config.Settings, DB *gorm.DB, catalogData []byte, secretsData []byte) *gin.Engine {
+	c := catalog.InitCatalog(catalogData, secretsData)
 
 	r := gin.Default()
 
@@ -70,8 +71,6 @@ func App(settings *config.Settings, DB *gorm.DB, catalogData []byte, secretsData
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
 		username: password,
 	}))
-
-	c := catalog.InitCatalog(catalogData, secretsData)
 
 	log.Println("Loading Routes")
 

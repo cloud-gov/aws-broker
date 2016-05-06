@@ -21,7 +21,7 @@ type RDSSettings struct {
 func InitRDSSettings(secrets *Secrets) (*RDSSettings, error) {
 	rdsSettings := RDSSettings{databases: make(map[string]*RDSSetting)}
 	for _, rdsSecret := range secrets.RdsSecret.RDSDBSecrets {
-		db, err := db.Init(&rdsSecret.Config)
+		db, err := db.Init(rdsSecret.Config)
 		if err == nil {
 			rdsSettings.AddRDSSetting(&RDSSetting{DB: db, Config: rdsSecret.Config}, rdsSecret.PlanID)
 		} else {

@@ -11,8 +11,7 @@ import (
 // Settings stores settings used to run the application
 type Settings struct {
 	EncryptionKey string
-	DbConfig      *db.Config
-	Environment   string
+	DbConfig      db.Config
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -30,18 +29,14 @@ func (s *Settings) LoadFromEnv() error {
 		dbConfig.Sslmode = "require"
 	}
 
-	if os.Getenv("DB_PORT") != "" {
-		var err error
-		dbConfig.Port, err = strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
-		// Just return nothing if we can't interpret the number.
-		if err != nil {
-			return errors.New("Couldn't load port number")
-		}
-	} else {
-		dbConfig.Port = 5432
+	var err error
+	dbConfig.Port, err = strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
+	// Just return nothing if we can't interpret the number.
+	if err != nil {
+		return errors.New("Couldn't load port number")
 	}
 
-	s.DbConfig = &dbConfig
+	s.DbConfig = dbConfig
 
 	// Load Encryption Key
 	s.EncryptionKey = os.Getenv("ENC_KEY")
@@ -49,8 +44,6 @@ func (s *Settings) LoadFromEnv() error {
 		return errors.New("An encryption key is required")
 	}
 
-	// Set env to production
-	s.Environment = "production"
-
+	// TODO: Make sure all the values are valid
 	return nil
 }

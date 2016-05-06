@@ -13,12 +13,12 @@ import (
 type rdsBroker struct {
 	brokerDB *gorm.DB
 	settings *config.Settings
-	factory  dbFactory
+	adapter DBAdapter
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &rdsBroker{brokerDB, settings, factory{}}
+	return &rdsBroker{brokerDB, settings, DefaultDBAdapter{}}
 }
 
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
@@ -47,7 +47,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := broker.factory.initializeAdapter(plan, c)
+	adapter, adapterErr := broker.adapter.initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -63,7 +63,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 
 	newInstance.State = status
 
-	if newInstance.Adapter == "shared" {
+	if newInstance.Agent == "shared" {
 		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
@@ -99,7 +99,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := broker.factory.initializeAdapter(plan, c)
+	adapter, adapterErr := broker.adapter.initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -136,7 +136,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := broker.factory.initializeAdapter(plan, c)
+	adapter, adapterErr := broker.adapter.initializeAdapter(plan, c)
 	if adapterErr != nil {
 		return adapterErr
 	}

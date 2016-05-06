@@ -6,7 +6,7 @@ import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/helpers/request"
+	"github.com/18F/aws-broker/common/request"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -45,7 +45,7 @@ func TestRDSInit(t *testing.T) {
 		"my-org-guid",
 		"my-space-guid",
 		"my-service-guid",
-		catalog.RDSPlan{Plan: catalog.Plan{ID: "my-plan-id"}, Adapter: "my-adapter"},
+		catalog.RDSPlan{Plan: catalog.Plan{ID: "my-plan-id"}, Agent: "my-adapter"},
 		&config.Settings{EncryptionKey: "a"})
 	assert.NotNil(t, err)
 	assert.IsType(t, *new(aes.KeySizeError), err)
@@ -57,12 +57,12 @@ func TestRDSInit(t *testing.T) {
 		"my-org-guid",
 		"my-space-guid",
 		"my-service-guid",
-		catalog.RDSPlan{Plan: catalog.Plan{ID: "my-plan-id"}, Adapter: "my-adapter"},
+		catalog.RDSPlan{Plan: catalog.Plan{ID: "my-plan-id"}, Agent: "my-adapter"},
 		&config.Settings{EncryptionKey: "abcdefghijklmnop"})
 	assert.Nil(t, err)
 	// Have to set the generated fields
 	expectedInstance := Instance{ClearPassword: i.ClearPassword, Salt: i.Salt, Username: i.Username, Password: i.Password,
-		Adapter: "my-adapter", Database: i.Database,
+		Agent: "my-adapter", Database: i.Database,
 		Instance: base.Instance{UUID: "my-uuid", Request: request.Request{PlanID: "my-plan-id", SpaceGUID: "my-space-guid", ServiceID: "my-service-guid", OrganizationGUID: "my-org-guid"}}}
 	assert.Equal(t, expectedInstance, i)
 }

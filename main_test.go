@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jinzhu/gorm"
 
+	"bytes"
 	"encoding/json"
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/common/db"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -90,16 +92,15 @@ func setup() *gin.Engine {
 	os.Setenv("AUTH_PASS", "default")
 	var s config.Settings
 	var dbConfig db.Config
-	s.DbConfig = &dbConfig
+	s.DbConfig = dbConfig
 	dbConfig.DbType = "sqlite3"
 	dbConfig.DbName = ":memory:"
 	s.EncryptionKey = "12345678901234567890123456789012"
-	s.Environment = "test"
 	// Get the models to migrate.
 	var models []interface{}
 	models = append(models, new(base.Instance))
 	models = append(models, new(rds.Instance))
-	brokerDB, _ = db.InternalDBInit(&dbConfig, models)
+	brokerDB, _ = db.InternalDBInit(dbConfig, models)
 
 	r := App(&s, brokerDB, catalogData, secretsData)
 
@@ -157,7 +158,6 @@ func TestCatalog(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 }
 
-/*
 func TestCreateInstance(t *testing.T) {
 	url := "/v2/service_instances/the_instance"
 
@@ -169,7 +169,7 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), url, t)
 
 	// Does it say "created"?
 	if !strings.Contains(string(res.Body.Bytes()), "created") {
@@ -177,21 +177,31 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	// Is it in the database and has a username and password?
-	i := Instance{}
+	i := base.Instance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id == 0 {
+	if len(i.UUID) == 0 {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.Username == "" || i.Password == "" {
-		t.Error("The instance should have a username and password")
+	// Is it in the database and has a username and password?
+	rdsInstance := rds.Instance{}
+	brokerDB.Where("uuid = ?", "the_instance").First(&rdsInstance)
+	if len(rdsInstance.UUID) == 0 {
+		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.PlanId == "" || i.OrgGuid == "" || i.SpaceGuid == "" {
-		t.Error("The instance should have metadata")
-	}
+	/*
+		if i.Username == "" || i.Password == "" {
+			t.Error("The instance should have a username and password")
+		}
+
+		if i.PlanId == "" || i.OrgGuid == "" || i.SpaceGuid == "" {
+			t.Error("The instance should have metadata")
+		}
+	*/
 }
 
+/*
 func TestBindInstance(t *testing.T) {
 	url := "/v2/service_instances/the_instance/service_bindings/the_binding"
 	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createInstanceReq))

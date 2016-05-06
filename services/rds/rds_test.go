@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/common"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/db"
+	"github.com/18F/aws-broker/common/response"
 	"github.com/jinzhu/gorm"
 	"github.com/ory-am/dockertest"
 	"github.com/stretchr/testify/assert"
@@ -70,85 +70,85 @@ func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, 
 	return &container, dbURL, dbIP, dbPort, &DB
 }
 
-func TestInitializeAdapter(t *testing.T) {
-	f := factory{}
-	// Test Unknown Adapter type
-	dbAdapter, resp := f.initializeAdapter(catalog.RDSPlan{Adapter: "ultimate"}, nil)
-	assert.Nil(t, dbAdapter)
-	assert.Equal(t, ErrResponseAdapterNotFound, resp)
+func TestInitializeAgent(t *testing.T) {
+	a := DefaultDBAdapter{}
+	// Test Unknown Agent type
+	dbAgent, resp := a.initializeAdapter(catalog.RDSPlan{Agent: "ultimate"}, nil)
+	assert.Nil(t, dbAgent)
+	assert.Equal(t, ErrResponseAgentNotFound, resp)
 
-	// Test Dedicated Adapter Type
-	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "dedicated"}, nil)
-	assert.NotNil(t, dbAdapter)
+	// Test Dedicated Agent Type
+	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "dedicated"}, nil)
+	assert.NotNil(t, dbAgent)
 	assert.Nil(t, resp)
-	assert.IsType(t, new(dedicatedDBAdapter), dbAdapter)
+	assert.IsType(t, new(dedicatedAgent), dbAgent)
 
-	// Test Shared Adapter No Catalog
-	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, nil)
-	assert.Nil(t, dbAdapter)
+	// Test Shared Agent No Catalog
+	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared"}, nil)
+	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseCatalogNotFound, resp)
 
-	// Test Shared Adapter No RDS Settings
-	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, &catalog.Catalog{})
-	assert.Nil(t, dbAdapter)
+	// Test Shared Agent No RDS Settings
+	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared"}, &catalog.Catalog{})
+	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseRDSSettingsNotFound, resp)
 
-	// Test Shared Adapter No Plan
+	// Test Shared Agent No Plan
 	c := &catalog.Catalog{}
 	c.SetResources(catalog.Resources{RdsSettings: &catalog.RDSSettings{}})
 
-	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared"}, c)
-	assert.Nil(t, dbAdapter)
+	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared"}, c)
+	assert.Nil(t, dbAgent)
 	assert.Equal(t, response.NewErrorResponse(http.StatusInternalServerError, catalog.ErrNoRDSSettingForID.Error()), resp)
 
-	// Test Shared Adapter No DB in Plan
+	// Test Shared Agent No DB in Plan
 	c = &catalog.Catalog{}
 	rdsSettings := &catalog.RDSSettings{}
-	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: nil, Config: common.DBConfig{}}, "my-plan-id")
+	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: nil, Config: db.Config{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
-	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
-	assert.Nil(t, dbAdapter)
+	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
+	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseDBNotFound, resp)
 
-	// Test Shared Adapter
+	// Test Shared Agent
 	c = &catalog.Catalog{}
 	rdsSettings = &catalog.RDSSettings{}
 	container, _, _, _, DB := getDatabase(t, "mysql")
-	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: DB, Config: common.DBConfig{}}, "my-plan-id")
+	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: DB, Config: db.Config{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
-	dbAdapter, resp = f.initializeAdapter(catalog.RDSPlan{Adapter: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
-	assert.NotNil(t, dbAdapter)
-	assert.IsType(t, new(sharedDBAdapter), dbAdapter)
+	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
+	assert.NotNil(t, dbAgent)
+	assert.IsType(t, new(sharedAgent), dbAgent)
 	assert.Nil(t, resp)
 	container.KillRemove()
 }
 
 func TestSharedDbCreateDb(t *testing.T) {
 	// Test nil instance case
-	adapter := sharedDBAdapter{SharedDbConn: nil}
-	state, err := adapter.createDB(nil, "pw")
+	agent := sharedAgent{SharedDbConn: nil}
+	state, err := agent.createDB(nil, "pw")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrInstanceNotFound, err)
 	assert.Equal(t, state, base.InstanceNotCreated)
 
 	// Test no password case
-	adapter = sharedDBAdapter{SharedDbConn: nil}
-	state, err = adapter.createDB(&Instance{Database: "db", Username: "user"}, "")
+	agent = sharedAgent{SharedDbConn: nil}
+	state, err = agent.createDB(&Instance{Database: "db", Username: "user"}, "")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrMissingPassword, err)
 	assert.Equal(t, base.InstanceNotCreated, state)
 
 	// Test nil db conn
-	adapter = sharedDBAdapter{SharedDbConn: nil}
-	state, err = adapter.createDB(&Instance{Database: "db", Username: "user"}, "pw")
+	agent = sharedAgent{SharedDbConn: nil}
+	state, err = agent.createDB(&Instance{Database: "db", Username: "user"}, "pw")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrDatabaseNotFound, err)
 	assert.Equal(t, base.InstanceNotCreated, state)
 
 	// Test bad db conn
 	/*
-		adapter = sharedDBAdapter{SharedDbConn: &gorm.DB{}}
-		state, err = adapter.createDB(&Instance{}, "pw")
+		agent = sharedDBAgent{SharedDbConn: &gorm.DB{}}
+		state, err = agent.createDB(&Instance{}, "pw")
 		assert.NotNil(t, err)
 		assert.Equal(t, ErrDatabaseNotFound, err)
 		assert.Equal(t, base.InstanceNotCreated, state)
@@ -156,24 +156,24 @@ func TestSharedDbCreateDb(t *testing.T) {
 
 	// Test db conn gone bad mysql
 	container, _, _, _, DB := getDatabase(t, "mysql")
-	adapter = sharedDBAdapter{SharedDbConn: DB}
+	agent = sharedAgent{SharedDbConn: DB}
 	// Make sure it's live
 	assert.Nil(t, DB.DB().Ping())
 	// Remove the database
 	container.KillRemove()
-	state, err = adapter.createDB(&Instance{Database: "db", Username: "user", DbType: "mysql"}, "pw")
+	state, err = agent.createDB(&Instance{Database: "db", Username: "user", DbType: "mysql"}, "pw")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrCannotReachSharedDB, err)
 	assert.Equal(t, base.InstanceNotCreated, state)
 
 	// Test db conn gone bad postgres
 	container, _, _, _, DB = getDatabase(t, "postgres")
-	adapter = sharedDBAdapter{SharedDbConn: DB}
+	agent = sharedAgent{SharedDbConn: DB}
 	// Make sure it's live
 	assert.Nil(t, DB.DB().Ping())
 	// Remove the database
 	container.KillRemove()
-	state, err = adapter.createDB(&Instance{Database: "db", Username: "user", DbType: "postgres"}, "pw")
+	state, err = agent.createDB(&Instance{Database: "db", Username: "user", DbType: "postgres"}, "pw")
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrCannotReachSharedDB, err)
 	assert.Equal(t, base.InstanceNotCreated, state)
@@ -183,11 +183,11 @@ func TestSharedDbCreateDb(t *testing.T) {
 	var port int
 	container, url, ip, port, DB = getDatabase(t, "mysql")
 	_ = url
-	adapter = sharedDBAdapter{SharedDbConn: DB}
+	agent = sharedAgent{SharedDbConn: DB}
 	// Make sure it's live
 	assert.Nil(t, DB.DB().Ping())
 	// Remove the database
-	state, err = adapter.createDB(&Instance{Database: "db", Username: "username", DbType: "mysql"}, "pw")
+	state, err = agent.createDB(&Instance{Database: "db", Username: "username", DbType: "mysql"}, "pw")
 	//t.Log(url)
 	assert.Nil(t, err)
 	assert.Equal(t, base.InstanceReady, state)
@@ -203,11 +203,11 @@ func TestSharedDbCreateDb(t *testing.T) {
 
 	// Test create db postgres
 	container, url, ip, port, DB = getDatabase(t, "postgres")
-	adapter = sharedDBAdapter{SharedDbConn: DB}
+	agent = sharedAgent{SharedDbConn: DB}
 	// Make sure it's live
 	assert.Nil(t, DB.DB().Ping())
 	// Remove the database
-	state, err = adapter.createDB(&Instance{Database: "db", Username: "username", DbType: "postgres"}, "pw")
+	state, err = agent.createDB(&Instance{Database: "db", Username: "username", DbType: "postgres"}, "pw")
 	//t.Log(url)
 	assert.Nil(t, err)
 	assert.Equal(t, base.InstanceReady, state)
@@ -224,24 +224,24 @@ func TestSharedDbCreateDb(t *testing.T) {
 	// Test invalid db type
 }
 
-// MockDBAdapter is a struct meant for testing.
+// MockDBAgent is a struct meant for testing.
 // It should only be used in *_test.go files.
 // It is only here because *_test.go files are only compiled during "go test"
-// and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
-type mockDBAdapter struct {
+// and it's referenced in non *_test.go code eg. InitializeAgent in main.go.
+type mockDBAgent struct {
 }
 
-func (d *mockDBAdapter) createDB(i *Instance, password string) (base.InstanceState, error) {
+func (d *mockDBAgent) createDB(i *Instance, password string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
 
-func (d *mockDBAdapter) bindDBToApp(i *Instance, password string) (map[string]string, error) {
+func (d *mockDBAgent) bindDBToApp(i *Instance, password string) (map[string]string, error) {
 	// TODO
 	return i.getCredentials(password)
 }
 
-func (d *mockDBAdapter) deleteDB(i *Instance) (base.InstanceState, error) {
+func (d *mockDBAgent) deleteDB(i *Instance) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }

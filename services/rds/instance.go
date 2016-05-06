@@ -35,7 +35,7 @@ type Instance struct {
 	DbSubnetGroup string            `sql:"-"`
 	SecGroup      string            `sql:"-"`
 
-	Adapter string `sql:"size(255)"`
+	Agent string `sql:"size(255)" gorm:"column:adapter"` // Changed for backwards compatibility TODO add advanced migration commands.
 
 	DbType string `sql:"size(255)"`
 }
@@ -115,7 +115,7 @@ func (i *Instance) init(uuid string,
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
-	i.Adapter = plan.Adapter
+	i.Agent = plan.Agent
 
 	// Build random values
 	i.Database = "db" + helpers.RandStr(15)

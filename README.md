@@ -33,10 +33,10 @@ There are important environment variables that should be overriden inside the `m
 > Example of permissions that suffice: `AmazonRDSFullAccess` and `AmazonEC2FullAccess`
 
 
-#### Catalog.yaml
+#### Catalog.yml
 
-Catalog.yaml contains a list of service(s) offered with plans. It contains no secrets.
-Prior to pushing, complete the catalog.yaml for your environment. It is architected where the service name (e.g. rds) is the mapping between it and the service details.
+Catalog.yml contains a list of service(s) offered with plans. It contains no secrets.
+Prior to pushing, complete the catalog.yaml for your environment. It is structured where the service name (e.g. rds) is the mapping between it and the service details.
 
 #### Secrets.yml
 

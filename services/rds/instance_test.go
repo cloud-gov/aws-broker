@@ -2,7 +2,6 @@ package rds_test
 
 import (
 	"database/sql"
-	"github.com/18F/aws-broker/db"
 	"github.com/18F/aws-broker/services/rds"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
@@ -17,7 +16,7 @@ func rdsInstanceTest(t *testing.T, DB *gorm.DB) {
 
 	// Test create of database table
 	assert.False(t, DB.HasTable(&rds.Instance{}))
-	db.MigrateDB(DB)
+	DB.AutoMigrate(&rds.Instance{})
 	assert.True(t, DB.HasTable(&rds.Instance{}))
 	// Test database name
 	assert.Equal(t, "r_d_s_instances", DB.NewScope(rds.Instance{}).TableName())
@@ -33,10 +32,15 @@ func rdsInstanceTest(t *testing.T, DB *gorm.DB) {
 	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("state"))
 	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("created_at"))
 	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("updated_at"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("adapter"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("database"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("username"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("password"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("salt"))
+	assert.True(t, DB.NewScope(rds.Instance{}).HasColumn("db_type"))
 }
 
 func TestRDSInstanceMySQL(t *testing.T) {
-	t.Parallel()
 	var DB gorm.DB
 	var c dockertest.ContainerID
 	var err error
@@ -59,7 +63,6 @@ func TestRDSInstanceMySQL(t *testing.T) {
 }
 
 func TestRDSInstancePostgresSQL(t *testing.T) {
-	t.Parallel()
 	var DB gorm.DB
 	var c dockertest.ContainerID
 	var err error

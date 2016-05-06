@@ -5,7 +5,6 @@ import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/common/request"
 	"github.com/18F/aws-broker/common/response"
-	"github.com/18F/aws-broker/db"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
@@ -20,7 +19,7 @@ func baseInstanceTest(t *testing.T, DB *gorm.DB) {
 
 	// Test create of database table
 	assert.False(t, DB.HasTable(&base.Instance{}))
-	db.MigrateDB(DB)
+	DB.AutoMigrate(&base.Instance{})
 	assert.True(t, DB.HasTable(&base.Instance{}))
 	// Test database name
 	assert.Equal(t, "instances", DB.NewScope(base.Instance{}).TableName())
