@@ -1,12 +1,12 @@
 package base
 
 import (
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/request"
+	"github.com/18F/aws-broker/common/response"
 	"github.com/jinzhu/gorm"
-	"log"
 	"net/http"
 	"time"
+	"github.com/18F/aws-broker/common/context"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.
@@ -25,13 +25,14 @@ const (
 	InstanceNotGone // 4
 )
 
+// Instance is the base that all instances should include
 type Instance struct {
-	Uuid   string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
+	UUID string `gorm:"column:uuid;primary_key" sql:"type:varchar(255) PRIMARY KEY"`
 
 	request.Request
 
 	Host string `sql:"size(255)"`
-	Port int64
+	Port int64  // TODO: change this UINT16
 
 	State InstanceState
 
@@ -39,10 +40,10 @@ type Instance struct {
 	UpdatedAt time.Time
 }
 
-// FindBaseInstance is a helper function to find the base instance of the
-func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response) {
+// FindBaseInstance is a helper function to find the base instance.
+func FindBaseInstance(brokerDb *gorm.DB, id string, ctx context.Ctx) (Instance, response.Response) {
 	instance := Instance{}
-	log.Println("Looking for instance with id " + id)
+	ctx.Log.Debugf("Looking for base instance with id %s", id)
 	err := brokerDb.Where("uuid = ?", id).First(&instance).Error
 	if err == nil {
 		return instance, nil

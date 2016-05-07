@@ -3,58 +3,28 @@ package rds
 import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/env"
+	"github.com/18F/aws-broker/common/request"
+	"github.com/18F/aws-broker/common/response"
 	"github.com/jinzhu/gorm"
 	"net/http"
+"github.com/18F/aws-broker/common/context"
 )
 
 type rdsBroker struct {
 	brokerDB *gorm.DB
-	settings *config.Settings
-}
-
-// initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Catalog) (dbAdapter, response.Response) {
-
-	var dbAdapter dbAdapter
-	// For test environments, use a mock adapter.
-	if s.Environment == "test" {
-		dbAdapter = &mockDBAdapter{}
-		return dbAdapter, nil
-	}
-
-	switch plan.Adapter {
-	case "shared":
-		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
-		if err != nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
-		}
-		if setting.DB == nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, "An internal error occurred setting up shared databases.")
-		}
-		dbAdapter = &sharedDBAdapter{
-			SharedDbConn: setting.DB,
-		}
-	case "dedicated":
-		dbAdapter = &dedicatedDBAdapter{
-			InstanceClass: plan.InstanceClass,
-		}
-	default:
-		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
-	}
-
-	return dbAdapter, nil
+	env      *env.SystemEnv
+	adapter  DBAdapter
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &rdsBroker{brokerDB, settings}
+func InitRDSBroker(brokerDB *gorm.DB, env *env.SystemEnv, dbAdapter DBAdapter, ctx context.Ctx) base.Broker {
+	return &rdsBroker{brokerDB: brokerDB, env: env, adapter: dbAdapter}
 }
 
-func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
-	newInstance := RDSInstance{}
+func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string,
+	createRequest request.Request, ctx context.Ctx) response.Response {
+	newInstance := Instance{}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
@@ -73,18 +43,18 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		createRequest.SpaceGUID,
 		createRequest.ServiceID,
 		plan,
-		broker.settings)
+		broker.env)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
-	if adapterErr != nil {
-		return adapterErr
+	agent, agentErr := broker.adapter.findBrokerAgent(plan, c)
+	if agentErr != nil {
+		return agentErr
 	}
 	// Create the database instance.
-	status, err := adapter.createDB(&newInstance, newInstance.ClearPassword)
+	status, err := agent.createDB(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
 		desc := "There was an error creating the instance."
 		if err != nil {
@@ -95,7 +65,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 
 	newInstance.State = status
 
-	if newInstance.Adapter == "shared" {
+	if newInstance.Agent == "shared" {
 		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
@@ -111,8 +81,8 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessCreateResponse
 }
 
-func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance, ctx context.Ctx) response.Response {
+	existingInstance := Instance{}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
@@ -125,21 +95,21 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 		return planErr
 	}
 
-	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	password, err := existingInstance.getPassword(broker.env.EncryptionKey)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
-	if adapterErr != nil {
-		return adapterErr
+	agent, agentErr := broker.adapter.findBrokerAgent(plan, c)
+	if agentErr != nil {
+		return agentErr
 	}
 
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
-	if credentials, err = adapter.bindDBToApp(&existingInstance, password); err != nil {
+	if credentials, err = agent.bindDBToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
@@ -155,8 +125,8 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 	return response.NewSuccessBindResponse(credentials)
 }
 
-func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance, ctx context.Ctx) response.Response {
+	existingInstance := Instance{}
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {
@@ -168,12 +138,12 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
-	if adapterErr != nil {
-		return adapterErr
+	agent, agentErr := broker.adapter.findBrokerAgent(plan, c)
+	if agentErr != nil {
+		return agentErr
 	}
 	// Delete the database instance.
-	if status, err := adapter.deleteDB(&existingInstance); status == base.InstanceNotGone {
+	if status, err := agent.deleteDB(&existingInstance); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()

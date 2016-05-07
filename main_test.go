@@ -1,17 +1,21 @@
 package main
 
 import (
-	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 
+	"bytes"
 	"encoding/json"
-	"github.com/18F/aws-broker/common"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/common/config"
+	"github.com/18F/aws-broker/common/db"
+	"github.com/18F/aws-broker/common/env"
+	"github.com/18F/aws-broker/services/rds"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -23,30 +27,92 @@ var createInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
+var catalogData = []byte(`
+rds:
+  id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
+  name: "rds"
+  description: "RDS Database Broker"
+  bindable: true
+  tags:
+    - "database"
+    - "RDS"
+    - "postgresql"
+    - "mysql"
+  metadata:
+    displayName: RDS Database Broker
+    imageUrl:
+    longDescription:
+    providerDisplayName: RDS
+    documentationUrl:
+    supportUrl:
+  plans:
+    -
+      id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
+      name: "shared-psql"
+      description: "Shared infrastructure for Postgres DB"
+      metadata:
+        bullets:
+          - "Shared RDS Instance"
+          - "Postgres instance"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "Free Shared Plan"
+      free: true
+      adapter: shared
+      dbType: sqlite3
+      securityGroup: sg-123456
+      subnetGroup: subnet-group
+      tags:
+        environment: "cf-env"
+        client: "the client"
+        service: "aws-broker"
+`)
+
+var secretsData = []byte(`
+rds:
+  service_id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
+  plans:
+  -
+    plan_id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
+    url: "test"
+    username: "theuser"
+    password: "thepassword"
+    db_name: "db_name"
+    db_type: "sqlite3"
+    ssl_mode: "disable"
+    port: 55
+`)
+
 var brokerDB *gorm.DB
 
-func setup() *martini.ClassicMartini {
+func setup() *gin.Engine {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
-	var s config.Settings
-	var dbConfig common.DBConfig
-	s.DbConfig = &dbConfig
+	var s env.SystemEnv
+	var dbConfig db.Config
+	s.DbConfig = dbConfig
 	dbConfig.DbType = "sqlite3"
 	dbConfig.DbName = ":memory:"
 	s.EncryptionKey = "12345678901234567890123456789012"
-	s.Environment = "test"
-	brokerDB, _ = db.InternalDBInit(&dbConfig)
+	// Get the models to migrate.
+	var models []interface{}
+	models = append(models, new(base.Instance))
+	models = append(models, new(rds.Instance))
+	brokerDB, _ = db.InternalDBInit(dbConfig, models)
 
-	m := App(&s, brokerDB)
+	r := App(&s, config.InitDefaultAppConfig(), brokerDB, catalogData, secretsData)
 
-	return m
+	return r
 }
 
 /*
 	Mock Objects
 */
 
-func doRequest(m *martini.ClassicMartini, url string, method string, auth bool, body io.Reader) (*httptest.ResponseRecorder, *martini.ClassicMartini) {
+func doRequest(m *gin.Engine, url string, method string, auth bool, body io.Reader) (*httptest.ResponseRecorder, *gin.Engine) {
 	if m == nil {
 		m = setup()
 	}
@@ -93,8 +159,8 @@ func TestCatalog(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 }
 
-/*
 func TestCreateInstance(t *testing.T) {
+	t.SkipNow()
 	url := "/v2/service_instances/the_instance"
 
 	res, _ := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createInstanceReq))
@@ -105,7 +171,7 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), url, t)
 
 	// Does it say "created"?
 	if !strings.Contains(string(res.Body.Bytes()), "created") {
@@ -113,22 +179,35 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	// Is it in the database and has a username and password?
-	i := Instance{}
+	i := base.Instance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id == 0 {
+	if len(i.UUID) == 0 {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.Username == "" || i.Password == "" {
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata")
+	}
+
+	// Is it in the database and has a username and password?
+	rdsInstance := rds.Instance{}
+	brokerDB.Where("uuid = ?", "the_instance").First(&rdsInstance)
+	if len(rdsInstance.UUID) == 0 {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if rdsInstance.Username == "" || rdsInstance.Password == "" {
 		t.Error("The instance should have a username and password")
 	}
 
-	if i.PlanId == "" || i.OrgGuid == "" || i.SpaceGuid == "" {
+	if rdsInstance.PlanID == "" || rdsInstance.OrganizationGUID == "" || rdsInstance.SpaceGUID == "" {
 		t.Error("The instance should have metadata")
 	}
+
 }
 
 func TestBindInstance(t *testing.T) {
+	t.SkipNow()
 	url := "/v2/service_instances/the_instance/service_bindings/the_binding"
 	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createInstanceReq))
 
@@ -147,7 +226,7 @@ func TestBindInstance(t *testing.T) {
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
 		Uri      string
@@ -170,7 +249,7 @@ func TestBindInstance(t *testing.T) {
 		t.Error(url, "should return credentials")
 	}
 
-	instance := Instance{}
+	instance := rds.Instance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&instance)
 
 	// Does it return an unencrypted password?
@@ -180,6 +259,7 @@ func TestBindInstance(t *testing.T) {
 }
 
 func TestUnbind(t *testing.T) {
+	t.SkipNow()
 	url := "/v2/service_instances/the_instance/service_bindings/the_binding"
 	res, _ := doRequest(nil, url, "DELETE", true, nil)
 
@@ -188,7 +268,7 @@ func TestUnbind(t *testing.T) {
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
 	if string(res.Body.Bytes()) != "{}" {
@@ -197,6 +277,7 @@ func TestUnbind(t *testing.T) {
 }
 
 func TestDeleteInstance(t *testing.T) {
+	t.SkipNow()
 	url := "/v2/service_instances/the_instance"
 	res, m := doRequest(nil, url, "DELETE", true, nil)
 
@@ -207,9 +288,9 @@ func TestDeleteInstance(t *testing.T) {
 
 	// Create the instance and try again
 	doRequest(m, "/v2/service_instances/the_instance", "PUT", true, bytes.NewBuffer(createInstanceReq))
-	i := Instance{}
+	i := rds.Instance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id == 0 {
+	if len(i.UUID) == 0 {
 		t.Error("The instance should be in the DB")
 	}
 
@@ -221,10 +302,9 @@ func TestDeleteInstance(t *testing.T) {
 	}
 
 	// Is it actually gone from the DB?
-	i = Instance{}
+	i = rds.Instance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id > 0 {
+	if len(i.UUID) > 0 {
 		t.Error("The instance shouldn't be in the DB")
 	}
 }
-*/

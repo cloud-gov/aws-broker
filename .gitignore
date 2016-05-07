@@ -1,6 +1,11 @@
 .env
+*.sw*
 gin-bin
 aws-broker
 .DS_Store
 secrets.yml
+catalog.yml
+catalog.yaml
+profile.cov
 Godeps/_workspace/
+db_name

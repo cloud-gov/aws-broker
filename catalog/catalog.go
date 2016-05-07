@@ -1,12 +1,10 @@
 package catalog
 
 import (
-	"io/ioutil"
 	"log"
-	"path/filepath"
 
 	"errors"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/common/response"
 	"gopkg.in/go-playground/validator.v8"
 	"gopkg.in/yaml.v2"
 	"net/http"
@@ -77,7 +75,7 @@ func (s RDSService) FetchPlan(planID string) (RDSPlan, response.Response) {
 // in the catalog API endpoint.
 type RDSPlan struct {
 	Plan          `yaml:",inline" validate:"required"`
-	Adapter       string            `yaml:"adapter" json:"-" validate:"required"`
+	Agent         string            `yaml:"adapter" json:"-" validate:"required"`
 	InstanceClass string            `yaml:"instanceClass" json:"-"`
 	DbType        string            `yaml:"dbType" json:"-" validate:"required"`
 	Tags          map[string]string `yaml:"tags" json:"-" validate:"required"`
@@ -132,16 +130,16 @@ func (c *Catalog) GetResources() Resources {
 	return c.resources
 }
 
+// SetResources sets the resources for the catalog.
+func (c *Catalog) SetResources(res Resources) {
+	c.resources = res
+}
+
 // InitCatalog initializes a Catalog struct that contains services and plans
 // defined in the catalog.yaml configuration file and returns a pointer to that catalog
-func InitCatalog(path string) *Catalog {
+func InitCatalog(catalogData []byte, secretesData []byte) *Catalog {
 	var catalog Catalog
-	catalogFile := filepath.Join(path, "catalog.yaml")
-	data, err := ioutil.ReadFile(catalogFile)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	err = yaml.Unmarshal(data, &catalog)
+	err := yaml.Unmarshal(catalogData, &catalog)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -155,7 +153,7 @@ func InitCatalog(path string) *Catalog {
 		return nil
 	}
 
-	err = catalog.loadServicesResources(path)
+	err = catalog.loadServicesResources(secretesData)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -163,9 +161,9 @@ func InitCatalog(path string) *Catalog {
 	return &catalog
 }
 
-func (c *Catalog) loadServicesResources(path string) error {
+func (c *Catalog) loadServicesResources(secretsData []byte) error {
 	// Load secrets
-	secrets := InitSecrets(path)
+	secrets := InitSecrets(secretsData)
 	if secrets == nil {
 		return errors.New("Unable to load secrets.")
 	}

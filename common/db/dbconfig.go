@@ -1,4 +1,4 @@
-package common
+package db
 
 import (
 	// This is to init the mysql driver
@@ -14,7 +14,7 @@ import (
 	"log"
 )
 
-// DBConfig holds configuration information to connect to a database.
+// Config holds configuration information to connect to a database.
 // Parameters for the config.
 // * dbname - The name of the database to connect to
 // * user - The user to sign in as
@@ -27,7 +27,7 @@ import (
 //    * disable - No SSL
 //    * require - Always SSL (skip verification)
 //    * verify-full - Always SSL (require verification)
-type DBConfig struct {
+type Config struct {
 	DbType   string `yaml:"db_type" validate:"required"`
 	URL      string `yaml:"url" validate:"required"`
 	Username string `yaml:"username" validate:"required"`
@@ -37,21 +37,14 @@ type DBConfig struct {
 	Port     int64  `yaml:"port" validate:"required"` // Is int64 to match the type that rds.Endpoint.Port is in the AWS RDS SDK.
 }
 
-// DBInit is a generic helper function that will try to connect to a database with the config in the input.
+// Init is a generic helper function that will try to connect to a database with the config in the input.
 // Supported DB types:
 // * postgres
 // * mysql
 // * sqlite3
-func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
+func Init(dbConfig Config) (*gorm.DB, error) {
 	var DB gorm.DB
 	var err error
-	/*
-		log.Printf("Attempting to login as %s with password length %d and url %s to db name %s\n",
-			dbConfig.Username,
-			len(dbConfig.Password),
-			dbConfig.URL,
-			dbConfig.DbName)
-	*/
 	switch dbConfig.DbType {
 	case "postgres":
 		conn := "dbname=%s user=%s password=%s host=%s sslmode=%s port=%d"
@@ -64,35 +57,6 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			dbConfig.Port)
 		DB, err = gorm.Open(dbConfig.DbType, conn)
 	case "mysql":
-		/*
-			sslmode := "skip-verify"
-			if dbConfig.Sslmode == "true" {
-				sslmode = "tls-on"
-				certFile := filepath.Join("resources", "rds-ca-2015-root.pem")
-				certData, err := ioutil.ReadFile(certFile)
-				if err != nil {
-					log.Fatalf("error: %v", err)
-				}
-				block, _ := pem.Decode(certData)
-				cert, err := x509.ParseCertificate(block.Bytes)
-				if err != nil {
-					log.Fatalf("error: %v", err)
-				}
-				roots := x509.NewCertPool()
-				roots.AddCert(cert)
-				mysql.RegisterTLSConfig(sslmode, &tls.Config{ServerName: dbConfig.URL, RootCAs: roots})
-			}
-			//conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
-			conn := "%s:%s@%s(%s:%d)/%s?tls=%s&charset=utf8&parseTime=True"
-			conn = fmt.Sprintf(conn,
-				dbConfig.Username,
-				dbConfig.Password,
-				"tcp",
-				dbConfig.URL,
-				dbConfig.Port,
-				dbConfig.DbName,
-				sslmode)
-		*/
 		conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
 		conn = fmt.Sprintf(conn,
 			dbConfig.Username,

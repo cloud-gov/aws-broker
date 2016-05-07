@@ -8,13 +8,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/helpers"
+	"github.com/18F/aws-broker/common/crypto"
+	"github.com/18F/aws-broker/common/env"
 	"strconv"
 )
 
-// RDSInstance represents the information of a RDS Service instance.
-type RDSInstance struct {
+var (
+	// ErrNoSaltSet is an error to describe the no salt is set for the instance.
+	ErrNoSaltSet = errors.New("No salt set for instance")
+	// ErrNoPassword is an error to describe there is no password for the instance.
+	ErrNoPassword = errors.New("No password set for instance")
+)
+
+// Instance represents the information of a RDS Service instance.
+type Instance struct {
 	base.Instance
 
 	Database string `sql:"size(255)"`
@@ -28,12 +35,12 @@ type RDSInstance struct {
 	DbSubnetGroup string            `sql:"-"`
 	SecGroup      string            `sql:"-"`
 
-	Adapter string `sql:"size(255)"`
+	Agent string `sql:"size(255)" gorm:"column:adapter"` // Changed for backwards compatibility TODO add advanced migration commands.
 
 	DbType string `sql:"size(255)"`
 }
 
-func (i *RDSInstance) setPassword(password, key string) error {
+func (i *Instance) setPassword(password, key string) error {
 	if i.Salt == "" {
 		return errors.New("Salt has to be set before writing the password")
 	}
@@ -51,9 +58,12 @@ func (i *RDSInstance) setPassword(password, key string) error {
 	return nil
 }
 
-func (i *RDSInstance) getPassword(key string) (string, error) {
-	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("Salt and password has to be set before writing the password")
+func (i *Instance) getPassword(key string) (string, error) {
+	if i.Salt == "" {
+		return "", ErrNoSaltSet
+	}
+	if i.Password == "" {
+		return "", ErrNoPassword
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
@@ -66,7 +76,7 @@ func (i *RDSInstance) getPassword(key string) (string, error) {
 	return decrypted, nil
 }
 
-func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
+func (i *Instance) getCredentials(password string) (map[string]string, error) {
 	var credentials map[string]string
 	switch i.DbType {
 	case "postgres", "mysql":
@@ -92,20 +102,20 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 	return credentials, nil
 }
 
-func (i *RDSInstance) init(uuid string,
+func (i *Instance) init(uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RDSPlan,
-	s *config.Settings) error {
+	s *env.SystemEnv) error {
 
-	i.Uuid = uuid
+	i.UUID = uuid
 	i.ServiceID = serviceID
 	i.PlanID = plan.ID
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
-	i.Adapter = plan.Adapter
+	i.Agent = plan.Agent
 
 	// Build random values
 	i.Database = "db" + helpers.RandStr(15)
@@ -125,4 +135,11 @@ func (i *RDSInstance) init(uuid string,
 	i.SecGroup = plan.SecurityGroup
 
 	return nil
+}
+
+// TableName is a getter function used by GORM to specify the Table Name for the struct.
+func (i Instance) TableName() string {
+	// Older versions of the code had the table name as this because the struct name was "RDSInstance"
+	// In the future, we can add migrations to check and rename the database table.
+	return "r_d_s_instances"
 }

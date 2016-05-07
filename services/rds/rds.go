@@ -11,46 +11,105 @@ import (
 
 	"errors"
 	"fmt"
+	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/response"
 	"log"
+	"net/http"
 )
 
-type dbAdapter interface {
-	createDB(i *RDSInstance, password string) (base.InstanceState, error)
-	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
-	deleteDB(i *RDSInstance) (base.InstanceState, error)
+// DBAdapter contains the method on how to get the right agent depending on the plan.
+type DBAdapter interface {
+	findBrokerAgent(plan catalog.RDSPlan, c *catalog.Catalog) (DbBrokerAgent, response.Response)
 }
 
-// MockDBAdapter is a struct meant for testing.
-// It should only be used in *_test.go files.
-// It is only here because *_test.go files are only compiled during "go test"
-// and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
-type mockDBAdapter struct {
+// DefaultDBAdapter is the struct to use for normal workflow.
+type DefaultDBAdapter struct{}
+
+// DbBrokerAgent is what every type of agent should implement to handle the
+// lifecycle of its particular service instances.
+type DbBrokerAgent interface {
+	createDB(i *Instance, password string) (base.InstanceState, error)
+	bindDBToApp(i *Instance, password string) (map[string]string, error)
+	deleteDB(i *Instance) (base.InstanceState, error)
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
+var (
+	// ErrResponseAgentNotFound is an error to describe that the agent is not found or is nil.
+	ErrResponseAgentNotFound = response.NewErrorResponse(http.StatusInternalServerError, "DB Broker Agent not found")
+	// ErrResponseCatalogNotFound is an error to describe that the catalog could not be found or is nil.
+	ErrResponseCatalogNotFound = response.NewErrorResponse(http.StatusInternalServerError, "Catalog not found")
+	// ErrResponseRDSSettingsNotFound is an error to describe that the catalog could not be found or is nil.
+	ErrResponseRDSSettingsNotFound = response.NewErrorResponse(http.StatusInternalServerError, "RDS Settings not found")
+	// ErrResponseDBNotFound is an error to describe that the db connection could not be found or is nil.
+	ErrResponseDBNotFound = response.NewErrorResponse(http.StatusInternalServerError, "Shared DB not found")
+)
+
+// findBrokerAgent finds which agent to use depending on the plan.
+func (a DefaultDBAdapter) findBrokerAgent(plan catalog.RDSPlan, c *catalog.Catalog) (DbBrokerAgent, response.Response) {
+	var dbAgent DbBrokerAgent
+
+	switch plan.Agent {
+	case "shared":
+		if c == nil {
+			return nil, ErrResponseCatalogNotFound
+		}
+		rdsSettings := c.GetResources().RdsSettings
+		if rdsSettings == nil {
+			return nil, ErrResponseRDSSettingsNotFound
+		}
+		setting, err := rdsSettings.GetRDSSettingByPlan(plan.ID)
+		if err != nil {
+			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		if setting.DB == nil {
+			return nil, ErrResponseDBNotFound
+		}
+		dbAgent = &sharedAgent{
+			SharedDbConn: setting.DB,
+		}
+	case "dedicated":
+		dbAgent = &dedicatedAgent{
+			InstanceClass: plan.InstanceClass,
+		}
+	default:
+		return nil, ErrResponseAgentNotFound
+	}
+
+	return dbAgent, nil
 }
 
-func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
-	// TODO
-	return i.getCredentials(password)
-}
+var (
+	// ErrInstanceNotFound represents that the instance is null.
+	ErrInstanceNotFound = errors.New("Instance not found")
+	// ErrIncompleteInstance represents the instance does not have all the necessary details for the operation.
+	ErrIncompleteInstance = errors.New("Incomplete instance details")
+	// ErrMissingPassword indicates there is an empty password being provided.
+	ErrMissingPassword = errors.New("Instance must be secured by password")
+	// ErrDatabaseNotFound indicates the database is null.
+	ErrDatabaseNotFound = errors.New("Database not found")
+	// ErrCannotReachSharedDB indicates the database is unreachable.
+	ErrCannotReachSharedDB = errors.New("Unable to reach shared database")
+)
 
-func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceGone, nil
-}
-
-// END MockDBAdpater
-
-type sharedDBAdapter struct {
+type sharedAgent struct {
 	SharedDbConn *gorm.DB
 }
 
-func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func isDBConnectionAlive(db *gorm.DB) bool {
+	return db.Exec("SELECT 1;").Error == nil
+}
+
+func (d *sharedAgent) createDB(i *Instance, password string) (base.InstanceState, error) {
+	// Make sure we have a password
+	if len(password) < 1 {
+		return base.InstanceNotCreated, ErrMissingPassword
+	}
+	if err := checkSharedInputs(i, d.SharedDbConn); err != nil {
+		return base.InstanceNotCreated, err
+	}
 	switch i.DbType {
 	case "postgres":
+		// TODO sanitize for reserved postgres words, e.g. "CREATE USER user" would not work
 		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", i.Database)); db.Error != nil {
 			return base.InstanceNotCreated, db.Error
 		}
@@ -63,6 +122,7 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 			return base.InstanceNotCreated, db.Error
 		}
 	case "mysql":
+		// TODO sanitize for reserved mysql words
 		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", i.Database)); db.Error != nil {
 			return base.InstanceNotCreated, db.Error
 		}
@@ -82,11 +142,15 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 	return base.InstanceReady, nil
 }
 
-func (d *sharedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *sharedAgent) bindDBToApp(i *Instance, password string) (map[string]string, error) {
 	return i.getCredentials(password)
 }
 
-func (d *sharedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *sharedAgent) deleteDB(i *Instance) (base.InstanceState, error) {
+	// Make sure we have all the details.
+	if err := checkSharedInputs(i, d.SharedDbConn); err != nil {
+		return base.InstanceNotGone, err
+	}
 	if db := d.SharedDbConn.Exec(fmt.Sprintf("DROP DATABASE %s;", i.Database)); db.Error != nil {
 		return base.InstanceNotGone, db.Error
 	}
@@ -96,11 +160,30 @@ func (d *sharedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	return base.InstanceGone, nil
 }
 
-type dedicatedDBAdapter struct {
+func checkSharedInputs(i *Instance, db *gorm.DB) error {
+	// Sanity check for instance
+	if i == nil {
+		return ErrInstanceNotFound
+	}
+	// Make sure we have all the details.
+	if len(i.Database) < 1 || len(i.Username) < 1 {
+		return ErrIncompleteInstance
+	}
+	// Check database and database connection.
+	if db == nil || db.DB() == nil {
+		return ErrDatabaseNotFound
+	}
+	if db.DB().Ping() != nil || !isDBConnectionAlive(db) {
+		return ErrCannotReachSharedDB
+	}
+	return nil
+}
+
+type dedicatedAgent struct {
 	InstanceClass string
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedAgent) createDB(i *Instance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion("us-east-1"))
 	var rdsTags []*rds.Tag
 
@@ -150,7 +233,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	return base.InstanceNotCreated, nil
 }
 
-func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *dedicatedAgent) bindDBToApp(i *Instance, password string) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
@@ -211,7 +294,7 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *dedicatedAgent) deleteDB(i *Instance) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion("us-east-1"))
 	params := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(i.Database), // Required
@@ -228,7 +311,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	return base.InstanceNotGone, nil
 }
 
-func (d *dedicatedDBAdapter) didAwsCallSucceed(err error) bool {
+func (d *dedicatedAgent) didAwsCallSucceed(err error) bool {
 	// TODO Eventually return a formatted error object.
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
