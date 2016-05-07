@@ -8,6 +8,7 @@ import (
 	"github.com/18F/aws-broker/common/response"
 	"github.com/jinzhu/gorm"
 	"net/http"
+"github.com/18F/aws-broker/common/context"
 )
 
 type rdsBroker struct {
@@ -17,11 +18,12 @@ type rdsBroker struct {
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, env *env.SystemEnv, dbAdapter DBAdapter) base.Broker {
+func InitRDSBroker(brokerDB *gorm.DB, env *env.SystemEnv, dbAdapter DBAdapter, ctx context.Ctx) base.Broker {
 	return &rdsBroker{brokerDB: brokerDB, env: env, adapter: dbAdapter}
 }
 
-func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
+func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string,
+	createRequest request.Request, ctx context.Ctx) response.Response {
 	newInstance := Instance{}
 
 	var count int64
@@ -79,7 +81,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessCreateResponse
 }
 
-func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance, ctx context.Ctx) response.Response {
 	existingInstance := Instance{}
 
 	var count int64
@@ -123,7 +125,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 	return response.NewSuccessBindResponse(credentials)
 }
 
-func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance, ctx context.Ctx) response.Response {
 	existingInstance := Instance{}
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)

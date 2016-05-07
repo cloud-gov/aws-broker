@@ -4,9 +4,9 @@ import (
 	"github.com/18F/aws-broker/common/request"
 	"github.com/18F/aws-broker/common/response"
 	"github.com/jinzhu/gorm"
-	"log"
 	"net/http"
 	"time"
+	"github.com/18F/aws-broker/common/context"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.
@@ -41,9 +41,9 @@ type Instance struct {
 }
 
 // FindBaseInstance is a helper function to find the base instance.
-func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response) {
+func FindBaseInstance(brokerDb *gorm.DB, id string, ctx context.Ctx) (Instance, response.Response) {
 	instance := Instance{}
-	log.Println("Looking for base instance with id " + id)
+	ctx.Log.Debugf("Looking for base instance with id %s", id)
 	err := brokerDb.Where("uuid = ?", id).First(&instance).Error
 	if err == nil {
 		return instance, nil
