@@ -1,13 +1,14 @@
 package rds
 
 import (
+	"net/http"
+
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
 	"github.com/jinzhu/gorm"
-	"net/http"
 )
 
 type rdsBroker struct {
@@ -16,7 +17,7 @@ type rdsBroker struct {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Catalog) (dbAdapter, response.Response) {
+func initializeAdapter(plan catalog.ServicePlan, s *config.Settings, c *catalog.Catalog) (dbAdapter, response.Response) {
 
 	var dbAdapter dbAdapter
 	// For test environments, use a mock adapter.
@@ -25,7 +26,7 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 		return dbAdapter, nil
 	}
 
-	switch plan.Adapter {
+	switch plan.RDSProperties.Adapter {
 	case "shared":
 		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
 		if err != nil {
@@ -39,7 +40,7 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 		}
 	case "dedicated":
 		dbAdapter = &dedicatedDBAdapter{
-			InstanceClass: plan.InstanceClass,
+			InstanceClass: plan.RDSProperties.InstanceClass,
 		}
 	default:
 		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
@@ -62,7 +63,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
+	plan, planErr := c.Services[0].FetchPlan(createRequest.PlanID)
 	if planErr != nil {
 		return planErr
 	}
@@ -120,7 +121,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstanc
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
+	plan, planErr := c.Services[0].FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
 		return planErr
 	}
@@ -163,7 +164,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
+	plan, planErr := c.Services[0].FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
 		return planErr
 	}
