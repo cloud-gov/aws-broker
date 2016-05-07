@@ -7,6 +7,7 @@ import (
 
 	"github.com/18F/aws-broker/catalog"
 	"net/http"
+	"github.com/18F/aws-broker/common/config"
 )
 
 // API is a the struct to hold all the necessary data for the routes.
@@ -14,10 +15,11 @@ type API struct {
 	brokerDb *gorm.DB
 	env *env.SystemEnv
 	c        *catalog.Catalog
+	appConfig config.AppConfig
 }
 
 // InitAPI registers the routes for the API
-func InitAPI(r *gin.RouterGroup, db *gorm.DB, env *env.SystemEnv, c *catalog.Catalog) {
+func InitAPI(r *gin.RouterGroup, db *gorm.DB, env *env.SystemEnv, c *catalog.Catalog, appConfig config.AppConfig) {
 	api := &API{brokerDb: db, env: env, c: c}
 	v2 := r.Group("/v2")
 	{

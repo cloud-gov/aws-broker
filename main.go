@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"github.com/18F/aws-broker/common/config"
 )
 
 func main() {
@@ -50,7 +51,7 @@ func main() {
 	}
 
 	// Try to connect and create the app.
-	if r := App(&env, DB, catalogData, secretsData); r != nil {
+	if r := App(&env, config.InitDefaultAppConfig(), DB, catalogData, secretsData); r != nil {
 		log.Println("Starting app...")
 		r.Run()
 	} else {
@@ -59,7 +60,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(env *env.SystemEnv, DB *gorm.DB, catalogData []byte, secretsData []byte) *gin.Engine {
+func App(env *env.SystemEnv, appConfig config.AppConfig, DB *gorm.DB, catalogData []byte, secretsData []byte) *gin.Engine {
 	c := catalog.InitCatalog(catalogData, secretsData)
 
 	r := gin.Default()
@@ -74,7 +75,7 @@ func App(env *env.SystemEnv, DB *gorm.DB, catalogData []byte, secretsData []byte
 
 	log.Println("Loading Routes")
 
-	InitAPI(authorized, DB, env, c)
+	InitAPI(authorized, DB, env, c, appConfig)
 
 	log.Println("Loaded Routes")
 
