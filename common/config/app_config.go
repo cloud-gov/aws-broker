@@ -4,7 +4,7 @@ import "github.com/18F/aws-broker/services/rds"
 
 // InitDefaultAppConfig creates an AppConfig with structs to use default.
 func InitDefaultAppConfig() AppConfig {
-	return AppConfig{DBAdapter:rds.DefaultDBAdapter{}}
+	return AppConfig{DBAdapter: rds.DefaultDBAdapter{}}
 }
 
 // AppConfig is a holder of stateless structs.

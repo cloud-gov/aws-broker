@@ -23,7 +23,7 @@ type DBAdapter interface {
 }
 
 // DefaultDBAdapter is the struct to use for normal workflow.
-type DefaultDBAdapter struct {}
+type DefaultDBAdapter struct{}
 
 // DbBrokerAgent is what every type of agent should implement to handle the
 // lifecycle of its particular service instances.

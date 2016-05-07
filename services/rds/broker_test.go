@@ -14,14 +14,14 @@ var _ = Describe("Broker", func() {
 
 	Describe("RDS Broker Initialization", func() {
 		It("should create a broker of type rdsBroker", func() {
-			broker := InitRDSBroker(&gorm.DB{}, &env.SystemEnv{})
+			broker := InitRDSBroker(&gorm.DB{}, &env.SystemEnv{}, DefaultDBAdapter{})
 			assert.IsType(GinkgoT(), &rdsBroker{}, broker)
 		})
 	})
 
 	XDescribe("Instance Creation", func() {
 		It("should fail if there is already an instance with the uuid", func() {
-			broker := InitRDSBroker(&gorm.DB{}, &env.SystemEnv{})
+			broker := InitRDSBroker(&gorm.DB{}, &env.SystemEnv{}, DefaultDBAdapter{})
 			resp := broker.CreateInstance(nil, "id", request.Request{})
 			assert.Equal(GinkgoT(), resp, response.NewErrorResponse(http.StatusConflict, "The instance already exists"))
 		})

@@ -73,23 +73,23 @@ func getDatabase(t *testing.T, dbType string) (*dockertest.ContainerID, string, 
 func TestInitializeAgent(t *testing.T) {
 	a := DefaultDBAdapter{}
 	// Test Unknown Agent type
-	dbAgent, resp := a.initializeAdapter(catalog.RDSPlan{Agent: "ultimate"}, nil)
+	dbAgent, resp := a.findBrokerAgent(catalog.RDSPlan{Agent: "ultimate"}, nil)
 	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseAgentNotFound, resp)
 
 	// Test Dedicated Agent Type
-	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "dedicated"}, nil)
+	dbAgent, resp = a.findBrokerAgent(catalog.RDSPlan{Agent: "dedicated"}, nil)
 	assert.NotNil(t, dbAgent)
 	assert.Nil(t, resp)
 	assert.IsType(t, new(dedicatedAgent), dbAgent)
 
 	// Test Shared Agent No Catalog
-	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared"}, nil)
+	dbAgent, resp = a.findBrokerAgent(catalog.RDSPlan{Agent: "shared"}, nil)
 	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseCatalogNotFound, resp)
 
 	// Test Shared Agent No RDS Settings
-	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared"}, &catalog.Catalog{})
+	dbAgent, resp = a.findBrokerAgent(catalog.RDSPlan{Agent: "shared"}, &catalog.Catalog{})
 	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseRDSSettingsNotFound, resp)
 
@@ -97,7 +97,7 @@ func TestInitializeAgent(t *testing.T) {
 	c := &catalog.Catalog{}
 	c.SetResources(catalog.Resources{RdsSettings: &catalog.RDSSettings{}})
 
-	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared"}, c)
+	dbAgent, resp = a.findBrokerAgent(catalog.RDSPlan{Agent: "shared"}, c)
 	assert.Nil(t, dbAgent)
 	assert.Equal(t, response.NewErrorResponse(http.StatusInternalServerError, catalog.ErrNoRDSSettingForID.Error()), resp)
 
@@ -106,7 +106,7 @@ func TestInitializeAgent(t *testing.T) {
 	rdsSettings := &catalog.RDSSettings{}
 	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: nil, Config: db.Config{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
-	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
+	dbAgent, resp = a.findBrokerAgent(catalog.RDSPlan{Agent: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
 	assert.Nil(t, dbAgent)
 	assert.Equal(t, ErrResponseDBNotFound, resp)
 
@@ -116,7 +116,7 @@ func TestInitializeAgent(t *testing.T) {
 	container, _, _, _, DB := getDatabase(t, "mysql")
 	rdsSettings.AddRDSSetting(&catalog.RDSSetting{DB: DB, Config: db.Config{}}, "my-plan-id")
 	c.SetResources(catalog.Resources{RdsSettings: rdsSettings})
-	dbAgent, resp = a.initializeAdapter(catalog.RDSPlan{Agent: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
+	dbAgent, resp = a.findBrokerAgent(catalog.RDSPlan{Agent: "shared", Plan: catalog.Plan{ID: "my-plan-id"}}, c)
 	assert.NotNil(t, dbAgent)
 	assert.IsType(t, new(sharedAgent), dbAgent)
 	assert.Nil(t, resp)

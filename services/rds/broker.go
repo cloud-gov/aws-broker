@@ -12,13 +12,13 @@ import (
 
 type rdsBroker struct {
 	brokerDB *gorm.DB
-	env *env.SystemEnv
+	env      *env.SystemEnv
 	adapter  DBAdapter
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, env *env.SystemEnv) base.Broker {
-	return &rdsBroker{brokerDB, env, DefaultDBAdapter{}}
+func InitRDSBroker(brokerDB *gorm.DB, env *env.SystemEnv, dbAdapter DBAdapter) base.Broker {
+	return &rdsBroker{brokerDB: brokerDB, env: env, adapter: dbAdapter}
 }
 
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {

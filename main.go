@@ -6,6 +6,7 @@ import (
 
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/common/config"
 	"github.com/18F/aws-broker/common/db"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"github.com/18F/aws-broker/common/config"
 )
 
 func main() {
