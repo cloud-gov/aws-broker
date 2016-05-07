@@ -17,13 +17,16 @@ import (
 	"net/http"
 )
 
+// DBAdapter contains the method on how to get the right agent depending on the plan.
 type DBAdapter interface {
 	findBrokerAgent(plan catalog.RDSPlan, c *catalog.Catalog) (DbBrokerAgent, response.Response)
 }
 
-type DefaultDBAdapter struct {
-}
+// DefaultDBAdapter is the struct to use for normal workflow.
+type DefaultDBAdapter struct {}
 
+// DbBrokerAgent is what every type of agent should implement to handle the
+// lifecycle of its particular service instances.
 type DbBrokerAgent interface {
 	createDB(i *Instance, password string) (base.InstanceState, error)
 	bindDBToApp(i *Instance, password string) (map[string]string, error)

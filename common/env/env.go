@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-// SystemConfig stores settings used to run the application
+// SystemEnv stores env settings used to run the application
 type SystemEnv struct {
 	EncryptionKey string
 	DbConfig      db.Config
