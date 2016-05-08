@@ -7,10 +7,11 @@ import (
 	"github.com/martini-contrib/auth"
 	"github.com/martini-contrib/render"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/db"
 	"log"
 	"os"
+
+	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/db"
 )
 
 func main() {
@@ -60,7 +61,7 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 	// Serve the catalog with services and plans
 	m.Get("/v2/catalog", func(r render.Render, c *catalog.Catalog) {
 		r.JSON(200, map[string]interface{}{
-			"services": c.GetServices(),
+			"services": c.GetServices()[0],
 		})
 	})
 
