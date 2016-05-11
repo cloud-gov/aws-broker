@@ -60,9 +60,7 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 
 	// Serve the catalog with services and plans
 	m.Get("/v2/catalog", func(r render.Render, c *catalog.Catalog) {
-		r.JSON(200, map[string]interface{}{
-			"services": c.GetServices()[0],
-		})
+		r.JSON(200, c.GetServices())
 	})
 
 	// Create the service instance (cf create-service-instance)

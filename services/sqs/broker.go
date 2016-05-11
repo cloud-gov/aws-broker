@@ -1,8 +1,6 @@
 package sqs
 
 import (
-	"net/http"
-
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
@@ -22,43 +20,43 @@ func InitSQSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 }
 
 func (broker *sqsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
-	newInstance := SQSInstance{}
+	//newInstance := SQSInstance{}
+	/*
+		var count int64
+		broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
+		if count != 0 {
+			return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
+		}
 
-	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
-	if count != 0 {
-		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
-	}
+		plan, planErr := c.SQSService.FetchPlan(createRequest.PlanID)
+		if planErr != nil {
+			return planErr
+		}
 
-	plan, planErr := c.Services[1].FetchPlan(createRequest.PlanID)
-	if planErr != nil {
-		return planErr
-	}
+		err := newInstance.init(
+			id,
+			createRequest.OrganizationGUID,
+			createRequest.SpaceGUID,
+			createRequest.ServiceID,
+			plan,
+			broker.settings)
 
-	err := newInstance.init(
-		id,
-		createRequest.OrganizationGUID,
-		createRequest.SpaceGUID,
-		createRequest.ServiceID,
-		plan,
-		broker.settings)
-
-	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
-	}
-
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
+		}
+	*/
 	return response.SuccessCreateResponse
 }
 
 func (broker *sqsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
-	existingInstance := SQSInstance{}
-
-	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
-	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
-	}
-
+	//existingInstance := SQSInstance{}
+	/*
+		var count int64
+		broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+		if count == 0 {
+			return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+		}
+	*/
 	return nil
 }
 

@@ -24,7 +24,7 @@ func (i SQSInstance) init(uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
-	plan catalog.ServicePlan,
+	plan catalog.SQSPlan,
 	s *config.Settings) error {
 
 	i.Uuid = uuid
@@ -33,16 +33,13 @@ func (i SQSInstance) init(uuid string,
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
-	// Load tags
-	i.Tags = plan.Tags
-
 	// Load AWS values
-	i.DelaySeconds = plan.SQSProperties.DelaySeconds
-	i.MaximumMessageSize = plan.SQSProperties.MaximumMessageSize
-	i.MessageRetentionPeriod = plan.SQSProperties.MessageRetentionPeriod
-	i.Policy = plan.SQSProperties.Policy
-	i.ReceiveMessageWaitTimeSeconds = plan.SQSProperties.ReceiveMessageWaitTimeSeconds
-	i.VisibilityTimeout = plan.SQSProperties.VisibilityTimeout
+	i.DelaySeconds = plan.Properties.DelaySeconds
+	i.MaximumMessageSize = plan.Properties.MaximumMessageSize
+	i.MessageRetentionPeriod = plan.Properties.MessageRetentionPeriod
+	i.Policy = plan.Properties.Policy
+	i.ReceiveMessageWaitTimeSeconds = plan.Properties.ReceiveMessageWaitTimeSeconds
+	i.VisibilityTimeout = plan.Properties.VisibilityTimeout
 
 	return nil
 }

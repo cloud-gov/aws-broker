@@ -97,7 +97,7 @@ func (i *RDSInstance) init(uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
-	plan catalog.ServicePlan,
+	plan catalog.RDSPlan,
 	s *config.Settings) error {
 
 	i.Uuid = uuid
@@ -106,7 +106,7 @@ func (i *RDSInstance) init(uuid string,
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
-	i.Adapter = plan.RDSProperties.Adapter
+	i.Adapter = plan.Properties.Adapter
 
 	// Build random values
 	i.Database = "db" + helpers.RandStr(15)
@@ -117,13 +117,10 @@ func (i *RDSInstance) init(uuid string,
 		return err
 	}
 
-	// Load tags
-	i.Tags = plan.Tags
-
 	// Load AWS values
-	i.DbType = plan.RDSProperties.DbType
-	i.DbSubnetGroup = plan.RDSProperties.SubnetGroup
-	i.SecGroup = plan.RDSProperties.SecurityGroup
+	i.DbType = plan.Properties.DbType
+	i.DbSubnetGroup = plan.Properties.SubnetGroup
+	i.SecGroup = plan.Properties.SecurityGroup
 
 	return nil
 }

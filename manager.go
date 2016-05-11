@@ -16,16 +16,13 @@ import (
 
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings) (base.Broker, response.Response) {
 	fmt.Println(serviceID)
-	switch serviceID {
-	// RDS Service
-	case c.Services[0].ID:
-		return rds.InitRDSBroker(brokerDb, settings), nil
-	// SQS Service
-	case c.Services[1].ID:
+
+	if serviceID == c.SQSService.ID {
 		return sqs.InitSQSBroker(brokerDb, settings), nil
 	}
+	return rds.InitRDSBroker(brokerDb, settings), nil
 
-	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
+	//return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
 func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {

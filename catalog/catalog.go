@@ -1,92 +1,115 @@
 package catalog
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 
 	"errors"
-	"net/http"
-	"reflect"
 
-	"github.com/18F/aws-broker/helpers/response"
 	"gopkg.in/go-playground/validator.v8"
 	"gopkg.in/yaml.v2"
 )
 
+/*
 type Catalog struct {
 	Services  []Service `json:"services,omitempty"`
 	secrets   Secrets   `yaml:"-" json:"-"`
 	resources Resources `yaml:"-" json:"-"`
 }
+*/
+
+type Catalog struct {
+	RDSService RDSService `yaml:"rds" json:"-"`
+	SQSService SQSService `yaml:"sqs" json:"-"`
+	secrets    Secrets    `yaml:"-" json:"-"`
+	resources  Resources  `yaml:"-" json:"-"`
+}
 
 type Service struct {
-	ID              string           `json:"id"`
-	Name            string           `json:"name"`
-	Description     string           `json:"description"`
-	Bindable        bool             `json:"bindable,omitempty"`
-	Tags            []string         `json:"tags,omitempty"`
-	Metadata        *ServiceMetadata `json:"metadata,omitempty"`
-	Requires        []string         `json:"requires,omitempty"`
-	PlanUpdateable  bool             `json:"plan_updateable"`
-	Plans           []ServicePlan    `json:"plans,omitempty"`
-	DashboardClient *DashboardClient `json:"dashboard_client,omitempty"`
+	ID              string          `yaml:"id"`
+	Name            string          `yaml:"name"`
+	Description     string          `yaml:"description"`
+	Bindable        bool            `yaml:"bindable,omitempty"`
+	Tags            []string        `yaml:"tags,omitempty"`
+	Metadata        ServiceMetadata `yaml:"metadata,omitempty"`
+	Requires        []string        `yaml:"requires,omitempty"`
+	PlanUpdateable  bool            `yaml:"plan_updateable"`
+	DashboardClient DashboardClient `yaml:"dashboard_client,omitempty"`
+}
+
+type RDSService struct {
+	Service `yaml:",inline"`
+	Plans   []RDSPlan `yaml:"plans,omitempty"`
+}
+
+type SQSService struct {
+	Service `yaml:",inline"`
+	Plans   []SQSPlan `yaml:"plans,omitempty"`
 }
 
 type ServiceMetadata struct {
-	DisplayName         string `json:"displayName,omitempty"`
-	ImageURL            string `json:"imageUrl,omitempty"`
-	LongDescription     string `json:"longDescription,omitempty"`
-	ProviderDisplayName string `json:"providerDisplayName,omitempty"`
-	DocumentationURL    string `json:"documentationUrl,omitempty"`
-	SupportURL          string `json:"supportUrl,omitempty"`
+	DisplayName         string `yaml:"displayName,omitempty"`
+	ImageURL            string `yaml:"imageUrl,omitempty"`
+	LongDescription     string `yaml:"longDescription,omitempty"`
+	ProviderDisplayName string `yaml:"providerDisplayName,omitempty"`
+	DocumentationURL    string `yaml:"documentationUrl,omitempty"`
+	SupportURL          string `yaml:"supportUrl,omitempty"`
 }
 
 type ServicePlan struct {
-	ID            string               `json:"id"`
-	Name          string               `json:"name"`
-	Description   string               `json:"description"`
-	Metadata      *ServicePlanMetadata `json:"metadata,omitempty"`
-	Free          bool                 `json:"free"`
-	Tags          map[string]string    `json:"tags"`
-	SQSProperties SQSProperties        `json:"sqs_properties,omitempty"`
-	RDSProperties RDSProperties        `json:"rds_properties,omitempty"`
+	ID          string              `yaml:"id"`
+	Name        string              `yaml:"name"`
+	Description string              `yaml:"description"`
+	Metadata    ServicePlanMetadata `yaml:"metadata,omitempty"`
+	Free        bool                `yaml:"free"`
 }
 
 type ServicePlanMetadata struct {
-	Bullets     []string `json:"bullets,omitempty"`
-	Costs       []Cost   `json:"costs,omitempty"`
-	DisplayName string   `json:"displayName,omitempty"`
+	Bullets     []string `yaml:"bullets,omitempty"`
+	Costs       []Cost   `yaml:"costs,omitempty"`
+	DisplayName string   `yaml:"displayName,omitempty"`
+}
+
+type RDSPlan struct {
+	ServicePlan `yaml:",inline"`
+	Properties  RDSProperties `yaml:",inline"`
+}
+
+type SQSPlan struct {
+	ServicePlan `yaml:",inline"`
+	Properties  SQSProperties `yaml:",inline"`
 }
 
 type DashboardClient struct {
-	ID          string `json:"id,omitempty"`
-	Secret      string `json:"secret,omitempty"`
-	RedirectURI string `json:"redirect_uri,omitempty"`
+	ID          string `yaml:"id,omitempty"`
+	Secret      string `yaml:"secret,omitempty"`
+	RedirectURI string `yaml:"redirect_uri,omitempty"`
 }
 
 type Cost struct {
-	Amount map[string]interface{} `json:"amount,omitempty"`
-	Unit   string                 `json:"unit,omitempty"`
+	Amount map[string]interface{} `yaml:"amount,omitempty"`
+	Unit   string                 `yaml:"unit,omitempty"`
 }
 
 type RDSProperties struct {
-	Adapter       string            `json:"adapter" json:"-" validate:"required"`
-	InstanceClass string            `json:"instanceClass" json:"-"`
-	DbType        string            `json:"dbType" json:"-" validate:"required"`
-	Tags          map[string]string `json:"tags" json:"-" validate:"required"`
-	SubnetGroup   string            `json:"subnetGroup" json:"-" validate:"required"`
-	SecurityGroup string            `json:"securityGroup" json:"-" validate:"required"`
+	Adapter       string            `yaml:"adapter" json:"-" validate:"required"`
+	InstanceClass string            `yaml:"instanceClass" json:"-"`
+	DbType        string            `yaml:"dbType" json:"-" validate:"required"`
+	Tags          map[string]string `yaml:"tags" json:"-" validate:"required"`
+	SubnetGroup   string            `yaml:"subnetGroup" json:"-" validate:"required"`
+	SecurityGroup string            `yaml:"securityGroup" json:"-" validate:"required"`
 }
 
 type SQSProperties struct {
-	DelaySeconds                  string `json:"delay_seconds,omitempty"`
-	MaximumMessageSize            string `json:"maximum_message_size,omitempty"`
-	MessageRetentionPeriod        string `json:"message_retention_period,omitempty"`
-	Policy                        string `json:"policy,omitempty"`
-	ReceiveMessageWaitTimeSeconds string `json:"receive_message_wait_time_seconds,omitempty"`
-	VisibilityTimeout             string `json:"visibility_timeout,omitempty"`
+	DelaySeconds                  string `yaml:"delay_seconds,omitempty"`
+	MaximumMessageSize            string `yaml:"maximum_message_size,omitempty"`
+	MessageRetentionPeriod        string `yaml:"message_retention_period,omitempty"`
+	Policy                        string `yaml:"policy,omitempty"`
+	ReceiveMessageWaitTimeSeconds string `yaml:"receive_message_wait_time_seconds,omitempty"`
+	VisibilityTimeout             string `yaml:"visibility_timeout,omitempty"`
 }
 
 // ServiceMetadata contains the service metadata fields listed in the Cloud Foundry docs:
@@ -128,16 +151,17 @@ type Plan struct {
 */
 
 func (c Catalog) Validate() error {
-	for _, service := range c.Services {
+	/*for _, service := range c.Services {
 		if err := service.Validate(); err != nil {
 			return fmt.Errorf("Validating Services configuration: %s", err)
 		}
 	}
+	*/
 
 	return nil
 }
 
-func (c Catalog) FindService(serviceID string) (service Service, found bool) {
+/*func (c Catalog) FindService(serviceID string) (service Service, found bool) {
 	for _, service := range c.Services {
 		if service.ID == serviceID {
 			return service, true
@@ -145,9 +169,9 @@ func (c Catalog) FindService(serviceID string) (service Service, found bool) {
 	}
 
 	return service, false
-}
+}*/
 
-func (c Catalog) FindServicePlan(planID string) (plan ServicePlan, found bool) {
+/*func (c Catalog) FindServicePlan(planID string) (plan ServicePlan, found bool) {
 	for _, service := range c.Services {
 		for _, plan := range service.Plans {
 			if plan.ID == planID {
@@ -157,9 +181,9 @@ func (c Catalog) FindServicePlan(planID string) (plan ServicePlan, found bool) {
 	}
 
 	return plan, false
-}
+}*/
 
-func (s Service) Validate() error {
+/*func (s Service) Validate() error {
 	if s.ID == "" {
 		return fmt.Errorf("Must provide a non-empty ID (%+v)", s)
 	}
@@ -199,7 +223,7 @@ func (sp ServicePlan) Validate() error {
 	}
 
 	return nil
-}
+}*/
 
 func (sq SQSProperties) Validate() error {
 
@@ -222,7 +246,7 @@ type RDSService struct {
 */
 
 // FetchPlan will look for a specific Plan based on the plan ID.
-func (s Service) FetchPlan(planID string) (ServicePlan, response.Response) {
+/*func (s Service) FetchPlan(planID string) (ServicePlan, response.Response) {
 	for _, plan := range s.Plans {
 		if plan.ID == planID {
 			return plan, nil
@@ -230,7 +254,7 @@ func (s Service) FetchPlan(planID string) (ServicePlan, response.Response) {
 	}
 	return ServicePlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
 }
-
+*/
 // RDSPlan inherits from a Plan and adds fields specific to AWS.
 // these fields are read from the catalog.yaml file, but are not rendered
 // in the catalog API endpoint.
@@ -278,8 +302,8 @@ type Service struct {
 
 // GetServices returns the list of all the Services. In order to do this, it uses reflection to look for all the
 // exported values of the catalog.
-func (c *Catalog) GetServices() []interface{} {
-	catalogStruct := reflect.ValueOf(*c)
+func (c *Catalog) GetServices() string {
+	/*catalogStruct := reflect.ValueOf(*c)
 	numOfFields := catalogStruct.NumField()
 	var services []interface{}
 	for i := 0; i < numOfFields; i++ {
@@ -289,6 +313,16 @@ func (c *Catalog) GetServices() []interface{} {
 			services = append(services, catalogStruct.Field(i).Interface())
 		}
 	}
+	return services*/
+	sqsService, err := json.Marshal(c.SQSService)
+	if err != nil {
+		log.Println(err)
+	}
+	rdsService, err := json.Marshal(c.RDSService)
+	if err != nil {
+		log.Println(err)
+	}
+	services := fmt.Sprintf("{ \"services\": [%v, %v] }", string(sqsService), string(rdsService))
 	return services
 }
 
@@ -301,7 +335,7 @@ func (c *Catalog) GetResources() Resources {
 // defined in the catalog.yaml configuration file and returns a pointer to that catalog
 func InitCatalog(path string) *Catalog {
 	var catalog Catalog
-	catalogFile := filepath.Join(path, "catalog.json")
+	catalogFile := filepath.Join(path, "catalog.yaml")
 	data, err := ioutil.ReadFile(catalogFile)
 	if err != nil {
 		log.Fatalf("error: %v", err)
