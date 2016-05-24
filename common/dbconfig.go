@@ -2,16 +2,17 @@ package common
 
 import (
 	// This is to init the mysql driver
+	"fmt"
+
 	_ "github.com/go-sql-driver/mysql"
 	// This is to init the postgres driver
 	_ "github.com/lib/pq"
 	// This is to init the sqlite driver
 	_ "github.com/mattn/go-sqlite3"
 
-	"errors"
-	"fmt"
-	"github.com/jinzhu/gorm"
 	"log"
+
+	"github.com/jinzhu/gorm"
 )
 
 // DBConfig holds configuration information to connect to a database.
@@ -43,16 +44,9 @@ type DBConfig struct {
 // * mysql
 // * sqlite3
 func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
-	var DB gorm.DB
-	var err error
-	/*
-		log.Printf("Attempting to login as %s with password length %d and url %s to db name %s\n",
-			dbConfig.Username,
-			len(dbConfig.Password),
-			dbConfig.URL,
-			dbConfig.DbName)
-	*/
-	switch dbConfig.DbType {
+	//var DB gorm.DB
+	//var err error
+	/*switch dbConfig.DbType {
 	case "postgres":
 		conn := "dbname=%s user=%s password=%s host=%s sslmode=%s port=%d"
 		conn = fmt.Sprintf(conn,
@@ -64,35 +58,6 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			dbConfig.Port)
 		DB, err = gorm.Open(dbConfig.DbType, conn)
 	case "mysql":
-		/*
-			sslmode := "skip-verify"
-			if dbConfig.Sslmode == "true" {
-				sslmode = "tls-on"
-				certFile := filepath.Join("resources", "rds-ca-2015-root.pem")
-				certData, err := ioutil.ReadFile(certFile)
-				if err != nil {
-					log.Fatalf("error: %v", err)
-				}
-				block, _ := pem.Decode(certData)
-				cert, err := x509.ParseCertificate(block.Bytes)
-				if err != nil {
-					log.Fatalf("error: %v", err)
-				}
-				roots := x509.NewCertPool()
-				roots.AddCert(cert)
-				mysql.RegisterTLSConfig(sslmode, &tls.Config{ServerName: dbConfig.URL, RootCAs: roots})
-			}
-			//conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
-			conn := "%s:%s@%s(%s:%d)/%s?tls=%s&charset=utf8&parseTime=True"
-			conn = fmt.Sprintf(conn,
-				dbConfig.Username,
-				dbConfig.Password,
-				"tcp",
-				dbConfig.URL,
-				dbConfig.Port,
-				dbConfig.DbName,
-				sslmode)
-		*/
 		conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
 		conn = fmt.Sprintf(conn,
 			dbConfig.Username,
@@ -108,7 +73,8 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 		errorString := "Cannot connect. Unsupported DB type: (" + dbConfig.DbType + ")"
 		log.Println(errorString)
 		return nil, errors.New(errorString)
-	}
+	}*/
+	DB, err := gorm.Open("sqlite3", "dummy.db")
 	if err != nil {
 		log.Println("Error!" + err.Error())
 		return nil, err
@@ -118,5 +84,6 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 		log.Println("Unable to verify connection to database")
 		return nil, err
 	}
-	return &DB, nil
+	fmt.Println(DB.DB().Ping())
+	return DB, nil
 }

@@ -1,24 +1,28 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
 	"github.com/18F/aws-broker/services/rds"
+	"github.com/18F/aws-broker/services/sqs"
 	"github.com/jinzhu/gorm"
-	"net/http"
 )
 
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings) (base.Broker, response.Response) {
-	switch serviceID {
-	// RDS Service
-	case c.RdsService.ID:
-		return rds.InitRDSBroker(brokerDb, settings), nil
-	}
+	fmt.Println(serviceID)
 
-	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
+	if serviceID == c.SQSService.ID {
+		return sqs.InitSQSBroker(brokerDb, settings), nil
+	}
+	return rds.InitRDSBroker(brokerDb, settings), nil
+
+	//return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
 func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {

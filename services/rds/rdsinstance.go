@@ -7,10 +7,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
+
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/helpers"
-	"strconv"
 )
 
 // RDSInstance represents the information of a RDS Service instance.
@@ -105,7 +106,7 @@ func (i *RDSInstance) init(uuid string,
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
-	i.Adapter = plan.Adapter
+	i.Adapter = plan.Properties.Adapter
 
 	// Build random values
 	i.Database = "db" + helpers.RandStr(15)
@@ -116,13 +117,10 @@ func (i *RDSInstance) init(uuid string,
 		return err
 	}
 
-	// Load tags
-	i.Tags = plan.Tags
-
 	// Load AWS values
-	i.DbType = plan.DbType
-	i.DbSubnetGroup = plan.SubnetGroup
-	i.SecGroup = plan.SecurityGroup
+	i.DbType = plan.Properties.DbType
+	i.DbSubnetGroup = plan.Properties.SubnetGroup
+	i.SecGroup = plan.Properties.SecurityGroup
 
 	return nil
 }

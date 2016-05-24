@@ -1,12 +1,13 @@
 package base
 
 import (
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
-	"github.com/jinzhu/gorm"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/18F/aws-broker/helpers/request"
+	"github.com/18F/aws-broker/helpers/response"
+	"github.com/jinzhu/gorm"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.
@@ -26,7 +27,7 @@ const (
 )
 
 type Instance struct {
-	Uuid   string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
+	Uuid string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
 
 	request.Request
 
@@ -46,8 +47,8 @@ func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response
 	err := brokerDb.Where("uuid = ?", id).First(&instance).Error
 	if err == nil {
 		return instance, nil
-	} else if err == gorm.RecordNotFound {
-		return instance, response.NewErrorResponse(http.StatusNotFound, err.Error())
+		//} else if err == gorm.RecordNotFound {
+		//	return instance, response.NewErrorResponse(http.StatusNotFound, err.Error())
 	} else {
 		return instance, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
