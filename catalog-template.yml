@@ -5,7 +5,7 @@ meta:
 rds:
   id: "ec0fd2fa-2aff-49ce-97f4-518d6937e365"
   name: "aws-rds"
-  description: "Use AWS RDS to create a database instance"
+  description: "Use Amazon RDS to create a database instance"
   bindable: true
   tags:
     - "database"
@@ -22,17 +22,17 @@ rds:
   plans:
     - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
       name: "shared-psql"
-      description: "Shared infrastructure for Postgres DB"
+      description: "Shared infrastructure for PostgreSQL DB"
       metadata:
         bullets:
-          - "Shared RDS Instance"
-          - "Postgres instance"
+          - "Shared RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
               usd: 0
             unit: "MONTHLY"
-        displayName: "Free Shared Plan"
+        displayName: "Free shared plan"
       free: true
       adapter: shared
       dbType: postgres
@@ -44,17 +44,17 @@ rds:
         service: "aws-broker"
     - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
       name: "medium-psql"
-      description: "Dedicated Medium RDS Postgres DB Instance"
+      description: "Dedicated medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
               usd: 0.115
             unit: "HOURLY"
-        displayName: "Dedicated Medium Postgres"
+        displayName: "Dedicated medium PostgreSQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -70,17 +70,17 @@ rds:
         service: "aws-broker"
     - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
       name: "medium-psql-redundant"
-      description: "Dedicated Medium RDS Postgres DB Instance"
+      description: "Dedicated medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
               usd: 0.230
             unit: "HOURLY"
-        displayName: "Dedicated Redundant Medium Postgres"
+        displayName: "Dedicated redundant medium PostgreSQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -96,17 +96,17 @@ rds:
         service: "aws-broker"
     - id: "0201f24a-8e6d-4864-a597-f4752a2834f4"
       name: "large-psql"
-      description: "Dedicated Large RDS Postgres DB Instance"
+      description: "Dedicated large RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
               usd: 0.235
             unit: "HOURLY"
-        displayName: "Dedicated Large Postgres"
+        displayName: "Dedicated large PostgreSQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.large
@@ -122,17 +122,17 @@ rds:
         service: "aws-broker"
     - id: "d81ef27e-a49e-465e-b3bb-ea8a4a2f5571"
       name: "large-psql-redundant"
-      description: "Dedicated Large RDS Postgres DB Instance"
+      description: "Dedicated large RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
               usd: 0.470
             unit: "HOURLY"
-        displayName: "Dedicated Redundant Large Postgres"
+        displayName: "Dedicated redundant large PostgreSQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.large
@@ -151,14 +151,14 @@ rds:
       description: "Shared infrastructure for MySQL DB"
       metadata:
         bullets:
-          - "Shared RDS Instance"
+          - "Shared RDS instance"
           - "MySQL instance"
         costs:
           -
             amount:
               usd: 0
             unit: "MONTHLY"
-        displayName: "Free Shared Plan"
+        displayName: "Free shared plan"
       free: true
       adapter: shared
       dbType: mysql
@@ -170,17 +170,17 @@ rds:
         service: "aws-broker"
     - id: "2ba54329-8264-486f-85bf-50c9f24085a9"
       name: "medium-mysql"
-      description: "Dedicated Medium RDS MySQL DB Instance"
+      description: "Dedicated medium RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS Instance"
+          - "Dedicated RDS instance"
           - "MySQL instance"
         costs:
           -
             amount:
               usd: 0.110
             unit: "HOURLY"
-        displayName: "Dedicated Medium MySQL"
+        displayName: "Dedicated medium MySQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -196,17 +196,17 @@ rds:
         service: "aws-broker"
     - id: "30e19cab-8d4e-492a-ac2c-33dd59d436d8"
       name: "medium-mysql-redundant"
-      description: "Dedicated Medium RDS MySQL DB Instance"
+      description: "Dedicated medium RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated redundant RDS instance"
           - "MySQL instance"
         costs:
           -
             amount:
               usd: 0.220
             unit: "HOURLY"
-        displayName: "Dedicated Redundant Medium MySQL"
+        displayName: "Dedicated redundant medium MySQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -222,17 +222,17 @@ rds:
         service: "aws-broker"
     - id: "29cc73ed-f9c9-4901-b12b-bd4890aedf30"
       name: "large-mysql"
-      description: "Dedicated Large RDS MySQL DB Instance"
+      description: "Dedicated large RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS Instance"
+          - "Dedicated RDS instance"
           - "MySQL instance"
         costs:
           -
             amount:
               usd: 0.220
             unit: "HOURLY"
-        displayName: "Dedicated Large MySQL"
+        displayName: "Dedicated large MySQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.large
@@ -248,17 +248,17 @@ rds:
         service: "aws-broker"
     - id: "a0246f47-aeae-4c08-ba22-1d188bb51554"
       name: "large-mysql-redundant"
-      description: "Dedicated Large RDS MySQL DB Instance"
+      description: "Dedicated large RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated redundant RDS instance"
           - "MySQL instance"
         costs:
           -
             amount:
               usd: 0.440
             unit: "HOURLY"
-        displayName: "Dedicated Redundant Large MySQL"
+        displayName: "Dedicated redundant large MySQL"
       free: false
       adapter: dedicated
       instanceClass: db.m3.large
