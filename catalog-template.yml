@@ -5,7 +5,7 @@ meta:
 rds:
   id: "ec0fd2fa-2aff-49ce-97f4-518d6937e365"
   name: "aws-rds"
-  description: "Use Amazon RDS to create a database instance"
+  description: "Persistent, relational databases using Amazon RDS"
   bindable: true
   tags:
     - "database"
@@ -22,7 +22,7 @@ rds:
   plans:
     - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
       name: "shared-psql"
-      description: "Shared infrastructure for PostgreSQL DB"
+      description: "Shared PostgresSQL database for prototyping (no sensitive or production data)"
       metadata:
         bullets:
           - "Shared RDS instance"
@@ -70,7 +70,7 @@ rds:
         service: "aws-broker"
     - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
       name: "medium-psql-redundant"
-      description: "Dedicated medium RDS PostgreSQL DB instance"
+      description: "Dedicated redundant medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
           - "Dedicated redundant RDS instance"
@@ -122,7 +122,7 @@ rds:
         service: "aws-broker"
     - id: "d81ef27e-a49e-465e-b3bb-ea8a4a2f5571"
       name: "large-psql-redundant"
-      description: "Dedicated large RDS PostgreSQL DB instance"
+      description: "Dedicated redundant large RDS PostgreSQL DB instance"
       metadata:
         bullets:
           - "Dedicated redundant RDS instance"
@@ -148,7 +148,7 @@ rds:
         service: "aws-broker"
     - id: "57dd4bf0-465b-4e11-838d-2142caa6d763"
       name: "shared-mysql"
-      description: "Shared infrastructure for MySQL DB"
+      description: "Shared MySQL database for prototyping (no sensitive or production data)"
       metadata:
         bullets:
           - "Shared RDS instance"
@@ -196,7 +196,7 @@ rds:
         service: "aws-broker"
     - id: "30e19cab-8d4e-492a-ac2c-33dd59d436d8"
       name: "medium-mysql-redundant"
-      description: "Dedicated medium RDS MySQL DB instance"
+      description: "Dedicated redundant medium RDS MySQL DB instance"
       metadata:
         bullets:
           - "Dedicated redundant RDS instance"
@@ -248,7 +248,7 @@ rds:
         service: "aws-broker"
     - id: "a0246f47-aeae-4c08-ba22-1d188bb51554"
       name: "large-mysql-redundant"
-      description: "Dedicated large RDS MySQL DB instance"
+      description: "Dedicated redundant large RDS MySQL DB instance"
       metadata:
         bullets:
           - "Dedicated redundant RDS instance"
