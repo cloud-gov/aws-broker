@@ -150,6 +150,60 @@ rds:
         environment: (( meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+    - id: "520b2cbf-588f-4324-bb34-474ea57304bb"
+      name: "xlarge-psql"
+      description: "Dedicated x-large RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.445
+            unit: "HOURLY"
+        displayName: "Dedicated x-large PostgreSQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.xlarge
+      allocatedStorage: 10
+      dbType: postgres
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      securityGroup: (( meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "3732a60e-f2a0-4112-9b64-87dd0cf10e78"
+      name: "xlarge-psql-redundant"
+      description: "Dedicated redundant x-large RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.890
+            unit: "HOURLY"
+        displayName: "Dedicated redundant x-large PostgreSQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.xlarge
+      allocatedStorage: 10
+      dbType: postgres
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      securityGroup: (( meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
     - id: "57dd4bf0-465b-4e11-838d-2142caa6d763"
       name: "shared-mysql"
       description: "Shared MySQL database for prototyping (no sensitive or production data)"
@@ -269,6 +323,60 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m3.large
+      allocatedStorage: 10
+      dbType: mysql
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      securityGroup: (( meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "9e056262-33fe-4236-a200-30e2d435d583"
+      name: "xlarge-mysql"
+      description: "Dedicated x-large RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated RDS instance"
+          - "MySQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.425
+            unit: "HOURLY"
+        displayName: "Dedicated x-large MySQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.xlarge
+      allocatedStorage: 10
+      dbType: mysql
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      securityGroup: (( meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "e5da0850-0f48-4309-9b5f-dfe279fcd179"
+      name: "xlarge-mysql-redundant"
+      description: "Dedicated redundant x-large RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "MySQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.850
+            unit: "HOURLY"
+        displayName: "Dedicated redundant x-large MySQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.xlarge
       allocatedStorage: 10
       dbType: mysql
       redundant: true
