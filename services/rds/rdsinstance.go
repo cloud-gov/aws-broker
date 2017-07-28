@@ -38,11 +38,13 @@ type RDSInstance struct {
 }
 
 func (i *RDSInstance) FormatDBName() string {
-	if i.DbType == "oracle-se1" {
+	switch i.DbType {
+	case "oracle-se1", "oracle-se2":
 		return "ORCL"
+	default:
+		re, _ := regexp.Compile("(i?)[^a-z0-9]")
+		return re.ReplaceAllString(i.Database, "")
 	}
-	re, _ := regexp.Compile("(i?)[^a-z0-9]")
-	return re.ReplaceAllString(i.Database, "")
 }
 
 func (i *RDSInstance) setPassword(password, key string) error {
