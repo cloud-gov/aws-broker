@@ -125,7 +125,7 @@ jobs:
       BROKER_NAME: {{staging-broker-name}}
       AUTH_USER: {{staging-auth-user}}
       AUTH_PASS: {{staging-auth-pass}}
-      SERVICES: aws-rds:medium-oracle-se1 aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:medium-oracle-se2 aws-rds:large-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-staging
@@ -171,8 +171,8 @@ jobs:
       file: aws-broker-app/ci/run-smoke-tests.yml
       params:
         <<: *staging-cf-creds
-        SERVICE_PLAN: medium-oracle-se1
-        DB_TYPE: oracle-se1
+        SERVICE_PLAN: medium-oracle-se2
+        DB_TYPE: oracle-se2
   on_success:
     put: slack
     params:
@@ -314,7 +314,7 @@ jobs:
       BROKER_NAME: {{prod-broker-name}}
       AUTH_USER: {{prod-auth-user}}
       AUTH_PASS: {{prod-auth-pass}}
-      SERVICES: aws-rds:medium-oracle-se1 aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:medium-oracle-se2 aws-rds:large-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-prod
@@ -360,8 +360,8 @@ jobs:
       file: aws-broker-app/ci/run-smoke-tests.yml
       params:
         <<: *prod-cf-creds
-        SERVICE_PLAN: medium-oracle-se1
-        DB_TYPE: oracle-se1
+        SERVICE_PLAN: medium-oracle-se2
+        DB_TYPE: oracle-se2
   on_success:
     put: slack
     params:

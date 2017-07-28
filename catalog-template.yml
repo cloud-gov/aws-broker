@@ -391,24 +391,23 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e7d65895-4fc3-4a66-8c61-68da4944c69b"
-      name: "medium-oracle-se1"
-      description: "Dedicated medium RDS Oracle SE1 DB instance"
+      name: "medium-oracle-se2"
+      description: "Dedicated medium RDS Oracle SE2 DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "Oracle Standard Edition 1 instance"
-          - "License Included"
+        - "Dedicated RDS instance"
+        - "Oracle Standard Edition 2 instance"
+        - "License Included"
         costs:
-          -
-            amount:
-              usd: 0.232
-            unit: "HOURLY"
-        displayName: "Dedicated medium Oracle SE1"
+        - amount:
+            usd: 0.232
+          unit: "HOURLY"
+        displayName: "Dedicated medium Oracle SE2"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      dbType: oracle-se1
+      dbType: oracle-se2
       licenseModel: license-included
       redundant: false
       encrypted: true
@@ -424,14 +423,13 @@ rds:
       description: "Dedicated large RDS SQL Server 2016 SE DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "SQL Server 2016 Standard Edition instance"
-          - "License Included"
+        - "Dedicated RDS instance"
+        - "SQL Server 2016 Standard Edition instance"
+        - "License Included"
         costs:
-          -
-            amount:
-              usd: 1.061
-            unit: "HOURLY"
+        - amount:
+            usd: 1.061
+        unit: "HOURLY"
         displayName: "Dedicated large SQL Server 2016 SE"
       free: false
       adapter: dedicated
