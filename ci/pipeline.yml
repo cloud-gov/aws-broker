@@ -116,7 +116,7 @@ jobs:
       BROKER_NAME: {{staging-broker-name}}
       AUTH_USER: {{staging-auth-user}}
       AUTH_PASS: {{staging-auth-pass}}
-      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant
+      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -125,7 +125,7 @@ jobs:
       BROKER_NAME: {{staging-broker-name}}
       AUTH_USER: {{staging-auth-user}}
       AUTH_PASS: {{staging-auth-pass}}
-      SERVICES: aws-rds:medium-oracle-se2 aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-staging
@@ -305,7 +305,7 @@ jobs:
       BROKER_NAME: {{prod-broker-name}}
       AUTH_USER: {{prod-auth-user}}
       AUTH_PASS: {{prod-auth-pass}}
-      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant
+      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -314,7 +314,7 @@ jobs:
       BROKER_NAME: {{prod-broker-name}}
       AUTH_USER: {{prod-auth-user}}
       AUTH_PASS: {{prod-auth-pass}}
-      SERVICES: aws-rds:medium-oracle-se2 aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-prod
