@@ -1,5 +1,199 @@
 ---
 jobs:
+- name: deploy-aws-broker-development
+  plan:
+  - aggregate:
+    - get: aws-broker-app
+      resource: aws-broker-app-development
+      trigger: true
+    - get: pipeline-tasks
+
+  - task: run_tests
+    file: aws-broker-app/ci/run_tests.yml
+
+  - task: provision-rds
+    tags:
+    - iaas
+    file: pipeline-tasks/terraform-apply.yml
+    input_mapping:
+      terraform-templates: aws-broker-app
+    params:
+      TERRAFORM_ACTION: apply
+      TEMPLATE_SUBDIR: ci/terraform
+      STACK_NAME: {{development-stack-name}}
+      S3_TFSTATE_BUCKET: {{development-s3-tfstate-bucket}}
+      AWS_DEFAULT_REGION: {{development-aws-default-region}}
+
+      TF_VAR_base_stack: {{development-stack-base}}
+      TF_VAR_stack_description: {{development-stack-name}}
+      TF_VAR_remote_state_bucket: {{development-s3-tfstate-bucket}}
+
+      TF_VAR_rds_internal_instance_type: {{development-rds-internal-instance-type}}
+      TF_VAR_rds_internal_db_size: {{development-rds-internal-db-size}}
+      TF_VAR_rds_internal_db_name: {{development-rds-internal-db-name}}
+      TF_VAR_rds_internal_db_engine: {{development-rds-internal-db-engine}}
+      TF_VAR_rds_internal_db_engine_version: {{development-rds-internal-db-engine-version}}
+      TF_VAR_rds_internal_username: {{development-rds-internal-username}}
+      TF_VAR_rds_internal_password: {{development-rds-internal-password}}
+
+      TF_VAR_rds_shared_mysql_instance_type: {{development-rds-shared-mysql-instance-type}}
+      TF_VAR_rds_shared_mysql_db_size: {{development-rds-shared-mysql-db-size}}
+      TF_VAR_rds_shared_mysql_db_name: {{development-rds-shared-mysql-db-name}}
+      TF_VAR_rds_shared_mysql_db_engine: {{development-rds-shared-mysql-db-engine}}
+      TF_VAR_rds_shared_mysql_db_engine_version: {{development-rds-shared-mysql-db-engine-version}}
+      TF_VAR_rds_shared_mysql_username: {{development-rds-shared-mysql-username}}
+      TF_VAR_rds_shared_mysql_password: {{development-rds-shared-mysql-password}}
+
+      TF_VAR_rds_shared_postgres_instance_type: {{development-rds-shared-postgres-instance-type}}
+      TF_VAR_rds_shared_postgres_db_size: {{development-rds-shared-postgres-db-size}}
+      TF_VAR_rds_shared_postgres_db_name: {{development-rds-shared-postgres-db-name}}
+      TF_VAR_rds_shared_postgres_db_engine: {{development-rds-shared-postgres-db-engine}}
+      TF_VAR_rds_shared_postgres_db_engine_version: {{development-rds-shared-postgres-db-engine-version}}
+      TF_VAR_rds_shared_postgres_username: {{development-rds-shared-postgres-username}}
+      TF_VAR_rds_shared_postgres_password: {{development-rds-shared-postgres-password}}
+
+  - task: init-shared-db
+    file: aws-broker-app/ci/init-shared-db.yml
+    params:
+      STATE_FILE: terraform-state/terraform.tfstate
+      POSTGRES_USERNAME: {{development-rds-shared-postgres-username}}
+      POSTGRES_PASSWORD: {{development-rds-shared-postgres-password}}
+
+  - task: build-manifest
+    file: aws-broker-app/ci/build-manifest.yml
+    params:
+      S3_TFSTATE_BUCKET: {{development-s3-tfstate-bucket}}
+      BASE_STACK_NAME: {{development-stack-base}}
+      AWS_DEFAULT_REGION: {{development-aws-default-region}}
+      STATE_FILE: terraform-state/terraform.tfstate
+      ENVIRONMENT: {{development-environment}}
+      RDS_SHARED_MYSQL_NAME: {{development-rds-shared-mysql-db-name}}
+      RDS_SHARED_MYSQL_USERNAME: {{development-rds-shared-mysql-username}}
+      RDS_SHARED_MYSQL_PASSWORD: {{development-rds-shared-mysql-password}}
+      RDS_SHARED_POSTGRES_NAME: {{development-rds-shared-postgres-db-name}}
+      RDS_SHARED_POSTGRES_USERNAME: {{development-rds-shared-postgres-username}}
+      RDS_SHARED_POSTGRES_PASSWORD: {{development-rds-shared-postgres-password}}
+
+  - put: deploy-aws-broker-development
+    params:
+      manifest: built/manifest.yml
+      path: built
+      current_app_name: aws-broker
+      environment_variables:
+        DB_PREFIX: {{development-db-name-prefix}}
+        AUTH_PASS: {{development-auth-pass}}
+        AUTH_USER: {{development-auth-user}}
+        AWS_DEFAULT_REGION: {{development-aws-default-region}}
+        DB_SSLMODE: {{development-rds-db-sslmode}}
+        DB_USER: {{development-rds-internal-username}}
+        DB_PASS: {{development-rds-internal-password}}
+        DB_TYPE: {{development-rds-internal-db-engine}}
+        DB_NAME: {{development-rds-internal-db-name}}
+        ENC_KEY: {{development-enc-key}}
+
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy aws-broker on development
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: {{slack-channel}}
+        username: {{slack-username}}
+        icon_url: {{slack-icon-url}}
+    on_success:
+      put: slack
+      params:
+        text: |
+          :white_check_mark: Successfully deployed aws-broker on development
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: {{slack-channel}}
+        username: {{slack-username}}
+        icon_url: {{slack-icon-url}}
+
+  - task: update-broker
+    file: pipeline-tasks/register-service-broker.yml
+    params:
+      <<: *development-cf-creds
+      BROKER_NAME: {{development-broker-name}}
+      AUTH_USER: {{development-auth-user}}
+      AUTH_PASS: {{development-auth-pass}}
+      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
+
+  - task: update-broker-enterprise
+    file: pipeline-tasks/register-service-broker.yml
+    params:
+      <<: *development-cf-creds
+      BROKER_NAME: {{development-broker-name}}
+      AUTH_USER: {{development-auth-user}}
+      AUTH_PASS: {{development-auth-pass}}
+      SERVICES: aws-rds:large-sqlserver-se
+      SERVICE_ORGANIZATION: cloud-gov
+
+- name: acceptance-tests-development
+  plan:
+  - get: aws-broker-app
+    resource: aws-broker-app-development
+    passed: [deploy-aws-broker-development]
+    trigger: true
+  - aggregate:
+    - get: sqlclient-oracle-basiclite
+    - get: sqlclient-oracle-sqlplus
+    - get: sqlclient-postgres
+    - get: sqlclient-mysql
+  - aggregate:
+    - task: smoke-tests-postgres
+      file: aws-broker-app/ci/run-smoke-tests.yml
+      params:
+        <<: *development-cf-creds
+        SERVICE_PLAN: medium-psql
+        DB_TYPE: postgres
+
+    - task: smoke-tests-shared-postgres
+      file: aws-broker-app/ci/run-smoke-tests.yml
+      params:
+        <<: *development-cf-creds
+        SERVICE_PLAN: shared-psql
+        DB_TYPE: postgres
+
+    - task: smoke-tests-mysql
+      file: aws-broker-app/ci/run-smoke-tests.yml
+      params:
+        <<: *development-cf-creds
+        SERVICE_PLAN: medium-mysql
+        DB_TYPE: mysql
+
+    - task: smoke-tests-shared-mysql
+      file: aws-broker-app/ci/run-smoke-tests.yml
+      params:
+        <<: *development-cf-creds
+        SERVICE_PLAN: shared-mysql
+        DB_TYPE: mysql
+
+    - task: smoke-tests-oracle
+      file: aws-broker-app/ci/run-smoke-tests.yml
+      params:
+        <<: *development-cf-creds
+        SERVICE_PLAN: medium-oracle-se2
+        DB_TYPE: oracle-se2
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on development PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+      username: {{slack-username}}
+      icon_url: {{slack-icon-url}}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: Acceptance Tests for aws-broker on development FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+      username: {{slack-username}}
+      icon_url: {{slack-icon-url}}
+
 - name: deploy-aws-broker-staging
   plan:
   - aggregate:
@@ -394,6 +588,22 @@ resources:
     uri: {{aws-broker-url}}
     branch: {{aws-broker-branch}}
 
+- name: aws-broker-app-development
+  type: git
+  source:
+    uri: {{aws-broker-url-development}}
+    branch: {{aws-broker-branch-development}}
+
+- name: deploy-aws-broker-development
+  type: cf
+  source:
+    api: {{development-cf-api-url}}
+    username: {{development-cf-deploy-username}}
+    password: {{development-cf-deploy-password}}
+    organization: {{development-cf-organization}}
+    space: {{development-cf-space}}
+    skip_cert_check: false
+
 - name: deploy-aws-broker-staging
   type: cf
   source:
@@ -457,6 +667,13 @@ resource_types:
   type: docker-image
   source:
     repository: 18fgsa/s3-resource
+
+development-cf-creds: &development-cf-creds
+  CF_API_URL: {{development-cf-api-url}}
+  CF_USERNAME: {{development-cf-deploy-username}}
+  CF_PASSWORD: {{development-cf-deploy-password}}
+  CF_ORGANIZATION: {{development-cf-organization}}
+  CF_SPACE: {{development-cf-space}}
 
 staging-cf-creds: &staging-cf-creds
   CF_API_URL: {{staging-cf-api-url}}
