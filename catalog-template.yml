@@ -24,7 +24,7 @@ rds:
   plans:
     - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
       name: "shared-psql"
-      description: "Shared PostgresSQL database for prototyping (no sensitive or production data)"
+      description: "Shared PostgreSQL database for prototyping (no sensitive or production data)"
       metadata:
         bullets:
           - "Shared RDS instance"
