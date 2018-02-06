@@ -3,7 +3,7 @@ module "rds_internal" {
     stack_description = "${var.stack_description}"
     rds_subnet_group = "${data.terraform_remote_state.vpc.rds_subnet_group}"
     /* TODO: Use database instance type from config */
-    rds_security_groups = "${data.terraform_remote_state.vpc.rds_postgres_security_group}"
+    rds_security_groups = ["${data.terraform_remote_state.vpc.rds_postgres_security_group}"]
 
     rds_instance_type = "${var.rds_internal_instance_type}"
     rds_db_size = "${var.rds_internal_db_size}"
