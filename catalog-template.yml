@@ -57,6 +57,7 @@ rds:
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -84,6 +85,7 @@ rds:
       redundant: true
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -111,6 +113,7 @@ rds:
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -138,6 +141,7 @@ rds:
       redundant: true
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -165,6 +169,7 @@ rds:
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -192,6 +197,7 @@ rds:
       redundant: true
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -238,9 +244,11 @@ rds:
       instanceClass: db.m3.medium
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: &mysql-version "5.7.21"
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -265,9 +273,11 @@ rds:
       instanceClass: db.m3.medium
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: *mysql-version
       redundant: true
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -292,9 +302,11 @@ rds:
       instanceClass: db.m3.large
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: *mysql-version
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -319,9 +331,11 @@ rds:
       instanceClass: db.m3.large
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: *mysql-version
       redundant: true
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -346,9 +360,11 @@ rds:
       instanceClass: db.m3.xlarge
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: *mysql-version
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -373,9 +389,11 @@ rds:
       instanceClass: db.m3.xlarge
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: *mysql-version
       redundant: true
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -404,6 +422,7 @@ rds:
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.oracle_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
@@ -432,6 +451,7 @@ rds:
       redundant: false
       encrypted: true
       storage_type: gp2
+      backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mssql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:

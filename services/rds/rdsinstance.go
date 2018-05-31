@@ -26,14 +26,16 @@ type RDSInstance struct {
 
 	ClearPassword string `sql:"-"`
 
-	Tags             map[string]string `sql:"-"`
-	DbSubnetGroup    string            `sql:"-"`
-	AllocatedStorage int64             `sql:"-"`
-	SecGroup         string            `sql:"-"`
+	Tags                  map[string]string `sql:"-"`
+	BackupRetentionPeriod int64             `sql:"-"`
+	DbSubnetGroup         string            `sql:"-"`
+	AllocatedStorage      int64             `sql:"-"`
+	SecGroup              string            `sql:"-"`
 
 	Adapter string `sql:"size(255)"`
 
 	DbType       string `sql:"size(255)"`
+	DbVersion    string `sql:"size(255)"`
 	LicenseModel string `sql:"size(255)"`
 }
 
@@ -128,6 +130,8 @@ func (i *RDSInstance) init(uuid string,
 
 	// Load AWS values
 	i.DbType = plan.DbType
+	i.DbVersion = plan.DbVersion
+	i.BackupRetentionPeriod = plan.BackupRetentionPeriod
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
 	i.LicenseModel = plan.LicenseModel

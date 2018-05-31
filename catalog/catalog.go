@@ -77,18 +77,20 @@ func (s RDSService) FetchPlan(planID string) (RDSPlan, response.Response) {
 // these fields are read from the catalog.yaml file, but are not rendered
 // in the catalog API endpoint.
 type RDSPlan struct {
-	Plan             `yaml:",inline" validate:"required"`
-	Adapter          string            `yaml:"adapter" json:"-" validate:"required"`
-	InstanceClass    string            `yaml:"instanceClass" json:"-"`
-	DbType           string            `yaml:"dbType" json:"-" validate:"required"`
-	LicenseModel     string            `yaml:"licenseModel" json:"-"`
-	Tags             map[string]string `yaml:"tags" json:"-" validate:"required"`
-	Redundant        bool              `yaml:"redundant" json:"-"`
-	Encrypted        bool              `yaml:"encrypted" json:"-"`
-	StorageType      string            `yaml:"storage_type" json:"-"`
-	AllocatedStorage int64             `yaml:"allocatedStorage" json:"-"`
-	SubnetGroup      string            `yaml:"subnetGroup" json:"-" validate:"required"`
-	SecurityGroup    string            `yaml:"securityGroup" json:"-" validate:"required"`
+	Plan                  `yaml:",inline" validate:"required"`
+	Adapter               string            `yaml:"adapter" json:"-" validate:"required"`
+	InstanceClass         string            `yaml:"instanceClass" json:"-"`
+	DbType                string            `yaml:"dbType" json:"-" validate:"required"`
+	DbVersion             string            `yaml:"dbVersion" json:"-"`
+	LicenseModel          string            `yaml:"licenseModel" json:"-"`
+	Tags                  map[string]string `yaml:"tags" json:"-" validate:"required"`
+	Redundant             bool              `yaml:"redundant" json:"-"`
+	Encrypted             bool              `yaml:"encrypted" json:"-"`
+	StorageType           string            `yaml:"storage_type" json:"-"`
+	AllocatedStorage      int64             `yaml:"allocatedStorage" json:"-"`
+	BackupRetentionPeriod int64             `yaml:"backup_retention_period" json:"-"" validate:"required"`
+	SubnetGroup           string            `yaml:"subnetGroup" json:"-" validate:"required"`
+	SecurityGroup         string            `yaml:"securityGroup" json:"-" validate:"required"`
 }
 
 // Catalog struct holds a collections of services

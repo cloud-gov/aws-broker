@@ -135,10 +135,14 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 		StorageType:             aws.String(d.Plan.StorageType),
 		Tags:                    rdsTags,
 		PubliclyAccessible:      aws.Bool(false),
+		BackupRetentionPeriod:   aws.Int64(i.BackupRetentionPeriod),
 		DBSubnetGroupName:       &i.DbSubnetGroup,
 		VpcSecurityGroupIds: []*string{
 			&i.SecGroup,
 		},
+	}
+	if i.DbVersion != "" {
+		params.EngineVersion = aws.String(i.DbVersion)
 	}
 	if i.LicenseModel != "" {
 		params.LicenseModel = aws.String(i.LicenseModel)
