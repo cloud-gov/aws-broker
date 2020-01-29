@@ -81,7 +81,7 @@ rds:
         displayName: "Dedicated Medium Postgres"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.t3.medium
       dbType: postgres
       securityGroup: sg-123456
       subnetGroup: subnet-group
@@ -152,7 +152,7 @@ rds:
         displayName: "Dedicated Medium MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.t3.medium
       dbType: mysql
       securityGroup: sg-123456
       subnetGroup: subnet-group
@@ -177,7 +177,7 @@ rds:
         displayName: "Dedicated Medium Oracle SE2"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.t3.medium
       dbType: oracle-se2
       licenseModel: license-included
       securityGroup: sg-123456

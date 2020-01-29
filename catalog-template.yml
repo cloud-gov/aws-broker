@@ -12,7 +12,7 @@ rds:
     longDescription:
     providerDisplayName: RDS
     documentationUrl: "https://cloud.gov/docs/services/relational-database/"
-    supportUrl: 
+    supportUrl:
   plans:
     - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
       name: "shared-psql"
@@ -107,7 +107,7 @@ rds:
         displayName: "Dedicated large PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.large
+      instanceClass: db.m4.large
       allocatedStorage: 10
       dbType: postgres
       redundant: false
@@ -135,7 +135,7 @@ rds:
         displayName: "Dedicated redundant large PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.large
+      instanceClass: db.m4.large
       allocatedStorage: 10
       dbType: postgres
       redundant: true
@@ -163,7 +163,7 @@ rds:
         displayName: "Dedicated x-large PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.xlarge
+      instanceClass: db.m4.xlarge
       allocatedStorage: 10
       dbType: postgres
       redundant: false
@@ -191,7 +191,7 @@ rds:
         displayName: "Dedicated redundant x-large PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.xlarge
+      instanceClass: db.m4.xlarge
       allocatedStorage: 10
       dbType: postgres
       redundant: true
@@ -299,7 +299,7 @@ rds:
         displayName: "Dedicated large MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.large
+      instanceClass: db.m4.large
       allocatedStorage: 10
       dbType: mysql
       dbVersion: *mysql-version
@@ -328,7 +328,7 @@ rds:
         displayName: "Dedicated redundant large MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.large
+      instanceClass: db.m4.large
       allocatedStorage: 10
       dbType: mysql
       dbVersion: *mysql-version
@@ -357,7 +357,7 @@ rds:
         displayName: "Dedicated x-large MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.xlarge
+      instanceClass: db.m4.xlarge
       allocatedStorage: 10
       dbType: mysql
       dbVersion: *mysql-version
@@ -386,7 +386,7 @@ rds:
         displayName: "Dedicated redundant x-large MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.xlarge
+      instanceClass: db.m4.xlarge
       allocatedStorage: 10
       dbType: mysql
       dbVersion: *mysql-version
@@ -415,7 +415,7 @@ rds:
         displayName: "Dedicated medium Oracle SE2"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.t3.medium
       allocatedStorage: 10
       dbType: oracle-se2
       licenseModel: license-included
@@ -444,7 +444,7 @@ rds:
         displayName: "Dedicated large SQL Server 2016 SE"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       dbType: sqlserver-se
       licenseModel: license-included

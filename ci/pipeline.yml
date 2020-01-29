@@ -27,27 +27,29 @@ jobs:
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: ((development-rds-internal-instance-type))
-      TF_VAR_rds_internal_db_size: ((development-rds-internal-db-size))
+      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
-      TF_VAR_rds_internal_db_engine: ((development-rds-internal-db-engine))
-      TF_VAR_rds_internal_db_engine_version: ((development-rds-internal-db-engine-version))
+      TF_VAR_rds_internal_db_engine: postgres
+      TF_VAR_rds_internal_db_engine_version: 9.4.20
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
 
-      TF_VAR_rds_shared_mysql_instance_type: ((development-rds-shared-mysql-instance-type))
-      TF_VAR_rds_shared_mysql_db_size: ((development-rds-shared-mysql-db-size))
+      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: ((development-rds-shared-mysql-db-engine))
-      TF_VAR_rds_shared_mysql_db_engine_version: ((development-rds-shared-mysql-db-engine-version))
+      TF_VAR_rds_shared_mysql_db_engine: mysql
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
 
-      TF_VAR_rds_shared_postgres_instance_type: ((development-rds-shared-postgres-instance-type))
-      TF_VAR_rds_shared_postgres_db_size: ((development-rds-shared-postgres-db-size))
+      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: ((development-rds-shared-postgres-db-engine))
-      TF_VAR_rds_shared_postgres_db_engine_version: ((development-rds-shared-postgres-db-engine-version))
+      TF_VAR_rds_shared_postgres_db_engine: postgres
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
 
@@ -83,10 +85,10 @@ jobs:
         AUTH_PASS: ((development-auth-pass))
         AUTH_USER: ((development-auth-user))
         AWS_DEFAULT_REGION: ((development-aws-default-region))
-        DB_SSLMODE: ((development-rds-db-sslmode))
+        DB_SSLMODE: require
         DB_USER: ((development-rds-internal-username))
         DB_PASS: ((development-rds-internal-password))
-        DB_TYPE: ((development-rds-internal-db-engine))
+        DB_TYPE: postgres
         DB_NAME: ((development-rds-internal-db-name))
         ENC_KEY: ((development-enc-key))
 
@@ -138,10 +140,12 @@ jobs:
 
 - name: acceptance-tests-development
   plan:
-  - get: aws-broker-app
-    resource: aws-broker-app-development
-    passed: [deploy-aws-broker-development]
-    trigger: true
+  - in_parallel:
+    - get: aws-broker-app
+      resource: aws-broker-app-development
+      passed: [deploy-aws-broker-development]
+      trigger: true
+    - get: aws-db-test
   - in_parallel:
       steps:
       - task: smoke-tests-postgres
@@ -243,27 +247,29 @@ jobs:
       TF_VAR_stack_description: ((staging-stack-name))
       TF_VAR_remote_state_bucket: ((staging-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: ((staging-rds-internal-instance-type))
-      TF_VAR_rds_internal_db_size: ((staging-rds-internal-db-size))
+      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
-      TF_VAR_rds_internal_db_engine: ((staging-rds-internal-db-engine))
-      TF_VAR_rds_internal_db_engine_version: ((staging-rds-internal-db-engine-version))
+      TF_VAR_rds_internal_db_engine: postgres
+      TF_VAR_rds_internal_db_engine_version: 9.4.20
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
 
-      TF_VAR_rds_shared_mysql_instance_type: ((staging-rds-shared-mysql-instance-type))
-      TF_VAR_rds_shared_mysql_db_size: ((staging-rds-shared-mysql-db-size))
+      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: ((staging-rds-shared-mysql-db-engine))
-      TF_VAR_rds_shared_mysql_db_engine_version: ((staging-rds-shared-mysql-db-engine-version))
+      TF_VAR_rds_shared_mysql_db_engine: mysql
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
 
-      TF_VAR_rds_shared_postgres_instance_type: ((staging-rds-shared-postgres-instance-type))
-      TF_VAR_rds_shared_postgres_db_size: ((staging-rds-shared-postgres-db-size))
+      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((staging-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: ((staging-rds-shared-postgres-db-engine))
-      TF_VAR_rds_shared_postgres_db_engine_version: ((staging-rds-shared-postgres-db-engine-version))
+      TF_VAR_rds_shared_postgres_db_engine: postgres
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
 
@@ -299,10 +305,10 @@ jobs:
         AUTH_PASS: ((staging-auth-pass))
         AUTH_USER: ((staging-auth-user))
         AWS_DEFAULT_REGION: ((staging-aws-default-region))
-        DB_SSLMODE: ((staging-rds-db-sslmode))
+        DB_SSLMODE: require
         DB_USER: ((staging-rds-internal-username))
         DB_PASS: ((staging-rds-internal-password))
-        DB_TYPE: ((staging-rds-internal-db-engine))
+        DB_TYPE: postgres
         DB_NAME: ((staging-rds-internal-db-name))
         ENC_KEY: ((staging-enc-key))
 
@@ -458,27 +464,29 @@ jobs:
       TF_VAR_stack_description: ((prod-stack-name))
       TF_VAR_remote_state_bucket: ((prod-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: ((prod-rds-internal-instance-type))
-      TF_VAR_rds_internal_db_size: ((prod-rds-internal-db-size))
+      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
-      TF_VAR_rds_internal_db_engine: ((prod-rds-internal-db-engine))
-      TF_VAR_rds_internal_db_engine_version: ((prod-rds-internal-db-engine-version))
+      TF_VAR_rds_internal_db_engine: postgres
+      TF_VAR_rds_internal_db_engine_version: 9.4.20
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
 
-      TF_VAR_rds_shared_mysql_instance_type: ((prod-rds-shared-mysql-instance-type))
-      TF_VAR_rds_shared_mysql_db_size: ((prod-rds-shared-mysql-db-size))
+      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: ((prod-rds-shared-mysql-db-engine))
-      TF_VAR_rds_shared_mysql_db_engine_version: ((prod-rds-shared-mysql-db-engine-version))
+      TF_VAR_rds_shared_mysql_db_engine: mysql
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
 
-      TF_VAR_rds_shared_postgres_instance_type: ((prod-rds-shared-postgres-instance-type))
-      TF_VAR_rds_shared_postgres_db_size: ((prod-rds-shared-postgres-db-size))
+      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: ((prod-rds-shared-postgres-db-engine))
-      TF_VAR_rds_shared_postgres_db_engine_version: ((prod-rds-shared-postgres-db-engine-version))
+      TF_VAR_rds_shared_postgres_db_engine: postgres
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
 
@@ -514,10 +522,10 @@ jobs:
         AUTH_PASS: ((prod-auth-pass))
         AUTH_USER: ((prod-auth-user))
         AWS_DEFAULT_REGION: ((prod-aws-default-region))
-        DB_SSLMODE: ((prod-rds-db-sslmode))
+        DB_SSLMODE: require
         DB_USER: ((prod-rds-internal-username))
         DB_PASS: ((prod-rds-internal-password))
-        DB_TYPE: ((prod-rds-internal-db-engine))
+        DB_TYPE: postgres
         DB_NAME: ((prod-rds-internal-db-name))
         ENC_KEY: ((prod-enc-key))
 
@@ -569,7 +577,7 @@ jobs:
 
 - name: acceptance-tests-prod
   plan:
-  - in_parallel: 
+  - in_parallel:
     - get: aws-broker-app
       passed: [deploy-aws-broker-prod]
       trigger: true
@@ -653,26 +661,26 @@ resources:
 - name: pipeline-tasks
   type: git
   source:
-    uri: ((pipeline-tasks-git-url))
-    branch: ((pipeline-tasks-git-branch))
+    uri: https://github.com/18F/cg-pipeline-tasks
+    branch: master
 
 - name: aws-broker-app
   type: git
   source:
-    uri: ((aws-broker-url))
-    branch: ((aws-broker-branch))
+    uri: https://github.com/18F/aws-broker
+    branch: master
 
 - name: aws-broker-app-development
   type: git
   source:
-    uri: ((aws-broker-url-development))
-    branch: ((aws-broker-branch-development))
+    uri: https://github.com/18F/aws-broker
+    branch: master
 
 - name: aws-db-test
   type: git
   source:
-    uri: ((aws-db-test-git-url))
-    branch: ((aws-db-test-git-branch))
+    uri: https://github.com/18F/cg-labratory
+    branch: master
 
 - name: deploy-aws-broker-development
   type: cf
