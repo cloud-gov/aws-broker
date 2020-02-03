@@ -662,25 +662,25 @@ resources:
   type: git
   source:
     uri: https://github.com/18F/cg-pipeline-tasks
-    branch: master
+    branch: ((pipeline-tasks-git-branch))
 
 - name: aws-broker-app
   type: git
   source:
     uri: https://github.com/18F/aws-broker
-    branch: master
+    branch: ((aws-broker-branch))
 
 - name: aws-broker-app-development
   type: git
   source:
     uri: https://github.com/18F/aws-broker
-    branch: master
+    branch: ((aws-broker-branch-development))
 
 - name: aws-db-test
   type: git
   source:
     uri: https://github.com/18F/cg-labratory
-    branch: master
+    branch: ((aws-db-test-branch))
 
 - name: deploy-aws-broker-development
   type: cf
