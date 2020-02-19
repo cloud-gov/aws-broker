@@ -1,13 +1,13 @@
 #!/bin/bash
 
-set -eux
+set -euxo pipefail
 
 # todo (mxplusb): update the auth mechanism.
-cf login -a $CF_API_URL -u $CF_USERNAME -p $CF_PASSWORD -o $CF_ORGANIZATION -s $CF_SPACE
+cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORGANIZATION" -s "$CF_SPACE"
 
 # Clean up existing app and service if present
-cf delete -f smoke-tests-$SERVICE_PLAN
-cf delete-service -f rds-smoke-tests-$SERVICE_PLAN
+cf delete -f "smoke-tests-$SERVICE_PLAN"
+cf delete-service -f "rds-smoke-tests-$SERVICE_PLAN"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
@@ -40,5 +40,5 @@ done
 cf push "smoke-tests-${SERVICE_PLAN}" 
 
 # Clean up app and service
-cf delete -f smoke-tests-$SERVICE_PLAN
-cf delete-service -f rds-smoke-tests-$SERVICE_PLAN
+cf delete -f "smoke-tests-$SERVICE_PLAN"
+cf delete-service -f "rds-smoke-tests-$SERVICE_PLAN"

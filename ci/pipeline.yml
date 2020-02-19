@@ -48,8 +48,8 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
 
@@ -169,6 +169,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
+          DB_VERSION: 9.4.20
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -191,6 +192,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: shared-mysql
           DB_TYPE: mysql
+          DB_VERSION: 5.6.41
 
       - task: smoke-tests-oracle
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -661,26 +663,26 @@ resources:
 - name: pipeline-tasks
   type: git
   source:
-    uri: https://github.com/18F/cg-pipeline-tasks
+    uri: ((pipeline-tasks-git-url))
     branch: ((pipeline-tasks-git-branch))
 
 - name: aws-broker-app
   type: git
   source:
-    uri: https://github.com/18F/aws-broker
+    uri: ((aws-broker-url))
     branch: ((aws-broker-branch))
 
 - name: aws-broker-app-development
   type: git
   source:
-    uri: https://github.com/18F/aws-broker
+    uri: ((aws-broker-url-development))
     branch: ((aws-broker-branch-development))
 
 - name: aws-db-test
   type: git
   source:
-    uri: https://github.com/18F/cg-labratory
-    branch: ((aws-db-test-branch))
+    uri: ((aws-db-test-git-url))
+    branch: ((aws-db-test-git-branch))
 
 - name: deploy-aws-broker-development
   type: cf
