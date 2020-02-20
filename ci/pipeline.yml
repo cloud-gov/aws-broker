@@ -171,7 +171,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
-          DB_VERSION: 9.4.20
+          DB_VERSION: 9.5.15
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
