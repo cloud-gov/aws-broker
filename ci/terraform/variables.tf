@@ -27,3 +27,5 @@ variable "rds_shared_postgres_db_parameter_group_family" {}
 variable "rds_shared_postgres_db_engine_version" {}
 variable "rds_shared_postgres_username" {}
 variable "rds_shared_postgres_password" {}
+variable "rds_shared_postgres_apply_immediately" {}
+variable "rds_shared_postgres_allow_major_version_upgrade" {}

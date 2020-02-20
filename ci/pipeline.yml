@@ -48,10 +48,12 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
+      TF_VAR_rds_shared_postgres_apply_immediately: "true"
+      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
