@@ -52,6 +52,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
+
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
@@ -277,6 +278,9 @@ jobs:
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
 
+      TF_VAR_rds_shared_postgres_apply_immediately: "true"
+      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
+
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
@@ -493,6 +497,9 @@ jobs:
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
+
+      TF_VAR_rds_shared_postgres_apply_immediately: "false"
+      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "false"
 
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
