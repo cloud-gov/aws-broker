@@ -10,6 +10,8 @@ variable "rds_internal_db_engine_version" {}
 variable "rds_internal_db_parameter_group_family" {}
 variable "rds_internal_username" {}
 variable "rds_internal_password" {}
+variable "rds_internal_apply_immediately" {}
+variable "rds_internal_allow_major_version_upgrade" {}
 
 variable "rds_shared_mysql_instance_type" {}
 variable "rds_shared_mysql_db_size" {}
