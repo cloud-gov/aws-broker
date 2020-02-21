@@ -1,6 +1,6 @@
 resource "aws_db_parameter_group" "parameter_group_postgres" {
   count = "${var.rds_db_engine == "postgres" ? 1 : 0}"
-  name = "${var.rds_parameter_group_name != "" ?
+  name_prefix = "${var.rds_parameter_group_name != "" ?
     var.rds_parameter_group_name :
     "${replace("${var.stack_description}-${var.rds_db_name}", "/[^a-zA-Z-]+/", "-")}"}"
   family = "${var.rds_parameter_group_family}"
@@ -30,11 +30,15 @@ resource "aws_db_parameter_group" "parameter_group_postgres" {
     value = "${var.rds_force_ssl}"
     apply_method = "pending-reboot"
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_db_parameter_group" "parameter_group_mysql" {
   count = "${var.rds_db_engine == "mysql" ? 1 : 0}"
-  name = "${var.rds_parameter_group_name != "" ?
+  name_prefix = "${var.rds_parameter_group_name != "" ?
     var.rds_parameter_group_name :
     "${replace("${var.stack_description}-${var.rds_db_name}", "/[^a-zA-Z-]+/", "-")}"}"
   family = "${var.rds_parameter_group_family}"
@@ -45,5 +49,9 @@ resource "aws_db_parameter_group" "parameter_group_mysql" {
   parameter {
     name = "log_output"
     value = "FILE"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
