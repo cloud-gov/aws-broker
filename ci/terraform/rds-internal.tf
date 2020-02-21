@@ -1,5 +1,5 @@
 module "rds_internal" {
-    source = "git::https://github.com/18F/cg-provision//terraform/modules/rds"
+    source = "rds_module"
     stack_description = "${var.stack_description}"
     rds_subnet_group = "${data.terraform_remote_state.vpc.rds_subnet_group}"
     /* TODO: Use database instance type from config */
