@@ -34,7 +34,7 @@ jobs:
       TF_VAR_rds_internal_db_engine_version: 9.4.20
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
       # REMOVE AFTER MIGRATION
-      rds_internal_db_parameter_group_name: ((development_rds_internal_db_parameter_group_name))
+      TF_VAR_rds_internal_db_parameter_group_name: ((development_rds_internal_db_parameter_group_name))
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "false"
@@ -48,7 +48,7 @@ jobs:
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
       # REMOVE AFTER MIGRATION
-      rds_shared_mysql_db_parameter_group_name: ((development_rds_shared_mysql_db_parameter_group_name))
+      TF_VAR_rds_shared_mysql_db_parameter_group_name: ((development_rds_shared_mysql_db_parameter_group_name))
 
       TF_VAR_rds_shared_postgres_instance_type: db.m4.large
       TF_VAR_rds_shared_postgres_db_size: 100
@@ -57,7 +57,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       # REMOVE AFTER MIGRATION
-      rds_shared_postgres_db_parameter_group_name: ((development_rds_shared_postgres_db_parameter_group_name))
+      TF_VAR_rds_shared_postgres_db_parameter_group_name: ((development_rds_shared_postgres_db_parameter_group_name))
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -266,7 +266,7 @@ jobs:
       TF_VAR_rds_internal_db_engine_version: 9.4.20
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
       # REMOVE AFTER MIGRATION
-      rds_internal_db_parameter_group_name: ((staging_rds_internal_db_parameter_group_name))
+      TF_VAR_rds_internal_db_parameter_group_name: ((staging_rds_internal_db_parameter_group_name))
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "false"
@@ -278,7 +278,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       # REMOVE AFTER MIGRATION
-      rds_shared_mysql_db_parameter_group_name: ((staging_rds_shared_mysql_db_parameter_group_name))
+      TF_VAR_rds_shared_mysql_db_parameter_group_name: ((staging_rds_shared_mysql_db_parameter_group_name))
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
 
@@ -289,7 +289,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       # REMOVE AFTER MIGRATION
-      rds_shared_postgres_db_parameter_group_name: ((staging_rds_shared_postgres_db_parameter_group_name))
+      TF_VAR_rds_shared_postgres_db_parameter_group_name: ((staging_rds_shared_postgres_db_parameter_group_name))
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -493,7 +493,7 @@ jobs:
       TF_VAR_rds_internal_db_engine_version: 9.4.20
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
       # REMOVE AFTER MIGRATION
-      rds_internal_db_parameter_group_name: ((prod_rds_internal_db_parameter_group_name))
+      TF_VAR_rds_internal_db_parameter_group_name: ((prod_rds_internal_db_parameter_group_name))
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "false"
@@ -505,7 +505,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       # REMOVE AFTER MIGRATION
-      rds_shared_mysql_db_parameter_group_name: ((prod_rds_shared_mysql_db_parameter_group_name))
+      TF_VAR_rds_shared_mysql_db_parameter_group_name: ((prod_rds_shared_mysql_db_parameter_group_name))
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
 
@@ -516,7 +516,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
       # REMOVE AFTER MIGRATION
-      rds_shared_postgres_db_parameter_group_name: ((prod_rds_shared_postgres_db_parameter_group_name))
+      TF_VAR_rds_shared_postgres_db_parameter_group_name: ((prod_rds_shared_postgres_db_parameter_group_name))
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "false"
