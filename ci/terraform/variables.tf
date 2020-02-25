@@ -31,3 +31,9 @@ variable "rds_shared_postgres_username" {}
 variable "rds_shared_postgres_password" {}
 variable "rds_shared_postgres_apply_immediately" {}
 variable "rds_shared_postgres_allow_major_version_upgrade" {}
+
+# Remove after migration
+variable "rds_shared_mysql_db_parameter_group_name" {}
+
+variable "rds_shared_postgres_db_parameter_group_name" {}
+variable "rds_internal_db_parameter_group_name" {}
