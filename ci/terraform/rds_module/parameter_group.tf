@@ -38,7 +38,7 @@ resource "aws_db_parameter_group" "recreatable_parameter_group_postgres" {
   }
 }
 
-resource "aws_db_parameter_group" "recreatable_parameter_group_mysql_with_prefix" {
+resource "aws_db_parameter_group" "recreatable_parameter_group_mysql" {
   count = "${var.rds_db_engine == "mysql" ? 1 : 0}"
 
   name_prefix = "${var.rds_parameter_group_name != "" ?
