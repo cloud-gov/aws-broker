@@ -15,7 +15,6 @@ module "rds_shared_postgres" {
   rds_username                  = "${var.rds_shared_postgres_username}"
   rds_password                  = "${var.rds_shared_postgres_password}"
   rds_parameter_group_family    = "${var.rds_shared_postgres_db_parameter_group_family}"
-  rds_parameter_group_name      = "${var.rds_shared_postgres_db_parameter_group_name}"
   apply_immediately             = "${var.rds_shared_postgres_apply_immediately}"
   allow_major_version_upgrade   = "${var.rds_shared_postgres_allow_major_version_upgrade}"
 }

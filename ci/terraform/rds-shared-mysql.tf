@@ -15,5 +15,4 @@ module "rds_shared_mysql" {
   rds_username                  = "${var.rds_shared_mysql_username}"
   rds_password                  = "${var.rds_shared_mysql_password}"
   rds_parameter_group_family    = "mysql5.6"
-  rds_parameter_group_name      = "${var.rds_shared_mysql_db_parameter_group_name}"
 }
