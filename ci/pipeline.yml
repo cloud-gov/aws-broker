@@ -31,8 +31,8 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.4.20
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_internal_db_engine_version: 9.5.15
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -257,8 +257,8 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.4.20
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_internal_db_engine_version: 9.5.15
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -398,7 +398,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
-          DB_VERSION: 9.4.20
+          DB_VERSION: 9.5.15
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
