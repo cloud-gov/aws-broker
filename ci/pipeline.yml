@@ -33,8 +33,6 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 9.4.20
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_internal_db_parameter_group_name: ((development_rds_internal_db_parameter_group_name))
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -47,8 +45,6 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_shared_mysql_db_parameter_group_name: ((development_rds_shared_mysql_db_parameter_group_name))
 
       TF_VAR_rds_shared_postgres_instance_type: db.m4.large
       TF_VAR_rds_shared_postgres_db_size: 100
@@ -56,8 +52,6 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_shared_postgres_db_parameter_group_name: ((development_rds_shared_postgres_db_parameter_group_name))
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -265,8 +259,6 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 9.4.20
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_internal_db_parameter_group_name: ((staging_rds_internal_db_parameter_group_name))
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -277,8 +269,6 @@ jobs:
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_shared_mysql_db_parameter_group_name: ((staging_rds_shared_mysql_db_parameter_group_name))
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
 
@@ -288,8 +278,6 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_shared_postgres_db_parameter_group_name: ((staging_rds_shared_postgres_db_parameter_group_name))
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -410,6 +398,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
+          DB_VERSION: 9.4.20
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -461,12 +450,69 @@ jobs:
       channel: ((slack-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
-- name: deploy-aws-broker-prod
+
+- name: terraform-plan-aws-broker-prod
   plan:
   - in_parallel:
     - get: aws-broker-app
       passed: [acceptance-tests-staging]
       trigger: true
+    - get: pipeline-tasks
+      trigger: true
+
+  - task: terraform-plan
+    tags:
+    - iaas
+    file: pipeline-tasks/terraform-apply.yml
+    input_mapping:
+      terraform-templates: aws-broker-app
+    params:
+      TERRAFORM_ACTION: plan
+      TEMPLATE_SUBDIR: ci/terraform
+      STACK_NAME: ((prod-stack-name))
+      S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
+      AWS_DEFAULT_REGION: ((prod-aws-default-region))
+
+      TF_VAR_base_stack: ((prod-stack-base))
+      TF_VAR_stack_description: ((prod-stack-name))
+      TF_VAR_remote_state_bucket: ((prod-s3-tfstate-bucket))
+
+      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_db_size: 10
+      TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
+      TF_VAR_rds_internal_db_engine: postgres
+      TF_VAR_rds_internal_db_engine_version: 9.4.20
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_internal_username: ((prod-rds-internal-username))
+      TF_VAR_rds_internal_password: ((prod-rds-internal-password))
+      TF_VAR_rds_internal_apply_immediately: "true"
+      TF_VAR_rds_internal_allow_major_version_upgrade: "true"
+
+      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_db_size: 100
+      TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
+      TF_VAR_rds_shared_mysql_db_engine: mysql
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
+      TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
+      TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
+
+      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_db_size: 100
+      TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
+      TF_VAR_rds_shared_postgres_db_engine: postgres
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
+      TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
+      TF_VAR_rds_shared_postgres_apply_immediately: "true"
+      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
+
+- name: deploy-aws-broker-prod
+  plan:
+  - in_parallel:
+    - get: aws-broker-app
+      passed: [acceptance-tests-staging]
+      # trigger: true
     - get: pipeline-tasks
 
   - task: provision-rds
@@ -492,8 +538,6 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 9.4.20
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_internal_db_parameter_group_name: ((prod_rds_internal_db_parameter_group_name))
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -504,8 +548,6 @@ jobs:
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_shared_mysql_db_parameter_group_name: ((prod_rds_shared_mysql_db_parameter_group_name))
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
 
@@ -515,8 +557,6 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
-      # REMOVE AFTER MIGRATION
-      TF_VAR_rds_shared_postgres_db_parameter_group_name: ((prod_rds_shared_postgres_db_parameter_group_name))
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -637,6 +677,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
+          DB_VERSION: 9.4.20
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
