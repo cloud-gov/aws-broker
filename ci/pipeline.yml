@@ -481,8 +481,8 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.4.20
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_internal_db_engine_version: 9.5.15
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -500,8 +500,8 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -536,8 +536,8 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.4.20
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_internal_db_engine_version: 9.5.15
+      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -555,8 +555,8 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.4.20
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.4
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -677,7 +677,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
-          DB_VERSION: 9.4.20
+          DB_VERSION: 9.5.15
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
