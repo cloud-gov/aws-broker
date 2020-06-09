@@ -139,7 +139,46 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
-	return response.SuccessCreateResponse
+	return response.SuccessAcceptedResponse
+}
+
+func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+	existingInstance := RDSInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	}
+
+	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	var state string
+
+	if status, err := adapter.checkDBStatus(&existingInstance); err != nil {
+		switch status {
+		case base.InstanceInProgress:
+			state = "\"state\": \"in progress\""
+		case base.InstanceReady:
+			state = "\"state\": \"succeeded\""
+		case base.InstanceNotCreated:
+			state = "\"state\": \"failed\""
+		case base.InstanceNotGone:
+			state = "\"state\": \"failed\""
+		default:
+			state = "\"state\": \"in progress\""
+		}
+	}
+
+	return response.NewSuccessLastOperation(state)
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {

@@ -33,6 +33,10 @@ type Type string
 var (
 	// SuccessCreateResponseType represents a response for a successful instance creation.
 	SuccessCreateResponseType Type = "success_create"
+	// SuccessAcceptedResponseType represents a response for a successful instance creation.
+	SuccessAcceptedResponseType Type = "success_accept"
+	// SuccessLastOperationResponseType represents a response for a successful last operation.
+	SuccessLastOperationResponseType Type = "success_lastoperation"
 	// SuccessBindResponseType represents a response for a successful instance binding.
 	SuccessBindResponseType Type = "success_bind"
 	// SuccessDeleteResponseType represents a response for a successful instance deletion.
@@ -54,6 +58,9 @@ func newSuccessResponse(statusCode int, responseType Type, description string) R
 var (
 	// ErrNoRequestBodyResponse is a response indicating there was no request body.
 	ErrNoRequestBodyResponse = NewErrorResponse(http.StatusBadRequest, "No Request Body")
+
+	// ErrUnprocessableEntityResponse is a response indicating the service instance not async
+	ErrUnprocessableEntityResponse = NewErrorResponse(http.StatusUnprocessableEntity, "This Service Instance requires client support for asynchronous binding operations")
 )
 
 type successBindResponse struct {
@@ -66,9 +73,16 @@ func NewSuccessBindResponse(credentials map[string]string) Response {
 	return &successBindResponse{baseResponse: baseResponse{StatusCode: http.StatusCreated, StatusType: SuccessBindResponseType}, Credentials: credentials}
 }
 
+// NewSuccessLastOperation for async responses
+func NewSuccessLastOperation(body string) Response {
+	return newSuccessResponse(http.StatusOK, SuccessLastOperationResponseType, body)
+}
+
 var (
 	// SuccessCreateResponse represents the response that all successful instance creations should return.
 	SuccessCreateResponse = newSuccessResponse(http.StatusCreated, SuccessCreateResponseType, "The instance was created")
+	// SuccessAcceptedResponse represents the response that all successful instance acceptions should return.
+	SuccessAcceptedResponse = newSuccessResponse(http.StatusAccepted, SuccessAcceptedResponseType, "The instance was accepted")
 	// SuccessDeleteResponse represents the response that all successful instance deletions should return.
 	SuccessDeleteResponse = newSuccessResponse(http.StatusOK, SuccessDeleteResponseType, "The instance was deleted")
 )

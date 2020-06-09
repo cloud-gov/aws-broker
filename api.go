@@ -6,8 +6,9 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/render"
 
-	"github.com/18F/aws-broker/catalog"
 	"net/http"
+
+	"github.com/18F/aws-broker/catalog"
 )
 
 /*
@@ -34,6 +35,13 @@ type CreateResponse struct {
 // }
 func CreateInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
 	resp := createInstance(req, c, brokerDb, p["id"], s)
+	r.JSON(resp.GetStatusCode(), resp)
+}
+
+// LastOperation processes all requests for binding a service instance to an application.
+// URL: /v2/service_instances/:instance_id/last_operation
+func LastOperation(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
+	resp := lastOperation(req, c, brokerDb, p["instance_id"], s)
 	r.JSON(resp.GetStatusCode(), resp)
 }
 

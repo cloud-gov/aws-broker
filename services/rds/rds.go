@@ -20,6 +20,7 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string) (base.InstanceState, error)
+	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 }
@@ -32,6 +33,11 @@ type mockDBAdapter struct {
 }
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -84,6 +90,10 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 	default:
 		return base.InstanceNotCreated, fmt.Errorf("Unsupported database type: %s, cannot create shared database", i.DbType)
 	}
+	return base.InstanceReady, nil
+}
+
+func (d *sharedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
 	return base.InstanceReady, nil
 }
 
@@ -250,6 +260,62 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	if yes := d.didAwsCallSucceed(err); yes {
 		return base.InstanceInProgress, nil
 	}
+	return base.InstanceNotCreated, nil
+}
+
+func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
+	// First, we need to check if the instance is up and available.
+	// Only search for details if the instance was not indicated as ready.
+	if i.State != base.InstanceReady {
+		svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &rds.DescribeDBInstancesInput{
+			DBInstanceIdentifier: aws.String(i.Database),
+		}
+
+		resp, err := svc.DescribeDBInstances(params)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return base.InstanceNotCreated, err
+		}
+
+		// Pretty-print the response data.
+		fmt.Println(awsutil.StringValue(resp))
+
+		// Get the details (host and port) for the instance.
+		numOfInstances := len(resp.DBInstances)
+		if numOfInstances > 0 {
+			for _, value := range resp.DBInstances {
+				// First check that the instance is up.
+				switch *(value.DBInstanceStatus) {
+				case "available":
+					return base.InstanceReady, nil
+				case "creating":
+					return base.InstanceInProgress, nil
+				case "deleting":
+					return base.InstanceNotGone, nil
+				case "failed":
+					return base.InstanceNotCreated, nil
+				default:
+					return base.InstanceInProgress, nil
+				}
+			}
+		} else {
+			// Couldn't find any instances.
+			return base.InstanceNotCreated, errors.New("Couldn't find any instances.")
+		}
+	}
+
 	return base.InstanceNotCreated, nil
 }
 

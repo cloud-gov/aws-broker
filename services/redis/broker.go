@@ -105,6 +105,45 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 	return response.SuccessCreateResponse
 }
 
+func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+	existingInstance := RedisInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	}
+
+	plan, planErr := c.RedisService.FetchPlan(baseInstance.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	var state string
+
+	if status, err := adapter.checkRedisStatus(&existingInstance); err != nil {
+		switch status {
+		case base.InstanceInProgress:
+			state = "\"state\": \"in progress\""
+		case base.InstanceReady:
+			state = "\"state\": \"succeeded\""
+		case base.InstanceNotCreated:
+			state = "\"state\": \"failed\""
+		case base.InstanceNotGone:
+			state = "\"state\": \"failed\""
+		default:
+			state = "\"state\": \"in progress\""
+		}
+	}
+
+	return response.NewSuccessLastOperation(state)
+}
+
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
 	existingInstance := RedisInstance{}
 
