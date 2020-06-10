@@ -26,6 +26,12 @@ type genericResponse struct {
 	Description string `json:"description"`
 }
 
+type lastOperationResponse struct {
+	baseResponse
+	State       string `json:"state"`
+	Description string `json:"description"`
+}
+
 // Type indicates the type of response. Nice for debug situations.
 type Type string
 
@@ -74,8 +80,8 @@ func NewSuccessBindResponse(credentials map[string]string) Response {
 }
 
 // NewSuccessLastOperation for async responses
-func NewSuccessLastOperation(body string) Response {
-	return newSuccessResponse(http.StatusOK, SuccessLastOperationResponseType, body)
+func NewSuccessLastOperation(state string, description string) Response {
+	return &lastOperationResponse{baseResponse: baseResponse{StatusCode: http.StatusOK, StatusType: SuccessLastOperationResponseType}, State: state, Description: description}
 }
 
 var (

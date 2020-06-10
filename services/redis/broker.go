@@ -141,7 +141,7 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 		}
 	}
 
-	return response.NewSuccessLastOperation(state)
+	return response.NewSuccessLastOperation(state, "Van REDIS")
 }
 
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {

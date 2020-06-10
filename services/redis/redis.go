@@ -137,6 +137,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
 			for _, value := range resp.ReplicationGroups {
+				fmt.Println(value.Status)
 				switch *(value.Status) {
 				case "available":
 					return base.InstanceReady, nil

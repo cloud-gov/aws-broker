@@ -66,11 +66,7 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 	})
 
 	// Create the service instance (cf create-service-instance)
-	m.Put("/v2/service_instances/:id?accepts_incomplete=true", CreateInstance)
-	m.Put("/v2/service_instances/:id?accepts_incomplete=false", func(p martini.Params, r render.Render) {
-		var emptyJSON struct{}
-		r.JSON(422, emptyJSON)
-	})
+	m.Put("/v2/service_instances/:id", CreateInstance)
 
 	// Poll service endpoint to get status of rds or elasticache
 	m.Get("/v2/service_instances/:instance_id/last_operation", LastOperation)

@@ -299,14 +299,19 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 				// First check that the instance is up.
 				switch *(value.DBInstanceStatus) {
 				case "available":
+					fmt.Println(*(value.DBInstanceStatus))
 					return base.InstanceReady, nil
 				case "creating":
+					fmt.Println(*(value.DBInstanceStatus))
 					return base.InstanceInProgress, nil
 				case "deleting":
+					fmt.Println(*(value.DBInstanceStatus))
 					return base.InstanceNotGone, nil
 				case "failed":
+					fmt.Println(*(value.DBInstanceStatus))
 					return base.InstanceNotCreated, nil
 				default:
+					fmt.Println(*(value.DBInstanceStatus))
 					return base.InstanceInProgress, nil
 				}
 			}

@@ -162,23 +162,22 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	var state string
-
-	if status, err := adapter.checkDBStatus(&existingInstance); err != nil {
-		switch status {
-		case base.InstanceInProgress:
-			state = "\"state\": \"in progress\""
-		case base.InstanceReady:
-			state = "\"state\": \"succeeded\""
-		case base.InstanceNotCreated:
-			state = "\"state\": \"failed\""
-		case base.InstanceNotGone:
-			state = "\"state\": \"failed\""
-		default:
-			state = "\"state\": \"in progress\""
-		}
+	status, _ := adapter.checkDBStatus(&existingInstance)
+	fmt.Println("status?")
+	switch status {
+	case base.InstanceInProgress:
+		state = "in progress"
+	case base.InstanceReady:
+		state = "succeeded"
+	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotGone:
+		state = "failed"
+	default:
+		state = "in progress"
 	}
-
-	return response.NewSuccessLastOperation(state)
+	fmt.Println(state)
+	return response.NewSuccessLastOperation(state, "Van Description Test")
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
