@@ -163,7 +163,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 
 	var state string
 	status, _ := adapter.checkDBStatus(&existingInstance)
-	fmt.Println("status?")
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
@@ -177,7 +176,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		state = "in progress"
 	}
 	fmt.Println(state)
-	return response.NewSuccessLastOperation(state, "Van Description Test")
+	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {

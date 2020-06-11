@@ -2,6 +2,7 @@ package redis
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/jinzhu/gorm"
@@ -102,7 +103,7 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
-	return response.SuccessCreateResponse
+	return response.SuccessAcceptedResponse
 }
 
 func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
@@ -126,22 +127,21 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 
 	var state string
 
-	if status, err := adapter.checkRedisStatus(&existingInstance); err != nil {
-		switch status {
-		case base.InstanceInProgress:
-			state = "\"state\": \"in progress\""
-		case base.InstanceReady:
-			state = "\"state\": \"succeeded\""
-		case base.InstanceNotCreated:
-			state = "\"state\": \"failed\""
-		case base.InstanceNotGone:
-			state = "\"state\": \"failed\""
-		default:
-			state = "\"state\": \"in progress\""
-		}
+	status, _ := adapter.checkRedisStatus(&existingInstance)
+	switch status {
+	case base.InstanceInProgress:
+		state = "in progress"
+	case base.InstanceReady:
+		state = "succeeded"
+	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotGone:
+		state = "failed"
+	default:
+		state = "in progress"
 	}
-
-	return response.NewSuccessLastOperation(state, "Van REDIS")
+	fmt.Println(state)
+	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
