@@ -20,10 +20,18 @@ import (
 	"github.com/18F/aws-broker/services/rds"
 )
 
-var createInstanceReq = []byte(
+var createRDSInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
+var createRedisInstanceReq = []byte(
+	`{
+	"service_id":"cda65825-e357-4a93-a24b-9ab138d97815",
+	"plan_id":"475e36bf-387f-44c1-9b81-575fec2ee443",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
@@ -98,9 +106,12 @@ func TestCatalog(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 }
 
-func TestCreateInstance(t *testing.T) {
+/*
+	Testing RDS
+*/
+func TestCreateRDSInstance(t *testing.T) {
 	urlUnacceptsIncomplete := "/v2/service_instances/the_instance"
-	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createInstanceReq))
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
@@ -108,7 +119,7 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_instance?accepts_incomplete=true"
-	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createInstanceReq))
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
@@ -138,9 +149,33 @@ func TestCreateInstance(t *testing.T) {
 	}
 }
 
+func TestLastOperation(t *testing.T) {
+	url := "/v2/service_instances/the_instance/last_operation"
+	res, m := doRequest(nil, url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Without the instance
+	if res.Code != http.StatusNotFound {
+		t.Error(url, "with auth status should be returned 404", res.Code)
+	}
+
+	// Create the instance and try again
+	res, m = doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check instance was created and StatusOK
+	res, _ = doRequest(m, url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
+	if res.Code != http.StatusOK {
+		t.Logf("Unable to check last operation. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 200 and it returned", res.Code)
+	}
+}
+
 func TestBindInstance(t *testing.T) {
 	url := "/v2/service_instances/the_instance/service_bindings/the_binding"
-	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createInstanceReq))
+	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -148,7 +183,7 @@ func TestBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, _ = doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createInstanceReq))
+	res, _ = doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -220,7 +255,7 @@ func TestDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createInstanceReq))
+	doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
 	if i.Uuid == "0" {
@@ -241,3 +276,47 @@ func TestDeleteInstance(t *testing.T) {
 		t.Error("The instance shouldn't be in the DB")
 	}
 }
+
+/*
+	Testing Redis
+*/
+
+// func TestCreateRedisInstance(t *testing.T) {
+// 	urlUnacceptsIncomplete := "/v2/service_instances/the_redis_instance"
+// 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+
+// 	if resp.Code != http.StatusUnprocessableEntity {
+// 		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+// 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+// 	}
+
+// 	urlAcceptsIncomplete := "/v2/service_instances/the_redis_instance?accepts_incomplete=true"
+// 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+
+// 	if res.Code != http.StatusAccepted {
+// 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+// 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+// 	}
+
+// 	// Is it a valid JSON?
+// 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+// 	// Does it say "accepted"?
+// 	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+// 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+// 	}
+// 	// Is it in the database and has a username and password?
+// 	i := redis.RedisInstance{}
+// 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
+// 	if i.Uuid == "0" {
+// 		t.Error("The instance should be saved in the DB")
+// 	}
+
+// 	if i.Password == "" {
+// 		t.Error("The instance should have a username and password")
+// 	}
+
+// 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+// 		t.Error("The instance should have metadata")
+// 	}
+// }
