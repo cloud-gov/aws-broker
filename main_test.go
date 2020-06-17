@@ -1,24 +1,29 @@
 package main
 
 import (
+	"bytes"
+	"strings"
+
 	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 
 	"encoding/json"
-	"github.com/18F/aws-broker/common"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/db"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/18F/aws-broker/common"
+	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/services/rds"
 )
 
 var createInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"44d24fc7-f7a4-4ac1-b7a0-de82836e89a3",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
@@ -93,29 +98,34 @@ func TestCatalog(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 }
 
-/*
 func TestCreateInstance(t *testing.T) {
-	url := "/v2/service_instances/the_instance"
+	urlUnacceptsIncomplete := "/v2/service_instances/the_instance"
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createInstanceReq))
 
-	res, _ := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createInstanceReq))
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
 
-	if res.Code != http.StatusCreated {
+	urlAcceptsIncomplete := "/v2/service_instances/the_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createInstanceReq))
+
+	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
-		t.Error(url, "with auth should return 201 and it returned", res.Code)
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "created"?
-	if !strings.Contains(string(res.Body.Bytes()), "created") {
-		t.Error(url, "should return the instance created message")
+	// Does it say "accepted"?
+	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
-
 	// Is it in the database and has a username and password?
-	i := Instance{}
+	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id == 0 {
+	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
 
@@ -123,7 +133,7 @@ func TestCreateInstance(t *testing.T) {
 		t.Error("The instance should have a username and password")
 	}
 
-	if i.PlanId == "" || i.OrgGuid == "" || i.SpaceGuid == "" {
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata")
 	}
 }
@@ -138,16 +148,20 @@ func TestBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(m, "/v2/service_instances/the_instance", "PUT", true, bytes.NewBuffer(createInstanceReq))
+	res, _ = doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createInstanceReq))
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 202 and it returned", res.Code)
+	}
 
 	res, _ = doRequest(m, url, "PUT", true, nil)
 	if res.Code != http.StatusCreated {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
-		t.Error(url, "with auth should return 201 and it returned", res.Code)
+		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
 		Uri      string
@@ -170,7 +184,7 @@ func TestBindInstance(t *testing.T) {
 		t.Error(url, "should return credentials")
 	}
 
-	instance := Instance{}
+	instance := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&instance)
 
 	// Does it return an unencrypted password?
@@ -188,7 +202,7 @@ func TestUnbind(t *testing.T) {
 	}
 
 	// Is it a valid JSON?
-	validJson(res.Body.Bytes(), url, t)
+	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
 	if string(res.Body.Bytes()) != "{}" {
@@ -206,10 +220,10 @@ func TestDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(m, "/v2/service_instances/the_instance", "PUT", true, bytes.NewBuffer(createInstanceReq))
-	i := Instance{}
+	doRequest(m, "/v2/service_instances/the_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createInstanceReq))
+	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id == 0 {
+	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
 
@@ -221,10 +235,9 @@ func TestDeleteInstance(t *testing.T) {
 	}
 
 	// Is it actually gone from the DB?
-	i = Instance{}
+	i = rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", "the_instance").First(&i)
-	if i.Id > 0 {
+	if len(i.Uuid) > 0 {
 		t.Error("The instance shouldn't be in the DB")
 	}
 }
-*/

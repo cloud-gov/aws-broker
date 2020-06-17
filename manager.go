@@ -35,6 +35,11 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 		return resp
 	}
 
+	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+	if !asyncAllowed {
+		return response.ErrUnprocessableEntityResponse
+	}
+
 	// Create instance
 	resp = broker.CreateInstance(c, id, createRequest)
 	if resp.GetResponseType() != response.ErrorResponseType {
