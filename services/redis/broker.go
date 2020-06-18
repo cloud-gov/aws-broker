@@ -37,6 +37,11 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 
 	var redisAdapter redisAdapter
 
+	if s.Environment == "test" {
+		redisAdapter = &mockRedisAdapter{}
+		return redisAdapter, nil
+	}
+
 	redisAdapter = &dedicatedRedisAdapter{
 		Plan:     plan,
 		settings: *s,

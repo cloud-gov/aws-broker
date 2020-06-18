@@ -25,6 +25,29 @@ type redisAdapter interface {
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
 }
 
+type mockRedisAdapter struct {
+}
+
+func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockRedisAdapter) bindRedisToApp(i *RedisInstance, password string) (map[string]string, error) {
+	// TODO
+	return i.getCredentials(password)
+}
+
+func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceGone, nil
+}
+
 type sharedRedisAdapter struct {
 	SharedRedisConn *gorm.DB
 }
