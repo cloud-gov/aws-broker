@@ -36,6 +36,11 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 
 	var redisAdapter redisAdapter
 
+	if s.Environment == "test" {
+		redisAdapter = &mockRedisAdapter{}
+		return redisAdapter, nil
+	}
+
 	redisAdapter = &dedicatedRedisAdapter{
 		Plan:     plan,
 		settings: *s,
@@ -102,7 +107,44 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
-	return response.SuccessCreateResponse
+	return response.SuccessAcceptedResponse
+}
+
+func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+	existingInstance := RedisInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	}
+
+	plan, planErr := c.RedisService.FetchPlan(baseInstance.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	var state string
+
+	status, _ := adapter.checkRedisStatus(&existingInstance)
+	switch status {
+	case base.InstanceInProgress:
+		state = "in progress"
+	case base.InstanceReady:
+		state = "succeeded"
+	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotGone:
+		state = "failed"
+	default:
+		state = "in progress"
+	}
+	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {

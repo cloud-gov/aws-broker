@@ -1,12 +1,13 @@
 package base
 
 import (
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
-	"github.com/jinzhu/gorm"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/18F/aws-broker/helpers/request"
+	"github.com/18F/aws-broker/helpers/response"
+	"github.com/jinzhu/gorm"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.

@@ -35,6 +35,11 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 		return resp
 	}
 
+	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+	if !asyncAllowed {
+		return response.ErrUnprocessableEntityResponse
+	}
+
 	// Create instance
 	resp = broker.CreateInstance(c, id, createRequest)
 	if resp.GetResponseType() != response.ErrorResponseType {
@@ -44,6 +49,19 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 		// TODO check save error
 	}
 	return resp
+}
+
+func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	instance, resp := base.FindBaseInstance(brokerDb, id)
+	if resp != nil {
+		return resp
+	}
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	if resp != nil {
+		return resp
+	}
+
+	return broker.LastOperation(c, id, instance)
 }
 
 func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {

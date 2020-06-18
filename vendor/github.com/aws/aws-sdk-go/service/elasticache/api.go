@@ -8386,8 +8386,6 @@ type CreateCacheClusterInput struct {
 
 	// A list of cost allocation tags to be added to this resource.
 	Tags []*Tag `locationNameList:"Tag" type:"list"`
-
-	TransitEncryptionEnabled *bool `type:"boolean"`
 }
 
 // String returns the string representation

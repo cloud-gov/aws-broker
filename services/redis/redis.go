@@ -20,8 +20,32 @@ import (
 
 type redisAdapter interface {
 	createRedis(i *RedisInstance, password string) (base.InstanceState, error)
+	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
+}
+
+type mockRedisAdapter struct {
+}
+
+func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockRedisAdapter) bindRedisToApp(i *RedisInstance, password string) (map[string]string, error) {
+	// TODO
+	return i.getCredentials(password)
+}
+
+func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceGone, nil
 }
 
 type sharedRedisAdapter struct {
@@ -29,6 +53,10 @@ type sharedRedisAdapter struct {
 }
 
 func (d *sharedRedisAdapter) createDB(i *RedisInstance, password string) (base.InstanceState, error) {
+	return base.InstanceReady, nil
+}
+
+func (d *sharedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
 	return base.InstanceReady, nil
 }
 
@@ -97,6 +125,61 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 	if yes := d.didAwsCallSucceed(err); yes {
 		return base.InstanceInProgress, nil
 	}
+	return base.InstanceNotCreated, nil
+}
+
+func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
+	// First, we need to check if the instance state
+	// Only search for details if the instance was not indicated as ready.
+	if i.State != base.InstanceReady {
+		svc := elasticache.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &elasticache.DescribeReplicationGroupsInput{
+			ReplicationGroupId: aws.String(i.ClusterID), // Required
+		}
+
+		resp, err := svc.DescribeReplicationGroups(params)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return base.InstanceNotCreated, err
+		}
+
+		// Pretty-print the response data.
+		fmt.Println(awsutil.StringValue(resp))
+
+		numOfInstances := len(resp.ReplicationGroups)
+		if numOfInstances > 0 {
+			for _, value := range resp.ReplicationGroups {
+				fmt.Println("Redis Instance:" + i.ClusterID + " is " + *(value.Status))
+				switch *(value.Status) {
+				case "available":
+					return base.InstanceReady, nil
+				case "creating":
+					return base.InstanceInProgress, nil
+				case "create-failed":
+					return base.InstanceNotCreated, nil
+				case "deleting":
+					return base.InstanceNotGone, nil
+				default:
+					return base.InstanceInProgress, nil
+				}
+
+			}
+		} else {
+			return base.InstanceNotCreated, errors.New("Couldn't find any instances.")
+		}
+	}
+
 	return base.InstanceNotCreated, nil
 }
 
