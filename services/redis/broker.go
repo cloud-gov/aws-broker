@@ -2,7 +2,6 @@ package redis
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/jinzhu/gorm"
@@ -145,7 +144,6 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 	default:
 		state = "in progress"
 	}
-	fmt.Println(state)
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
