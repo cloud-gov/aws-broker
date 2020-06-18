@@ -175,7 +175,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	default:
 		state = "in progress"
 	}
-	fmt.Println(state)
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
