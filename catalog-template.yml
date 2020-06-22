@@ -496,8 +496,8 @@ redis:
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
       parameterGroup: default.redis5.0
-      preferredMaintenanceWindow: sun:23:00-mon:01:00
-      snapshotWindow: 01:30-02:30
+      preferredMaintenanceWindow: mon07:00-08:00
+      snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 1
       automaticFailoverEnabled: false
       tags:
@@ -525,8 +525,8 @@ redis:
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
       parameterGroup: default.redis5.0
-      preferredMaintenanceWindow: sun:23:00-mon:01:00
-      snapshotWindow: 01:30-02:30
+      preferredMaintenanceWindow: mon07:00-08:00
+      snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
       tags:
@@ -554,8 +554,8 @@ redis:
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
       parameterGroup: default.redis5.0
-      preferredMaintenanceWindow: sun:23:00-mon:01:00
-      snapshotWindow: 01:30-02:30
+      preferredMaintenanceWindow: mon07:00-08:00
+      snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
       tags:
