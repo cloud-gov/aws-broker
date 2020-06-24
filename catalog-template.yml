@@ -36,6 +36,35 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+    -
+      id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
+      name: "micro-psql"
+      description: "Dedicated micro RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.022
+            unit: "HOURLY"
+        displayName: "Dedicated micro PostgreSQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
+      dbType: postgres
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
     - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
       name: "medium-psql"
       description: "Dedicated medium RDS PostgreSQL DB instance"
@@ -102,7 +131,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.235
+              usd: 0.218
             unit: "HOURLY"
         displayName: "Dedicated large PostgreSQL"
       free: false
@@ -130,7 +159,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.470
+              usd: 0.436
             unit: "HOURLY"
         displayName: "Dedicated redundant large PostgreSQL"
       free: false
@@ -158,7 +187,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.445
+              usd: 0.436
             unit: "HOURLY"
         displayName: "Dedicated x-large PostgreSQL"
       free: false
@@ -186,7 +215,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.890
+              usd: 0.872
             unit: "HOURLY"
         displayName: "Dedicated redundant x-large PostgreSQL"
       free: false
