@@ -439,7 +439,7 @@ rds:
         - "License Included"
         costs:
         - amount:
-            usd: 0.247
+            usd: 0.162
           unit: "HOURLY"
         displayName: "Dedicated medium Oracle SE2"
       free: false
@@ -468,7 +468,7 @@ rds:
         - "License Included"
         costs:
         - amount:
-            usd: 1.061
+            usd: 1.002
         unit: "HOURLY"
         displayName: "Dedicated large SQL Server 2016 SE"
       free: false
