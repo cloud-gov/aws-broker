@@ -255,6 +255,34 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+    - id: "0af67edb-30d8-4bb3-81c7-324c18d3efb2"
+      name: "micro-mysql"
+      description: "Dedicated micro RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated RDS instance"
+          - "MySQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.020
+            unit: "HOURLY"
+        displayName: "Dedicated micro MySQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.t2.micro
+      allocatedStorage: 10
+      dbType: mysql
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
     - id: "2ba54329-8264-486f-85bf-50c9f24085a9"
       name: "medium-mysql"
       description: "Dedicated medium RDS MySQL DB instance"
