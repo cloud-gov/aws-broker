@@ -273,6 +273,7 @@ rds:
       instanceClass: db.t2.micro
       allocatedStorage: 10
       dbType: mysql
+      dbVersion: &mysql-version "5.7.21"
       redundant: false
       encrypted: true
       storage_type: gp2
