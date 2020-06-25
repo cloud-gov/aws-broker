@@ -20,11 +20,18 @@ type ElasticsearchInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password  string `sql:"size(255)"`
-	Salt      string `sql:"size(255)"`
-	AccessKey string `sql:"size(255)"`
-	SecretKey string `sql:"size(255)"`
-	Policy    string `sql:"size(255)"`
+	Password             string `sql:"size(255)"`
+	Salt                 string `sql:"size(255)"`
+	AccessKey            string `sql:"size(255)"`
+	SecretKey            string `sql:"size(255)"`
+	IamPolicy            string `sql:"size(255)"`
+	IamPolicyARN         string `sql:"size(255)"`
+	AccessControlPolicy  string `sql:"size(255)"`
+	ElasticsearchVersion string `sql:"size(255)"`
+	MasterCount          int    `sql:"size(255)"`
+	DataCount            int    `sql:"size(255)"`
+	InstanceType         string `sql:"size(255)"`
+	VolumeSize           int    `sql:"size(255)"`
 
 	ClearPassword string `sql:"-"`
 
@@ -72,16 +79,16 @@ func (i *ElasticsearchInstance) getPassword(key string) (string, error) {
 func (i *ElasticsearchInstance) getCredentials(password string) (map[string]string, error) {
 	var credentials map[string]string
 
-	uri := fmt.Sprintf("https://:%s@%s:%d",
-		password,
+	uri := fmt.Sprintf("https://%s:443",
 		i.Host,
 		i.Port)
 
 	credentials = map[string]string{
-		"uri":      uri,
-		"password": password,
-		"host":     i.Host,
-		"port":     strconv.FormatInt(i.Port, 10),
+		"uri":        uri,
+		"access_key": i.AccessKey,
+		"secret_key": i.SecretKey,
+		"host":       i.Host,
+		"port":       strconv.FormatInt(i.Port, 10),
 	}
 	return credentials, nil
 }
@@ -110,7 +117,11 @@ func (i *ElasticsearchInstance) init(uuid string,
 		return err
 	}
 
-	i.Policy = `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
+	i.ElasticsearchVersion = plan.ElasticsearchVersion
+	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
+	i.DataCount, _ = strconv.Atoi(plan.DataCount)
+	i.InstanceType = plan.InstanceType
+	i.VolumeSize, _ = strconv.Atoi(plan.VolumeSize)
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

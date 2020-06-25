@@ -562,3 +562,42 @@ redis:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+elasticsearch:
+  id: "90413816-9c77-418b-9fc7-b9739e7c1254"
+  name: "elasticsearch-aws"
+  description: "elasticsearch Broker"
+  bindable: true
+  tags:
+  - "elasticsearch"
+  metadata:
+    displayName: elasticsearch Broker
+    imageUrl:
+    longDescription:
+    providerDisplayName: elasticsearch
+    documentationUrl:
+    supportUrl:
+  plans:
+  - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+    name: "aws-elasticsearch-planv3"
+    description: "elasticsearch Test"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "on AWS!"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "Free elasticsearch"
+    free: true
+    securityGroup: sg-123456
+    subnetGroup: subnet-group
+    elasticsearchVersion: 7.4
+    masterCount: 2
+    dataCount: 2
+    instanceType: m4.large.elasticsearch
+    volumeSize: 10
+    tags:
+      environment: "cf-env-dev"
+      client: "the client"
+      service: "aws-broker"

@@ -2,7 +2,9 @@ package elasticsearch
 
 import (
 	"errors"
+	"log"
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/18F/aws-broker/base"
@@ -19,13 +21,36 @@ import (
 	"github.com/18F/aws-broker/config"
 
 	"fmt"
-	"log"
 )
 
 type ElasticsearchAdapter interface {
 	createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
+	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
 	deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
+}
+
+type mockElasticsearchAdapter struct {
+}
+
+func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
+	// TODO
+	return i.getCredentials(password)
+}
+
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceGone, nil
 }
 
 type sharedElasticsearchAdapter struct {
@@ -54,7 +79,33 @@ const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	logger := lager.NewLogger("aws-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	user := awsiam.NewIAMUser(iamsvc, logger)
+
+	//IAM User and policy before domain starts creating so it can be used to create access control policy
+	_, err := user.Create(i.Domain, "")
+	if err != nil {
+		fmt.Println(err.Error())
+		return base.InstanceNotCreated, err
+	}
+	accessKeyID, secretAccessKey, err := user.CreateAccessKey(i.Domain)
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+	i.AccessKey = accessKeyID
+	i.SecretKey = secretAccessKey
+
+	userParams := &iam.GetUserInput{
+		UserName: aws.String(i.Domain),
+	}
+	userResp, _ := iamsvc.GetUser(userParams)
+	uniqueUser := *(userResp.User.UserId)
+
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"*\"}]}"
 	var elasticsearchTags []*elasticsearchservice.Tag
+	time.Sleep(5 * time.Second)
 
 	for k, v := range i.Tags {
 		var tag elasticsearchservice.Tag
@@ -68,28 +119,68 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	ebsoptions := &elasticsearchservice.EBSOptions{
 		EBSEnabled: aws.Bool(true),
-		VolumeSize: aws.Int64(10),
+		VolumeSize: aws.Int64(int64(i.VolumeSize)),
 		VolumeType: aws.String("standard"),
 	}
 
 	esclusterconfig := &elasticsearchservice.ElasticsearchClusterConfig{
-		InstanceType:  aws.String("t2.small.elasticsearch"),
-		InstanceCount: aws.Int64(2),
+		DedicatedMasterEnabled: aws.Bool(true),
+		DedicatedMasterCount:   aws.Int64(int64(i.MasterCount)),
+		DedicatedMasterType:    aws.String(i.InstanceType),
+		InstanceType:           aws.String(i.InstanceType),
+		InstanceCount:          aws.Int64(int64(i.DataCount)),
 	}
 
+	log.Println(string(i.MasterCount))
+
+	snapshotOptions := &elasticsearchservice.SnapshotOptions{
+		AutomatedSnapshotStartHour: aws.Int64(6),
+	}
+
+	nodeOptions := &elasticsearchservice.NodeToNodeEncryptionOptions{
+		Enabled: aws.Bool(true),
+	}
+
+	domainOptions := &elasticsearchservice.DomainEndpointOptions{
+		EnforceHTTPS: aws.Bool(true),
+	}
+
+	encryptionAtRestOptions := &elasticsearchservice.EncryptionAtRestOptions{
+		Enabled: aws.Bool(true),
+	}
 	//Standard Parameters
 	params := &elasticsearchservice.CreateElasticsearchDomainInput{
-		DomainName:                 aws.String(i.Domain),
-		ElasticsearchVersion:       aws.String("7.4"),
-		EBSOptions:                 ebsoptions,
-		ElasticsearchClusterConfig: esclusterconfig,
+		DomainName:                  aws.String(i.Domain),
+		ElasticsearchVersion:        aws.String(i.ElasticsearchVersion),
+		EBSOptions:                  ebsoptions,
+		ElasticsearchClusterConfig:  esclusterconfig,
+		SnapshotOptions:             snapshotOptions,
+		NodeToNodeEncryptionOptions: nodeOptions,
+		DomainEndpointOptions:       domainOptions,
+		EncryptionAtRestOptions:     encryptionAtRestOptions,
 	}
+
+	params.SetAccessPolicies(accessControlPolicy)
 
 	resp, err := svc.CreateElasticsearchDomain(params)
 	// Pretty-print the response data.
-	log.Println(awsutil.StringValue(resp))
+	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
+		i.ARN = *(resp.DomainStatus.ARN)
+		esARNs := make([]string, 1)
+		esARNs = append(esARNs, i.ARN)
+		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "*"}}}]}`
+		policyARN, err := user.CreatePolicy(i.Domain, "/", policy, esARNs)
+		if err != nil {
+			return base.InstanceNotCreated, err
+		}
+
+		if err = user.AttachUserPolicy(i.Domain, policyARN); err != nil {
+			return base.InstanceNotCreated, err
+		}
+		i.IamPolicy = policy
+		i.IamPolicyARN = policyARN
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
@@ -100,11 +191,6 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
 		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-		iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-		logger := lager.NewLogger("aws-broker")
-		logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
-		user := awsiam.NewIAMUser(iamsvc, logger)
 		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
@@ -145,31 +231,6 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			return nil, errors.New("Instance not available yet. Please wait and try again..")
 		}
 
-		//IAM User and policy
-		if _, err = user.Create(i.Domain, ""); err != nil {
-			fmt.Println(err.Error())
-			return nil, err
-		}
-
-		accessKeyID, secretAccessKey, err := user.CreateAccessKey(i.Domain)
-		if err != nil {
-			return nil, err
-		}
-
-		i.AccessKey = accessKeyID
-		i.SecretKey = secretAccessKey
-
-		esARNs := make([]string, 1)
-		esARNs[0] = "arn:aws-us-gov:es:us-gov-west-1:135676904304:domain/cg-aws-broker-dev-b780kk"
-		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-		policyARN, err := user.CreatePolicy(i.Domain, "/", policy, esARNs)
-		if err != nil {
-			return nil, err
-		}
-
-		if err = user.AttachUserPolicy(i.Domain, policyARN); err != nil {
-			return nil, err
-		}
 	}
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
@@ -182,6 +243,14 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 	user := awsiam.NewIAMUser(iamsvc, logger)
+
+	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
+		return base.InstanceNotGone, err
+	}
+
+	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
+		return base.InstanceNotGone, err
+	}
 
 	if err := user.Delete(i.Domain); err != nil {
 		fmt.Println(err.Error())
@@ -200,6 +269,53 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 		return base.InstanceGone, nil
 	}
 	return base.InstanceNotGone, nil
+}
+
+func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
+	// First, we need to check if the instance state
+	// Only search for details if the instance was not indicated as ready.
+	if i.State != base.InstanceReady {
+		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+			DomainName: aws.String(i.Domain), // Required
+		}
+
+		resp, err := svc.DescribeElasticsearchDomain(params)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return base.InstanceNotCreated, err
+		}
+
+		// Pretty-print the response data.
+		fmt.Println(awsutil.StringValue(resp))
+
+		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) == true {
+			switch *(resp.DomainStatus.Processing) {
+			case false:
+				return base.InstanceReady, nil
+			case true:
+				return base.InstanceInProgress, nil
+			default:
+				return base.InstanceInProgress, nil
+			}
+		} else {
+			// Instance not up yet.
+			return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
+		}
+	}
+
+	return base.InstanceNotCreated, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {

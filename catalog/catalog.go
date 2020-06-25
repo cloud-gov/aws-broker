@@ -143,8 +143,13 @@ func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, respo
 
 // ElasticsearchPlan inherits from a plan and adds fields needed for AWS Redis.
 type ElasticsearchPlan struct {
-	Plan `yaml:",inline" validate:"required"`
-	Tags map[string]string `yaml:"tags" json:"-" validate:"required"`
+	Plan                 `yaml:",inline" validate:"required"`
+	Tags                 map[string]string `yaml:"tags" json:"-" validate:"required" `
+	ElasticsearchVersion string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
+	MasterCount          string            `yaml:"masterCount" json:"-" validate:"required"`
+	DataCount            string            `yaml:"dataCount" json:"-" validate:"required"`
+	InstanceType         string            `yaml:"instanceType" json:"-" validate:"required"`
+	VolumeSize           string            `yaml:"volumeSize" json:"-" validate:"required"`
 }
 
 // Catalog struct holds a collections of services
