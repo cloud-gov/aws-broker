@@ -142,6 +142,88 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessAcceptedResponse
 }
 
+func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request) response.Response {
+	existingInstance := RDSInstance{}
+
+	options := RDSOptions{}
+	// TODO: Figure out how these parameter checks work and if anything needs to be modified
+	if len(updateRequest.RawParameters) > 0 {
+		err := json.Unmarshal(updateRequest.RawParameters, &options)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+	}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count != 1 {
+		return response.NewErrorResponse(http.StatusConflict, "The instance does not exist")
+	}
+
+	plan, planErr := c.RdsService.FetchPlan(updateRequest.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
+	// TODO:  Is this needed when modifying an existing instance?
+	err := existingInstance.init(
+		id,
+		updateRequest.OrganizationGUID,
+		updateRequest.SpaceGUID,
+		updateRequest.ServiceID,
+		plan,
+		options,
+		broker.settings)
+
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
+	}
+
+	// We shouldn't ever arrive to this as upgrades on the shared DB adapter are
+	// not allowed or enabled, but in case we do, explicitly error out.
+	if existingInstance.Adapter == "shared" {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot update a shared database instance. Please migrate to a dedicated instance plan instead.",
+		)
+	}
+
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	// Modify the database instance.
+	status, err := adapter.modifyDB(&existingInstance, existingInstance.ClearPassword)
+
+	if status == base.InstanceNotModified {
+		desc := "There was an error modifying the instance."
+
+		if err != nil {
+			desc = desc + " Error: " + err.Error()
+		}
+
+		return response.NewErrorResponse(http.StatusBadRequest, desc)
+	}
+
+	existingInstance.State = status
+
+	// TODO:  Check to make sure this is not needed.
+	// broker.brokerDB.NewRecord(existingInstance)
+	// TODO:  Check to make sure this is the correct call to make.
+	err = broker.brokerDB.Update(&existingInstance).Error
+
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
+	return response.SuccessAcceptedResponse
+}
+
 func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
@@ -169,6 +251,8 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	case base.InstanceReady:
 		state = "succeeded"
 	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotModified:
 		state = "failed"
 	case base.InstanceNotGone:
 		state = "failed"

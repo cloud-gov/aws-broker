@@ -66,7 +66,11 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 	})
 
 	// Create the service instance (cf create-service-instance)
+	// TODO:  Shouldn't this be a POST? https://github.com/go-martini/martini#routing
 	m.Put("/v2/service_instances/:id", CreateInstance)
+
+	// Update the service instance
+	m.Patch("/v2/service_instances/:id", ModifyInstance)
 
 	// Poll service endpoint to get status of rds or elasticache
 	m.Get("/v2/service_instances/:instance_id/last_operation", LastOperation)

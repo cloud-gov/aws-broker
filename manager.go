@@ -51,6 +51,40 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	modifyRequest, resp := request.ExtractRequest(req)
+
+	if resp != nil {
+		return resp
+	}
+
+	broker, resp := findBroker(modifyRequest.ServiceID, c, brokerDb, settings)
+
+	if resp != nil {
+		return resp
+	}
+
+	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+
+	if !asyncAllowed {
+		return response.ErrUnprocessableEntityResponse
+	}
+
+	// Update instance
+	resp = broker.ModifyInstance(c, id, modifyRequest)
+
+	if resp.GetResponseType() != response.ErrorResponseType {
+		instance := base.Instance{Uuid: id, Request: modifyRequest}
+		// TODO:  Check to see if this is still needed or some alternative needs
+		//		  to happen.
+		//brokerDb.NewRecord(instance)
+		brokerDb.Update(&instance)
+		// TODO check save error
+	}
+
+	return resp
+}
+
 func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {

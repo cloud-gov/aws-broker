@@ -20,6 +20,7 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string) (base.InstanceState, error)
+	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
@@ -33,6 +34,11 @@ type mockDBAdapter struct {
 }
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -91,6 +97,11 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 		return base.InstanceNotCreated, fmt.Errorf("Unsupported database type: %s, cannot create shared database", i.DbType)
 	}
 	return base.InstanceReady, nil
+}
+
+func (d *sharedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	// TODO:  Determine if there is something else that needs to be done here.
+	return base.InstanceNotModified, nil
 }
 
 func (d *sharedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
@@ -261,6 +272,33 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
+}
+
+// This should ultimately get exposed as part of the "update-service" method for the broker:
+// cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
+	// NOTE:  Only instance class modification is enabled at this point.
+	params := &rds.ModifyDBInstanceInput{
+		ApplyImmediately:     aws.Bool(true),
+		DBInstanceClass:      &d.Plan.InstanceClass,
+		DBInstanceIdentifier: &i.Database,
+	}
+
+	// TODO: Check to see if we need to make a call to DescribeValidDBInstanceModifications first, according to
+	// https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance documentation
+	resp, err := svc.ModifyDBInstance(params)
+	// Pretty-print the response data.
+	log.Println(awsutil.StringValue(resp))
+
+	// Decide if AWS service call was successful
+	if yes := d.didAwsCallSucceed(err); yes {
+		return base.InstanceInProgress, nil
+	}
+
+	return base.InstanceNotModified, nil
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
