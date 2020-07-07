@@ -596,6 +596,7 @@ elasticsearch:
     masterCount: 2
     dataCount: 2
     instanceType: m4.large.elasticsearch
+    masterInstanceType: c4.large.elasticsearch
     volumeSize: 10
     tags:
       environment: "cf-env-dev"

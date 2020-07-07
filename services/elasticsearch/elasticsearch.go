@@ -126,7 +126,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	esclusterconfig := &elasticsearchservice.ElasticsearchClusterConfig{
 		DedicatedMasterEnabled: aws.Bool(true),
 		DedicatedMasterCount:   aws.Int64(int64(i.MasterCount)),
-		DedicatedMasterType:    aws.String(i.InstanceType),
+		DedicatedMasterType:    aws.String(i.MasterInstanceType),
 		InstanceType:           aws.String(i.InstanceType),
 		InstanceCount:          aws.Int64(int64(i.DataCount)),
 	}

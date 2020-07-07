@@ -41,7 +41,7 @@ var createRedisInstanceReq = []byte(
 var createElasticsearchInstanceReq = []byte(
 	`{
 	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
-	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0af",
+	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)

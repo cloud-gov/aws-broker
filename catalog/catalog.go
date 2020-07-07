@@ -149,6 +149,7 @@ type ElasticsearchPlan struct {
 	MasterCount          string            `yaml:"masterCount" json:"-" validate:"required"`
 	DataCount            string            `yaml:"dataCount" json:"-" validate:"required"`
 	InstanceType         string            `yaml:"instanceType" json:"-" validate:"required"`
+	MasterInstanceType   string            `yaml:"masterInstanceType" json:"-" validate:"required"`
 	VolumeSize           string            `yaml:"volumeSize" json:"-" validate:"required"`
 }
 

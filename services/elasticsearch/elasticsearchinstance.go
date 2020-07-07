@@ -31,6 +31,7 @@ type ElasticsearchInstance struct {
 	MasterCount          int    `sql:"size(255)"`
 	DataCount            int    `sql:"size(255)"`
 	InstanceType         string `sql:"size(255)"`
+	MasterInstanceType   string `sql:"size(255)"`
 	VolumeSize           int    `sql:"size(255)"`
 
 	ClearPassword string `sql:"-"`
@@ -80,8 +81,7 @@ func (i *ElasticsearchInstance) getCredentials(password string) (map[string]stri
 	var credentials map[string]string
 
 	uri := fmt.Sprintf("https://%s:443",
-		i.Host,
-		i.Port)
+		i.Host)
 
 	credentials = map[string]string{
 		"uri":        uri,
@@ -121,6 +121,7 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
 	i.DataCount, _ = strconv.Atoi(plan.DataCount)
 	i.InstanceType = plan.InstanceType
+	i.MasterInstanceType = plan.MasterInstanceType
 	i.VolumeSize, _ = strconv.Atoi(plan.VolumeSize)
 
 	// Tag instance with broker details
