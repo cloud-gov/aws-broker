@@ -599,6 +599,36 @@ elasticsearch:
     masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
     volumeType: gp2
+    tmasterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    tags:
+      environment: "cf-env-dev"
+      client: "the client"
+      service: "aws-broker"
+  - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
+    name: "aws-elasticsearch-planv-dev"
+    description: "elasticsearch Test"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "on AWS!"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "Free elasticsearch"
+    free: true
+    securityGroup: sg-123456
+    subnetGroup: subnet-group
+    elasticsearchVersion: 7.4
+    dataCount: 1
+    instanceType: t2.small.elasticsearch
+    volumeSize: 10
+    volumeType: gp2
+    encryptAtRest: false
+    automatedSnapshotStartHour: 7
     tags:
       environment: "cf-env-dev"
       client: "the client"
