@@ -20,22 +20,24 @@ type ElasticsearchInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password             string `sql:"size(255)"`
-	Salt                 string `sql:"size(255)"`
-	AccessKey            string `sql:"size(255)"`
-	SecretKey            string `sql:"size(255)"`
-	IamPolicy            string `sql:"size(255)"`
-	IamPolicyARN         string `sql:"size(255)"`
-	AccessControlPolicy  string `sql:"size(255)"`
-	ElasticsearchVersion string `sql:"size(255)"`
-	MasterCount          int    `sql:"size(255)"`
-	DataCount            int    `sql:"size(255)"`
-	InstanceType         string `sql:"size(255)"`
-	MasterInstanceType   string `sql:"size(255)"`
-	VolumeSize           int    `sql:"size(255)"`
-	VolumeType           string `sql:"size(255)"`
-	MasterEnabled        bool   `sql:"size(255)"`
-	NodeToNodeEncryption bool   `sql:"size(255)"`
+	Password                   string `sql:"size(255)"`
+	Salt                       string `sql:"size(255)"`
+	AccessKey                  string `sql:"size(255)"`
+	SecretKey                  string `sql:"size(255)"`
+	IamPolicy                  string `sql:"size(255)"`
+	IamPolicyARN               string `sql:"size(255)"`
+	AccessControlPolicy        string `sql:"size(255)"`
+	ElasticsearchVersion       string `sql:"size(255)"`
+	MasterCount                int    `sql:"size(255)"`
+	DataCount                  int    `sql:"size(255)"`
+	InstanceType               string `sql:"size(255)"`
+	MasterInstanceType         string `sql:"size(255)"`
+	VolumeSize                 int    `sql:"size(255)"`
+	VolumeType                 string `sql:"size(255)"`
+	MasterEnabled              bool   `sql:"size(255)"`
+	NodeToNodeEncryption       bool   `sql:"size(255)"`
+	EncryptAtRest              bool   `sql:"size(255)"`
+	AutomatedSnapshotStartHour int    `sql:"size(255)"`
 
 	ClearPassword string `sql:"-"`
 
@@ -129,6 +131,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.VolumeType = plan.VolumeType
 	i.MasterEnabled = plan.MasterEnabled
 	i.NodeToNodeEncryption = plan.NodeToNodeEncryption
+	i.EncryptAtRest = plan.EncryptAtRest
+	i.AutomatedSnapshotStartHour, _ = strconv.Atoi(plan.AutomatedSnapshotStartHour)
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

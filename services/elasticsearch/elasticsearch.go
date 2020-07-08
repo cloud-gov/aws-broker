@@ -136,7 +136,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	log.Println(string(i.MasterCount))
 
 	snapshotOptions := &elasticsearchservice.SnapshotOptions{
-		AutomatedSnapshotStartHour: aws.Int64(6),
+		AutomatedSnapshotStartHour: aws.Int64(int64(i.AutomatedSnapshotStartHour)),
 	}
 
 	nodeOptions := &elasticsearchservice.NodeToNodeEncryptionOptions{
@@ -148,7 +148,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	encryptionAtRestOptions := &elasticsearchservice.EncryptionAtRestOptions{
-		Enabled: aws.Bool(true),
+		Enabled: aws.Bool(i.EncryptAtRest),
 	}
 	//Standard Parameters
 	params := &elasticsearchservice.CreateElasticsearchDomainInput{

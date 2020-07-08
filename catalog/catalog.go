@@ -143,17 +143,19 @@ func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, respo
 
 // ElasticsearchPlan inherits from a plan and adds fields needed for AWS Redis.
 type ElasticsearchPlan struct {
-	Plan                 `yaml:",inline" validate:"required"`
-	Tags                 map[string]string `yaml:"tags" json:"-" validate:"required" `
-	ElasticsearchVersion string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
-	MasterCount          string            `yaml:"masterCount" json:"-"`
-	DataCount            string            `yaml:"dataCount" json:"-" validate:"required"`
-	InstanceType         string            `yaml:"instanceType" json:"-" validate:"required"`
-	MasterInstanceType   string            `yaml:"masterInstanceType" json:"-"`
-	VolumeSize           string            `yaml:"volumeSize" json:"-" validate:"required"`
-	VolumeType           string            `yaml:"volumeType" json:"-" validate:"required"`
-	MasterEnabled        bool              `yaml:"masterEnabled" json:"-"`
-	NodeToNodeEncryption bool              `yaml:"nodeToNodeEncryption" json:"-"`
+	Plan                       `yaml:",inline" validate:"required"`
+	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required" `
+	ElasticsearchVersion       string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
+	MasterCount                string            `yaml:"masterCount" json:"-"`
+	DataCount                  string            `yaml:"dataCount" json:"-" validate:"required"`
+	InstanceType               string            `yaml:"instanceType" json:"-" validate:"required"`
+	MasterInstanceType         string            `yaml:"masterInstanceType" json:"-"`
+	VolumeSize                 string            `yaml:"volumeSize" json:"-" validate:"required"`
+	VolumeType                 string            `yaml:"volumeType" json:"-" validate:"required"`
+	MasterEnabled              bool              `yaml:"masterEnabled" json:"-"`
+	NodeToNodeEncryption       bool              `yaml:"nodeToNodeEncryption" json:"-"`
+	EncryptAtRest              bool              `yaml:"encryptAtRest" json:"-"`
+	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
 }
 
 // Catalog struct holds a collections of services
