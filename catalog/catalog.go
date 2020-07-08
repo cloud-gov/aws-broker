@@ -91,6 +91,7 @@ type RDSPlan struct {
 	BackupRetentionPeriod int64             `yaml:"backup_retention_period" json:"-"" validate:"required"`
 	SubnetGroup           string            `yaml:"subnetGroup" json:"-" validate:"required"`
 	SecurityGroup         string            `yaml:"securityGroup" json:"-" validate:"required"`
+	PlanUpdateable        bool              `yaml:"plan_updateable" json:"-"`
 }
 
 // RedisService describes the Redis Service. It contains the basic Service details as well as a list of Redis Plans

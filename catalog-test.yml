@@ -102,6 +102,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.micro
       dbType: postgres
+      plan_updateable: true
       securityGroup: sg-123456
       subnetGroup: subnet-group
       tags:
@@ -126,6 +127,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: postgres
+      plan_updateable: true
       securityGroup: sg-123456
       subnetGroup: subnet-group
       tags:
@@ -158,7 +160,7 @@ rds:
     -
       id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
       name: "micro-mysql"
-      description: "Dedicated Micro RDS Postgres DB Instance"
+      description: "Dedicated Micro RDS MySQL DB Instance"
       metadata:
         bullets:
           - "Dedicated Redundant RDS Instance"
@@ -173,6 +175,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.micro
       dbType: mysql
+      plan_updateable: true
       securityGroup: sg-123456
       subnetGroup: subnet-group
       tags:
@@ -197,6 +200,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
+      plan_updateable: true
       securityGroup: sg-123456
       subnetGroup: subnet-group
       tags:

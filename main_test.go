@@ -36,7 +36,21 @@ var modifyRDSInstanceReq = []byte(
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"332e0168-6969-4bd7-b07f-29f08c4bf78e",
 	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"previous_values": {
+		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	}
+}`)
+
+var modifyRDSInstanceNowAllowedReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"44d24fc7-f7a4-4ac1-b7a0-de82836e89a3",
+	"organization_guid":"an-org",
 	"space_guid":"a-space"
+	"previous_values": {
+		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	}
 }`)
 
 var createRedisInstanceReq = []byte(
@@ -160,10 +174,14 @@ func TestCreateRDSInstance(t *testing.T) {
 	}
 }
 
-// TODO:  Improve this, and add more tests!
+// TODO:  Improve this if possible
 func TestModifyRDSInstance(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
-	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(modifyRDSInstanceReq))
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
@@ -171,7 +189,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(modifyRDSInstanceReq))
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: " + res.Body.String())
@@ -185,19 +203,37 @@ func TestModifyRDSInstance(t *testing.T) {
 	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
-	// Is it in the database and has a username and password?
-	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
-	if i.Uuid == "0" {
-		t.Error("The instance should be saved in the DB")
+
+	// TODO:  Test that the instance was modified and is now the new plan.
+}
+
+func TestModifyRDSInstanceNotAllowed(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNowAllowedReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	if i.Username == "" || i.Password == "" {
-		t.Error("The instance should have a username and password")
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNowAllowedReq))
+
+	if res.Code != http.StatusBadRequest {
+		t.Logf("Request didn't return a 400. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", res.Code)
 	}
 
-	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
-		t.Error("The instance should have metadata")
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it contain "You cannot change your service instance to the plan you requested"?
+	if !strings.Contains(string(res.Body.Bytes()), "You cannot change your service instance to the plan you requested") {
+		t.Error(urlAcceptsIncomplete, "should return the plan cannot be chosen message")
 	}
 }
 

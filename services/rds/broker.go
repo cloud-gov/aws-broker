@@ -169,7 +169,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 		return planErr
 	}
 
-	// TODO:  Is this needed when modifying an existing instance?
 	err := existingInstance.init(
 		id,
 		updateRequest.OrganizationGUID,
@@ -189,6 +188,17 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 		return response.NewErrorResponse(
 			http.StatusBadRequest,
 			"Cannot update a shared database instance. Please migrate to a dedicated instance plan instead.",
+		)
+	}
+
+	// Don't allow updating to a service plan that doesn't support updates.
+	// TODO:  Is this the right way to perform this check, and is this the right
+	//		  way to reference a plan name that you would supply as an argument
+	//		  (e.g., "micro-psql")?
+	if plan.PlanUpdateable == false {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"You cannot change your service instance to the plan you requested, "+plan.Name+"; it is not supported.",
 		)
 	}
 
