@@ -31,9 +31,10 @@ elasticsearch:
     elasticsearchVersion: 7.4
     masterCount: 2
     dataCount: 2
-    instanceType: m4.large.elasticsearch
-    masterInstanceType: c4.large.elasticsearch
+    instanceType: c5.large.elasticsearch
+    masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
+    volumeType: gp2
     tags:
       environment: "cf-env-dev"
       client: "the client"

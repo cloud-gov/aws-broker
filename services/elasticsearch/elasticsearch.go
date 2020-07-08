@@ -120,7 +120,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	ebsoptions := &elasticsearchservice.EBSOptions{
 		EBSEnabled: aws.Bool(true),
 		VolumeSize: aws.Int64(int64(i.VolumeSize)),
-		VolumeType: aws.String("standard"),
+		VolumeType: aws.String(i.VolumeType),
 	}
 
 	esclusterconfig := &elasticsearchservice.ElasticsearchClusterConfig{
@@ -181,6 +181,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		}
 		i.IamPolicy = policy
 		i.IamPolicyARN = policyARN
+		paramsTags := &elasticsearchservice.AddTagsInput{
+			TagList: elasticsearchTags,
+			ARN:     resp.DomainStatus.ARN,
+		}
+		svc.AddTags(paramsTags)
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil

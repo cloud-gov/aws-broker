@@ -151,6 +151,7 @@ type ElasticsearchPlan struct {
 	InstanceType         string            `yaml:"instanceType" json:"-" validate:"required"`
 	MasterInstanceType   string            `yaml:"masterInstanceType" json:"-" validate:"required"`
 	VolumeSize           string            `yaml:"volumeSize" json:"-" validate:"required"`
+	VolumeType           string            `yaml:"volumeType" json:"-" validate:"required"`
 }
 
 // Catalog struct holds a collections of services
