@@ -34,6 +34,8 @@ type ElasticsearchInstance struct {
 	MasterInstanceType   string `sql:"size(255)"`
 	VolumeSize           int    `sql:"size(255)"`
 	VolumeType           string `sql:"size(255)"`
+	MasterEnabled        bool   `sql:"size(255)"`
+	NodeToNodeEncryption bool   `sql:"size(255)"`
 
 	ClearPassword string `sql:"-"`
 
@@ -125,6 +127,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.MasterInstanceType = plan.MasterInstanceType
 	i.VolumeSize, _ = strconv.Atoi(plan.VolumeSize)
 	i.VolumeType = plan.VolumeType
+	i.MasterEnabled = plan.MasterEnabled
+	i.NodeToNodeEncryption = plan.NodeToNodeEncryption
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

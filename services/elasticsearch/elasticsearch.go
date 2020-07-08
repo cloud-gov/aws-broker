@@ -124,7 +124,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	esclusterconfig := &elasticsearchservice.ElasticsearchClusterConfig{
-		DedicatedMasterEnabled: aws.Bool(true),
+		DedicatedMasterEnabled: aws.Bool(i.MasterEnabled),
 		DedicatedMasterCount:   aws.Int64(int64(i.MasterCount)),
 		DedicatedMasterType:    aws.String(i.MasterInstanceType),
 		InstanceType:           aws.String(i.InstanceType),
@@ -138,7 +138,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	nodeOptions := &elasticsearchservice.NodeToNodeEncryptionOptions{
-		Enabled: aws.Bool(true),
+		Enabled: aws.Bool(i.NodeToNodeEncryption),
 	}
 
 	domainOptions := &elasticsearchservice.DomainEndpointOptions{

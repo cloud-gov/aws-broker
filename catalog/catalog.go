@@ -146,12 +146,14 @@ type ElasticsearchPlan struct {
 	Plan                 `yaml:",inline" validate:"required"`
 	Tags                 map[string]string `yaml:"tags" json:"-" validate:"required" `
 	ElasticsearchVersion string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
-	MasterCount          string            `yaml:"masterCount" json:"-" validate:"required"`
+	MasterCount          string            `yaml:"masterCount" json:"-"`
 	DataCount            string            `yaml:"dataCount" json:"-" validate:"required"`
 	InstanceType         string            `yaml:"instanceType" json:"-" validate:"required"`
-	MasterInstanceType   string            `yaml:"masterInstanceType" json:"-" validate:"required"`
+	MasterInstanceType   string            `yaml:"masterInstanceType" json:"-"`
 	VolumeSize           string            `yaml:"volumeSize" json:"-" validate:"required"`
 	VolumeType           string            `yaml:"volumeType" json:"-" validate:"required"`
+	MasterEnabled        bool              `yaml:"masterEnabled" json:"-"`
+	NodeToNodeEncryption bool              `yaml:"nodeToNodeEncryption" json:"-"`
 }
 
 // Catalog struct holds a collections of services
