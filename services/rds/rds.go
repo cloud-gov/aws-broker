@@ -287,8 +287,6 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		DBInstanceIdentifier: &i.Database,
 	}
 
-	// TODO: Check to see if we need to make a call to DescribeValidDBInstanceModifications first, according to
-	// https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance documentation
 	resp, err := svc.ModifyDBInstance(params)
 	// Pretty-print the response data.
 	log.Println(awsutil.StringValue(resp))

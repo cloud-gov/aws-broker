@@ -87,52 +87,90 @@ rds:
     -
       id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
-      description: "Dedicated Micro RDS Postgres DB Instance"
+      description: "Dedicated micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
-              usd: 0.036
+              usd: 0.022
             unit: "HOURLY"
-        displayName: "Dedicated Micro Postgres"
+        displayName: "Dedicated micro PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
       dbType: postgres
       plan_updateable: true
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
-        environment: "cf-env"
-        client: "the client"
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78e"
+    - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
       name: "medium-psql"
-      description: "Dedicated Medium RDS Postgres DB Instance"
+      description: "Dedicated medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
-              usd: 0.19
+              usd: 0.115
             unit: "HOURLY"
-        displayName: "Dedicated Medium Postgres"
+        displayName: "Dedicated medium PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.m3.medium
+      allocatedStorage: 10
       dbType: postgres
       plan_updateable: true
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
-        environment: "cf-env"
-        client: "the client"
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
+      name: "medium-psql-redundant"
+      description: "Dedicated redundant medium RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.230
+            unit: "HOURLY"
+        displayName: "Dedicated redundant medium PostgreSQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.medium
+      allocatedStorage: 10
+      dbType: postgres
+      plan_updateable: true
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
         service: "aws-broker"
     -
       id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"

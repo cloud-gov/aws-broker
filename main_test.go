@@ -21,6 +21,12 @@ import (
 	"github.com/18F/aws-broker/services/redis"
 )
 
+var (
+	originalPlanID    = "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	updateablePlanID  = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
+	nonUpdateablePlan = "ee75aef3-7697-4906-9330-fb1f83d719be"
+)
+
 // micro-psql plan
 var createRDSInstanceReq = []byte(
 	`{
@@ -34,7 +40,7 @@ var createRDSInstanceReq = []byte(
 var modifyRDSInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"332e0168-6969-4bd7-b07f-29f08c4bf78e",
+	"plan_id":"1070028c-b5fb-4de8-989b-4e00d07ef5e8",
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"previous_values": {
@@ -42,10 +48,11 @@ var modifyRDSInstanceReq = []byte(
 	}
 }`)
 
-var modifyRDSInstanceNowAllowedReq = []byte(
+// medium-psql-redundant plan
+var modifyRDSInstanceNotAllowedReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"44d24fc7-f7a4-4ac1-b7a0-de82836e89a3",
+	"plan_id":"ee75aef3-7697-4906-9330-fb1f83d719be",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 	"previous_values": {
@@ -178,10 +185,28 @@ func TestCreateRDSInstance(t *testing.T) {
 func TestModifyRDSInstance(t *testing.T) {
 	// We need to create an instance first before we can try to modify it.
 	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
 
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
-	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
@@ -189,31 +214,55 @@ func TestModifyRDSInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	res, _ := doRequest(nil, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
-	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + res.Body.String())
-		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
 	// Is it a valid JSON?
-	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(string(resp.Body.Bytes()), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 
-	// TODO:  Test that the instance was modified and is now the new plan.
+	// Reload the instance and check to see that the plan has been modified.
+	i = rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.PlanID != updateablePlanID {
+		t.Logf("The instance was not modified: " + i.PlanID + " != " + updateablePlanID)
+		t.Error("The instance was not modified to have the new instance class plan.")
+	}
 }
 
 func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	// We need to create an instance first before we can try to modify it.
 	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
 
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
-	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNowAllowedReq))
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
@@ -221,19 +270,27 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	res, _ := doRequest(nil, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNowAllowedReq))
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
-	if res.Code != http.StatusBadRequest {
-		t.Logf("Request didn't return a 400. Body is: " + res.Body.String())
-		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", res.Code)
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
 	// Is it a valid JSON?
-	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "You cannot change your service instance to the plan you requested"?
-	if !strings.Contains(string(res.Body.Bytes()), "You cannot change your service instance to the plan you requested") {
+	if !strings.Contains(string(resp.Body.Bytes()), "You cannot change your service instance to the plan you requested") {
 		t.Error(urlAcceptsIncomplete, "should return the plan cannot be chosen message")
+	}
+
+	// Reload the instance and check to see that the plan has not been modified.
+	i = rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.PlanID != originalPlanID {
+		t.Logf("The instance was modified: " + i.PlanID + " != " + originalPlanID)
+		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
 	}
 }
 

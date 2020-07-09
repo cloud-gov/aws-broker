@@ -160,26 +160,13 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
-	if count != 1 {
-		return response.NewErrorResponse(http.StatusConflict, "The instance does not exist")
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(updateRequest.PlanID)
+	newPlan, planErr := c.RdsService.FetchPlan(updateRequest.PlanID)
 	if planErr != nil {
 		return planErr
-	}
-
-	err := existingInstance.init(
-		id,
-		updateRequest.OrganizationGUID,
-		updateRequest.SpaceGUID,
-		updateRequest.ServiceID,
-		plan,
-		options,
-		broker.settings)
-
-	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
 	// We shouldn't ever arrive to this as upgrades on the shared DB adapter are
@@ -192,17 +179,14 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 	}
 
 	// Don't allow updating to a service plan that doesn't support updates.
-	// TODO:  Is this the right way to perform this check, and is this the right
-	//		  way to reference a plan name that you would supply as an argument
-	//		  (e.g., "micro-psql")?
-	if plan.PlanUpdateable == false {
+	if newPlan.PlanUpdateable == false {
 		return response.NewErrorResponse(
 			http.StatusBadRequest,
-			"You cannot change your service instance to the plan you requested, "+plan.Name+"; it is not supported.",
+			"You cannot change your service instance to the plan you requested, "+newPlan.Name+"; it is not supported.",
 		)
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -221,11 +205,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 	}
 
 	existingInstance.State = status
-
-	// TODO:  Check to make sure this is not needed.
-	// broker.brokerDB.NewRecord(existingInstance)
-	// TODO:  Check to make sure this is the correct call to make.
-	err = broker.brokerDB.Update(&existingInstance).Error
+	err = broker.brokerDB.Save(&existingInstance).Error
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())

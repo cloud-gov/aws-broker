@@ -45,8 +45,11 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	if resp.GetResponseType() != response.ErrorResponseType {
 		instance := base.Instance{Uuid: id, Request: createRequest}
 		brokerDb.NewRecord(instance)
-		brokerDb.Create(&instance)
-		// TODO check save error
+		err := brokerDb.Create(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
 	}
 	return resp
 }
@@ -75,11 +78,11 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 
 	if resp.GetResponseType() != response.ErrorResponseType {
 		instance := base.Instance{Uuid: id, Request: modifyRequest}
-		// TODO:  Check to see if this is still needed or some alternative needs
-		//		  to happen.
-		//brokerDb.NewRecord(instance)
-		brokerDb.Update(&instance)
-		// TODO check save error
+		err := brokerDb.Save(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
 	}
 
 	return resp
