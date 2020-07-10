@@ -41,6 +41,36 @@ redis:
         environment: "cf-env-dev"
         client: "the client"
         service: "aws-broker"
+    -
+      id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+      name: "BETA-redis-5node"
+      description: "BETA AWS Elasticache Redis 5.0.6 Five node"
+      metadata:
+        bullets:
+          - "redis"
+          - "redis506"
+          - "5node"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "5 node redis5.0.6, persistent storage, 512Mb memory limit"
+      free: true
+      securityGroup: (( grab meta.redis.security_group ))
+      engineVersion: 5.0.6
+      numberCluster: 5
+      nodeType: cache.t3.micro
+      subnetGroup: (( grab meta.redis.subnet_group ))
+      parameterGroup: default.redis5.0
+      preferredMaintenanceWindow: mon:07:00-mon:08:00
+      snapshotWindow: 06:00-07:00
+      snapshotRetentionLimit: 3
+      automaticFailoverEnabled: true
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
 rds:
   id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
   name: "rds"
