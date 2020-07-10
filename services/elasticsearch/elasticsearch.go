@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticsearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cloudfoundry-community/s3-broker/awsiam"
 	"github.com/jinzhu/gorm"
 
@@ -83,6 +84,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 	user := awsiam.NewIAMUser(iamsvc, logger)
+	stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	//IAM User and policy before domain starts creating so it can be used to create access control policy
 	_, err := user.Create(i.Domain, "")
@@ -102,8 +104,25 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 	userResp, _ := iamsvc.GetUser(userParams)
 	uniqueUser := *(userResp.User.UserId)
+	stsInput := &sts.GetCallerIdentityInput{}
+	result, err := stssvc.GetCallerIdentity(stsInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return base.InstanceNotCreated, nil
+	}
 
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"*\"}]}"
+	accountID := result.Account
+
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"arn:aws:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	var elasticsearchTags []*elasticsearchservice.Tag
 	time.Sleep(5 * time.Second)
 
