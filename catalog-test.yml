@@ -161,7 +161,6 @@ rds:
       instanceClass: db.m3.medium
       allocatedStorage: 10
       dbType: postgres
-      plan_updateable: true
       redundant: true
       encrypted: true
       storage_type: gp2

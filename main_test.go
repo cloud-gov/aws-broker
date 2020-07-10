@@ -54,7 +54,7 @@ var modifyRDSInstanceNotAllowedReq = []byte(
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"ee75aef3-7697-4906-9330-fb1f83d719be",
 	"organization_guid":"an-org",
-	"space_guid":"a-space"
+	"space_guid":"a-space",
 	"previous_values": {
 		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
 	}
@@ -272,9 +272,9 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
-	if resp.Code != http.StatusAccepted {
+	if resp.Code != http.StatusBadRequest {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
-		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
 
 	// Is it a valid JSON?
@@ -282,7 +282,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 
 	// Does it contain "You cannot change your service instance to the plan you requested"?
 	if !strings.Contains(string(resp.Body.Bytes()), "You cannot change your service instance to the plan you requested") {
-		t.Error(urlAcceptsIncomplete, "should return the plan cannot be chosen message")
+		t.Error(urlAcceptsIncomplete, "should return a message that the plan cannot be chosen")
 	}
 
 	// Reload the instance and check to see that the plan has not been modified.

@@ -55,29 +55,34 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 }
 
 func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	// Extract the request information.
 	modifyRequest, resp := request.ExtractRequest(req)
-
 	if resp != nil {
 		return resp
 	}
 
-	broker, resp := findBroker(modifyRequest.ServiceID, c, brokerDb, settings)
-
+	// Find the requested instance in the broker.
+	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
 
+	// Retrieve the correct broker.
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	if resp != nil {
+		return resp
+	}
+
+	// Check if async calls are allowed.
 	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
-
 	if !asyncAllowed {
 		return response.ErrUnprocessableEntityResponse
 	}
 
-	// Update instance
-	resp = broker.ModifyInstance(c, id, modifyRequest)
+	// Attempt to modify the database instance.
+	resp = broker.ModifyInstance(c, id, modifyRequest, instance)
 
 	if resp.GetResponseType() != response.ErrorResponseType {
-		instance := base.Instance{Uuid: id, Request: modifyRequest}
 		err := brokerDb.Save(&instance).Error
 
 		if err != nil {

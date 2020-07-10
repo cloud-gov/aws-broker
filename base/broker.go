@@ -11,7 +11,7 @@ type Broker interface {
 	// CreateInstance uses the catalog and parsed request to create an instance for the particular type of service.
 	CreateInstance(*catalog.Catalog, string, request.Request) response.Response
 	// ModifyInstance uses the catalog and parsed request to modify an existing instance for the particular type of service.
-	ModifyInstance(*catalog.Catalog, string, request.Request) response.Response
+	ModifyInstance(*catalog.Catalog, string, request.Request, Instance) response.Response
 	// LastOperation uses the catalog and parsed request to get an instance status for the particular type of service.
 	LastOperation(*catalog.Catalog, string, Instance) response.Response
 	// BindInstance takes the existing instance and binds it to an app.

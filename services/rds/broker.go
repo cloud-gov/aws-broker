@@ -114,6 +114,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if adapterErr != nil {
 		return adapterErr
 	}
+
 	// Create the database instance.
 	status, err := adapter.createDB(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
@@ -142,13 +143,13 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request) response.Response {
+func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
 	options := RDSOptions{}
 	// TODO: Figure out how these parameter checks work and if anything needs to be modified
-	if len(updateRequest.RawParameters) > 0 {
-		err := json.Unmarshal(updateRequest.RawParameters, &options)
+	if len(modifyRequest.RawParameters) > 0 {
+		err := json.Unmarshal(modifyRequest.RawParameters, &options)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 		}
@@ -158,15 +159,17 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 		}
 	}
 
+	// Load the existing instance provided.
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
 
-	newPlan, planErr := c.RdsService.FetchPlan(updateRequest.PlanID)
-	if planErr != nil {
-		return planErr
+	// Fetch the new plan that has been requested.
+	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
+	if newPlanErr != nil {
+		return newPlanErr
 	}
 
 	// We shouldn't ever arrive to this as upgrades on the shared DB adapter are
@@ -186,6 +189,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 		)
 	}
 
+	// Connect to the existing instance.
 	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
 	if adapterErr != nil {
 		return adapterErr
@@ -204,7 +208,13 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, updateReq
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
 
+	// Update the existing instance in the broker.
+	// TODO:  Is this necessary?  Shouldn't the adapter.modifyDB call do this?
+	//		  Or, is there a distinction between the call to AWS directly
+	//		  modifying the instance and nothing more, and we still need to
+	//		  track these types of changes ourselves on the broker side?
 	existingInstance.State = status
+	existingInstance.PlanID = newPlan.ID
 	err = broker.brokerDB.Save(&existingInstance).Error
 
 	if err != nil {
