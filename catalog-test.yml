@@ -196,21 +196,21 @@ rds:
         service: "aws-broker"
     -
       id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
-      name: "micro-mysql"
-      description: "Dedicated Micro RDS MySQL DB Instance"
+      name: "small-mysql"
+      description: "Dedicated small RDS MySQL DB Instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
           -
             amount:
-              usd: 0.036
+              usd: 0.041
             unit: "HOURLY"
-        displayName: "Dedicated Micro MySQL"
+        displayName: "Dedicated small MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t2.small
       dbType: mysql
       plan_updateable: true
       securityGroup: sg-123456
@@ -225,7 +225,7 @@ rds:
       description: "Dedicated Medium RDS MySQL DB Instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
           -

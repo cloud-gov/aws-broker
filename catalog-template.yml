@@ -263,8 +263,8 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "0af67edb-30d8-4bb3-81c7-324c18d3efb2"
-      name: "micro-mysql"
-      description: "Dedicated micro RDS MySQL DB instance"
+      name: "small-mysql"
+      description: "Dedicated small RDS MySQL DB instance"
       metadata:
         bullets:
           - "Dedicated RDS instance"
@@ -272,12 +272,12 @@ rds:
         costs:
           -
             amount:
-              usd: 0.020
+              usd: 0.041
             unit: "HOURLY"
-        displayName: "Dedicated micro MySQL"
+        displayName: "Dedicated small MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t2.small
       allocatedStorage: 10
       dbType: mysql
       plan_updateable: true
