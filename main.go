@@ -66,7 +66,7 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 	})
 
 	// Create the service instance (cf create-service-instance)
-	// TODO:  Shouldn't this be a POST? https://github.com/go-martini/martini#routing
+	// This is a PUT per https://github.com/openservicebrokerapi/servicebroker/blob/v2.16/spec.md#provisioning
 	m.Put("/v2/service_instances/:id", CreateInstance)
 
 	// Update the service instance
