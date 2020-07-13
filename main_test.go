@@ -194,7 +194,6 @@ func TestCreateRDSInstance(t *testing.T) {
 	}
 }
 
-// TODO:  Improve this if possible
 func TestModifyRDSInstance(t *testing.T) {
 	// We need to create an instance first before we can try to modify it.
 	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"

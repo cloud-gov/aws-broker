@@ -147,7 +147,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	existingInstance := RDSInstance{}
 
 	options := RDSOptions{}
-	// TODO: Figure out how these parameter checks work and if anything needs to be modified
 	if len(modifyRequest.RawParameters) > 0 {
 		err := json.Unmarshal(modifyRequest.RawParameters, &options)
 		if err != nil {

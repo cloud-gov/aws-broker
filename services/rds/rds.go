@@ -100,7 +100,6 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 }
 
 func (d *sharedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	// TODO:  Determine if there is something else that needs to be done here.
 	return base.InstanceNotModified, nil
 }
 
