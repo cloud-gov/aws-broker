@@ -208,10 +208,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Update the existing instance in the broker.
-	// TODO:  Is this necessary?  Shouldn't the adapter.modifyDB call do this?
-	//		  Or, is there a distinction between the call to AWS directly
-	//		  modifying the instance and nothing more, and we still need to
-	//		  track these types of changes ourselves on the broker side?
 	existingInstance.State = status
 	existingInstance.PlanID = newPlan.ID
 	err = broker.brokerDB.Save(&existingInstance).Error
