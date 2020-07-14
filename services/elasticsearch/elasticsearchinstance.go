@@ -115,7 +115,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.Tags = plan.Tags
 	i.Description = plan.Description
 
-	i.Domain = s.DbNamePrefix + "-" + helpers.RandStr(6)
+	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + helpers.RandStr(9)
+
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
 	password := helpers.RandStr(25)
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
