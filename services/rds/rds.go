@@ -265,7 +265,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	resp, err := svc.CreateDBInstance(params)
 	// Pretty-print the response data.
-	log.Println(awsutil.StringValue(resp))
+	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		return base.InstanceInProgress, nil
@@ -279,16 +279,18 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
-	// NOTE:  Only instance class modification is enabled at this point.
+	// NOTE:  Only instance class modification and Multi AZ (redundancy) is
+	// enabled at this point.
 	params := &rds.ModifyDBInstanceInput{
 		ApplyImmediately:     aws.Bool(true),
 		DBInstanceClass:      &d.Plan.InstanceClass,
+		MultiAZ:              &d.Plan.Redundant,
 		DBInstanceIdentifier: &i.Database,
 	}
 
 	resp, err := svc.ModifyDBInstance(params)
 	// Pretty-print the response data.
-	log.Println(awsutil.StringValue(resp))
+	fmt.Println(awsutil.StringValue(resp))
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {

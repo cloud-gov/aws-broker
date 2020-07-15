@@ -242,8 +242,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.small
       dbType: mysql
+      allocatedStorage: 10
       plan_updateable: true
       securityGroup: sg-123456
+      storage_type: gp2
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"
@@ -267,8 +269,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
+      allocatedStorage: 10
       plan_updateable: true
       securityGroup: sg-123456
+      storage_type: gp2
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"

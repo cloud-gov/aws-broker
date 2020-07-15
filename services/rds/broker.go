@@ -171,12 +171,30 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return newPlanErr
 	}
 
-	// We shouldn't ever arrive to this as upgrades on the shared DB adapter are
-	// not allowed or enabled, but in case we do, explicitly error out.
+	// Check to make sure that we're not switching database engines; this is not
+	// allowed.
+	if newPlan.DbType != existingInstance.DbType {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch between database engines/types. Please select a plan with the same database engine/type.",
+		)
+	}
+
+	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
+	// are not allowed or enabled, but in case we do, explicitly error out.
 	if existingInstance.Adapter == "shared" {
 		return response.NewErrorResponse(
 			http.StatusBadRequest,
-			"Cannot update a shared database instance. Please migrate to a dedicated instance plan instead.",
+			"Cannot switch from a shared database instance. Please migrate your database to a dedicated instance plan instead.",
+		)
+	}
+
+	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
+	// are not allowed or enabled, but in case we do, explicitly error out.
+	if newPlan.Adapter == "shared" {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch to a shared database instance. Please choose a dedicated instance plan instead.",
 		)
 	}
 
@@ -184,7 +202,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if newPlan.PlanUpdateable == false {
 		return response.NewErrorResponse(
 			http.StatusBadRequest,
-			"You cannot change your service instance to the plan you requested, "+newPlan.Name+"; it is not supported.",
+			"Cannot switch to "+newPlan.Name+" because the service plan does not allow updates or modification.",
 		)
 	}
 
