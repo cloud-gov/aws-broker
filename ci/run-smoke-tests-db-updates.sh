@@ -53,7 +53,7 @@ done
 cf push "smoke-tests-db-update-${SERVICE_PLAN}"
 
 # Update service
-cf update-service "rds-smoke-tests-db-update-$SERVICE_PLAN" "$NEW_SERVICE_PLAN"
+cf update-service "rds-smoke-tests-db-update-$SERVICE_PLAN" -p "$NEW_SERVICE_PLAN"
 
 # Wait to make sure that the service instance has been successfully updated.
 wait_for_service_instance "rds-smoke-tests-db-update-$SERVICE_PLAN"
