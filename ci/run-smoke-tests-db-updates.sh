@@ -39,6 +39,11 @@ done
 # wait for the app to start. if the app starts, it's passed the smoke test.
 cf push "smoke-tests-${SERVICE_PLAN}"
 
+# Update service
+cf update-service aws-rds "rds-smoke-tests-$SERVICE_PLAN" "$NEW_SERVICE_PLAN"
+
+# TODO:  Add check to make sure the update succeeded before progressing.
+
 # Clean up app and service
 cf delete -f "smoke-tests-$SERVICE_PLAN"
 cf delete-service -f "rds-smoke-tests-$SERVICE_PLAN"
