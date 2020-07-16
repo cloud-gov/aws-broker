@@ -2,6 +2,19 @@
 
 set -euxo pipefail
 
+
+# Function for waiting on a service instance to finish being processed.
+wait_for_service_instance() {
+  local service_name=$1
+  local guid=$(cf service --guid $service_name)
+  local status=$(cf curl /v2/service_instances/${guid} | jq -r '.entity.last_operation.state')
+
+  while [ "$status" == "in progress" ]; do
+    sleep 60
+    status=$(cf curl /v2/service_instances/${guid} | jq -r '.entity.last_operation.state')
+  done
+}
+
 # todo (mxplusb): update the auth mechanism.
 cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORGANIZATION" -s "$CF_SPACE"
 
@@ -40,9 +53,10 @@ done
 cf push "smoke-tests-${SERVICE_PLAN}"
 
 # Update service
-cf update-service aws-rds "rds-smoke-tests-$SERVICE_PLAN" "$NEW_SERVICE_PLAN"
+cf update-service "rds-smoke-tests-$SERVICE_PLAN" "$NEW_SERVICE_PLAN"
 
-# TODO:  Add check to make sure the update succeeded before progressing.
+# Wait to make sure that the service instance has been successfully updated.
+wait_for_service_instance "rds-smoke-tests-$SERVICE_PLAN"
 
 # Clean up app and service
 cf delete -f "smoke-tests-$SERVICE_PLAN"
