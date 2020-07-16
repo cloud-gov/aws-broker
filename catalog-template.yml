@@ -564,8 +564,8 @@ redis:
         service: "aws-broker"
 elasticsearch:
   id: "90413816-9c77-418b-9fc7-b9739e7c1254"
-  name: "elasticsearch-aws"
-  description: "elasticsearch Broker"
+  name: "aws-elasticsearch"
+  description: "AWS Elasticsearch Broker"
   bindable: true
   tags:
   - "elasticsearch"
@@ -578,8 +578,8 @@ elasticsearch:
     supportUrl:
   plans:
   - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
-    name: "aws-elasticsearch-planv3"
-    description: "elasticsearch Test"
+    name: "aws-standard"
+    description: "Standard Plan for Elasticsearch in AWS"
     metadata:
       bullets:
       - "elasticsearch"
@@ -590,8 +590,6 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "Free elasticsearch"
     free: true
-    securityGroup: sg-123456
-    subnetGroup: subnet-group
     elasticsearchVersion: 7.4
     masterCount: 2
     dataCount: 2
@@ -599,17 +597,17 @@ elasticsearch:
     masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
     volumeType: gp2
-    tmasterEnabled: true
+    masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     tags:
-      environment: "cf-env-dev"
+      environment: (( grab meta.environment ))
       client: "the client"
       service: "aws-broker"
   - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
-    name: "aws-elasticsearch-planv-dev"
-    description: "elasticsearch Test"
+    name: "aws-dev"
+    description: "Dev Plan for Elasticsearch in AWS"
     metadata:
       bullets:
       - "elasticsearch"
@@ -620,8 +618,6 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "Free elasticsearch"
     free: true
-    securityGroup: sg-123456
-    subnetGroup: subnet-group
     elasticsearchVersion: 7.4
     dataCount: 1
     instanceType: t2.small.elasticsearch
@@ -630,6 +626,6 @@ elasticsearch:
     encryptAtRest: false
     automatedSnapshotStartHour: 7
     tags:
-      environment: "cf-env-dev"
+      environment: (( grab meta.environment ))
       client: "the client"
       service: "aws-broker"
