@@ -42,6 +42,19 @@ type RedisDBSecret struct {
 	PlanID          string `yaml:"plan_id" validate:"required"`
 }
 
+// ElasticsearchSecret is a wrapper for all the Elasticsearch Secrets.
+// Only contains RDS database secrets as of now.
+type ElasticsearchSecret struct {
+	ServiceID      string          `yaml:"service_id" validate:"required"`
+	RedisDBSecrets []RedisDBSecret `yaml:"plans" validate:"required,dive,required"`
+}
+
+// ElasticsearchDBSecret contains the config to connect to a database and the corresponding plan id.
+type ElasticsearchDBSecret struct {
+	common.DBConfig `yaml:",inline" validate:"required,dive,required"`
+	PlanID          string `yaml:"plan_id" validate:"required"`
+}
+
 // InitSecrets initializes the secrets struct based on the yaml file.
 func InitSecrets(path string) *Secrets {
 	var secrets Secrets

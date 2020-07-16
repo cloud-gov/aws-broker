@@ -1,3 +1,70 @@
+elasticsearch:
+  id: "90413816-9c77-418b-9fc7-b9739e7c1254"
+  name: "aws-elasticsearch"
+  description: "elasticsearch Broker"
+  bindable: true
+  tags:
+  - "elasticsearch"
+  metadata:
+    displayName: elasticsearch Broker
+    imageUrl:
+    longDescription:
+    providerDisplayName: elasticsearch
+    documentationUrl:
+    supportUrl:
+  plans:
+  - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+    name: "aws-standard"
+    description: "elasticsearch Test"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "on AWS!"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "Free elasticsearch"
+    free: true
+    elasticsearchVersion: 7.4
+    masterCount: 2
+    dataCount: 2
+    instanceType: c5.large.elasticsearch
+    masterInstanceType: c5.large.elasticsearch
+    volumeSize: 10
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    tags:
+      environment: "cf-env-dev"
+      client: "the client"
+      service: "aws-broker"
+  - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
+    name: "aws-dev"
+    description: "elasticsearch Test"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "on AWS!"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "Free elasticsearch"
+    free: true
+    elasticsearchVersion: 7.4
+    dataCount: 1
+    instanceType: t2.small.elasticsearch
+    volumeSize: 10
+    volumeType: gp2
+    encryptAtRest: false
+    automatedSnapshotStartHour: 7
+    tags:
+      environment: "cf-env-dev"
+      client: "the client"
+      service: "aws-broker"
 redis:
   id: "cda65825-e357-4a93-a24b-9ab138d97815"
   name: "redis"

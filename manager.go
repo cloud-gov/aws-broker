@@ -8,6 +8,7 @@ import (
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/services/elasticsearch"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/18F/aws-broker/services/redis"
 	"github.com/jinzhu/gorm"
@@ -20,6 +21,8 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 		return rds.InitRDSBroker(brokerDb, settings), nil
 	case c.RedisService.ID:
 		return redis.InitRedisBroker(brokerDb, settings), nil
+	case c.ElasticsearchService.ID:
+		return elasticsearch.InitElasticsearchBroker(brokerDb, settings), nil
 	}
 
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())

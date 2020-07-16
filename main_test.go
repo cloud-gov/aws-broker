@@ -17,16 +17,19 @@ import (
 	"github.com/18F/aws-broker/common"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/services/elasticsearch"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/18F/aws-broker/services/redis"
 )
 
 var (
-	originalRDSPlanID        = "da91e15c-98c9-46a9-b114-02b8d28062c6"
-	updateableRDSPlanID      = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-	nonUpdateableRDSPlan     = "ee75aef3-7697-4906-9330-fb1f83d719be"
-	originalRedisPlanID      = "475e36bf-387f-44c1-9b81-575fec2ee443"
-	nonUpdateableRedisPlanID = "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+	originalRDSPlanID                = "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	updateableRDSPlanID              = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
+	nonUpdateableRDSPlan             = "ee75aef3-7697-4906-9330-fb1f83d719be"
+	originalRedisPlanID              = "475e36bf-387f-44c1-9b81-575fec2ee443"
+	nonUpdateableRedisPlanID         = "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+	originalElasticsearchPlanID      = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+	nonUpdateableElasticsearchPlanID = "162ffae8-9cf8-4806-80e5-a7f92d514198"
 )
 
 // micro-psql plan
@@ -78,6 +81,25 @@ var modifyRedisInstanceReq = []byte(
 	"space_guid":"a-space",
 	"previous_values": {
 		"plan_id": "475e36bf-387f-44c1-9b81-575fec2ee443"
+	}
+}`)
+
+var createElasticsearchInstanceReq = []byte(
+	`{
+	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
+	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
+var modifyElasticsearchInstanceReq = []byte(
+	`{
+	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
+	"plan_id":"162ffae8-9cf8-4806-80e5-a7f92d514198",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"previous_values": {
+		"plan_id": "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
 	}
 }`)
 
@@ -292,8 +314,8 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it contain "You cannot change your service instance to the plan you requested"?
-	if !strings.Contains(string(resp.Body.Bytes()), "You cannot change your service instance to the plan you requested") {
+	// Does it contain "...because the service plan does not allow updates or modification."?
+	if !strings.Contains(string(resp.Body.Bytes()), "because the service plan does not allow updates or modification.") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the plan cannot be chosen")
 	}
 
@@ -656,6 +678,234 @@ func TestRedisDeleteInstance(t *testing.T) {
 
 	// Is it actually gone from the DB?
 	i = redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	if len(i.Uuid) > 0 {
+		t.Error("The instance shouldn't be in the DB")
+	}
+}
+
+/*
+	Tests for elasticsearch
+*/
+
+func TestCreateElasticsearchInstance(t *testing.T) {
+	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	}
+	// Is it in the database and has a username and password?
+	i := elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.Password == "" {
+		t.Error("The instance should have a username and password")
+	}
+
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata", i.PlanID, "plan", i.OrganizationGUID, "org", i.SpaceGUID)
+	}
+}
+
+func TestModifyElasticsearchInstance(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalElasticsearchPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceReq))
+
+	if resp.Code != http.StatusBadRequest {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it contain "Updating Redis service instances is not supported at this time"?
+	if !strings.Contains(string(resp.Body.Bytes()), "Updating Elasticsearch service instances is not supported at this time") {
+		t.Error(urlAcceptsIncomplete, "should return a message that Elasticsearch services cannot be modified at this time")
+	}
+
+	// Reload the instance and check to see that the plan has not been modified.
+	i = elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.PlanID != originalElasticsearchPlanID {
+		t.Logf("The instance was modified: " + i.PlanID + " != " + originalElasticsearchPlanID)
+		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
+	}
+}
+
+func TestElasticsearchLastOperation(t *testing.T) {
+	url := "/v2/service_instances/the_elasticsearch_instance/last_operation"
+	res, m := doRequest(nil, url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	// Without the instance
+	if res.Code != http.StatusNotFound {
+		t.Error(url, "with auth status should be returned 404", res.Code)
+	}
+
+	// Create the instance and try again
+	res, m = doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check instance was created and StatusOK
+	res, _ = doRequest(m, url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	if res.Code != http.StatusOK {
+		t.Logf("Unable to check last operation. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 200 and it returned", res.Code)
+	}
+}
+
+func TestElasticsearchBindInstance(t *testing.T) {
+	url := "/v2/service_instances/the_elasticsearch_instance/service_bindings/the_binding"
+	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	// Without the instance
+	if res.Code != http.StatusNotFound {
+		t.Error(url, "with auth should return 404 and it returned", res.Code)
+	}
+
+	// Create the instance and try again
+	res, _ = doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 202 and it returned", res.Code)
+	}
+
+	res, _ = doRequest(m, url, "PUT", true, nil)
+	if res.Code != http.StatusCreated {
+		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), url, t)
+
+	type credentials struct {
+		Uri      string
+		Username string
+		Password string
+		Host     string
+		DbName   string
+	}
+
+	type response struct {
+		Credentials credentials
+	}
+
+	var r response
+
+	json.Unmarshal(res.Body.Bytes(), &r)
+
+	// Does it contain "uri"
+	if r.Credentials.Uri == "" {
+		t.Error(url, "should return credentials")
+	}
+
+	instance := elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&instance)
+
+	// Does it return an unencrypted password?
+	if instance.Password == r.Credentials.Password || r.Credentials.Password == "" {
+		t.Error(url, "should return an unencrypted password and it returned", r.Credentials.Password)
+	}
+}
+
+func TestElasticsearchUnbind(t *testing.T) {
+	url := "/v2/service_instances/the_elasticsearch_instance/service_bindings/the_binding"
+	res, _ := doRequest(nil, url, "DELETE", true, nil)
+
+	if res.Code != http.StatusOK {
+		t.Error(url, "with auth should return 200 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), url, t)
+
+	// Is it an empty object?
+	if string(res.Body.Bytes()) != "{}" {
+		t.Error(url, "should return an empty JSON")
+	}
+}
+
+func TestElasticsearchDeleteInstance(t *testing.T) {
+	url := "/v2/service_instances/the_elasticsearch_instance"
+	res, m := doRequest(nil, url, "DELETE", true, nil)
+
+	// With no instance
+	if res.Code != http.StatusNotFound {
+		t.Error(url, "with auth should return 404 and it returned", res.Code)
+	}
+
+	// Create the instance and try again
+	doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	i := elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be in the DB")
+	}
+
+	res, _ = doRequest(m, url, "DELETE", true, nil)
+
+	if res.Code != http.StatusOK {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(url, "with auth should return 200 and it returned", res.Code)
+	}
+
+	// Is it actually gone from the DB?
+	i = elasticsearch.ElasticsearchInstance{}
 	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
 	if len(i.Uuid) > 0 {
 		t.Error("The instance shouldn't be in the DB")

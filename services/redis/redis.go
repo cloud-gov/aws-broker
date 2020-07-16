@@ -139,7 +139,6 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 }
 
 func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	// TODO:  Check to make sure there's nothing else to be done here.
 	return base.InstanceNotModified, nil
 }
 

@@ -126,11 +126,45 @@ type RedisPlan struct {
 	AutomaticFailoverEnabled   bool              `yaml:"automaticFailoverEnabled" json:"-"`
 }
 
+// ElasticsearchService describes the Elasticsearch Service. It contains the basic Service details as well as a list of Elasticsearch Plans
+type ElasticsearchService struct {
+	Service `yaml:",inline" validate:"required"`
+	Plans   []ElasticsearchPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
+}
+
+// FetchPlan will look for a specific ElasticsearchSecret Plan based on the plan ID.
+func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, response.Response) {
+	for _, plan := range s.Plans {
+		if plan.ID == planID {
+			return plan, nil
+		}
+	}
+	return ElasticsearchPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
+}
+
+// ElasticsearchPlan inherits from a plan and adds fields needed for AWS Redis.
+type ElasticsearchPlan struct {
+	Plan                       `yaml:",inline" validate:"required"`
+	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required" `
+	ElasticsearchVersion       string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
+	MasterCount                string            `yaml:"masterCount" json:"-"`
+	DataCount                  string            `yaml:"dataCount" json:"-" validate:"required"`
+	InstanceType               string            `yaml:"instanceType" json:"-" validate:"required"`
+	MasterInstanceType         string            `yaml:"masterInstanceType" json:"-"`
+	VolumeSize                 string            `yaml:"volumeSize" json:"-" validate:"required"`
+	VolumeType                 string            `yaml:"volumeType" json:"-" validate:"required"`
+	MasterEnabled              bool              `yaml:"masterEnabled" json:"-"`
+	NodeToNodeEncryption       bool              `yaml:"nodeToNodeEncryption" json:"-"`
+	EncryptAtRest              bool              `yaml:"encryptAtRest" json:"-"`
+	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
+}
+
 // Catalog struct holds a collections of services
 type Catalog struct {
 	// Instances of Services
-	RdsService   RDSService   `yaml:"rds" json:"-"`
-	RedisService RedisService `yaml:"redis" json:"-"`
+	RdsService           RDSService           `yaml:"rds" json:"-"`
+	RedisService         RedisService         `yaml:"redis" json:"-"`
+	ElasticsearchService ElasticsearchService `yaml:"elasticsearch" json:"-"`
 
 	// All helper structs to be unexported
 	secrets   Secrets   `yaml:"-" json:"-"`
