@@ -627,29 +627,57 @@ elasticsearch:
   bindable: true
   tags:
   - "elasticsearch"
+  - "aws"
   metadata:
     displayName: elasticsearch Broker
-    imageUrl:
+    imageUrl: "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZyB3aWR0aD0iMzJweCIgaGVpZ2h0PSIzMnB4IiB2aWV3Qm94PSIwIDAgMzIgMzIiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+ICAgICAgICA8dGl0bGU+ZWxhc3RpY3NlYXJjaDwvdGl0bGU+ICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPiAgICA8ZGVmcz48L2RlZnM+ICAgIDxnIGlkPSItYmxvY2tzL2ljb25zIiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4gICAgICAgIDxnIGlkPSJlbGFzdGljc2VhcmNoIj4gICAgICAgICAgICA8cGF0aCBkPSJNNC4zNTI1MzU4LDIxLjU5MjU5MTcgQzQuMjQ0NTQyMjYsMjIuMTM2OTAxMSA0LjE4NzkxOTQ2LDIyLjY5OTY0ODkgNC4xODc5MTk0NiwyMy4yNzU1OTM5IEM0LjE4NzkxOTQ2LDI4LjAzNDY0NDYgOC4wNTM5OTEyOCwzMS44OTI2MTc0IDEyLjgyMzAzMjUsMzEuODkyNjE3NCBDMTUuODA2MDM4OCwzMS44OTI2MTc0IDE4LjQzNTc2NDksMzAuMzgzMjE0IDE5Ljk4NzA4MDgsMjguMDg4MDE4MSBMMjEuMjYxMTU4MSwyMS41MzM0NTg5IEwxOS41NDM5NjA5LDE4LjMwMzg4MDcgTDExLjg4MjY2OTQsMTQuODEyNDI5IEw0LjM1MjUzNTgsMjEuNTkyNTkxNyBaIiBpZD0iQ29tYmluZWQtU2hhcGUtQ29weSIgZmlsbD0iIzM0QkVCMCI+PC9wYXRoPiAgICAgICAgICAgIDxwYXRoIGQ9Ik0yNy42NDc3OTkyLDEwLjI0NzA4OTIgQzI3Ljc1NTU3NSw5LjcwNjA0MTQ3IDI3LjgxMjA4MDUsOS4xNDY2OTMzMyAyNy44MTIwODA1LDguNTc0MjQyNTIgQzI3LjgxMjA4MDUsMy44Mzg4MTkxMyAyMy45NDU0NTI0LDAgMTkuMTc1NzI0OCwwIEMxNi4xOTcxODUsMCAxMy41NzA4MTc2LDEuNDk2OTg0NSAxMi4wMTgyOTI0LDMuNzc0NDczODQgTDEwLjczOTkyMzIsMTAuMzUxMTEzNSBMMTIuMTk1NDAyMywxMy40NzIzOTg1IEwxOS44OTg5MTUsMTYuOTgzMDkxNSBMMjcuNjQ3Nzk5MiwxMC4yNDcwODkyIFoiIGlkPSJDb21iaW5lZC1TaGFwZS1Db3B5LTIiIGZpbGw9IiNGNUJEMTUiPjwvcGF0aD4gICAgICAgICAgICA8cGF0aCBkPSJNMy42MzQ5OTkxNywyMC41MDgxMDU5IEMxLjUwNDE2MzYxLDE5LjY0OTI5NTQgMCwxNy41NTk5NDY1IDAsMTUuMTE4Nzg2NiBDMCwxMi42MTM3ODE0IDEuNTgzODcxMzQsMTAuNDc5MjMwMSAzLjgwMzQ1NzA3LDkuNjY0NjI0OTMgTDkuNTkzNzkxMTIsMTEuMDAxNDI4OSBMMTAuOTUzODgyMywxMy45MTgxNTM5IEwzLjYzNDk5OTE3LDIwLjUwODEwNTkgWiIgaWQ9IkNvbWJpbmVkLVNoYXBlLUNvcHktMyIgZmlsbD0iIzJCNDc5MCI+PC9wYXRoPiAgICAgICAgICAgIDxwYXRoIGQ9Ik0yOC4zNjA0OTc3LDExLjM4OTM1NjUgQzMwLjQ5MTM5MjEsMTIuMjMwMTkzNiAzMiwxNC4zMTU4MzkzIDMyLDE2Ljc1NTU4NCBDMzIsMTkuMzA1MTY1OCAzMC4zNTI0OTk1LDIxLjQ2ODA0ODEgMjguMDY4OTk2NiwyMi4yMjc3MjQ2IEwyMi40MTU4Nzc3LDIwLjkyMjU5OTMgTDIwLjgyODM3MTQsMTcuOTM2OTM0MSBMMjguMzYwNDk3NywxMS4zODkzNTY1IFoiIGlkPSJDb21iaW5lZC1TaGFwZS1Db3B5LTQiIGZpbGw9IiMxNzY3NTYiPjwvcGF0aD4gICAgICAgICAgICA8cGF0aCBkPSJNMTAuNjI0MzkwNywzLjcyMDI3ODY1IEM5Ljk0MDc5NDk3LDMuMjA0Nzk5MjkgOS4wOTA5Nzc3MSwyLjg5OTMyODg2IDguMTcwMDY0ODMsMi44OTkzMjg4NiBDNS45MTE0ODA5MywyLjg5OTMyODg2IDQuMDgwNTM2OTEsNC43MzY3MzIzNiA0LjA4MDUzNjkxLDcuMDAzMjg0NDQgQzQuMDgwNTM2OTEsNy41MjI0OTc1IDQuMTc2NjE3MzMsOC4wMTkxOTA2MSA0LjM1MTkwOTA4LDguNDc2NDM1MTcgTDkuNDcwMTk4MDIsOS42NTgwODUyOCBMMTAuNjI0MzkwNywzLjcyMDI3ODY1IFoiIGlkPSJDb21iaW5lZC1TaGFwZS1Db3B5LTUiIGZpbGw9IiNFQTQ4OEMiPjwvcGF0aD4gICAgICAgICAgICA8cGF0aCBkPSJNMjcuNTU2NTM4OCwyMy40MjYzMTMzIEMyNy43MjE3ODA0LDIzLjg3NDI4NCAyNy44MTIwODA1LDI0LjM1ODk5NjMgMjcuODEyMDgwNSwyNC44NjQ5Njg0IEMyNy44MTIwODA1LDI3LjE0NDk3NjcgMjUuOTc4NDY0OCwyOC45OTMyODg2IDIzLjcxNjU4NTMsMjguOTkzMjg4NiBDMjIuNzk5OTA4OSwyOC45OTMyODg2IDIxLjk1MzU3MjgsMjguNjg5NzExOSAyMS4yNzExMjMxLDI4LjE3Njg1NDIgTDIyLjQyNDgyNjYsMjIuMjQxNTY0MiBMMjcuNTU2NTM4OCwyMy40MjYzMTMzIFoiIGlkPSJDb21iaW5lZC1TaGFwZS1Db3B5LTYiIGZpbGw9IiM5NEM3M0YiPjwvcGF0aD4gICAgICAgIDwvZz4gICAgPC9nPjwvc3ZnPg=="
     longDescription:
-    providerDisplayName: elasticsearch
-    documentationUrl:
+    providerDisplayName: aws-elasticsearch
+    documentationUrl: "https://cloud.gov/docs/services/elasticsearch/"
     supportUrl:
   plans:
-  - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
-    name: "aws-standard"
-    description: "Standard Plan for Elasticsearch in AWS"
+  - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
+    name: "BETA-es-dev"
+    description: "BETA AWS Elasticsearch 7.4 - Single node non-prod use only"
     metadata:
       bullets:
       - "elasticsearch"
-      - "on AWS!"
+      - "es 7.4"
+      - "single node"
+      - "non-prod"
       costs:
       - amount:
           usd: 0
         unit: "MONTHLY"
-      displayName: "Free elasticsearch"
+      displayName: "non-prod single node elasticsearch 7.4"
     free: true
     elasticsearchVersion: 7.4
-    masterCount: 2
+    dataCount: 1
+    instanceType: t2.small.elasticsearch
+    volumeSize: 10
+    volumeType: gp2
+    encryptAtRest: false
+    automatedSnapshotStartHour: 7
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
+  - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+    name: "BETA-es-medium"
+    description: "BETA AWS Elasticsearch 7.4 - 3 node master with 2 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "2 data nodes"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "es cluster 3 master 2 data based on elasticsearch 7.4"
+    free: true
+    elasticsearchVersion: 7.4
+    masterCount: 3
     dataCount: 2
     instanceType: c5.large.elasticsearch
     masterInstanceType: c5.large.elasticsearch
@@ -663,26 +691,31 @@ elasticsearch:
       environment: (( grab meta.environment ))
       client: "the client"
       service: "aws-broker"
-  - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
-    name: "aws-dev"
-    description: "Dev Plan for Elasticsearch in AWS"
+  - id: "95b528cf-743e-2996-32yt-mc0a5vnf87cg"
+    name: "BETA-es-medium-ha"
+    description: "BETA AWS Elasticsearch 7.4 - 3 node master with 4 data nodes"
     metadata:
       bullets:
       - "elasticsearch"
-      - "on AWS!"
+      - "es 7.4"
+      - "4 data nodes"
       costs:
       - amount:
           usd: 0
         unit: "MONTHLY"
-      displayName: "Free elasticsearch"
+      displayName: "es cluster 3 master 4 data based on elasticsearch 7.4"
     free: true
     elasticsearchVersion: 7.4
-    dataCount: 1
-    instanceType: t2.small.elasticsearch
+    masterCount: 3
+    dataCount: 4
+    instanceType: c5.large.elasticsearch
+    masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
     volumeType: gp2
-    encryptAtRest: false
-    automatedSnapshotStartHour: 7
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
