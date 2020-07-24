@@ -654,7 +654,7 @@ elasticsearch:
     elasticsearchVersion: 7.4
     dataCount: 1
     instanceType: t2.small.elasticsearch
-    volumeSize: 10
+    volumeSize: 15
     volumeType: gp2
     encryptAtRest: false
     automatedSnapshotStartHour: 7
@@ -681,7 +681,7 @@ elasticsearch:
     dataCount: 2
     instanceType: c5.large.elasticsearch
     masterInstanceType: c5.large.elasticsearch
-    volumeSize: 10
+    volumeSize: 15
     volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
@@ -710,7 +710,7 @@ elasticsearch:
     dataCount: 4
     instanceType: c5.large.elasticsearch
     masterInstanceType: c5.large.elasticsearch
-    volumeSize: 10
+    volumeSize: 15
     volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
