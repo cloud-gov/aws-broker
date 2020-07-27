@@ -28,6 +28,7 @@ type ElasticsearchInstance struct {
 	IamPolicyARN               string `sql:"size(255)"`
 	AccessControlPolicy        string `sql:"size(255)"`
 	ElasticsearchVersion       string `sql:"size(255)"`
+	CurrentESVersion           string `sql:"size(255)"`
 	MasterCount                int    `sql:"size(255)"`
 	DataCount                  int    `sql:"size(255)"`
 	InstanceType               string `sql:"size(255)"`
@@ -89,11 +90,12 @@ func (i *ElasticsearchInstance) getCredentials(password string) (map[string]stri
 		i.Host)
 
 	credentials = map[string]string{
-		"uri":        uri,
-		"access_key": i.AccessKey,
-		"secret_key": i.SecretKey,
-		"host":       i.Host,
-		"port":       strconv.FormatInt(i.Port, 10),
+		"uri":                           uri,
+		"access_key":                    i.AccessKey,
+		"secret_key":                    i.SecretKey,
+		"host":                          i.Host,
+		"port":                          strconv.FormatInt(i.Port, 10),
+		"current_elasticsearch_version": i.CurrentESVersion,
 	}
 	return credentials, nil
 }
