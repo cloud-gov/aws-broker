@@ -109,6 +109,11 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	return response.SuccessAcceptedResponse
 }
 
+func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
+	// Note:  This is not currently supported for Redis instances.
+	return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
+}
+
 func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
 	existingInstance := ElasticsearchInstance{}
 

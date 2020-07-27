@@ -108,6 +108,36 @@ redis:
         environment: "cf-env-dev"
         client: "the client"
         service: "aws-broker"
+    -
+      id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+      name: "BETA-redis-5node"
+      description: "BETA AWS Elasticache Redis 5.0.6 Five node"
+      metadata:
+        bullets:
+          - "redis"
+          - "redis506"
+          - "5node"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "5 node redis5.0.6, persistent storage, 512Mb memory limit"
+      free: true
+      securityGroup: (( grab meta.redis.security_group ))
+      engineVersion: 5.0.6
+      numberCluster: 5
+      nodeType: cache.t3.micro
+      subnetGroup: (( grab meta.redis.subnet_group ))
+      parameterGroup: default.redis5.0
+      preferredMaintenanceWindow: mon:07:00-mon:08:00
+      snapshotWindow: 06:00-07:00
+      snapshotRetentionLimit: 3
+      automaticFailoverEnabled: true
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
 rds:
   id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
   name: "rds"
@@ -154,50 +184,89 @@ rds:
     -
       id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
-      description: "Dedicated Micro RDS Postgres DB Instance"
+      description: "Dedicated micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
-              usd: 0.036
+              usd: 0.022
             unit: "HOURLY"
-        displayName: "Dedicated Micro Postgres"
+        displayName: "Dedicated micro PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
       dbType: postgres
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
-        environment: "cf-env"
-        client: "the client"
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78e"
+    - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
       name: "medium-psql"
-      description: "Dedicated Medium RDS Postgres DB Instance"
+      description: "Dedicated medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
           -
             amount:
-              usd: 0.19
+              usd: 0.115
             unit: "HOURLY"
-        displayName: "Dedicated Medium Postgres"
+        displayName: "Dedicated medium PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.m3.medium
+      allocatedStorage: 10
       dbType: postgres
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
-        environment: "cf-env"
-        client: "the client"
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
+      name: "medium-psql-redundant"
+      description: "Dedicated redundant medium RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          -
+            amount:
+              usd: 0.230
+            unit: "HOURLY"
+        displayName: "Dedicated redundant medium PostgreSQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.medium
+      allocatedStorage: 10
+      dbType: postgres
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
         service: "aws-broker"
     -
       id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"
@@ -224,23 +293,26 @@ rds:
         service: "aws-broker"
     -
       id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
-      name: "micro-mysql"
-      description: "Dedicated Micro RDS Postgres DB Instance"
+      name: "small-mysql"
+      description: "Dedicated small RDS MySQL DB Instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
           -
             amount:
-              usd: 0.036
+              usd: 0.041
             unit: "HOURLY"
-        displayName: "Dedicated Micro MySQL"
+        displayName: "Dedicated small MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t2.small
       dbType: mysql
+      allocatedStorage: 10
+      plan_updateable: true
       securityGroup: sg-123456
+      storage_type: gp2
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"
@@ -252,7 +324,7 @@ rds:
       description: "Dedicated Medium RDS MySQL DB Instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
           -
@@ -264,7 +336,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
+      allocatedStorage: 10
+      plan_updateable: true
       securityGroup: sg-123456
+      storage_type: gp2
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"

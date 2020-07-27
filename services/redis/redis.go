@@ -20,6 +20,7 @@ import (
 
 type redisAdapter interface {
 	createRedis(i *RedisInstance, password string) (base.InstanceState, error)
+	modifyRedis(i *RedisInstance, password string) (base.InstanceState, error)
 	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
@@ -29,6 +30,11 @@ type mockRedisAdapter struct {
 }
 
 func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -52,7 +58,11 @@ type sharedRedisAdapter struct {
 	SharedRedisConn *gorm.DB
 }
 
-func (d *sharedRedisAdapter) createDB(i *RedisInstance, password string) (base.InstanceState, error) {
+func (d *sharedRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+	return base.InstanceReady, nil
+}
+
+func (d *sharedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
 	return base.InstanceReady, nil
 }
 
@@ -126,6 +136,10 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
+}
+
+func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+	return base.InstanceNotModified, nil
 }
 
 func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {

@@ -114,6 +114,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if adapterErr != nil {
 		return adapterErr
 	}
+
 	// Create the database instance.
 	status, err := adapter.createDB(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
@@ -139,6 +140,100 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
+	return response.SuccessAcceptedResponse
+}
+
+func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
+	existingInstance := RDSInstance{}
+
+	options := RDSOptions{}
+	if len(modifyRequest.RawParameters) > 0 {
+		err := json.Unmarshal(modifyRequest.RawParameters, &options)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+	}
+
+	// Load the existing instance provided.
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
+	}
+
+	// Fetch the new plan that has been requested.
+	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
+	if newPlanErr != nil {
+		return newPlanErr
+	}
+
+	// Check to make sure that we're not switching database engines; this is not
+	// allowed.
+	if newPlan.DbType != existingInstance.DbType {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch between database engines/types. Please select a plan with the same database engine/type.",
+		)
+	}
+
+	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
+	// are not allowed or enabled, but in case we do, explicitly error out.
+	if existingInstance.Adapter == "shared" {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch from a shared database instance. Please migrate your database to a dedicated instance plan instead.",
+		)
+	}
+
+	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
+	// are not allowed or enabled, but in case we do, explicitly error out.
+	if newPlan.Adapter == "shared" {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch to a shared database instance. Please choose a dedicated instance plan instead.",
+		)
+	}
+
+	// Don't allow updating to a service plan that doesn't support updates.
+	if newPlan.PlanUpdateable == false {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch to "+newPlan.Name+" because the service plan does not allow updates or modification.",
+		)
+	}
+
+	// Connect to the existing instance.
+	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	// Modify the database instance.
+	status, err := adapter.modifyDB(&existingInstance, existingInstance.ClearPassword)
+
+	if status == base.InstanceNotModified {
+		desc := "There was an error modifying the instance."
+
+		if err != nil {
+			desc = desc + " Error: " + err.Error()
+		}
+
+		return response.NewErrorResponse(http.StatusBadRequest, desc)
+	}
+
+	// Update the existing instance in the broker.
+	existingInstance.State = status
+	existingInstance.PlanID = newPlan.ID
+	err = broker.brokerDB.Save(&existingInstance).Error
+
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
 	return response.SuccessAcceptedResponse
 }
 
@@ -169,6 +264,8 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	case base.InstanceReady:
 		state = "succeeded"
 	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotModified:
 		state = "failed"
 	case base.InstanceNotGone:
 		state = "failed"

@@ -22,12 +22,47 @@ import (
 	"github.com/18F/aws-broker/services/redis"
 )
 
+var (
+	originalRDSPlanID                = "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	updateableRDSPlanID              = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
+	nonUpdateableRDSPlan             = "ee75aef3-7697-4906-9330-fb1f83d719be"
+	originalRedisPlanID              = "475e36bf-387f-44c1-9b81-575fec2ee443"
+	nonUpdateableRedisPlanID         = "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+	originalElasticsearchPlanID      = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+	nonUpdateableElasticsearchPlanID = "162ffae8-9cf8-4806-80e5-a7f92d514198"
+)
+
+// micro-psql plan
 var createRDSInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
+}`)
+
+// medium-psql plan
+var modifyRDSInstanceReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"1070028c-b5fb-4de8-989b-4e00d07ef5e8",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"previous_values": {
+		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	}
+}`)
+
+// medium-psql-redundant plan
+var modifyRDSInstanceNotAllowedReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"ee75aef3-7697-4906-9330-fb1f83d719be",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"previous_values": {
+		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	}
 }`)
 
 var createRedisInstanceReq = []byte(
@@ -38,12 +73,34 @@ var createRedisInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
+var modifyRedisInstanceReq = []byte(
+	`{
+	"service_id":"cda65825-e357-4a93-a24b-9ab138d97815",
+	"plan_id":"5nd336bf-0k7f-44c1-9b81-575fp3k764r6",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"previous_values": {
+		"plan_id": "475e36bf-387f-44c1-9b81-575fec2ee443"
+	}
+}`)
+
 var createElasticsearchInstanceReq = []byte(
 	`{
 	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
 	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
+}`)
+
+var modifyElasticsearchInstanceReq = []byte(
+	`{
+	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
+	"plan_id":"162ffae8-9cf8-4806-80e5-a7f92d514198",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"previous_values": {
+		"plan_id": "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+	}
 }`)
 
 var brokerDB *gorm.DB
@@ -156,6 +213,118 @@ func TestCreateRDSInstance(t *testing.T) {
 
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata")
+	}
+}
+
+func TestModifyRDSInstance(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalRDSPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(string(resp.Body.Bytes()), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	}
+
+	// Reload the instance and check to see that the plan has been modified.
+	i = rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.PlanID != updateableRDSPlanID {
+		t.Logf("The instance was not modified: " + i.PlanID + " != " + updateableRDSPlanID)
+		t.Error("The instance was not modified to have the new instance class plan.")
+	}
+}
+
+func TestModifyRDSInstanceNotAllowed(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalRDSPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
+
+	if resp.Code != http.StatusBadRequest {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it contain "...because the service plan does not allow updates or modification."?
+	if !strings.Contains(string(resp.Body.Bytes()), "because the service plan does not allow updates or modification.") {
+		t.Error(urlAcceptsIncomplete, "should return a message that the plan cannot be chosen")
+	}
+
+	// Reload the instance and check to see that the plan has not been modified.
+	i = rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.PlanID != originalRDSPlanID {
+		t.Logf("The instance was modified: " + i.PlanID + " != " + originalRDSPlanID)
+		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
 	}
 }
 
@@ -331,6 +500,62 @@ func TestCreateRedisInstance(t *testing.T) {
 	}
 }
 
+func TestModifyRedisInstance(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_redis_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalRedisPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_redis_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_redis_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
+
+	if resp.Code != http.StatusBadRequest {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it contain "Updating Redis service instances is not supported at this time"?
+	if !strings.Contains(string(resp.Body.Bytes()), "Updating Redis service instances is not supported at this time") {
+		t.Error(urlAcceptsIncomplete, "should return a message that Redis services cannot be modified at this time")
+	}
+
+	// Reload the instance and check to see that the plan has not been modified.
+	i = redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	if i.PlanID != originalRedisPlanID {
+		t.Logf("The instance was modified: " + i.PlanID + " != " + originalRedisPlanID)
+		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
+	}
+}
+
 func TestRedisLastOperation(t *testing.T) {
 	url := "/v2/service_instances/the_redis_instance/last_operation"
 	res, m := doRequest(nil, url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
@@ -500,6 +725,62 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata", i.PlanID, "plan", i.OrganizationGUID, "org", i.SpaceGUID)
+	}
+}
+
+func TestModifyElasticsearchInstance(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalElasticsearchPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceReq))
+
+	if resp.Code != http.StatusBadRequest {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it contain "Updating Redis service instances is not supported at this time"?
+	if !strings.Contains(string(resp.Body.Bytes()), "Updating Elasticsearch service instances is not supported at this time") {
+		t.Error(urlAcceptsIncomplete, "should return a message that Elasticsearch services cannot be modified at this time")
+	}
+
+	// Reload the instance and check to see that the plan has not been modified.
+	i = elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.PlanID != originalElasticsearchPlanID {
+		t.Logf("The instance was modified: " + i.PlanID + " != " + originalElasticsearchPlanID)
+		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
 	}
 }
 

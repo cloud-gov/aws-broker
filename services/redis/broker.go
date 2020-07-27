@@ -110,6 +110,11 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 	return response.SuccessAcceptedResponse
 }
 
+func (broker *redisBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
+	// Note:  This is not currently supported for Redis instances.
+	return response.NewErrorResponse(http.StatusBadRequest, "Updating Redis service instances is not supported at this time.")
+}
+
 func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
 	existingInstance := RedisInstance{}
 

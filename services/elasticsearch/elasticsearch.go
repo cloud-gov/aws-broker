@@ -26,6 +26,7 @@ import (
 
 type ElasticsearchAdapter interface {
 	createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
+	modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
 	deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
@@ -35,6 +36,11 @@ type mockElasticsearchAdapter struct {
 }
 
 func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -210,6 +216,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
+}
+
+func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+	return base.InstanceNotModified, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {

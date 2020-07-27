@@ -29,13 +29,13 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 }
 
 func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
-	createRequest, resp := request.ExtractRequest(req)
-	if resp != nil {
-		return resp
+	createRequest, err := request.ExtractRequest(req)
+	if err != nil {
+		return err
 	}
-	broker, resp := findBroker(createRequest.ServiceID, c, brokerDb, settings)
-	if resp != nil {
-		return resp
+	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings)
+	if err != nil {
+		return err
 	}
 
 	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
@@ -44,13 +44,58 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	}
 
 	// Create instance
-	resp = broker.CreateInstance(c, id, createRequest)
+	resp := broker.CreateInstance(c, id, createRequest)
+
 	if resp.GetResponseType() != response.ErrorResponseType {
 		instance := base.Instance{Uuid: id, Request: createRequest}
 		brokerDb.NewRecord(instance)
-		brokerDb.Create(&instance)
-		// TODO check save error
+
+		err := brokerDb.Create(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
 	}
+
+	return resp
+}
+
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	// Extract the request information.
+	modifyRequest, err := request.ExtractRequest(req)
+	if err != nil {
+		return err
+	}
+
+	// Find the requested instance in the broker.
+	instance, err := base.FindBaseInstance(brokerDb, id)
+	if err != nil {
+		return err
+	}
+
+	// Retrieve the correct broker.
+	broker, err := findBroker(instance.ServiceID, c, brokerDb, settings)
+	if err != nil {
+		return err
+	}
+
+	// Check if async calls are allowed.
+	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+	if !asyncAllowed {
+		return response.ErrUnprocessableEntityResponse
+	}
+
+	// Attempt to modify the database instance.
+	resp := broker.ModifyInstance(c, id, modifyRequest, instance)
+
+	if resp.GetResponseType() != response.ErrorResponseType {
+		err := brokerDb.Save(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
+	}
+
 	return resp
 }
 

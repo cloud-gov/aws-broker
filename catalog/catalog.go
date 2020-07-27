@@ -43,11 +43,12 @@ type PlanMetadata struct {
 // Plan is a generic struct for a Cloud Foundry service plan
 // http://docs.cloudfoundry.org/services/api.html
 type Plan struct {
-	ID          string       `yaml:"id" json:"id" validate:"required"`
-	Name        string       `yaml:"name" json:"name" validate:"required"`
-	Description string       `yaml:"description" json:"description" validate:"required"`
-	Metadata    PlanMetadata `yaml:"metadata" json:"metadata" validate:"required"`
-	Free        bool         `yaml:"free" json:"free"`
+	ID             string       `yaml:"id" json:"id" validate:"required"`
+	Name           string       `yaml:"name" json:"name" validate:"required"`
+	Description    string       `yaml:"description" json:"description" validate:"required"`
+	Metadata       PlanMetadata `yaml:"metadata" json:"metadata" validate:"required"`
+	Free           bool         `yaml:"free" json:"free"`
+	PlanUpdateable bool         `yaml:"plan_updateable" json:"plan_updateable"`
 }
 
 var (
