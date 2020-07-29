@@ -50,7 +50,7 @@ rds:
               usd: 0.022
             unit: "HOURLY"
         displayName: "Dedicated micro PostgreSQL"
-      free: false
+      free: true
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
@@ -275,7 +275,7 @@ rds:
               usd: 0.041
             unit: "HOURLY"
         displayName: "Dedicated small MySQL"
-      free: false
+      free: true
       adapter: dedicated
       instanceClass: db.t2.small
       allocatedStorage: 10
