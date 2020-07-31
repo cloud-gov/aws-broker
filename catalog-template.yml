@@ -50,7 +50,7 @@ rds:
               usd: 0.022
             unit: "HOURLY"
         displayName: "Dedicated micro PostgreSQL"
-      free: false
+      free: true
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
@@ -275,7 +275,7 @@ rds:
               usd: 0.041
             unit: "HOURLY"
         displayName: "Dedicated small MySQL"
-      free: false
+      free: true
       adapter: dedicated
       instanceClass: db.t2.small
       allocatedStorage: 10
@@ -503,17 +503,17 @@ rds:
         service: "aws-broker"
     - id: "43b6954b-46c3-4a45-9ca3-995e552ef558"
       name: "large-sqlserver-se"
-      description: "Dedicated large RDS SQL Server 2016 SE DB instance"
+      description: "Dedicated large RDS SQL Server SE DB instance"
       metadata:
         bullets:
         - "Dedicated RDS instance"
-        - "SQL Server 2016 Standard Edition instance"
+        - "SQL Server Standard Edition instance"
         - "License Included"
         costs:
         - amount:
             usd: 1.002
         unit: "HOURLY"
-        displayName: "Dedicated large SQL Server 2016 SE"
+        displayName: "Dedicated large SQL Server SE"
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
