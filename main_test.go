@@ -368,7 +368,7 @@ func TestRDSBindInstance(t *testing.T) {
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
-	res, _ = doRequest(m, url, "PUT", true, nil)
+	res, _ = doRequest(m, url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusCreated {
 		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -596,7 +596,7 @@ func TestRedisBindInstance(t *testing.T) {
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
-	res, _ = doRequest(m, url, "PUT", true, nil)
+	res, _ = doRequest(m, url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusCreated {
 		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -824,7 +824,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
-	res, _ = doRequest(m, url, "PUT", true, nil)
+	res, _ = doRequest(m, url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusCreated {
 		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
