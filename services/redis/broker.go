@@ -152,7 +152,7 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
-func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RedisInstance{}
 
 	var count int64

@@ -15,6 +15,7 @@ import (
 
 type ElasticsearchOptions struct {
 	ElasticsearchVersion string `json:"elasticsearchVersion"`
+	Bucket               string `json:"bucket"`
 }
 
 func (r ElasticsearchOptions) Validate(settings *config.Settings) error {
@@ -151,8 +152,20 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
-func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := ElasticsearchInstance{}
+
+	options := ElasticsearchOptions{}
+	if len(bindRequest.RawParameters) > 0 {
+		err := json.Unmarshal(bindRequest.RawParameters, &options)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+	}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
@@ -179,6 +192,7 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
+	existingInstance.setBucket(options.Bucket)
 	if credentials, err = adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
 		if err != nil {
@@ -187,6 +201,9 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
 
+	if len(existingInstance.Bucket) > 0 {
+		broker.brokerDB.Save(&existingInstance)
+	}
 	// If the state of the instance has changed, update it.
 	if existingInstance.State != originalInstanceState {
 		broker.brokerDB.Save(&existingInstance)

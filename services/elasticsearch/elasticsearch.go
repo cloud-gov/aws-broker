@@ -128,7 +128,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	accountID := result.Account
 
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"arn:aws:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	var elasticsearchTags []*elasticsearchservice.Tag
 	time.Sleep(5 * time.Second)
 
@@ -269,6 +269,132 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		}
 
 	}
+
+	if len(i.Bucket) > 0 {
+		iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+		assumeRolePolicy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
+		roleInput := &iam.CreateRoleInput{
+			AssumeRolePolicyDocument: aws.String(assumeRolePolicy),
+			RoleName:                 aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+		resp, err := iamsvc.CreateRole(roleInput)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return nil, err
+		}
+		if resp.Role.Arn != nil {
+			i.SnapshotARN = *(resp.Role.Arn)
+			fmt.Println(i.getCredentials(password))
+		}
+		//Policy to for ES to passRole
+		s3Policy := `{"Version": "2012-10-17","Statement": [{"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]},{"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}]}`
+		rolePolicyInput := &iam.CreatePolicyInput{
+			PolicyName:     aws.String(i.Domain + "-to-S3-RolePolicy"),
+			PolicyDocument: aws.String(s3Policy),
+		}
+
+		respPolicy, err := iamsvc.CreatePolicy(rolePolicyInput)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return nil, err
+		}
+		if respPolicy.Policy.Arn != nil && resp.Role.RoleName != nil {
+			i.SnapshotPolicyARN = *(respPolicy.Policy.Arn)
+			roleAttachPolicyInput := &iam.AttachRolePolicyInput{
+				PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
+				RoleName:  aws.String(*(resp.Role.RoleName)),
+			}
+
+			respAttachPolicy, err := iamsvc.AttachRolePolicy(roleAttachPolicyInput)
+			if err != nil {
+				if awsErr, ok := err.(awserr.Error); ok {
+					// Generic AWS error with Code, Message, and original error (if any)
+					fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+					if reqErr, ok := err.(awserr.RequestFailure); ok {
+						// A service error occurred
+						fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+					}
+				} else {
+					// This case should never be hit, the SDK should always return an
+					// error which satisfies the awserr.Error interface.
+					fmt.Println(err.Error())
+				}
+				return nil, err
+			}
+			fmt.Println(awsutil.StringValue(respAttachPolicy))
+		}
+
+		esPermissionPolicy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
+
+		rolePolicyInput = &iam.CreatePolicyInput{
+			PolicyName:     aws.String(i.Domain + "-to-S3-ESRolePolicy"),
+			PolicyDocument: aws.String(esPermissionPolicy),
+		}
+
+		respPolicy, err = iamsvc.CreatePolicy(rolePolicyInput)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return nil, err
+		}
+		fmt.Println(awsutil.StringValue(respPolicy))
+		if respPolicy.Policy.Arn != nil {
+			i.IamPassRolePolicyARN = *(respPolicy.Policy.Arn)
+			userAttachPolicyInput := &iam.AttachUserPolicyInput{
+				PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
+				UserName:  aws.String(i.Domain),
+			}
+			_, err := iamsvc.AttachUserPolicy(userAttachPolicyInput)
+			if err != nil {
+				if awsErr, ok := err.(awserr.Error); ok {
+					// Generic AWS error with Code, Message, and original error (if any)
+					fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+					if reqErr, ok := err.(awserr.RequestFailure); ok {
+						// A service error occurred
+						fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+					}
+				} else {
+					// This case should never be hit, the SDK should always return an
+					// error which satisfies the awserr.Error interface.
+					fmt.Println(err.Error())
+				}
+				return nil, err
+			}
+		}
+	}
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
 }
@@ -289,7 +415,48 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 		return base.InstanceNotGone, err
 	}
 
+	if len(i.Bucket) > 0 {
+		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return base.InstanceNotGone, err
+		}
+
+		roleDetachPolicyInput := &iam.DetachRolePolicyInput{
+			PolicyArn: aws.String(i.SnapshotPolicyARN),
+			RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+
+		if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
+			fmt.Println(err.Error())
+			return base.InstanceNotGone, err
+		}
+
+		if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return base.InstanceNotGone, err
+		}
+
+		rolePolicyDeleteInput := &iam.DeleteRoleInput{
+			RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+
+		if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
+			fmt.Println(err.Error())
+			return base.InstanceNotGone, err
+		}
+
+		if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return base.InstanceNotGone, err
+		}
+	}
+
 	if err := user.Delete(i.Domain); err != nil {
+		fmt.Println(err.Error())
+		return base.InstanceNotGone, err
+	}
+
+	if err := user.DeletePolicy(i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return base.InstanceNotGone, err
 	}
