@@ -110,6 +110,7 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 		"host":     i.Host,
 		"port":     strconv.FormatInt(i.Port, 10),
 		"db_name":  i.FormatDBName(),
+		"name":     i.FormatDBName(),
 	}
 	return credentials, nil
 }
