@@ -15,7 +15,7 @@ type Broker interface {
 	// LastOperation uses the catalog and parsed request to get an instance status for the particular type of service.
 	LastOperation(*catalog.Catalog, string, Instance) response.Response
 	// BindInstance takes the existing instance and binds it to an app.
-	BindInstance(*catalog.Catalog, string, Instance) response.Response
+	BindInstance(*catalog.Catalog, string, request.Request, Instance) response.Response
 	// DeleteInstance deletes the existing instance.
 	DeleteInstance(*catalog.Catalog, string, Instance) response.Response
 }

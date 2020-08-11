@@ -39,6 +39,10 @@ type ElasticsearchInstance struct {
 	NodeToNodeEncryption       bool   `sql:"size(255)"`
 	EncryptAtRest              bool   `sql:"size(255)"`
 	AutomatedSnapshotStartHour int    `sql:"size(255)"`
+	Bucket                     string `sql:"size(255)"`
+	SnapshotARN                string `sql:"size(255)"`
+	SnapshotPolicyARN          string `sql:"size(255)"`
+	IamPassRolePolicyARN       string `sql:"size(255)"`
 
 	ClearPassword string `sql:"-"`
 
@@ -89,15 +93,32 @@ func (i *ElasticsearchInstance) getCredentials(password string) (map[string]stri
 	uri := fmt.Sprintf("https://%s:443",
 		i.Host)
 
-	credentials = map[string]string{
-		"uri":                           uri,
-		"access_key":                    i.AccessKey,
-		"secret_key":                    i.SecretKey,
-		"host":                          i.Host,
-		"port":                          strconv.FormatInt(i.Port, 10),
-		"current_elasticsearch_version": i.CurrentESVersion,
+	if len(i.Bucket) > 0 {
+		credentials = map[string]string{
+			"uri":                           uri,
+			"access_key":                    i.AccessKey,
+			"secret_key":                    i.SecretKey,
+			"host":                          i.Host,
+			"current_elasticsearch_version": i.CurrentESVersion,
+			"bucket":                        i.Bucket,
+			"snapshotRoleARN":               i.SnapshotARN,
+		}
+	} else {
+		credentials = map[string]string{
+			"uri":                           uri,
+			"access_key":                    i.AccessKey,
+			"secret_key":                    i.SecretKey,
+			"host":                          i.Host,
+			"current_elasticsearch_version": i.CurrentESVersion,
+		}
 	}
 	return credentials, nil
+}
+
+func (i *ElasticsearchInstance) setBucket(bucket string) error {
+	i.Bucket = bucket
+
+	return nil
 }
 
 func (i *ElasticsearchInstance) init(uuid string,

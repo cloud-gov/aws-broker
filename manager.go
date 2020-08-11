@@ -113,6 +113,12 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 }
 
 func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	// Extract the request information.
+	bindRequest, err := request.ExtractRequest(req)
+	if err != nil {
+		return err
+	}
+
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
@@ -122,7 +128,7 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 		return resp
 	}
 
-	return broker.BindInstance(c, id, instance)
+	return broker.BindInstance(c, id, bindRequest, instance)
 }
 
 func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {

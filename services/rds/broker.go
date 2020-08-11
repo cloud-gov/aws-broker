@@ -275,7 +275,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
-func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
 	var count int64
