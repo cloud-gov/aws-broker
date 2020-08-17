@@ -165,6 +165,27 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
 
+	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
+	if options.AllocatedStorage > 0 {
+		// Check that we are not decreasing the size of the instance.
+		if options.AllocatedStorage < existingInstance.AllocatedStorage {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				"Cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance.",
+			)
+			// Check that to see if the user inadvertantly requested to change the storage size to the same amount.
+			// TODO:  Could we just provide a warning instead of erroring out fully?
+		} else if options.AllocatedStorage == existingInstance.AllocatedStorage {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				"Cannot change the size of the existing instance; database is already set to "+string(existingInstance.AllocatedStorage)+" GB.",
+			)
+		} else {
+			// Update the existing instance with the new allocated storage.
+			existingInstance.AllocatedStorage = options.AllocatedStorage
+		}
+	}
+
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
 	if newPlanErr != nil {
