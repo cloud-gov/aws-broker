@@ -160,7 +160,7 @@ func (i *RDSInstance) init(uuid string,
 
 	i.AllocatedStorage = options.AllocatedStorage
 	if i.AllocatedStorage == 0 {
-		i.AllocatedStorage = plan.AllocatedStorage
+		i.AllocatedStorage = 20
 	}
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible
