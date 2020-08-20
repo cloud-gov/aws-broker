@@ -29,7 +29,7 @@ type RDSInstance struct {
 	Tags                  map[string]string `sql:"-"`
 	BackupRetentionPeriod int64             `sql:"-"`
 	DbSubnetGroup         string            `sql:"-"`
-	AllocatedStorage      int64             `sql:"-"`
+	AllocatedStorage      int64             `sql:"size(255)"`
 	SecGroup              string            `sql:"-"`
 	EnableFunctions       bool              `sql:"-"`
 	PubliclyAccessible    bool              `sql:"-"`
@@ -160,7 +160,7 @@ func (i *RDSInstance) init(uuid string,
 
 	i.AllocatedStorage = options.AllocatedStorage
 	if i.AllocatedStorage == 0 {
-		i.AllocatedStorage = 20
+		i.AllocatedStorage = plan.AllocatedStorage
 	}
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible
