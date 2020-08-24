@@ -163,7 +163,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-      - task: smoke-tests-postgres-update-micro-to-medium
+      - task: smoke-tests-postgres-update-instance-configuration
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((development-cf-api-url))
@@ -198,7 +198,7 @@ jobs:
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
 
-      - task: smoke-tests-mysql-update-small-to-medium
+      - task: smoke-tests-mysql-update-instance-configuration
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((development-cf-api-url))
@@ -412,7 +412,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-      - task: smoke-tests-postgres-update-micro-to-medium
+      - task: smoke-tests-postgres-update-instance-configuration
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((staging-cf-api-url))
@@ -447,7 +447,7 @@ jobs:
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
 
-      - task: smoke-tests-mysql-update-small-to-medium
+      - task: smoke-tests-mysql-update-instance-configuration
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((staging-cf-api-url))
@@ -715,7 +715,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-      - task: smoke-tests-postgres-update-micro-to-medium
+      - task: smoke-tests-postgres-update-instance-configuration
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((prod-cf-api-url))
@@ -750,7 +750,7 @@ jobs:
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
 
-      - task: smoke-tests-mysql-update-small-to-medium
+      - task: smoke-tests-mysql-update-instance-configuration
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((prod-cf-api-url))

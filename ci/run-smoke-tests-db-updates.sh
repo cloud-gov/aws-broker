@@ -58,6 +58,12 @@ cf update-service "rds-smoke-tests-db-update-$SERVICE_PLAN" -p "$NEW_SERVICE_PLA
 # Wait to make sure that the service instance has been successfully updated.
 wait_for_service_instance "rds-smoke-tests-db-update-$SERVICE_PLAN"
 
+# Update storage size
+cf update-service "rds-smoke-tests-db-update-$SERVICE_PLAN" -c '{"storage": 15}'
+
+# Wait to make sure that the service instance has been successfully updated.
+wait_for_service_instance "rds-smoke-tests-db-update-$SERVICE_PLAN"
+
 # Clean up app and service
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
 cf delete-service -f "rds-smoke-tests-db-update-$SERVICE_PLAN"
