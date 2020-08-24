@@ -676,6 +676,9 @@ elasticsearch:
     volumeType: gp2
     encryptAtRest: false
     automatedSnapshotStartHour: 7
+    securityGroup: (( grab meta.elasticsearch.elasticsearch_security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -705,6 +708,9 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.elasticsearch_security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -734,6 +740,9 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.elasticsearch_security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"

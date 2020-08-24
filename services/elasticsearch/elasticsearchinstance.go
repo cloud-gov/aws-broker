@@ -49,9 +49,10 @@ type ElasticsearchInstance struct {
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
 
-	Tags          map[string]string `sql:"-"`
-	DbSubnetGroup string            `sql:"-"`
-	SecGroup      string            `sql:"-"`
+	Tags        map[string]string `sql:"-"`
+	SubnetIDAZ1 string            `sql:"-"`
+	SubnetIDAZ2 string            `sql:"-"`
+	SecGroup    string            `sql:"-"`
 }
 
 func (i *ElasticsearchInstance) setPassword(password, key string) error {
@@ -157,6 +158,9 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.NodeToNodeEncryption = plan.NodeToNodeEncryption
 	i.EncryptAtRest = plan.EncryptAtRest
 	i.AutomatedSnapshotStartHour, _ = strconv.Atoi(plan.AutomatedSnapshotStartHour)
+	i.SecGroup = plan.SecurityGroup
+	i.SubnetIDAZ1 = plan.SubnetIDAZ1
+	i.SubnetIDAZ2 = plan.SubnetIDAZ2
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

@@ -157,6 +157,9 @@ type ElasticsearchPlan struct {
 	NodeToNodeEncryption       bool              `yaml:"nodeToNodeEncryption" json:"-"`
 	EncryptAtRest              bool              `yaml:"encryptAtRest" json:"-"`
 	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
+	SubnetIDAZ1                string            `yaml:"subnetIDaz1" json:"-" validate:"required"`
+	SubnetIDAZ2                string            `yaml:"subnetIDaz2" json:"-" validate:"required"`
+	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
 }
 
 // Catalog struct holds a collections of services

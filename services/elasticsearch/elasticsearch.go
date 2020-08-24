@@ -175,6 +175,17 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	encryptionAtRestOptions := &elasticsearchservice.EncryptionAtRestOptions{
 		Enabled: aws.Bool(i.EncryptAtRest),
 	}
+
+	VPCOptions := &elasticsearchservice.VPCOptions{
+		SecurityGroupIds: []*string{
+			&i.SecGroup,
+		},
+		SubnetIds: []*string{
+			&i.SubnetIDAZ1,
+			&i.SubnetIDAZ2,
+		},
+	}
+
 	//Standard Parameters
 	params := &elasticsearchservice.CreateElasticsearchDomainInput{
 		DomainName:                  aws.String(i.Domain),
@@ -185,6 +196,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		NodeToNodeEncryptionOptions: nodeOptions,
 		DomainEndpointOptions:       domainOptions,
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
+		VPCOptions:                  VPCOptions,
 	}
 
 	params.SetAccessPolicies(accessControlPolicy)

@@ -41,6 +41,10 @@ meta:
   redis: 
     subnet_group: `terraform output -state stack.tfstate elasticache_subnet_group`
     security_group: `terraform output -state stack.tfstate elasticache_redis_security_group`
+  elasticsearch:
+    subnet_id_az1: `terraform output -state stack.tfstate elasticsearch_subnet_az1`
+    subnet_id_az2: `terraform output -state stack.tfstate elasticsearch_subnet_az2`
+    security_group: `terraform output -state stack.tfstate elasticsearch_security_group`
 EOF
 
 # Merge secrets into templates
