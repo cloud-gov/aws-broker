@@ -189,10 +189,17 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		SecurityGroupIds: []*string{
 			&i.SecGroup,
 		},
-		SubnetIds: []*string{
+	}
+
+	if i.DataCount > 1 {
+		VPCOptions.SetSubnetIds([]*string{
 			&i.SubnetIDAZ1,
 			&i.SubnetIDAZ2,
-		},
+		})
+	} else {
+		VPCOptions.SetSubnetIds([]*string{
+			&i.SubnetIDAZ1,
+		})
 	}
 
 	//Standard Parameters
