@@ -148,9 +148,15 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		VolumeType: aws.String(i.VolumeType),
 	}
 
+	zoneAwarenessConfig := &elasticsearchservice.ZoneAwarenessConfig{
+		AvailabilityZoneCount: aws.Int64(2),
+	}
+
 	esclusterconfig := &elasticsearchservice.ElasticsearchClusterConfig{
-		InstanceType:  aws.String(i.InstanceType),
-		InstanceCount: aws.Int64(int64(i.DataCount)),
+		ZoneAwarenessEnabled: aws.Bool(true),
+		ZoneAwarenessConfig:  zoneAwarenessConfig,
+		InstanceType:         aws.String(i.InstanceType),
+		InstanceCount:        aws.Int64(int64(i.DataCount)),
 	}
 	if i.MasterEnabled {
 		esclusterconfig.SetDedicatedMasterEnabled(i.MasterEnabled)
