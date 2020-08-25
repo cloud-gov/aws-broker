@@ -37,6 +37,9 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
+    securityGroup: sec-group
+    subnetIDaz1: subnet-1
+    subnetIDaz2: subnet-2
     tags:
       environment: "cf-env-dev"
       client: "the client"
@@ -61,6 +64,9 @@ elasticsearch:
     volumeType: gp2
     encryptAtRest: false
     automatedSnapshotStartHour: 7
+    securityGroup: sec-group
+    subnetIDaz1: subnet-1
+    subnetIDaz2: subnet-2
     tags:
       environment: "cf-env-dev"
       client: "the client"
