@@ -28,7 +28,7 @@ cf push "smoke-tests-db-update-storage-${SERVICE_PLAN}" -f manifest.yml --no-sta
 
 # set some variables that it needs
 cf set-env "smoke-tests-db-update-storage-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
-cf set-env "smoke-tests-db-update-storage-${SERVICE_PLAN}" SERVICE_NAME "rds-smoke-tests-db-update-$SERVICE_PLAN"
+cf set-env "smoke-tests-db-update-storage-${SERVICE_PLAN}" SERVICE_NAME "rds-smoke-tests-db-update-storage-$SERVICE_PLAN"
 
 # Create service
 if echo "$SERVICE_PLAN" | grep -v shared | grep mysql >/dev/null ; then
