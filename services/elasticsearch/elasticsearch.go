@@ -280,9 +280,9 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		fmt.Println(awsutil.StringValue(resp))
 
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) == true {
-			if resp.DomainStatus.Endpoint != nil && resp.DomainStatus.ARN != nil {
-				fmt.Printf("endpoint: %s ARN: %s \n", *(resp.DomainStatus.Endpoint), *(resp.DomainStatus.ARN))
-				i.Host = *(resp.DomainStatus.Endpoint)
+			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
+				fmt.Printf("endpoint: %s ARN: %s \n", *(resp.DomainStatus.Endpoints["vpc"]), *(resp.DomainStatus.ARN))
+				i.Host = *(resp.DomainStatus.Endpoints["vpc"])
 				i.ARN = *(resp.DomainStatus.ARN)
 				i.State = base.InstanceReady
 				i.CurrentESVersion = *(resp.DomainStatus.ElasticsearchVersion)
