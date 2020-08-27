@@ -282,6 +282,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	// NOTE:  Only instance class modification and Multi AZ (redundancy) is
 	// enabled at this point.
 	params := &rds.ModifyDBInstanceInput{
+		AllocatedStorage:     aws.Int64(i.AllocatedStorage),
 		ApplyImmediately:     aws.Bool(true),
 		DBInstanceClass:      &d.Plan.InstanceClass,
 		MultiAZ:              &d.Plan.Redundant,

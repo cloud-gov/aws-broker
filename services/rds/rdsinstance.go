@@ -29,7 +29,7 @@ type RDSInstance struct {
 	Tags                  map[string]string `sql:"-"`
 	BackupRetentionPeriod int64             `sql:"-"`
 	DbSubnetGroup         string            `sql:"-"`
-	AllocatedStorage      int64             `sql:"-"`
+	AllocatedStorage      int64             `sql:"size(255)"`
 	SecGroup              string            `sql:"-"`
 	EnableFunctions       bool              `sql:"-"`
 	PubliclyAccessible    bool              `sql:"-"`
