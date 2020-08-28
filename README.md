@@ -4,6 +4,8 @@ Cloud Foundry Service Broker to manage instances of various AWS services.
 
 ### Current Services Supported
 - RDS
+- AWS Elasticache for Redis
+- AWS Elasticsearch
 
 ### Setup
 
@@ -19,7 +21,7 @@ There are important environment variables that should be overriden inside the `m
 1. `DB_PASS`: Password to access the database.
 1. `DB_TYPE`: The type of database. Currently supported types: `postgres` and `sqlite3`.
 1. `DB_SSLMODE`: The type of SSL Mode to use when connecting to the database. Supported modes: `disabled`, `require` and `verify-ca`.
-1. `AWS_ACCESS_KEY_ID`: The id credential with access to make requests to the Amazon RDS .
+1. `AWS_ACCESS_KEY_ID`: The id credential (treat like a password) with access to make requests to the Amazon RDS .
 1. `AWS_SECRET_ACCESS_KEY`: The secret key (treat like a password) credential to access Amazon RDS.
 1. `AWS_DEFAULT_REGION`: Region you wish to provision services in.
 1. `AUTH_USER`: The username used by cf to authenticate to the broker
@@ -53,7 +55,7 @@ Prior to pushing, complete the catalog.yaml for your environment. It is architec
 
 #### Secrets.yml
 
-secrets.yml contains the all of the secrets for the different resources. 
+secrets.yml contains the all of the secrets for the different resources.
 
 
 ### How to deploy it
@@ -76,6 +78,45 @@ When you do that you will have all the credentials in the
 
 Also, you will have a `DATABASE_URL` environment variable that will
 be the connection string to the DB.
+
+### Credential handling
+
+This section is primarily for auditors who need to make sure that the broker doesnt' store or transmit any clear-text authenticators. All calls between entities are made over HTTPS, unless otherwise specified.
+
+Broker env vars: 
+
+#### Provision an instance
+
+The `aws-broker` app runs as a CloudFoundry app, and when instantiated has the above listed environment variables injected into its environment by CloudFoundry ((help)). None of those values are written to disk by the broker application.
+
+When an authenticated, authorized CloudFoundry user runs `cd create-service aws-rds _plan_name_ _service_name_`, the CloudFoundry platform uses the open-service broker API (https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md) to call the registered broker with a `PUT` request, `/v2/service_instances/:instance_id` where instance_id is a GUID. The request uses BASIC AUTH, e,g.:
+
+```
+curl -X PUT https://username:password@aws-broker..../v2/service_instances/:instance_id
+```
+
+((Where are the basic auth creds?))
+
+The response indicates if the provisioning request has been accepted. The status of the request is async.
+
+#### Broker to AWS to provision an instance
+
+The broker application calls the AWS API with the AWS Access Key and Secret Key, which were provided as environment variables at instantiation. 
+
+When the provisioning is complete, the broker takes the following actions:
+- For RDS and Redis, it creates a username/password in the AWS service, and stores the credentials in the broker database
+- For AWS Elasticsearch, it creates and IAM user with privileges to the new instance, the stores the credentials in the broker database
+
+#### Storing credentials in the broker database
+
+The broker uses a dedicated AWS RDS PostgreSQL database. The RDS instance data are encrypted at rest using AWS storage encryption. The communication between the broker and the database is over postgres StartTLS with TLS 1.2 enabled.
+
+The broker is instantiated with encryption key, `ENC_KEY`, and all credentials are written to the database encrypted with that key and a random salt, as in the `setPassword` function of each _service_instance.go file, e.g.: https://github.com/cloud-gov/aws-broker/blob/20f70bb/services/redis/redisinstance.go#L50
+
+#### Providing credentials to CloudFoundry applications
+
+The CloudFoundry applications have access to the credentials only if the user `binds` an app to a service instance, as specified at https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#binding of the OSBAPI standard. The credentials are fetched from the service broker and are stored in the environment of the application container, and not written the static storage. If the application instance is re-instantiated, the platform fetches the credentials for the application container from the broker.
+
 
 ### Public domain
 
