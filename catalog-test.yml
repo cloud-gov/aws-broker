@@ -198,7 +198,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.022
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated micro PostgreSQL"
       free: true
@@ -227,7 +227,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.115
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated medium PostgreSQL"
       free: false
@@ -256,7 +256,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.230
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant medium PostgreSQL"
       free: false
@@ -308,7 +308,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.041
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated small MySQL"
       free: true
@@ -335,7 +335,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.19
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated Medium MySQL"
       free: false
@@ -363,7 +363,7 @@ rds:
         costs:
           -
             amount:
-              usd: 19.19
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated Medium Oracle SE2"
       free: false

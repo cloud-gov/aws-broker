@@ -47,7 +47,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.022
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated micro PostgreSQL"
       free: true
@@ -57,6 +57,36 @@ rds:
       dbType: postgres
       plan_updateable: true
       redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    -
+      id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
+      name: "micro-psql-redundant"
+      description: "Dedicated redundant micro RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant micro PostgreSQL"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
+      dbType: postgres
+      plan_updateable: true
+      redundant: true
       encrypted: true
       storage_type: gp2
       backup_retention_period: 14
@@ -76,7 +106,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.115
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated medium PostgreSQL"
       free: false
@@ -105,7 +135,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.230
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant medium PostgreSQL"
       free: false
@@ -134,7 +164,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.218
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated large PostgreSQL"
       free: false
@@ -163,7 +193,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.436
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant large PostgreSQL"
       free: false
@@ -192,7 +222,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.436
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated x-large PostgreSQL"
       free: false
@@ -221,7 +251,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.872
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant x-large PostgreSQL"
       free: false
@@ -272,7 +302,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.041
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated small MySQL"
       free: true
@@ -292,6 +322,36 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+    - id: "ae0d673d-f213-4125-8ca7-e57968aa792d"
+      name: "small-mysql-redundant"
+      description: "Dedicated redundant small RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "MySQL instance"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant small MySQL"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t2.small
+      allocatedStorage: 10
+      dbType: mysql
+      plan_updateable: true
+      dbVersion: &mysql-version "5.7.21"
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
     - id: "2ba54329-8264-486f-85bf-50c9f24085a9"
       name: "medium-mysql"
       description: "Dedicated medium RDS MySQL DB instance"
@@ -302,7 +362,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.110
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated medium MySQL"
       free: false
@@ -332,7 +392,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.220
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant medium MySQL"
       free: false
@@ -362,7 +422,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.210
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated large MySQL"
       free: false
@@ -392,7 +452,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.420
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant large MySQL"
       free: false
@@ -422,7 +482,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.420
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated x-large MySQL"
       free: false
@@ -452,7 +512,7 @@ rds:
         costs:
           -
             amount:
-              usd: 0.840
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant x-large MySQL"
       free: false
@@ -482,7 +542,7 @@ rds:
         - "License Included"
         costs:
         - amount:
-            usd: 0.162
+            usd: 0
           unit: "HOURLY"
         displayName: "Dedicated medium Oracle SE2"
       free: false
@@ -511,7 +571,7 @@ rds:
         - "License Included"
         costs:
         - amount:
-            usd: 1.002
+            usd: 0
         unit: "HOURLY"
         displayName: "Dedicated large SQL Server SE"
       free: false
