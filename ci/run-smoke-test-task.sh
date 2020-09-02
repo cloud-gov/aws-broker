@@ -35,7 +35,7 @@ get_task_state() {
   local app_guid=$1
   local task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
 
-  while [ "$task_state" != "FAILED" ] || [ "$task_state" != "SUCCEEDED" ]; do
+  while [ "$task_state" != "FAILED" ] && [ "$task_state" != "SUCCEEDED" ]; do
     sleep 15
     task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
   done
