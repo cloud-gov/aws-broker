@@ -8,7 +8,7 @@ import redis
 
 def redis_client(service_name):
     """
-        Connecting to a Redis service
+    Connecting to a Redis service
     """
     config = dict(host=service_name, port=6379, password="", ssl_cert_reqs=None)
 
@@ -35,31 +35,28 @@ def redis_client(service_name):
 
 class RedisSmokeTester:
     """
-        This is a smoke tester for redis services.
+    This is a smoke tester for redis services.
     """
 
-
-    def __init__(self, service_name, records_per_seed = 10):
+    def __init__(self, service_name, records_per_seed=10):
         self.client = redis_client(service_name)
         self.records_per_seed = records_per_seed
-
 
     def get_expected(self):
         records_per_seed = self.records_per_seed
 
         return {
-            'counts': {
-                'keys_str': records_per_seed,
-                'keys_num': records_per_seed,
-                'keys_str_ttl': records_per_seed,
-                'keys_num_ttl': records_per_seed
+            "counts": {
+                "keys_str": records_per_seed,
+                "keys_num": records_per_seed,
+                "keys_str_ttl": records_per_seed,
+                "keys_num_ttl": records_per_seed,
             }
         }
 
-
     def load_data(self):
         """
-            Method to load data into redis
+        Method to load data into redis
         """
         records_per_seed = self.records_per_seed
 
@@ -79,10 +76,9 @@ class RedisSmokeTester:
             self.client.set(key, x * 2)
             self.client.expire(key, 1000)
 
-
     def get_data(self):
         """
-            Method to get loaded data from load_data method
+        Method to get loaded data from load_data method
         """
         keys_str = self.client.keys("key-str*")
         keys_num = self.client.keys("key-num*")
@@ -98,18 +94,16 @@ class RedisSmokeTester:
             }
         }
 
-
     def flush(self):
         """
-            flush redis to clean up after test
+        flush redis to clean up after test
         """
         self.client.flushall()
 
-
     def run(self):
         """
-            Run the load, get, and flush methods
-            Returns result dict
+        Run the load, get, and flush methods
+        Returns result dict
         """
         try:
             self.load_data()
@@ -147,9 +141,9 @@ if __name__ == "__main__":
     isExpected = results == expected
 
     if isExpected is not True:
-        print('Results did not match.')
-        print('Results')
+        print("Results did not match.")
+        print("Results")
         print(results)
-        print('Expected')
+        print("Expected")
         print(expected)
         os.sys.exit(1)
