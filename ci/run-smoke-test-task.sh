@@ -25,7 +25,7 @@ wait_for_service_instance() {
 
   while [ "$state" == "in progress" ]; do
     echo "Still waiting"
-    sleep 60
+    sleep 120
     state=$(cf curl /v3/service_instances/${guid} | jq -r '.last_operation.state')
   done
 }
