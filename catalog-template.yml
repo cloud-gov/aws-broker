@@ -22,8 +22,7 @@ rds:
           - "Shared RDS instance"
           - "PostgreSQL instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "MONTHLY"
         displayName: "Free shared plan"
@@ -36,20 +35,18 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
+    - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
-      description: "Dedicated micro RDS PostgreSQL DB instance"
+      description: "Dedicated burstable micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated burstable micro RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated micro PostgreSQL"
+        displayName: "Dedicated burstable micro RDS PostgreSQL DB instance"
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
@@ -66,20 +63,18 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
+    - id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
       name: "micro-psql-redundant"
-      description: "Dedicated redundant micro RDS PostgreSQL DB instance"
+      description: "Dedicated redundant burstable micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated redundant burstable micro RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant micro PostgreSQL"
+        displayName: "Dedicated redundant burstable micro RDS PostgreSQL DB instance"
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
@@ -96,19 +91,130 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-    - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-      name: "medium-psql"
-      description: "Dedicated medium RDS PostgreSQL DB instance"
+    - id: "e185e3be-07c7-48d6-9117-a85bc5ff1889"
+      name: "small-psql"
+      description: "Dedicated burstable small RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated burstable small RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated medium PostgreSQL"
+        displayName: "Dedicated burstable small RDS PostgreSQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.small
+      allocatedStorage: 10
+      dbType: postgres
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "92c946bf-26d0-41d2-85a3-ea96f8f6da41"
+      name: "small-psql-redundant"
+      description: "Dedicated redundant burstable small RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant burstable small RDS instance"
+          - "PostgreSQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant burstable small RDS PostgreSQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.small
+      allocatedStorage: 10
+      dbType: postgres
+      plan_updateable: true
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "6b0c7dc6-5628-4447-9867-5574bc4def20"
+      name: "medium-psql"
+      description: "Dedicated burstable medium RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated burstable medium RDS instance"
+          - "PostgreSQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated burstable medium RDS PostgreSQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.medium
+      allocatedStorage: 10
+      dbType: postgres
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "6c750aec-3eb9-4b4d-b70c-5811777110af"
+      name: "medium-psql-redundant"
+      description: "Dedicated redundant burstable medium RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant burstable medium RDS instance"
+          - "PostgreSQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant burstable medium RDS PostgreSQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.medium
+      allocatedStorage: 10
+      dbType: postgres
+      plan_updateable: true
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
+      name: "medium-gp-psql"
+      description: "Dedicated general purpose medium RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated general purpose medium RDS instance"
+          - "PostgreSQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated general purpose medium RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -126,18 +232,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
-      name: "medium-psql-redundant"
-      description: "Dedicated redundant medium RDS PostgreSQL DB instance"
+      name: "medium-gp-psql-redundant"
+      description: "Dedicated redundant general purpose medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated redundant general purpose medium RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant medium PostgreSQL"
+        displayName: "Dedicated redundant general purpose medium RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -155,18 +260,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "0201f24a-8e6d-4864-a597-f4752a2834f4"
-      name: "large-psql"
-      description: "Dedicated large RDS PostgreSQL DB instance"
+      name: "large-gp-psql"
+      description: "Dedicated general purpose large RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated general purpose large RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated large PostgreSQL"
+        displayName: "Dedicated general purpose large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.large
@@ -184,18 +288,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "d81ef27e-a49e-465e-b3bb-ea8a4a2f5571"
-      name: "large-psql-redundant"
-      description: "Dedicated redundant large RDS PostgreSQL DB instance"
+      name: "large-gp-psql-redundant"
+      description: "Dedicated redundant general purpose large RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated redundant general purpose large RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant large PostgreSQL"
+        displayName: "Dedicated redundant general purpose large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.large
@@ -213,18 +316,18 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "520b2cbf-588f-4324-bb34-474ea57304bb"
-      name: "xlarge-psql"
-      description: "Dedicated x-large RDS PostgreSQL DB instance"
+      name: "xlarge-pg-psql"
+      description: "Dedicated general purpose x-large RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated general purpose x-large RDS instance"
+          - "PostgreSQL DB instance"
         costs:
           -
             amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated x-large PostgreSQL"
+        displayName: "Dedicated general purpose x-large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.xlarge
@@ -246,14 +349,13 @@ rds:
       description: "Dedicated redundant x-large RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "PostgreSQL instance"
+          - "Dedicated redundant x-large RDS instance"
+          - "PostgreSQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant x-large PostgreSQL"
+        displayName: "Dedicated redundant x-large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.xlarge
@@ -278,8 +380,7 @@ rds:
           - "Shared RDS instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "MONTHLY"
         displayName: "Free shared plan"
@@ -294,17 +395,16 @@ rds:
         service: "aws-broker"
     - id: "0af67edb-30d8-4bb3-81c7-324c18d3efb2"
       name: "small-mysql"
-      description: "Dedicated small RDS MySQL DB instance"
+      description: "Dedicated burstable small RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "MySQL instance"
+          - "Dedicated burstable small RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated small MySQL"
+        displayName: "Dedicated burstable small RDS MySQL DB instance"
       free: true
       adapter: dedicated
       instanceClass: db.t2.small
@@ -324,17 +424,16 @@ rds:
         service: "aws-broker"
     - id: "ae0d673d-f213-4125-8ca7-e57968aa792d"
       name: "small-mysql-redundant"
-      description: "Dedicated redundant small RDS MySQL DB instance"
+      description: "Dedicated redundant burstable small RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "MySQL instance"
+          - "Dedicated redundant burstable small RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant small MySQL"
+        displayName: "Dedicated redundant burstable small RDS MySQL DB instance"
       free: true
       adapter: dedicated
       instanceClass: db.t2.small
@@ -352,19 +451,76 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-    - id: "2ba54329-8264-486f-85bf-50c9f24085a9"
+    - id: "beec33b2-9033-4639-9a22-368fff996030"
       name: "medium-mysql"
-      description: "Dedicated medium RDS MySQL DB instance"
+      description: "Dedicated burstable medium RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "MySQL instance"
+          - "Dedicated burstable medium RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated medium MySQL"
+        displayName: "Dedicated burstable medium RDS MySQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t2.medium
+      allocatedStorage: 10
+      dbType: mysql
+      plan_updateable: true
+      dbVersion: &mysql-version "5.7.21"
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "434f504b-f65b-4694-aa25-ba300bb3e1ec"
+      name: "medium-mysql-redundant"
+      description: "Dedicated redundant burstable medium RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant burstable medium RDS instance"
+          - "MySQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant burstable medium RDS MySQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t2.medium
+      allocatedStorage: 10
+      dbType: mysql
+      plan_updateable: true
+      dbVersion: &mysql-version "5.7.21"
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "2ba54329-8264-486f-85bf-50c9f24085a9"
+      name: "medium-gp-mysql"
+      description: "Dedicated general purpose medium RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated general purpose medium RDS instance"
+          - "MySQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated general purpose medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -383,18 +539,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "30e19cab-8d4e-492a-ac2c-33dd59d436d8"
-      name: "medium-mysql-redundant"
-      description: "Dedicated redundant medium RDS MySQL DB instance"
+      name: "medium-gp-mysql-redundant"
+      description: "Dedicated redundant general purpose medium RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "MySQL instance"
+          - "Dedicated redundant general purpose medium RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant medium MySQL"
+        displayName: "Dedicated redundant general purpose medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
@@ -413,18 +568,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "29cc73ed-f9c9-4901-b12b-bd4890aedf30"
-      name: "large-mysql"
-      description: "Dedicated large RDS MySQL DB instance"
+      name: "large-gp-mysql"
+      description: "Dedicated general purpose large RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "MySQL instance"
+          - "Dedicated general purpose large RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated large MySQL"
+        displayName: "Dedicated general purpose large RDS MySQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.large
@@ -443,18 +597,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "a0246f47-aeae-4c08-ba22-1d188bb51554"
-      name: "large-mysql-redundant"
-      description: "Dedicated redundant large RDS MySQL DB instance"
+      name: "large-gp-mysql-redundant"
+      description: "Dedicated redundant general purpose large RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "MySQL instance"
+          - "Dedicated redundant general purpose RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant large MySQL"
+        displayName: "Dedicated redundant general purpose large RDS MySQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.large
@@ -473,18 +626,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "9e056262-33fe-4236-a200-30e2d435d583"
-      name: "xlarge-mysql"
-      description: "Dedicated x-large RDS MySQL DB instance"
+      name: "xlarge-gp-mysql"
+      description: "Dedicated general purpose x-large RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated RDS instance"
-          - "MySQL instance"
+          - "Dedicated general purpose x-large RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated x-large MySQL"
+        displayName: "Dedicated general purpose x-large RDS MySQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.xlarge
@@ -503,18 +655,17 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e5da0850-0f48-4309-9b5f-dfe279fcd179"
-      name: "xlarge-mysql-redundant"
-      description: "Dedicated redundant x-large RDS MySQL DB instance"
+      name: "xlarge-gp-mysql-redundant"
+      description: "Dedicated redundant general purpose x-large RDS MySQL DB instance"
       metadata:
         bullets:
-          - "Dedicated redundant RDS instance"
-          - "MySQL instance"
+          - "Dedicated redundant general purpose x-large RDS instance"
+          - "MySQL DB instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant x-large MySQL"
+        displayName: "Dedicated redundant general purpose x-large RDS MySQL DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m4.xlarge
@@ -534,17 +685,17 @@ rds:
         service: "aws-broker"
     - id: "e7d65895-4fc3-4a66-8c61-68da4944c69b"
       name: "medium-oracle-se2"
-      description: "Dedicated medium RDS Oracle SE2 DB instance"
+      description: "Dedicated burstable medium RDS Oracle SE2 DB instance"
       metadata:
         bullets:
-        - "Dedicated RDS instance"
-        - "Oracle Standard Edition 2 instance"
+        - "Dedicated burstable medium RDS instance"
+        - "Oracle Standard Edition 2 DB instance"
         - "License Included"
         costs:
         - amount:
             usd: 0
           unit: "HOURLY"
-        displayName: "Dedicated medium Oracle SE2"
+        displayName: "Dedicated burstable medium RDS Oracle SE2 DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
@@ -562,18 +713,18 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "43b6954b-46c3-4a45-9ca3-995e552ef558"
-      name: "large-sqlserver-se"
-      description: "Dedicated large RDS SQL Server SE DB instance"
+      name: "large-gp-sqlserver-se"
+      description: "Dedicated general purpose large RDS SQL Server SE DB instance"
       metadata:
         bullets:
-        - "Dedicated RDS instance"
-        - "SQL Server Standard Edition instance"
+        - "Dedicated general purpose large RDS instance"
+        - "SQL Server Standard Edition DB instance"
         - "License Included"
         costs:
         - amount:
             usd: 0
         unit: "HOURLY"
-        displayName: "Dedicated large SQL Server SE"
+        displayName: "Dedicated general purpose large RDS SQL Server SE DB instance"
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
