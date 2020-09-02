@@ -128,7 +128,7 @@ The broker application calls the AWS API with the AWS Access Key and Secret Key,
 
 When the provisioning is complete, the broker takes the following actions:
 - For RDS and Redis, it creates a username/password in the AWS service, and stores the credentials in the broker database
-- For AWS Elasticsearch, it creates and IAM user with privileges to the new instance, the stores the credentials in the broker database
+- For AWS Elasticsearch, it creates an IAM user with privileges to the new instance, then stores the credentials in the broker database
 
 #### Storing credentials in the broker database
 
