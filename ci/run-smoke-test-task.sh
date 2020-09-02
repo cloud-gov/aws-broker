@@ -40,7 +40,14 @@ get_task_state() {
     task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
   done
 
-  return $task_state
+  # If task FAILED exit with error
+  if [[ "$task_state" == "FAILED" ]]; then
+    echo "Smoke test failed."
+    echo "Check '$> cf logs $TEST_APP --recent' for more info."
+    exit 1
+  fi
+
+  echo "$task_state"
 }
 
 # Log into CF
@@ -79,14 +86,8 @@ cf run-task $TEST_APP "python run.py -s $TEST_SERVICE"
 
 # Get finished task state with app guid
 test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
-task_state=$(get_task_state $test_app_guid)
 
-# If task FAILED exit with error
-if [[ "$task_state" == "FAILED" ]]; then
-  echo "Smoke test failed."
-  echo "Check '$> cf logs $TEST_APP --recent' for more info."
-  exit 1
-fi
+get_task_state $test_app_guid
 
 # Clean up app and service
 cf delete -f $TEST_APP
