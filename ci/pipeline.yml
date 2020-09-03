@@ -186,8 +186,8 @@ jobs:
           SERVICE_PLAN: micro-psql
           NEW_SERVICE_PLAN: medium-psql
           DB_TYPE: postgres
-        
-       - task: smoke-tests-mysql-update-storage
+
+      - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
         params:
           CF_API_URL: ((development-cf-api-url))
@@ -256,6 +256,28 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: BETA-redis-dev
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: BETA-es-dev
   on_success:
     put: slack
     params:
@@ -471,8 +493,8 @@ jobs:
           SERVICE_PLAN: micro-psql
           NEW_SERVICE_PLAN: medium-psql
           DB_TYPE: postgres
-        
-       - task: smoke-tests-mysql-update-storage
+
+      - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
         params:
           CF_API_URL: ((staging-cf-api-url))
@@ -528,6 +550,28 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: BETA-redis-dev
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: BETA-es-dev
   on_success:
     put: slack
     params:
@@ -855,6 +899,28 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: BETA-redis-dev
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: BETA-es-dev
   on_success:
     put: slack
     params:
