@@ -654,6 +654,35 @@ elasticsearch:
     documentationUrl: "https://cloud.gov/docs/services/aws-elasticsearchBETA/"
     supportUrl:
   plans:
+  - id: "20567994-6028-4629-9761-92ebd3fc330f"
+    name: "BETA-es-dev-6.8-migration"
+    description: "BETA AWS Elasticsearch 6.8 MIGRATION - Single node non-prod use only"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 6.8"
+      - "single node"
+      - "non-prod"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "non-prod single node elasticsearch 7.4"
+    free: true
+    elasticsearchVersion: 6.8
+    dataCount: 1
+    instanceType: t2.small.elasticsearch
+    volumeSize: 15
+    volumeType: gp2
+    encryptAtRest: false
+    automatedSnapshotStartHour: 7
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
   - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
     name: "BETA-es-dev"
     description: "BETA AWS Elasticsearch 7.4 - Single node non-prod use only"
