@@ -164,8 +164,7 @@ rds:
     documentationUrl:
     supportUrl:
   plans:
-    -
-      id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
+    - id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
       name: "shared-psql"
       description: "Shared infrastructure for Postgres DB"
       metadata:
@@ -173,8 +172,7 @@ rds:
           - "Shared RDS Instance"
           - "Postgres instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "MONTHLY"
         displayName: "Free Shared Plan"
@@ -187,8 +185,7 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
+    - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
       description: "Dedicated micro RDS PostgreSQL DB instance"
       metadata:
@@ -196,9 +193,8 @@ rds:
           - "Dedicated RDS instance"
           - "PostgreSQL instance"
         costs:
-          -
-            amount:
-              usd: 0.022
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated micro PostgreSQL"
       free: true
@@ -225,9 +221,8 @@ rds:
           - "Dedicated RDS instance"
           - "PostgreSQL instance"
         costs:
-          -
-            amount:
-              usd: 0.115
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated medium PostgreSQL"
       free: false
@@ -254,9 +249,8 @@ rds:
           - "Dedicated redundant RDS instance"
           - "PostgreSQL instance"
         costs:
-          -
-            amount:
-              usd: 0.230
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated redundant medium PostgreSQL"
       free: false
@@ -274,8 +268,7 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"
+    - id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"
       name: "shared-mysql"
       description: "Shared infrastructure for MySQL DB"
       metadata:
@@ -283,8 +276,7 @@ rds:
           - "Shared RDS Instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "MONTHLY"
         displayName: "Free Shared Plan"
@@ -297,8 +289,7 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
+    - id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
       name: "small-mysql"
       description: "Dedicated small RDS MySQL DB Instance"
       metadata:
@@ -306,9 +297,8 @@ rds:
           - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
-              usd: 0.041
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated small MySQL"
       free: true
@@ -324,8 +314,7 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78d"
+    - id: "332e0168-6969-4bd7-b07f-29f08c4bf78d"
       name: "medium-mysql"
       description: "Dedicated Medium RDS MySQL DB Instance"
       metadata:
@@ -333,9 +322,8 @@ rds:
           - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
-              usd: 0.19
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated Medium MySQL"
       free: false
@@ -351,8 +339,7 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78f"
+    - id: "332e0168-6969-4bd7-b07f-29f08c4bf78f"
       name: "medium-oracle-se2"
       description: "Dedicated Medium RDS Oracle Standard Edition 2 DB Instance"
       metadata:
@@ -361,9 +348,8 @@ rds:
           - "Oracle DB instance"
           - "Oracle Standard Edition 2"
         costs:
-          -
-            amount:
-              usd: 19.19
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated Medium Oracle SE2"
       free: false
