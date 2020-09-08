@@ -316,7 +316,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "520b2cbf-588f-4324-bb34-474ea57304bb"
-      name: "xlarge-pg-psql"
+      name: "xlarge-gp-psql"
       description: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
       metadata:
         bullets:
