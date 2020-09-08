@@ -345,7 +345,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "3732a60e-f2a0-4112-9b64-87dd0cf10e78"
-      name: "xlarge-psql-redundant"
+      name: "xlarge-gp-psql-redundant"
       description: "Dedicated redundant x-large RDS PostgreSQL DB instance"
       metadata:
         bullets:
