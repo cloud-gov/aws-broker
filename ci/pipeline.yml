@@ -127,7 +127,7 @@ jobs:
       BROKER_NAME: ((development-broker-name))
       AUTH_USER: ((development-auth-user))
       AUTH_PASS: ((development-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:BETA-redis-dev aws-elasticache-redis:BETA-redis-3node aws-elasticache-redis:BETA-redis-5node aws-elasticsearch:BETA-es-dev aws-elasticsearch:BETA-es-medium aws-elasticsearch:BETA-es-medium-ha
+      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:BETA-redis-dev aws-elasticache-redis:BETA-redis-3node aws-elasticache-redis:BETA-redis-5node aws-elasticsearch:BETA-es-dev aws-elasticsearch:BETA-es-medium aws-elasticsearch:BETA-es-medium-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -140,7 +140,7 @@ jobs:
       BROKER_NAME: ((development-broker-name))
       AUTH_USER: ((development-auth-user))
       AUTH_PASS: ((development-auth-pass))
-      SERVICES: aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-development
@@ -423,7 +423,7 @@ jobs:
       BROKER_NAME: ((staging-broker-name))
       AUTH_USER: ((staging-auth-user))
       AUTH_PASS: ((staging-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:BETA-redis-dev aws-elasticache-redis:BETA-redis-3node aws-elasticache-redis:BETA-redis-5node aws-elasticsearch:BETA-es-dev aws-elasticsearch:BETA-es-medium aws-elasticsearch:BETA-es-medium-ha
+      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:BETA-redis-dev aws-elasticache-redis:BETA-redis-3node aws-elasticache-redis:BETA-redis-5node aws-elasticsearch:BETA-es-dev aws-elasticsearch:BETA-es-medium aws-elasticsearch:BETA-es-medium-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -436,7 +436,7 @@ jobs:
       BROKER_NAME: ((staging-broker-name))
       AUTH_USER: ((staging-auth-user))
       AUTH_PASS: ((staging-auth-pass))
-      SERVICES: aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-staging
@@ -772,7 +772,7 @@ jobs:
       BROKER_NAME: ((prod-broker-name))
       AUTH_USER: ((prod-auth-user))
       AUTH_PASS: ((prod-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
+      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-oracle-se2
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -785,7 +785,7 @@ jobs:
       BROKER_NAME: ((prod-broker-name))
       AUTH_USER: ((prod-auth-user))
       AUTH_PASS: ((prod-auth-pass))
-      SERVICES: aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-prod
