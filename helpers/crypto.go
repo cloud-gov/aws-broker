@@ -3,21 +3,27 @@ package helpers
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"encoding/base64"
+	"math/rand"
+	"time"
 )
 
 // RandStr will generate a random alphanumeric string of the specified length.
 func RandStr(strSize int) string {
 
 	var dictionary string
-	dictionary = "0123456789abcdefghijklmnopqrstuvwxyz"
+	dictionary = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	return StringWithCharset(strSize, dictionary)
+}
 
-	bytes := generateIv(strSize)
-	for k, v := range bytes {
-		bytes[k] = dictionary[v%byte(len(dictionary))]
+func StringWithCharset(length int, charset string) string {
+	var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seedRand.Intn(len(charset))]
 	}
-	return string(bytes)
+	return string(b)
 }
 
 // Encrypt will encrypt the given plain text string.
