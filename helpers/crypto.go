@@ -3,9 +3,9 @@ package helpers
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
-	"math/rand"
-	"time"
+	"math/big"
 )
 
 // RandStr will generate a random alphanumeric string of the specified length.
@@ -17,11 +17,14 @@ func RandStr(strSize int) string {
 }
 
 func StringWithCharset(length int, charset string) string {
-	var seedRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	b := make([]byte, length)
+	charsetLen := big.NewInt(int64(len(charset)))
+
 	for i := range b {
-		b[i] = charset[seedRand.Intn(len(charset))]
+		idx, _ := rand.Int(rand.Reader, charsetLen)
+		idx64 := idx.Int64()
+		b[i] = charset[idx64]
 	}
 	return string(b)
 }
