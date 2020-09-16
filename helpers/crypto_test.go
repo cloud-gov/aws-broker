@@ -52,6 +52,31 @@ func TestKeyChangesEncryption(t *testing.T) {
 	}
 }
 
+func TestRandStringGeneration(t *testing.T) {
+	randstrings := []string{}
+
+	for i := 0; i < 1000000; i++ {
+		randstrings = append(randstrings, RandStr(10))
+	}
+
+	fmt.Println(randstrings[1])
+
+	dict := make(map[string]bool)
+	duplicatestrings := []string{}
+
+	for _, randstring := range randstrings {
+		if _, value := dict[randstring]; value {
+			dict[randstring] = true
+			duplicatestrings = append(duplicatestrings, randstring)
+		}
+	}
+
+	if len(duplicatestrings) != 0 {
+		t.Error("One or more strings were generated with the same value more than once: ", duplicatestrings)
+	}
+
+}
+
 func TestRandStringDistribution(t *testing.T) {
 	dict := make(map[string]int)
 	for i := 0; i < 1000000; i++ {
