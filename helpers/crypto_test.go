@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"crypto/aes"
+	"fmt"
 	"testing"
 )
 
@@ -48,5 +49,55 @@ func TestKeyChangesEncryption(t *testing.T) {
 
 	if encrypted1 == encrypted2 {
 		t.Error("different ivs should return different strings")
+	}
+}
+
+func TestRandStringGeneration(t *testing.T) {
+	randstrings := []string{}
+
+	for i := 0; i < 1000000; i++ {
+		randstrings = append(randstrings, RandStr(10))
+	}
+
+	fmt.Println(randstrings[1])
+
+	dict := make(map[string]bool)
+	duplicatestrings := []string{}
+
+	for _, randstring := range randstrings {
+		if _, value := dict[randstring]; value {
+			dict[randstring] = true
+			duplicatestrings = append(duplicatestrings, randstring)
+		}
+	}
+
+	if len(duplicatestrings) != 0 {
+		t.Error("One or more strings were generated with the same value more than once: ", duplicatestrings)
+	}
+
+}
+
+func TestRandStringDistribution(t *testing.T) {
+	dict := make(map[string]int)
+	for i := 0; i < 1000000; i++ {
+		randstring := RandStr(1)
+		dict[randstring] = dict[randstring] + 1
+	}
+	fmt.Println(dict)
+	min := 1000000
+	max := 0
+	for _, value := range dict {
+		if value > max {
+			max = value
+		}
+		if value < min {
+			min = value
+		}
+	}
+
+	fmt.Println("Min: ", min)
+	fmt.Println("Max: ", max)
+	if float32(min)/float32(max) < float32(.94) {
+		t.Error("The Deviation of random characters is too high", float32(min)/float32(max), float32(.95))
 	}
 }
