@@ -223,9 +223,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		i.ARN = *(resp.DomainStatus.ARN)
-		esARNs := make([]string, 1)
+		esARNs := make([]string, 0)
 		esARNs = append(esARNs, i.ARN)
-		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "*"}}}]}`
+		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
 		policyARN, err := user.CreatePolicy(i.Domain, "/", policy, esARNs)
 		if err != nil {
 			return base.InstanceNotCreated, err
