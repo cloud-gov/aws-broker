@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/helpers"
@@ -139,7 +140,7 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.Tags = plan.Tags
 	i.Description = plan.Description
 
-	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + helpers.RandStr(9)
+	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
 
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
 	password := helpers.RandStr(25)
