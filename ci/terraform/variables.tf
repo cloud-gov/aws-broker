@@ -18,8 +18,11 @@ variable "rds_shared_mysql_db_size" {}
 variable "rds_shared_mysql_db_name" {}
 variable "rds_shared_mysql_db_engine" {}
 variable "rds_shared_mysql_db_engine_version" {}
+variable "rds_shared_mysql_db_parameter_group_family" {}
 variable "rds_shared_mysql_username" {}
 variable "rds_shared_mysql_password" {}
+variable "rds_shared_mysql_apply_immediately" {}
+variable "rds_shared_mysql_allow_major_version_upgrade" {}
 
 variable "rds_shared_postgres_instance_type" {}
 variable "rds_shared_postgres_db_size" {}
