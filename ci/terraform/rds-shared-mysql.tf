@@ -14,7 +14,7 @@ module "rds_shared_mysql" {
   rds_db_engine_version         = "${var.rds_shared_mysql_db_engine_version}"
   rds_username                  = "${var.rds_shared_mysql_username}"
   rds_password                  = "${var.rds_shared_mysql_password}"
-  //rds_parameter_group_family    = "${var.rds_shared_mysql_db_parameter_group_family}"
+  rds_parameter_group_family    = "${var.rds_shared_mysql_db_parameter_group_family}"
   apply_immediately             = "${var.rds_shared_mysql_apply_immediately}"
   allow_major_version_upgrade   = "${var.rds_shared_mysql_allow_major_version_upgrade}"
 }
