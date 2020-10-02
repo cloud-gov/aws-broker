@@ -2,7 +2,6 @@ module "rds_shared_mysql" {
   source            = "rds_module"
   stack_description = "${var.stack_description}"
   rds_subnet_group  = "${data.terraform_remote_state.vpc.rds_subnet_group}"
-  create_db_parameter_group = "${var.rds_parameter_group_name == "" ? "true" : "false"}"
 
   /* TODO: Use database instance type from config */
   rds_security_groups = ["${data.terraform_remote_state.vpc.rds_mysql_security_group}"]
