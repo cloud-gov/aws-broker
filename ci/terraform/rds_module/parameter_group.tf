@@ -45,6 +45,7 @@ resource "aws_db_parameter_group" "recreatable_parameter_group_mysql" {
     var.rds_parameter_group_name :
     "${replace("${var.stack_description}-${var.rds_db_name}", "/[^a-zA-Z-]+/", "-")}"}"
 
+  create_db_parameter_group = "${var.rds_parameter_group_name == "" ? "true" : "false"}"
   family = "${var.rds_parameter_group_family}"
 
   parameter {
