@@ -43,7 +43,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      #TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
