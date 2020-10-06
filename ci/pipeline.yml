@@ -27,7 +27,7 @@ jobs:
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_instance_type: db.t3.micro
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
@@ -38,7 +38,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.t2.small
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -49,7 +49,7 @@ jobs:
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
       TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
