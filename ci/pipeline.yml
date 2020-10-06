@@ -33,6 +33,7 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 12.3
       TF_VAR_rds_internal_db_parameter_group_family: postgres13
+      TF_VAR_rds_internal_multi_az: false
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -44,6 +45,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
@@ -55,6 +57,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 12.3
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
+      TF_VAR_rds_shared_postgres_multi_az: false
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -332,6 +335,7 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 11.1
       TF_VAR_rds_internal_db_parameter_group_family: postgres11
+      TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -343,6 +347,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: true
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
@@ -354,6 +359,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 11.1
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres11
+      TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -629,6 +635,7 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 9.5.15
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -640,6 +647,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.6
+      TF_VAR_rds_shared_mysql_multi_az: true
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
@@ -651,6 +659,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
