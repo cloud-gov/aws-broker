@@ -12,6 +12,7 @@ module "rds_shared_mysql" {
   rds_final_snapshot_identifier = "${var.base_stack}-${replace(var.rds_shared_mysql_db_name, "_", "-")}"
   rds_db_engine                 = "${var.rds_shared_mysql_db_engine}"
   rds_db_engine_version         = "${var.rds_shared_mysql_db_engine_version}"
+  rds_multi_az                  = "${var.rds_shared_mysql_multi_az}"
   rds_username                  = "${var.rds_shared_mysql_username}"
   rds_password                  = "${var.rds_shared_mysql_password}"
   rds_parameter_group_family    = "${var.rds_shared_mysql_db_parameter_group_family}"
