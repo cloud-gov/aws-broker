@@ -27,34 +27,37 @@ jobs:
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_instance_type: db.t3.micro
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 11.1
-      TF_VAR_rds_internal_db_parameter_group_family: postgres11
+      TF_VAR_rds_internal_db_engine_version: 12.3
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
+      TF_VAR_rds_internal_multi_az: false
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.t2.small
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
       TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 11.1
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres11
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.3
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
+      TF_VAR_rds_shared_postgres_multi_az: false
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -330,8 +333,9 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 11.1
-      TF_VAR_rds_internal_db_parameter_group_family: postgres11
+      TF_VAR_rds_internal_db_engine_version: 12.3
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
+      TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -343,6 +347,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: true
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
@@ -352,8 +357,9 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((staging-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 11.1
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres11
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.3
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
+      TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -629,6 +635,7 @@ jobs:
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 9.5.15
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -640,6 +647,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.6
+      TF_VAR_rds_shared_mysql_multi_az: true
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
@@ -651,6 +659,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
