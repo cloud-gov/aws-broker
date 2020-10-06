@@ -333,8 +333,8 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 11.1
-      TF_VAR_rds_internal_db_parameter_group_family: postgres11
+      TF_VAR_rds_internal_db_engine_version: 12.3
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
       TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
@@ -357,8 +357,8 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((staging-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 11.1
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres11
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.3
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
       TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
