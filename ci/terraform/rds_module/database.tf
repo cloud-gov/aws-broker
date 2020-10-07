@@ -34,8 +34,8 @@ resource "aws_db_instance" "rds_database" {
   vpc_security_group_ids = ["${var.rds_security_groups}"]
 
   parameter_group_name = "${var.rds_db_engine == "postgres" ?
-    "${join("", aws_db_parameter_group.recreatable_parameter_group_postgres.name)}" :
-    "${join("", aws_db_parameter_group.recreatable_parameter_group_mysql.name)}"}"
+    "${join("", aws_db_parameter_group.recreatable_parameter_group_postgres.*.id)}" :
+    "${join("", aws_db_parameter_group.recreatable_parameter_group_mysql.*.id)}"}"
 
   allow_major_version_upgrade = "${var.allow_major_version_upgrade}"
   apply_immediately           = "${var.apply_immediately}"
