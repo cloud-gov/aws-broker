@@ -82,11 +82,12 @@ func (i *RedisInstance) getCredentials(password string) (map[string]string, erro
 		i.Port)
 
 	credentials = map[string]string{
-		"uri":      uri,
-		"password": password,
-		"host":     i.Host,
-		"hostname": i.Host,
-		"port":     strconv.FormatInt(i.Port, 10),
+		"uri":                          uri,
+		"password":                     password,
+		"host":                         i.Host,
+		"hostname":                     i.Host,
+		"current_redis_engine_version": i.EngineVersion,
+		"port":                         strconv.FormatInt(i.Port, 10),
 	}
 	return credentials, nil
 }
