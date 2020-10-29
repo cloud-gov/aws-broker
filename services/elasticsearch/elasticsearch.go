@@ -240,7 +240,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 			TagList: elasticsearchTags,
 			ARN:     resp.DomainStatus.ARN,
 		}
-		svc.AddTags(paramsTags)
+		resp1, err := svc.AddTags(paramsTags)
+		fmt.Println(awsutil.StringValue(resp1))
+		if d.didAwsCallSucceed(err) == false {
+			return base.InstanceNotCreated, nil
+		}
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
