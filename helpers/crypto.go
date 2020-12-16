@@ -16,6 +16,14 @@ func RandStr(strSize int) string {
 	return StringWithCharset(strSize, dictionary)
 }
 
+// RandStrNoCaps will generate a random alphanumeric string of the specified length.
+func RandStrNoCaps(strSize int) string {
+
+	var dictionary string
+	dictionary = "abcdefghijklmnopqrstuvwxyz0123456789"
+	return StringWithCharset(strSize, dictionary)
+}
+
 func StringWithCharset(length int, charset string) string {
 
 	b := make([]byte, length)
