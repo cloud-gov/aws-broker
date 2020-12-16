@@ -140,10 +140,10 @@ func (i *RDSInstance) init(uuid string,
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = s.DbNamePrefix + helpers.RandStr(15)
-	i.Username = "u" + helpers.RandStr(15)
+	i.Database = s.DbNamePrefix + helpers.RandStrNoCaps(15)
+	i.Username = "u" + helpers.RandStrNoCaps(15)
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
-	password := helpers.RandStr(25)
+	password := helpers.RandStrNoCaps(25)
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err
 	}
