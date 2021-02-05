@@ -18,13 +18,20 @@ type RDSOptions struct {
 	AllocatedStorage   int64 `json:"storage"`
 	EnableFunctions    bool  `json:"enable_functions"`
 	PubliclyAccessible bool  `json:"publicly_accessible"`
+	Version            int64 `json:"version"`
 }
 
 func (r RDSOptions) Validate(settings *config.Settings) error {
 	if r.AllocatedStorage > settings.MaxAllocatedStorage {
 		return fmt.Errorf("Invalid storage %d; must be <= %d", r.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
+
+	// this check only checks for psql version
+	if r.Version < 10 || r.Version > 12 {
+		return fmt.Errorf("Invalid version %d; must be 10, 11, or 12", r.Version)
+	}
 	return nil
+
 }
 
 type rdsBroker struct {

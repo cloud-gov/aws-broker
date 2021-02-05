@@ -134,6 +134,10 @@ func (i *RDSInstance) init(uuid string,
 	// Load AWS values
 	i.DbType = plan.DbType
 	i.DbVersion = plan.DbVersion
+	if i.DbType == "postgres" && options.Version != "" {
+		i.DbVersion = options.Version
+
+	}
 	i.BackupRetentionPeriod = plan.BackupRetentionPeriod
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
