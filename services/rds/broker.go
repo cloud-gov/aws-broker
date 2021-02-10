@@ -15,10 +15,10 @@ import (
 )
 
 type RDSOptions struct {
-	AllocatedStorage   int64 `json:"storage"`
-	EnableFunctions    bool  `json:"enable_functions"`
-	PubliclyAccessible bool  `json:"publicly_accessible"`
-	Version            int64 `json:"version"`
+	AllocatedStorage   int64  `json:"storage"`
+	EnableFunctions    bool   `json:"enable_functions"`
+	PubliclyAccessible bool   `json:"publicly_accessible"`
+	Version            string `json:"version"`
 }
 
 func (r RDSOptions) Validate(settings *config.Settings) error {
@@ -27,8 +27,9 @@ func (r RDSOptions) Validate(settings *config.Settings) error {
 	}
 
 	// this check only checks for psql version
-	if r.Version < 10 || r.Version > 12 {
-		return fmt.Errorf("Invalid version %d; must be 10, 11, or 12", r.Version)
+	// todo: we will add full support for version checks in the catalog
+	if r.Version < "10" || r.Version > "12" {
+		return fmt.Errorf("Invalid version %s; must be 10, 11, or 12", r.Version)
 	}
 	return nil
 
@@ -185,7 +186,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		} else if options.AllocatedStorage == existingInstance.AllocatedStorage {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
-				"Cannot change the size of the existing instance; database is already set to "+string(existingInstance.AllocatedStorage)+" GB.",
+				"Cannot change the size of the existing instance; database is already set to "+fmt.Sprint(existingInstance.AllocatedStorage)+" GB.",
 			)
 		} else {
 			// Update the existing instance with the new allocated storage.

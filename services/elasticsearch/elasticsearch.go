@@ -167,7 +167,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		esclusterconfig.SetZoneAwarenessConfig(zoneAwarenessConfig)
 	}
 
-	log.Println(string(i.MasterCount))
+	log.Println(fmt.Sprint(i.MasterCount))
 
 	snapshotOptions := &elasticsearchservice.SnapshotOptions{
 		AutomatedSnapshotStartHour: aws.Int64(int64(i.AutomatedSnapshotStartHour)),
