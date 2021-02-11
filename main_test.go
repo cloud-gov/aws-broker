@@ -41,14 +41,35 @@ var createRDSInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
+var createRDSPg_with_versionInstanceReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"version": "10"
+	  },
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
+var createRDSPg_with_invaild_versionInstanceReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"version": "8"
+	  },
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
 // micro-psql plan but with parameters
 var modifyRDSInstanceReqStorage = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
-		"storage": 15,
-		"version": "12"
+		"storage": 15
 	  },
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
@@ -228,6 +249,71 @@ func TestCreateRDSInstance(t *testing.T) {
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata")
 	}
+}
+
+func TestCreateRDSPg_with_versionInstance(t *testing.T) {
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_versionInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_versionInstanceReq))
+
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	}
+	// Is it in the database and has a username and password?
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.Username == "" || i.Password == "" {
+		t.Error("The instance should have a username and password")
+	}
+
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata")
+	}
+}
+
+func TestCreateRDSPg_with_invaild_versionInstance(t *testing.T) {
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_invaild_versionInstanceReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_invaild_versionInstanceReq))
+
+	if resp.Code != http.StatusBadRequest {
+		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+	// Does it contain "...because the service plan does not allow updates or modification."?
+	if !strings.Contains(string(resp.Body.Bytes()), "Invalid version") {
+		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
+	}
+
 }
 
 func TestModifyRDSInstance(t *testing.T) {
