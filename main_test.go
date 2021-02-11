@@ -41,23 +41,23 @@ var createRDSInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
-var createRDSPg_with_versionInstanceReq = []byte(
+var createRDSPGWithVersionInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
-		"version": "10"
+		"version": 10
 	  },
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
 
-var createRDSPg_with_invaild_versionInstanceReq = []byte(
+var createRDSPGWithInvaildVersionInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
-		"version": "8"
+		"version": 8
 	  },
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
@@ -251,9 +251,9 @@ func TestCreateRDSInstance(t *testing.T) {
 	}
 }
 
-func TestCreateRDSPg_with_versionInstance(t *testing.T) {
+func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
-	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_versionInstanceReq))
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
@@ -261,7 +261,7 @@ func TestCreateRDSPg_with_versionInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_versionInstanceReq))
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
@@ -291,9 +291,9 @@ func TestCreateRDSPg_with_versionInstance(t *testing.T) {
 	}
 }
 
-func TestCreateRDSPg_with_invaild_versionInstance(t *testing.T) {
+func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
-	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_invaild_versionInstanceReq))
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
@@ -301,7 +301,7 @@ func TestCreateRDSPg_with_invaild_versionInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
-	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_invaild_versionInstanceReq))
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if res.Code != http.StatusBadRequest {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())

@@ -15,10 +15,10 @@ import (
 )
 
 type RDSOptions struct {
-	AllocatedStorage   int64  `json:"storage"`
-	EnableFunctions    bool   `json:"enable_functions"`
-	PubliclyAccessible bool   `json:"publicly_accessible"`
-	Version            string `json:"version"`
+	AllocatedStorage   int64 `json:"storage"`
+	EnableFunctions    bool  `json:"enable_functions"`
+	PubliclyAccessible bool  `json:"publicly_accessible"`
+	Version            int64 `json:"version"`
 }
 
 func (r RDSOptions) Validate(settings *config.Settings) error {
@@ -28,7 +28,7 @@ func (r RDSOptions) Validate(settings *config.Settings) error {
 
 	// this check only checks for psql version
 	// todo: we will add full support for version checks in the catalog
-	if r.Version != "" && (r.Version < "10" || r.Version > "12") {
+	if r.Version != 0 && (r.Version < 10 || r.Version > 12) {
 		return fmt.Errorf("Invalid version %s; must be 10, 11, or 12", r.Version)
 	}
 	return nil
