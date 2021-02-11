@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/jinzhu/gorm"
 
@@ -29,7 +30,7 @@ func (r RDSOptions) Validate(settings *config.Settings) error {
 	// this check only checks for psql version
 	// todo: we will add full support for version checks in the catalog
 	if r.Version != 0 && (r.Version < 10 || r.Version > 12) {
-		return fmt.Errorf("Invalid version %s; must be 10, 11, or 12", r.Version)
+		return fmt.Errorf("Invalid version %s; must be 10, 11, or 12", strconv.FormatInt(r.Version, 10))
 	}
 	return nil
 
