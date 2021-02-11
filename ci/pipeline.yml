@@ -181,6 +181,16 @@ jobs:
           NEW_SERVICE_PLAN: medium-psql
           DB_TYPE: postgres
 
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-test-pg-version.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: micro-psql
+
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
         params:
