@@ -303,17 +303,18 @@ func TestCreateRDSPg_with_invaild_versionInstance(t *testing.T) {
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPg_with_invaild_versionInstanceReq))
 
-	if resp.Code != http.StatusBadRequest {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
-		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
-	}
-	// Is it a valid JSON?
-	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
-	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(resp.Body.Bytes()), "Invalid version") {
-		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
+	if res.Code != http.StatusBadRequest {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", res.Code)
 	}
 
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it contain "...because the service plan does not allow updates or modification."?
+	if !strings.Contains(string(res.Body.Bytes()), "Invalid version") {
+		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
+	}
 }
 
 func TestModifyRDSInstance(t *testing.T) {
