@@ -177,6 +177,7 @@ rds:
             unit: "MONTHLY"
         displayName: "Free Shared Plan"
       free: true
+      backup_retention_period: 14
       adapter: shared
       dbType: postgres
       securityGroup: sg-123456
@@ -201,6 +202,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
+      minVersion: "10"
+      maxVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -229,6 +232,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
+      minVersion: "10"
+      maxVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -257,6 +262,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
+      minVersion: "10"
+      maxVersion: "12"
       dbType: postgres
       redundant: true
       encrypted: true
@@ -281,6 +288,7 @@ rds:
             unit: "MONTHLY"
         displayName: "Free Shared Plan"
       free: true
+      backup_retention_period: 14
       adapter: shared
       dbType: mysql
       securityGroup: sg-123456
@@ -306,9 +314,12 @@ rds:
       instanceClass: db.t2.small
       dbType: mysql
       allocatedStorage: 10
+      minVersion: "5.7"
+      maxVersion: "8.0"
       plan_updateable: true
       securityGroup: sg-123456
       storage_type: gp2
+      backup_retention_period: 14
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"
@@ -331,9 +342,12 @@ rds:
       instanceClass: db.t3.medium
       dbType: mysql
       allocatedStorage: 10
+      minVersion: "5.7"
+      maxVersion: "8.0"
       plan_updateable: true
       securityGroup: sg-123456
       storage_type: gp2
+      backup_retention_period: 14
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"
@@ -353,6 +367,7 @@ rds:
             unit: "HOURLY"
         displayName: "Dedicated Medium Oracle SE2"
       free: false
+      backup_retention_period: 14
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: oracle-se2

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/jinzhu/gorm"
 
@@ -16,10 +15,10 @@ import (
 )
 
 type RDSOptions struct {
-	AllocatedStorage   int64 `json:"storage"`
-	EnableFunctions    bool  `json:"enable_functions"`
-	PubliclyAccessible bool  `json:"publicly_accessible"`
-	Version            int64 `json:"version"`
+	AllocatedStorage   int64  `json:"storage"`
+	EnableFunctions    bool   `json:"enable_functions"`
+	PubliclyAccessible bool   `json:"publicly_accessible"`
+	Version            string `json:"version"`
 }
 
 func (r RDSOptions) Validate(settings *config.Settings) error {
@@ -27,13 +26,7 @@ func (r RDSOptions) Validate(settings *config.Settings) error {
 		return fmt.Errorf("Invalid storage %d; must be <= %d", r.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
 
-	// this check only checks for psql version
-	// todo: we will add full support for version checks in the catalog
-	if r.Version != 0 && (r.Version < 10 || r.Version > 12) {
-		return fmt.Errorf("Invalid version %s; must be 10, 11, or 12", strconv.FormatInt(r.Version, 10))
-	}
 	return nil
-
 }
 
 type rdsBroker struct {
@@ -104,6 +97,17 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
 	if planErr != nil {
 		return planErr
+	}
+
+	// Check to see if there is a version change and if so, check to make sure it's a valid change.
+	if options.Version != "" {
+		// Check to make sure that the version specified is allowed by the plan.
+		if options.Version < plan.MinVersion || options.Version > plan.MaxVersion {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				"Invalid version specified: please provide a version number between "+plan.MinVersion+" and "+plan.MaxVersion+".  Please see https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html for additional informaation.",
+			)
+		}
 	}
 
 	err := newInstance.init(
@@ -182,17 +186,19 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 				http.StatusBadRequest,
 				"Cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance.",
 			)
-			// Check that to see if the user inadvertantly requested to change the storage size to the same amount.
-			// TODO:  Could we just provide a warning instead of erroring out fully?
-		} else if options.AllocatedStorage == existingInstance.AllocatedStorage {
+		}
+
+		// Check that to see if the user inadvertantly requested to change the storage size to the same amount.
+		// TODO:  Could we just provide a warning instead of erroring out fully?
+		if options.AllocatedStorage == existingInstance.AllocatedStorage {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
 				"Cannot change the size of the existing instance; database is already set to "+fmt.Sprint(existingInstance.AllocatedStorage)+" GB.",
 			)
-		} else {
-			// Update the existing instance with the new allocated storage.
-			existingInstance.AllocatedStorage = options.AllocatedStorage
 		}
+
+		// Update the existing instance with the new allocated storage.
+		existingInstance.AllocatedStorage = options.AllocatedStorage
 	}
 
 	// Fetch the new plan that has been requested.
@@ -234,6 +240,31 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 			http.StatusBadRequest,
 			"Cannot switch to "+newPlan.Name+" because the service plan does not allow updates or modification.",
 		)
+	}
+
+	// Check to see if there is a version change and if so, check to make sure it's a valid change.
+	if options.Version != "" {
+		// Check to make sure that the version specified is allowed by the plan.
+		if options.Version < newPlan.MinVersion || options.Version > newPlan.MaxVersion {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				"Invalid version specified: please provide a version number between "+newPlan.MinVersion+" and "+newPlan.MaxVersion+". Please see https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html for additional informaation.",
+			)
+		}
+
+		// Check to make sure that we're not decreasing the version, which is not allowed.
+		if options.Version < existingInstance.DbVersion {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				"Cannot revert to an older version of this database engine. If you need to do this, you'll need to create a new instance with the older version specified, backup and restore the data into that instance, and delete this instance.",
+			)
+		}
+
+		// Update the existing instance with the new version.
+		// The AWS API will return an error if the upgrade is not allowed.
+		// Consult the AWS RDS documentation for more information on valid upgrade paths:
+		// https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html
+		existingInstance.DbVersion = options.Version
 	}
 
 	// Connect to the existing instance.
