@@ -169,6 +169,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
+
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
@@ -494,8 +495,9 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-      - task: smoke-tests-postgres-update-micro-to-medium
-        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
         params:
           CF_API_URL: ((staging-cf-api-url))
           CF_USERNAME: ((staging-cf-deploy-username))
@@ -504,6 +506,31 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: micro-psql
           NEW_SERVICE_PLAN: medium-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          START_VERSION: 11
+          END_VERSION: 12
+
+      - task: smoke-tests-postgres-update-micro-to-small
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: small-psql
           DB_TYPE: postgres
 
       - task: smoke-tests-shared-postgres
@@ -518,30 +545,6 @@ jobs:
           DB_TYPE: postgres
           DB_VERSION: 9.5.15
 
-      - task: smoke-tests-postgres-update-storage
-        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
-        params:
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: micro-psql
-          NEW_SERVICE_PLAN: medium-psql
-          DB_TYPE: postgres
-
-      - task: smoke-tests-mysql-update-storage
-        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
-        params:
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: small-mysql
-          NEW_SERVICE_PLAN: medium-mysql
-          DB_TYPE: mysql
-
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
@@ -552,6 +555,30 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          START_VERSION: 5.7
+          END_VERSION: 8.0
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -855,7 +882,32 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-      - task: smoke-tests-postgres-update-micro-to-medium
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          START_VERSION: 11
+          END_VERSION: 12
+
+      - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
           CF_API_URL: ((prod-cf-api-url))
@@ -864,7 +916,7 @@ jobs:
           CF_ORGANIZATION: ((prod-cf-organization))
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: micro-psql
-          NEW_SERVICE_PLAN: medium-psql
+          NEW_SERVICE_PLAN: small-psql
           DB_TYPE: postgres
 
       - task: smoke-tests-shared-postgres
@@ -879,30 +931,6 @@ jobs:
           DB_TYPE: postgres
           DB_VERSION: 9.5.15
 
-      - task: smoke-tests-postgres-update-storage
-        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
-        params:
-          CF_API_URL: ((prod-cf-api-url))
-          CF_USERNAME: ((prod-cf-deploy-username))
-          CF_PASSWORD: ((prod-cf-deploy-password))
-          CF_ORGANIZATION: ((prod-cf-organization))
-          CF_SPACE: ((prod-cf-space))
-          SERVICE_PLAN: micro-psql
-          NEW_SERVICE_PLAN: medium-psql
-          DB_TYPE: postgres
-
-      - task: smoke-tests-mysql-update-storage
-        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
-        params:
-          CF_API_URL: ((prod-cf-api-url))
-          CF_USERNAME: ((prod-cf-deploy-username))
-          CF_PASSWORD: ((prod-cf-deploy-password))
-          CF_ORGANIZATION: ((prod-cf-organization))
-          CF_SPACE: ((prod-cf-space))
-          SERVICE_PLAN: small-mysql
-          NEW_SERVICE_PLAN: medium-mysql
-          DB_TYPE: mysql
-
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
@@ -913,6 +941,30 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          START_VERSION: 5.7
+          END_VERSION: 8.0
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
