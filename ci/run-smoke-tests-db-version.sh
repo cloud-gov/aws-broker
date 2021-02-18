@@ -35,7 +35,7 @@ if echo "$SERVICE_PLAN" | grep -v shared | grep mysql >/dev/null ; then
   cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"enable_functions": true, "version": "$START_VERSION"}'
 else
   # create a regular instance
-  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "$START_VERSION"}'
+  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "'"$START_VERSION"'"}'
 fi
 
 while true; do
@@ -52,7 +52,7 @@ done
 cf push "smoke-tests-db-version-${SERVICE_PLAN}"
 
 # Update storage size
-cf update-service "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "$END_VERSION"}'
+cf update-service "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "'"$END_VERSION"'"}'
 
 # Wait to make sure that the service instance has been successfully updated.
 wait_for_service_instance "rds-smoke-tests-db-version-$SERVICE_PLAN"
