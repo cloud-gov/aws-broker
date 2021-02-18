@@ -306,14 +306,20 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
-	// NOTE:  Only instance class modification and Multi AZ (redundancy) is
-	// enabled at this point.
+	// NOTE:  Only the following actions are allowed at this point:
+	// - Instance class modification (change of plan)
+	// - Multi AZ (redundancy)
+	// - Allocated storage
+	// - Database Version (including major version changes)
+	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
-		AllocatedStorage:     aws.Int64(i.AllocatedStorage),
-		ApplyImmediately:     aws.Bool(true),
-		DBInstanceClass:      &d.Plan.InstanceClass,
-		MultiAZ:              &d.Plan.Redundant,
-		DBInstanceIdentifier: &i.Database,
+		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
+		ApplyImmediately:         aws.Bool(true),
+		DBInstanceClass:          &d.Plan.InstanceClass,
+		MultiAZ:                  &d.Plan.Redundant,
+		DBInstanceIdentifier:     &i.Database,
+		AllowMajorVersionUpgrade: aws.Bool(true),
+		EngineVersion:            &i.DbVersion,
 	}
 
 	resp, err := svc.ModifyDBInstance(params)
