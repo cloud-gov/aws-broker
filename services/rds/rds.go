@@ -314,12 +314,12 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
 		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
+		AllowMajorVersionUpgrade: aws.Bool(true),
 		ApplyImmediately:         aws.Bool(true),
+		EngineVersion:            aws.String(i.DbVersion),
 		DBInstanceClass:          &d.Plan.InstanceClass,
 		MultiAZ:                  &d.Plan.Redundant,
 		DBInstanceIdentifier:     &i.Database,
-		AllowMajorVersionUpgrade: aws.Bool(true),
-		EngineVersion:            &i.DbVersion,
 	}
 
 	resp, err := svc.ModifyDBInstance(params)
