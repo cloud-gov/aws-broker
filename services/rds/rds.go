@@ -156,6 +156,7 @@ func getCustomParameterGroup(pgroupName string, i *RDSInstance, customparams map
 				Engine:      aws.String(i.DbType),
 			}
 
+			// This call requires that the broker have permissions to make it.
 			defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
 
 			if err != nil {
