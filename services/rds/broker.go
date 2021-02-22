@@ -188,15 +188,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 			)
 		}
 
-		// Check that to see if the user inadvertantly requested to change the storage size to the same amount.
-		// TODO:  Could we just provide a warning instead of erroring out fully?
-		if options.AllocatedStorage == existingInstance.AllocatedStorage {
-			return response.NewErrorResponse(
-				http.StatusBadRequest,
-				"Cannot change the size of the existing instance; database is already set to "+fmt.Sprint(existingInstance.AllocatedStorage)+" GB.",
-			)
-		}
-
 		// Update the existing instance with the new allocated storage.
 		existingInstance.AllocatedStorage = options.AllocatedStorage
 	}
