@@ -32,10 +32,10 @@ cf set-env "smoke-tests-db-version-${SERVICE_PLAN}" SERVICE_NAME "rds-smoke-test
 # Create service
 if echo "$SERVICE_PLAN" | grep -v shared | grep mysql >/dev/null ; then
   # test out the enable_functions stuff, which only works on non-shared mysql databases
-  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"enable_functions": true, "version": "'"$START_VERSION"'"}'
+  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"enable_functions": true, "version": "'"$VERSION"'"}'
 else
   # create a regular instance
-  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "'"$START_VERSION"'"}'
+  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "'"$VERSION"'"}'
 fi
 
 while true; do
@@ -50,12 +50,6 @@ done
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
 cf push "smoke-tests-db-version-${SERVICE_PLAN}"
-
-# Update storage size
-cf update-service "rds-smoke-tests-db-version-$SERVICE_PLAN" -c '{"version": "'"$END_VERSION"'"}'
-
-# Wait to make sure that the service instance has been successfully updated.
-wait_for_service_instance "rds-smoke-tests-db-version-$SERVICE_PLAN"
 
 # Clean up app and service
 cf delete -f "smoke-tests-db-version-$SERVICE_PLAN"

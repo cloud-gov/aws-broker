@@ -310,16 +310,13 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	// - Instance class modification (change of plan)
 	// - Multi AZ (redundancy)
 	// - Allocated storage
-	// - Database Version (including major version changes)
 	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
-		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
-		AllowMajorVersionUpgrade: aws.Bool(true),
-		ApplyImmediately:         aws.Bool(true),
-		EngineVersion:            aws.String(i.DbVersion),
-		DBInstanceClass:          &d.Plan.InstanceClass,
-		MultiAZ:                  &d.Plan.Redundant,
-		DBInstanceIdentifier:     &i.Database,
+		AllocatedStorage:     aws.Int64(i.AllocatedStorage),
+		ApplyImmediately:     aws.Bool(true),
+		DBInstanceClass:      &d.Plan.InstanceClass,
+		MultiAZ:              &d.Plan.Redundant,
+		DBInstanceIdentifier: &i.Database,
 	}
 
 	resp, err := svc.ModifyDBInstance(params)

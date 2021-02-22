@@ -192,8 +192,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-          START_VERSION: 11
-          END_VERSION: 12
+          VERSION: 11
 
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
@@ -251,8 +250,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
-          START_VERSION: 5.7
-          END_VERSION: 8.0
+          VERSION: 5.7
 
       - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
@@ -518,8 +516,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-          START_VERSION: 11
-          END_VERSION: 12
+          VERSION: 11
 
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -577,8 +574,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
-          START_VERSION: 5.7
-          END_VERSION: 8.0
+          VERSION: 5.7
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -904,8 +900,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
-          START_VERSION: 11
-          END_VERSION: 12
+          VERSION: 11
 
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -963,8 +958,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
-          START_VERSION: 5.7
-          END_VERSION: 8.0
+          VERSION: 5.7
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml

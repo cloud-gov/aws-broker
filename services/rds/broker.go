@@ -242,31 +242,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		)
 	}
 
-	// Check to see if there is a version change and if so, check to make sure it's a valid change.
-	if options.Version != "" {
-		// Check to make sure that the version specified is allowed by the plan.
-		if options.Version < newPlan.MinVersion || options.Version > newPlan.MaxVersion {
-			return response.NewErrorResponse(
-				http.StatusBadRequest,
-				"Invalid version specified: please provide a version number between "+newPlan.MinVersion+" and "+newPlan.MaxVersion+". Please see https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html for additional informaation.",
-			)
-		}
-
-		// Check to make sure that we're not decreasing the version, which is not allowed.
-		if options.Version < existingInstance.DbVersion {
-			return response.NewErrorResponse(
-				http.StatusBadRequest,
-				"Cannot revert to an older version of this database engine. If you need to do this, you'll need to create a new instance with the older version specified, backup and restore the data into that instance, and delete this instance.",
-			)
-		}
-
-		// Update the existing instance with the new version.
-		// The AWS API will return an error if the upgrade is not allowed.
-		// Consult the AWS RDS documentation for more information on valid upgrade paths:
-		// https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html
-		existingInstance.DbVersion = options.Version
-	}
-
 	// Connect to the existing instance.
 	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
 	if adapterErr != nil {
