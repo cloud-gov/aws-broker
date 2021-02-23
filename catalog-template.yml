@@ -82,8 +82,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -112,8 +114,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -142,8 +146,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -172,8 +178,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -202,8 +210,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -232,8 +242,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -262,8 +274,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -292,8 +306,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -322,8 +338,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -353,8 +371,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -383,8 +403,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -435,8 +457,9 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.small
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -465,8 +488,9 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.small
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -495,8 +519,9 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.medium
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -525,8 +550,9 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.medium
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -555,8 +581,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -585,8 +612,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -615,8 +643,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -645,8 +674,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -675,8 +705,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -705,8 +736,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true

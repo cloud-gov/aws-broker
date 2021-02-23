@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 
@@ -14,16 +15,23 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-type RDSOptions struct {
+// Options is a struct containing all of the custom parameters supported by
+// the broker for the "cf create-service" and "cf update-service" commands -
+// they are passed in via the "-c <JSON string or file>" flag.
+type Options struct {
 	AllocatedStorage   int64  `json:"storage"`
 	EnableFunctions    bool   `json:"enable_functions"`
 	PubliclyAccessible bool   `json:"publicly_accessible"`
 	Version            string `json:"version"`
 }
 
-func (r RDSOptions) Validate(settings *config.Settings) error {
-	if r.AllocatedStorage > settings.MaxAllocatedStorage {
-		return fmt.Errorf("Invalid storage %d; must be <= %d", r.AllocatedStorage, settings.MaxAllocatedStorage)
+// Validate the custom parameters passed in via the "-c <JSON string or file>"
+// flag that do not require checks against specific plan information.
+func (o Options) Validate(settings *config.Settings) error {
+	// Check to make sure that the allocated storage is less than the maximum
+	// allowed.  If allocated storage is passed in, the value defaults to 0.
+	if o.AllocatedStorage > settings.MaxAllocatedStorage {
+		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
 
 	return nil
@@ -76,7 +84,7 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := RDSInstance{}
 
-	options := RDSOptions{}
+	options := Options{}
 	if len(createRequest.RawParameters) > 0 {
 		err := json.Unmarshal(createRequest.RawParameters, &options)
 		if err != nil {
@@ -99,13 +107,14 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return planErr
 	}
 
-	// Check to see if there is a version change and if so, check to make sure it's a valid change.
+	// Check to see if there is a major version specified and if so, check to
+	// make sure it's a valid major version.
 	if options.Version != "" {
 		// Check to make sure that the version specified is allowed by the plan.
-		if options.Version < plan.MinVersion || options.Version > plan.MaxVersion {
+		if !plan.CheckVersion(options.Version) {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
-				"Invalid version specified: please provide a version number between "+plan.MinVersion+" and "+plan.MaxVersion+".  Please see https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Upgrading.html for additional informaation.",
+				options.Version+" is not a supported major version; major version must be one of: "+strings.Join(plan.ApprovedMajorVersions, ", ")+".",
 			)
 		}
 	}
@@ -159,7 +168,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
-	options := RDSOptions{}
+	options := Options{}
 	if len(modifyRequest.RawParameters) > 0 {
 		err := json.Unmarshal(modifyRequest.RawParameters, &options)
 		if err != nil {

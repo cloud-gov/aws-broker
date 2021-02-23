@@ -202,8 +202,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -232,8 +234,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -262,8 +266,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       redundant: true
       encrypted: true
@@ -314,8 +320,9 @@ rds:
       instanceClass: db.t2.small
       dbType: mysql
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       plan_updateable: true
       securityGroup: sg-123456
       storage_type: gp2
@@ -342,8 +349,9 @@ rds:
       instanceClass: db.t3.medium
       dbType: mysql
       allocatedStorage: 10
-      minVersion: "5.7"
-      maxVersion: "8.0"
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       plan_updateable: true
       securityGroup: sg-123456
       storage_type: gp2

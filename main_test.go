@@ -335,7 +335,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(res.Body.Bytes()), "Invalid version") {
+	if !strings.Contains(string(res.Body.Bytes()), "is not a supported major version; major version must be one of:") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
 	}
 }

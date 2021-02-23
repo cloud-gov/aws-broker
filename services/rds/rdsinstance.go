@@ -120,7 +120,7 @@ func (i *RDSInstance) init(uuid string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RDSPlan,
-	options RDSOptions,
+	options Options,
 	s *config.Settings) error {
 
 	i.Uuid = uuid
