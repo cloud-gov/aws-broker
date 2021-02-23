@@ -24,6 +24,7 @@ import (
 
 var (
 	originalRDSPlanID                = "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	originalRDSMySQLPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c7"
 	updateableRDSPlanID              = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
 	nonUpdateableRDSPlan             = "ee75aef3-7697-4906-9330-fb1f83d719be"
 	originalRedisPlanID              = "475e36bf-387f-44c1-9b81-575fec2ee443"
@@ -41,13 +42,35 @@ var createRDSInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
+var createRDSMySQLInstanceReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c7",
+	"parameters": {
+		"version": "5.7"
+	},
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
+var createRDSLatestMySQLInstanceReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c7",
+	"parameters": {
+		"version": "8.0"
+	},
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
 var createRDSPGWithVersionInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
-		"version": 10
-	  },
+		"version": "10"
+	},
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
@@ -57,8 +80,8 @@ var createRDSPGWithInvaildVersionInstanceReq = []byte(
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
-		"version": 8
-	  },
+		"version": "8"
+	},
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
@@ -312,7 +335,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(res.Body.Bytes()), "Invalid version") {
+	if !strings.Contains(string(res.Body.Bytes()), "is not a supported major version; major version must be one of:") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
 	}
 }

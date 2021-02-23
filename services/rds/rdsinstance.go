@@ -120,7 +120,7 @@ func (i *RDSInstance) init(uuid string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RDSPlan,
-	options RDSOptions,
+	options Options,
 	s *config.Settings) error {
 
 	i.Uuid = uuid
@@ -133,10 +133,14 @@ func (i *RDSInstance) init(uuid string,
 
 	// Load AWS values
 	i.DbType = plan.DbType
-	i.DbVersion = plan.DbVersion
 
-	if i.DbType == "postgres" && options.Version != 0 {
-		i.DbVersion = strconv.FormatInt(options.Version, 10)
+	// Set the DB Version
+	// Currently only supported for MySQL and PostgreSQL instances.
+	if (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != "" {
+		i.DbVersion = options.Version
+	} else {
+		// Default to the version provided by the plan chosen in catalog.
+		i.DbVersion = plan.DbVersion
 	}
 
 	i.BackupRetentionPeriod = plan.BackupRetentionPeriod

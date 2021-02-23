@@ -27,6 +27,7 @@ rds:
             unit: "MONTHLY"
         displayName: "Free shared plan"
       free: true
+      backup_retention_period: 14
       adapter: shared
       dbType: postgres
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
@@ -51,6 +52,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
+      minVersion: "10"
+      maxVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -79,6 +82,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -107,6 +114,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -135,6 +146,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -163,6 +178,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -191,6 +210,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -219,6 +242,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -247,6 +274,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -275,6 +306,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -303,6 +338,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -332,6 +371,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -360,6 +403,10 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -385,6 +432,7 @@ rds:
             unit: "MONTHLY"
         displayName: "Free shared plan"
       free: true
+      backup_retention_period: 14
       adapter: shared
       dbType: mysql
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
@@ -409,9 +457,11 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.small
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: &mysql-version "5.7.21"
       redundant: false
       encrypted: true
       storage_type: gp2
@@ -438,9 +488,11 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.small
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: &mysql-version "5.7.21"
       redundant: true
       encrypted: true
       storage_type: gp2
@@ -467,9 +519,11 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: &mysql-version "5.7.21"
       redundant: false
       encrypted: true
       storage_type: gp2
@@ -496,9 +550,11 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: &mysql-version "5.7.21"
       redundant: true
       encrypted: true
       storage_type: gp2
@@ -525,9 +581,11 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: &mysql-version "5.7.21"
       redundant: false
       encrypted: true
       storage_type: gp2
@@ -554,9 +612,11 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: *mysql-version
       redundant: true
       encrypted: true
       storage_type: gp2
@@ -583,9 +643,11 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: *mysql-version
       redundant: false
       encrypted: true
       storage_type: gp2
@@ -612,9 +674,11 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.large
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: *mysql-version
       redundant: true
       encrypted: true
       storage_type: gp2
@@ -641,9 +705,11 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: *mysql-version
       redundant: false
       encrypted: true
       storage_type: gp2
@@ -670,9 +736,11 @@ rds:
       adapter: dedicated
       instanceClass: db.m4.xlarge
       allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
       dbType: mysql
       plan_updateable: true
-      dbVersion: *mysql-version
       redundant: true
       encrypted: true
       storage_type: gp2

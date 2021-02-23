@@ -126,35 +126,62 @@ type dedicatedDBAdapter struct {
 	settings config.Settings
 }
 
-// This is the prefix for all pgroups created by the broker.
+// PgroupPrefix is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-aws-broker-"
 
-// This function will return the a custom parameter group with whatever custom parameters
-// have been requested.  If there is no custom parameter group, it will be created.
+// This function will return the a custom parameter group with whatever custom
+// parameters have been requested.  If there is no custom parameter group, it
+// will be created.
 func getCustomParameterGroup(pgroupName string, i *RDSInstance, customparams map[string]map[string]string, svc *rds.RDS) (string, error) {
-	input := &rds.DescribeDBParametersInput{
+	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(pgroupName),
 		MaxRecords:           aws.Int64(20),
 		Source:               aws.String("system"),
 	}
 
 	// If the db parameter group has already been created, we can return.
-	_, err := svc.DescribeDBParameters(input)
+	_, err := svc.DescribeDBParameters(dbParametersInput)
 	if err == nil {
 		log.Printf("%s parameter group already exists", pgroupName)
 	} else {
-		// Otherwise, create a new parameter group in the proper family
-		re := regexp.MustCompile(`^\d+\.*\d*`)
-		dbversion := re.Find([]byte(i.DbVersion))
-		pgroupFamily := i.DbType + string(dbversion)
-		log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
+		// Otherwise, create a new parameter group in the proper family.
+		pgroupFamily := ""
 
-		createinput := &rds.CreateDBParameterGroupInput{
+		// If the DB version is not set (e.g., creating a new instance without
+		// providing a specific version), determine the default parameter group
+		// name from the default engine that will be chosen.
+		if i.DbVersion == "" {
+			dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
+				DefaultOnly: aws.Bool(true),
+				Engine:      aws.String(i.DbType),
+			}
+
+			// This call requires that the broker have permissions to make it.
+			defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
+
+			if err != nil {
+				return "Error retrieving default parameter group name", err
+			}
+
+			// The value from the engine info is a string pointer, so we must
+			// retrieve its actual value.
+			pgroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
+		} else {
+			// The DB instance has a version, therefore we can derive the
+			// parameter group family directly.
+			re := regexp.MustCompile(`^\d+\.*\d*`)
+			dbversion := re.Find([]byte(i.DbVersion))
+			pgroupFamily = i.DbType + string(dbversion)
+			log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
+		}
+
+		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(pgroupFamily),
 			DBParameterGroupName:   aws.String(pgroupName),
 			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
 		}
-		_, err = svc.CreateDBParameterGroup(createinput)
+
+		_, err = svc.CreateDBParameterGroup(createInput)
 		if err != nil {
 			return pgroupName, err
 		}
@@ -279,8 +306,11 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
-	// NOTE:  Only instance class modification and Multi AZ (redundancy) is
-	// enabled at this point.
+	// NOTE:  Only the following actions are allowed at this point:
+	// - Instance class modification (change of plan)
+	// - Multi AZ (redundancy)
+	// - Allocated storage
+	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
 		AllocatedStorage:     aws.Int64(i.AllocatedStorage),
 		ApplyImmediately:     aws.Bool(true),

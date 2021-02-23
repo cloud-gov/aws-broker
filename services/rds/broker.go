@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 
@@ -15,25 +15,26 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-type RDSOptions struct {
-	AllocatedStorage   int64 `json:"storage"`
-	EnableFunctions    bool  `json:"enable_functions"`
-	PubliclyAccessible bool  `json:"publicly_accessible"`
-	Version            int64 `json:"version"`
+// Options is a struct containing all of the custom parameters supported by
+// the broker for the "cf create-service" and "cf update-service" commands -
+// they are passed in via the "-c <JSON string or file>" flag.
+type Options struct {
+	AllocatedStorage   int64  `json:"storage"`
+	EnableFunctions    bool   `json:"enable_functions"`
+	PubliclyAccessible bool   `json:"publicly_accessible"`
+	Version            string `json:"version"`
 }
 
-func (r RDSOptions) Validate(settings *config.Settings) error {
-	if r.AllocatedStorage > settings.MaxAllocatedStorage {
-		return fmt.Errorf("Invalid storage %d; must be <= %d", r.AllocatedStorage, settings.MaxAllocatedStorage)
+// Validate the custom parameters passed in via the "-c <JSON string or file>"
+// flag that do not require checks against specific plan information.
+func (o Options) Validate(settings *config.Settings) error {
+	// Check to make sure that the allocated storage is less than the maximum
+	// allowed.  If allocated storage is passed in, the value defaults to 0.
+	if o.AllocatedStorage > settings.MaxAllocatedStorage {
+		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
 
-	// this check only checks for psql version
-	// todo: we will add full support for version checks in the catalog
-	if r.Version != 0 && (r.Version < 10 || r.Version > 12) {
-		return fmt.Errorf("Invalid version %s; must be 10, 11, or 12", strconv.FormatInt(r.Version, 10))
-	}
 	return nil
-
 }
 
 type rdsBroker struct {
@@ -83,7 +84,7 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := RDSInstance{}
 
-	options := RDSOptions{}
+	options := Options{}
 	if len(createRequest.RawParameters) > 0 {
 		err := json.Unmarshal(createRequest.RawParameters, &options)
 		if err != nil {
@@ -104,6 +105,18 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
 	if planErr != nil {
 		return planErr
+	}
+
+	// Check to see if there is a major version specified and if so, check to
+	// make sure it's a valid major version.
+	if options.Version != "" {
+		// Check to make sure that the version specified is allowed by the plan.
+		if !plan.CheckVersion(options.Version) {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				options.Version+" is not a supported major version; major version must be one of: "+strings.Join(plan.ApprovedMajorVersions, ", ")+".",
+			)
+		}
 	}
 
 	err := newInstance.init(
@@ -155,7 +168,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
-	options := RDSOptions{}
+	options := Options{}
 	if len(modifyRequest.RawParameters) > 0 {
 		err := json.Unmarshal(modifyRequest.RawParameters, &options)
 		if err != nil {
@@ -182,17 +195,10 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 				http.StatusBadRequest,
 				"Cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance.",
 			)
-			// Check that to see if the user inadvertantly requested to change the storage size to the same amount.
-			// TODO:  Could we just provide a warning instead of erroring out fully?
-		} else if options.AllocatedStorage == existingInstance.AllocatedStorage {
-			return response.NewErrorResponse(
-				http.StatusBadRequest,
-				"Cannot change the size of the existing instance; database is already set to "+fmt.Sprint(existingInstance.AllocatedStorage)+" GB.",
-			)
-		} else {
-			// Update the existing instance with the new allocated storage.
-			existingInstance.AllocatedStorage = options.AllocatedStorage
 		}
+
+		// Update the existing instance with the new allocated storage.
+		existingInstance.AllocatedStorage = options.AllocatedStorage
 	}
 
 	// Fetch the new plan that has been requested.
