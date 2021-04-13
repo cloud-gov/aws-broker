@@ -1,11 +1,13 @@
 resource "aws_db_parameter_group" "recreatable_parameter_group_postgres" {
-  count = "${var.rds_db_engine == "postgres" ? 1 : 0}"
+  count = var.rds_db_engine == "postgres" ? 1 : 0
 
-  name_prefix = "${var.rds_parameter_group_name != "" ?
-    var.rds_parameter_group_name :
-    "${replace("${var.stack_description}-${var.rds_db_name}", "/[^a-zA-Z-]+/", "-")}"}"
+  name_prefix = var.rds_parameter_group_name != "" ? var.rds_parameter_group_name : replace(
+    "${var.stack_description}-${var.rds_db_name}",
+    "/[^a-zA-Z-]+/",
+    "-",
+  )
 
-  family = "${var.rds_parameter_group_family}"
+  family = var.rds_parameter_group_family
 
   parameter {
     name  = "log_connections"
@@ -29,7 +31,7 @@ resource "aws_db_parameter_group" "recreatable_parameter_group_postgres" {
 
   parameter {
     name         = "rds.force_ssl"
-    value        = "${var.rds_force_ssl}"
+    value        = var.rds_force_ssl
     apply_method = "pending-reboot"
   }
 
@@ -39,13 +41,15 @@ resource "aws_db_parameter_group" "recreatable_parameter_group_postgres" {
 }
 
 resource "aws_db_parameter_group" "recreatable_parameter_group_mysql" {
-  count = "${var.rds_db_engine == "mysql" ? 1 : 0}"
+  count = var.rds_db_engine == "mysql" ? 1 : 0
 
-  name_prefix = "${var.rds_parameter_group_name != "" ?
-    var.rds_parameter_group_name :
-    "${replace("${var.stack_description}-${var.rds_db_name}", "/[^a-zA-Z-]+/", "-")}"}"
+  name_prefix = var.rds_parameter_group_name != "" ? var.rds_parameter_group_name : replace(
+    "${var.stack_description}-${var.rds_db_name}",
+    "/[^a-zA-Z-]+/",
+    "-",
+  )
 
-  family = "${var.rds_parameter_group_family}"
+  family = var.rds_parameter_group_family
 
   parameter {
     name  = "general_log"
