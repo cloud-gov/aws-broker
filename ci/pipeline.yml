@@ -341,7 +341,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-12.30
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((staging-stack-name))
@@ -665,7 +664,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-12.30
       TERRAFORM_ACTION: plan
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
@@ -727,7 +725,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-12.30
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
