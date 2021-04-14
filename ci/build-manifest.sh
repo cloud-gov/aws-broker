@@ -11,8 +11,8 @@ aws s3 cp s3://$S3_TFSTATE_BUCKET/$BASE_STACK_NAME/terraform.tfstate stack.tfsta
 # Append environment variables to manifest
 cat << EOF >> built/manifest.yml
 env:
-  DB_URL: `terraform output -state=$STATE_FILE -module=rds_internal rds_host`
-  DB_PORT: `terraform output -state=$STATE_FILE -module=rds_internal rds_port`
+  DB_URL: `terraform output -state=$STATE_FILE rds_internal_rds_host`
+  DB_PORT: `terraform output -state=$STATE_FILE rds_internal_rds_port`
   ENABLE_FUNCTIONS: true
 EOF
 
@@ -30,14 +30,14 @@ meta:
     name: $RDS_SHARED_MYSQL_NAME
     username: $RDS_SHARED_MYSQL_USERNAME
     password: $RDS_SHARED_MYSQL_PASSWORD
-    url: `terraform output -state=$STATE_FILE -module=rds_shared_mysql rds_host`
-    port: `terraform output -state=$STATE_FILE -module=rds_shared_mysql rds_port`
+    url: `terraform output -state=$STATE_FILE rds_shared_mysql_rds_host`
+    port: `terraform output -state=$STATE_FILE rds_shared_mysql_rds_port`
   shared_postgres:
     name: $RDS_SHARED_POSTGRES_NAME
     username: $RDS_SHARED_POSTGRES_USERNAME
     password: $RDS_SHARED_POSTGRES_PASSWORD
-    url: `terraform output -state=$STATE_FILE -module=rds_shared_postgres rds_host`
-    port: `terraform output -state=$STATE_FILE -module=rds_shared_postgres rds_port`
+    url: `terraform output -state=$STATE_FILE rds_shared_postgres_rds_host`
+    port: `terraform output -state=$STATE_FILE rds_shared_postgres_rds_port`
   redis: 
     subnet_group: `terraform output -state stack.tfstate elasticache_subnet_group`
     security_group: `terraform output -state stack.tfstate elasticache_redis_security_group`
