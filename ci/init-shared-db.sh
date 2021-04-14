@@ -4,7 +4,7 @@ set -e
 
 export PGPASSWORD="${POSTGRES_PASSWORD}"
 
-host=$(terraform output -state="${STATE_FILE}" -module=rds_shared_postgres rds_host)
+host=$(terraform output -state="${STATE_FILE}" rds_shared_postgres_rds_host)
 extensions=("hstore" "pg_trgm")
 
 for extension in "${extensions[@]}"; do
