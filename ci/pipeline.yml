@@ -17,7 +17,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-12.30
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((development-stack-name))
