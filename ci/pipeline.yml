@@ -67,6 +67,7 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
+      TERRAFORM_BIN: terratest-13.6
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
@@ -391,6 +392,7 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
+      TERRAFORM_BIN: terratest-13.6
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((staging-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((staging-rds-shared-postgres-password))
@@ -777,6 +779,7 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
+      TERRAFORM_BIN: terratest-13.6
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((prod-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((prod-rds-shared-postgres-password))
