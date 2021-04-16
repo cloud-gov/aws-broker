@@ -75,6 +75,7 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
+      TERRAFORM_BIN: terratest-13.6
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
       BASE_STACK_NAME: ((development-stack-base))
       AWS_DEFAULT_REGION: ((development-aws-default-region))
@@ -400,6 +401,7 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
+      TERRAFORM_BIN: terratest-13.6
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
       BASE_STACK_NAME: ((staging-stack-base))
       AWS_DEFAULT_REGION: ((staging-aws-default-region))
@@ -787,6 +789,7 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
+      TERRAFORM_BIN: terratest-13.6
       S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
       BASE_STACK_NAME: ((prod-stack-base))
       AWS_DEFAULT_REGION: ((prod-aws-default-region))
