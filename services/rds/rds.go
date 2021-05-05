@@ -493,6 +493,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	params := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(i.Database), // Required
 		// FinalDBSnapshotIdentifier: aws.String("String"),
+		DeleteAutomatedBackups: aws.Bool(false),
 		SkipFinalSnapshot: aws.Bool(true),
 	}
 	resp, err := svc.DeleteDBInstance(params)
