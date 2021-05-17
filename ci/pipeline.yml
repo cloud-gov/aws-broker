@@ -205,17 +205,6 @@ jobs:
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
 
-      - task: smoke-tests-shared-postgres
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_PLAN: shared-psql
-          DB_TYPE: postgres
-
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
@@ -260,17 +249,6 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: small-mysql
-          DB_TYPE: mysql
-
-      - task: smoke-tests-shared-mysql
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_PLAN: shared-mysql
           DB_TYPE: mysql
 
       - task: smoke-tests-oracle
