@@ -164,28 +164,6 @@ rds:
     documentationUrl:
     supportUrl:
   plans:
-    - id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
-      name: "shared-psql"
-      description: "Shared infrastructure for Postgres DB"
-      metadata:
-        bullets:
-          - "Shared RDS Instance"
-          - "Postgres instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "MONTHLY"
-        displayName: "Free Shared Plan"
-      free: true
-      backup_retention_period: 14
-      adapter: shared
-      dbType: postgres
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
-      tags:
-        environment: "cf-env"
-        client: "the client"
-        service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
       description: "Dedicated micro RDS PostgreSQL DB instance"
@@ -280,28 +258,6 @@ rds:
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
-        service: "aws-broker"
-    - id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"
-      name: "shared-mysql"
-      description: "Shared infrastructure for MySQL DB"
-      metadata:
-        bullets:
-          - "Shared RDS Instance"
-          - "MySQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "MONTHLY"
-        displayName: "Free Shared Plan"
-      free: true
-      backup_retention_period: 14
-      adapter: shared
-      dbType: mysql
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
-      tags:
-        environment: "cf-env"
-        client: "the client"
         service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
       name: "small-mysql"
