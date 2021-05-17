@@ -17,7 +17,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((development-stack-name))
@@ -67,7 +66,6 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
@@ -75,7 +73,6 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
       BASE_STACK_NAME: ((development-stack-base))
       AWS_DEFAULT_REGION: ((development-aws-default-region))
@@ -343,7 +340,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((staging-stack-name))
@@ -393,7 +389,6 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((staging-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((staging-rds-shared-postgres-password))
@@ -401,7 +396,6 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
       BASE_STACK_NAME: ((staging-stack-base))
       AWS_DEFAULT_REGION: ((staging-aws-default-region))
@@ -669,7 +663,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: plan
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
@@ -731,7 +724,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
@@ -781,7 +773,6 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((prod-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((prod-rds-shared-postgres-password))
@@ -789,7 +780,6 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
       BASE_STACK_NAME: ((prod-stack-base))
       AWS_DEFAULT_REGION: ((prod-aws-default-region))
