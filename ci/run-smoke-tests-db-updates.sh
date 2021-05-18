@@ -31,8 +31,8 @@ cf set-env "smoke-tests-db-update-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
 cf set-env "smoke-tests-db-update-${SERVICE_PLAN}" SERVICE_NAME "rds-smoke-tests-db-update-$SERVICE_PLAN"
 
 # Create service
-if echo "$SERVICE_PLAN" | grep -v shared | grep mysql >/dev/null ; then
-  # test out the enable_functions stuff, which only works on non-shared mysql databases
+if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
+  # test out the enable_functions stuff, which only works on mysql databases
   cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-update-$SERVICE_PLAN" -c '{"enable_functions": true}'
 else
   # create a regular instance

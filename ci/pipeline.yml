@@ -17,7 +17,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((development-stack-name))
@@ -67,7 +66,6 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
@@ -75,7 +73,6 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
       BASE_STACK_NAME: ((development-stack-base))
       AWS_DEFAULT_REGION: ((development-aws-default-region))
@@ -136,7 +133,7 @@ jobs:
       BROKER_NAME: ((development-broker-name))
       AUTH_USER: ((development-auth-user))
       AUTH_PASS: ((development-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-mysql-redundant aws-rds:micro-psql-redundant aws-rds:small-mysql-redundant aws-rds:small-psql aws-rds:small-psql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:redis-dev aws-elasticache-redis:redis-3node aws-elasticache-redis:redis-5node aws-elasticache-redis:redis-3node-large aws-elasticache-redis:redis-5node-large aws-elasticsearch:es-dev aws-elasticsearch:es-medium aws-elasticsearch:es-medium-ha aws-elasticsearch:es-large aws-elasticsearch:es-large-ha
+      SERVICES: aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-mysql-redundant aws-rds:micro-psql-redundant aws-rds:small-mysql-redundant aws-rds:small-psql aws-rds:small-psql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:redis-dev aws-elasticache-redis:redis-3node aws-elasticache-redis:redis-5node aws-elasticache-redis:redis-3node-large aws-elasticache-redis:redis-5node-large aws-elasticsearch:es-dev aws-elasticsearch:es-medium aws-elasticsearch:es-medium-ha aws-elasticsearch:es-large aws-elasticsearch:es-large-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -208,17 +205,6 @@ jobs:
           SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
 
-      - task: smoke-tests-shared-postgres
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_PLAN: shared-psql
-          DB_TYPE: postgres
-
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
@@ -263,17 +249,6 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: small-mysql
-          DB_TYPE: mysql
-
-      - task: smoke-tests-shared-mysql
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_PLAN: shared-mysql
           DB_TYPE: mysql
 
       - task: smoke-tests-oracle
@@ -343,7 +318,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((staging-stack-name))
@@ -393,7 +367,6 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((staging-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((staging-rds-shared-postgres-password))
@@ -401,7 +374,6 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
       BASE_STACK_NAME: ((staging-stack-base))
       AWS_DEFAULT_REGION: ((staging-aws-default-region))
@@ -534,17 +506,6 @@ jobs:
           NEW_SERVICE_PLAN: small-psql
           DB_TYPE: postgres
 
-      - task: smoke-tests-shared-postgres
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: shared-psql
-          DB_TYPE: postgres
-
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
@@ -589,17 +550,6 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: small-mysql
           NEW_SERVICE_PLAN: medium-mysql
-          DB_TYPE: mysql
-
-      - task: smoke-tests-shared-mysql
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: shared-mysql
           DB_TYPE: mysql
 
       - task: smoke-tests-oracle
@@ -669,7 +619,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: plan
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
@@ -731,7 +680,6 @@ jobs:
     input_mapping:
       terraform-templates: aws-broker-app
     params:
-      TERRAFORM_BIN: terratest-14.11
       TERRAFORM_ACTION: apply
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
@@ -781,7 +729,6 @@ jobs:
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       STATE_FILE: terraform-state/terraform.tfstate
       POSTGRES_USERNAME: ((prod-rds-shared-postgres-username))
       POSTGRES_PASSWORD: ((prod-rds-shared-postgres-password))
@@ -789,7 +736,6 @@ jobs:
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
-      TERRAFORM_BIN: terratest-14.11
       S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
       BASE_STACK_NAME: ((prod-stack-base))
       AWS_DEFAULT_REGION: ((prod-aws-default-region))
