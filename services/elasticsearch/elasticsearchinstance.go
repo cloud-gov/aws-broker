@@ -21,29 +21,31 @@ type ElasticsearchInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password                   string `sql:"size(255)"`
-	Salt                       string `sql:"size(255)"`
-	AccessKey                  string `sql:"size(255)"`
-	SecretKey                  string `sql:"size(255)"`
-	IamPolicy                  string `sql:"size(255)"`
-	IamPolicyARN               string `sql:"size(255)"`
-	AccessControlPolicy        string `sql:"size(255)"`
-	ElasticsearchVersion       string `sql:"size(255)"`
-	CurrentESVersion           string `sql:"size(255)"`
-	MasterCount                int    `sql:"size(255)"`
-	DataCount                  int    `sql:"size(255)"`
-	InstanceType               string `sql:"size(255)"`
-	MasterInstanceType         string `sql:"size(255)"`
-	VolumeSize                 int    `sql:"size(255)"`
-	VolumeType                 string `sql:"size(255)"`
-	MasterEnabled              bool   `sql:"size(255)"`
-	NodeToNodeEncryption       bool   `sql:"size(255)"`
-	EncryptAtRest              bool   `sql:"size(255)"`
-	AutomatedSnapshotStartHour int    `sql:"size(255)"`
-	Bucket                     string `sql:"size(255)"`
-	SnapshotARN                string `sql:"size(255)"`
-	SnapshotPolicyARN          string `sql:"size(255)"`
-	IamPassRolePolicyARN       string `sql:"size(255)"`
+	Password                       string `sql:"size(255)"`
+	Salt                           string `sql:"size(255)"`
+	AccessKey                      string `sql:"size(255)"`
+	SecretKey                      string `sql:"size(255)"`
+	IamPolicy                      string `sql:"size(255)"`
+	IamPolicyARN                   string `sql:"size(255)"`
+	AccessControlPolicy            string `sql:"size(255)"`
+	ElasticsearchVersion           string `sql:"size(255)"`
+	CurrentESVersion               string `sql:"size(255)"`
+	MasterCount                    int    `sql:"size(255)"`
+	DataCount                      int    `sql:"size(255)"`
+	InstanceType                   string `sql:"size(255)"`
+	MasterInstanceType             string `sql:"size(255)"`
+	VolumeSize                     int    `sql:"size(255)"`
+	VolumeType                     string `sql:"size(255)"`
+	MasterEnabled                  bool   `sql:"size(255)"`
+	NodeToNodeEncryption           bool   `sql:"size(255)"`
+	EncryptAtRest                  bool   `sql:"size(255)"`
+	AutomatedSnapshotStartHour     int    `sql:"size(255)"`
+	Bucket                         string `sql:"size(255)"`
+	SnapshotARN                    string `sql:"size(255)"`
+	SnapshotPolicyARN              string `sql:"size(255)"`
+	IamPassRolePolicyARN           string `sql:"size(255)"`
+	IndicesFieldDataCacheSize      string `sql:"size(255)"`
+	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
 
 	ClearPassword string `sql:"-"`
 
@@ -162,6 +164,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.SecGroup = plan.SecurityGroup
 	i.SubnetIDAZ1 = plan.SubnetIDAZ1
 	i.SubnetIDAZ2 = plan.SubnetIDAZ2
+	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
+	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

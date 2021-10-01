@@ -141,6 +141,20 @@ var modifyRedisInstanceReq = []byte(
 	}
 }`)
 
+var createElasticsearchInstanceAdvancedOptionsReq = []byte(
+	`{
+	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
+	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+	"parameters": {
+		"advanced_options": {
+			"indices.query.bool.max_clause_count": "1024",
+			"indices.fielddata.cache.size": "80"
+		}
+	}
+}`)
+
 var createElasticsearchInstanceReq = []byte(
 	`{
 	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
@@ -913,6 +927,52 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata", i.PlanID, "plan", i.OrganizationGUID, "org", i.SpaceGUID)
 	}
+
+	if i.IndicesFieldDataCacheSize != "" {
+		t.Error("The instance should not have IndicesFieldDataCacheSize but has it as", i.IndicesFieldDataCacheSize)
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "" {
+		t.Error("The instance should not have IndicesQueryBoolMaxClauseCount but has it as", i.IndicesQueryBoolMaxClauseCount)
+	}
+
+	urlAcceptsIncompleteAdv := "/v2/service_instances/the_advanced_elasticsearch_instance?accepts_incomplete=true"
+	res, _ = doRequest(nil, urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncompleteAdv, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncompleteAdv, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+		t.Error(urlAcceptsIncompleteAdv, "should return the instance accepted message")
+	}
+	// Is it in the database and has a username and password?
+	i = elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_advanced_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.Password == "" {
+		t.Error("The instance should have a username and password")
+	}
+
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata", i.PlanID, "plan", i.OrganizationGUID, "org", i.SpaceGUID)
+	}
+
+	if i.IndicesFieldDataCacheSize != "80" {
+		t.Error("The instance should have IndicesFieldDataCacheSize 80 but has it as", i.IndicesFieldDataCacheSize)
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "1024" {
+		t.Error("The instance should have IndicesQueryBoolMaxClauseCount 1024 but has it as", i.IndicesQueryBoolMaxClauseCount)
+	}
 }
 
 func TestModifyElasticsearchInstance(t *testing.T) {
@@ -981,7 +1041,7 @@ func TestElasticsearchLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, m = doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res, m = doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)

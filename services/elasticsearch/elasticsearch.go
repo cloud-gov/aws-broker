@@ -191,6 +191,16 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		},
 	}
 
+	AdvancedOptions := make(map[string]*string)
+
+	if i.IndicesFieldDataCacheSize != "" {
+		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "" {
+		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
+	}
+
 	if i.DataCount > 1 {
 		VPCOptions.SetSubnetIds([]*string{
 			&i.SubnetIDAZ1,
@@ -213,6 +223,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		DomainEndpointOptions:       domainOptions,
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
+		AdvancedOptions:             AdvancedOptions,
 	}
 
 	params.SetAccessPolicies(accessControlPolicy)

@@ -13,9 +13,15 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
+type ElasticsearchAdvancedOptions struct {
+	IndicesFieldDataCacheSize      string `json:"indices.fielddata.cache.size,omitempty"`
+	IndicesQueryBoolMaxClauseCount string `json:"indices.query.bool.max_clause_count,omitempty"`
+}
+
 type ElasticsearchOptions struct {
-	ElasticsearchVersion string `json:"elasticsearchVersion"`
-	Bucket               string `json:"bucket"`
+	ElasticsearchVersion string                       `json:"elasticsearchVersion"`
+	Bucket               string                       `json:"bucket"`
+	AdvancedOptions      ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
 }
 
 func (r ElasticsearchOptions) Validate(settings *config.Settings) error {
