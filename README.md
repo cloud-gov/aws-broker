@@ -48,14 +48,19 @@ There are some feature flags that you can turn on as well:
    `cf create-service _servicename_ production my-mysql-service -c '{"publicly_accessible": true}'`.
    This is probably not something you want to set unless you really know what you are doing.
 
-#### Catalog.yaml
+#### Catalog.yml
 
-Catalog.yaml contains a list of service(s) offered with plans. It contains no secrets.
-Prior to pushing, complete the catalog.yaml for your environment. It is architected where the service name (e.g. rds) is the mapping between it and the service details.
+Catalog.yml contains a list of service(s) offered with plans. It contains no secrets.
+Prior to pushing, complete the catalog.yml for your environment. It is architected where the service name (e.g. rds) is the mapping between it and the service details.
 
 #### Secrets.yml
 
 secrets.yml contains the all of the secrets for the different resources.
+
+### Testing and development
+
+Make sure you have a valid secrets.yml and catalog.yml. The easiest way is to copy catalog-test.yml and secrets-test.yml to catalog.yml and secrets.yml. Once you have these in place
+run `go test` to run the tests
 
 
 ### How to deploy it
