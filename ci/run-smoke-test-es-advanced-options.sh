@@ -13,8 +13,8 @@ set -euxo pipefail
 # $SERVICE_PLAN - ie. micro-psql, small-mysql, redis-dev
 
 # Computed vars
-TEST_APP="smoke-test-$SERVICE_PLAN-app"
-TEST_SERVICE="smoke-test-$SERVICE_PLAN-service"
+TEST_APP="smoke-test-adv-$SERVICE_PLAN-app"
+TEST_SERVICE="smoke-test-adv-$SERVICE_PLAN-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/$SERVICE_NAME/"
 
 # Function for waiting on a service instance to finish being processed.
