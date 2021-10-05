@@ -308,6 +308,17 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
   on_success:
     put: slack
     params:
@@ -626,6 +637,17 @@ jobs:
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
         params:
           CF_API_URL: ((staging-cf-api-url))
           CF_USERNAME: ((staging-cf-deploy-username))
@@ -1021,6 +1043,18 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          CF_API_URL: ((production-cf-api-url))
+          CF_USERNAME: ((production-cf-deploy-username))
+          CF_PASSWORD: ((production-cf-deploy-password))
+          CF_ORGANIZATION: ((production-cf-organization))
+          CF_SPACE: ((production-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+
   on_success:
     put: slack
     params:
