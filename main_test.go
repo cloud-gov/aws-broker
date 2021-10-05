@@ -146,7 +146,7 @@ var createElasticsearchInstanceAdvancedOptionsReq = []byte(
 	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
 	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
 	"organization_guid":"an-org",
-	"space_guid":"a-space"
+	"space_guid":"a-space",
 	"parameters": {
 		"advanced_options": {
 			"indices.query.bool.max_clause_count": "1024",
@@ -937,7 +937,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncompleteAdv := "/v2/service_instances/the_advanced_elasticsearch_instance?accepts_incomplete=true"
-	res, _ = doRequest(nil, urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res, _ = doRequest(nil, urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceAdvancedOptionsReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
