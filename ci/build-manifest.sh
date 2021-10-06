@@ -28,7 +28,19 @@ meta:
     mysql_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_mysql_security_group`
     oracle_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_oracle_security_group`
     mssql_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_mssql_security_group`
-  redis:
+  shared_mysql:
+    name: $RDS_SHARED_MYSQL_NAME
+    username: $RDS_SHARED_MYSQL_USERNAME
+    password: $RDS_SHARED_MYSQL_PASSWORD
+    url: `${TERRAFORM} output -raw -state=$STATE_FILE rds_shared_mysql_rds_host`
+    port: `${TERRAFORM} output -raw -state=$STATE_FILE rds_shared_mysql_rds_port`
+  shared_postgres:
+    name: $RDS_SHARED_POSTGRES_NAME
+    username: $RDS_SHARED_POSTGRES_USERNAME
+    password: $RDS_SHARED_POSTGRES_PASSWORD
+    url: `${TERRAFORM} output -raw -state=$STATE_FILE rds_shared_postgres_rds_host`
+    port: `${TERRAFORM} output -raw -state=$STATE_FILE rds_shared_postgres_rds_port`
+  redis: 
     subnet_group: `${TERRAFORM} output -raw -state stack.tfstate elasticache_subnet_group`
     security_group: `${TERRAFORM} output -raw -state stack.tfstate elasticache_redis_security_group`
   elasticsearch:

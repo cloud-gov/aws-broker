@@ -14,6 +14,28 @@ rds:
     documentationUrl: "https://cloud.gov/docs/services/relational-database/"
     supportUrl:
   plans:
+    - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
+      name: "shared-psql"
+      description: "Shared PostgreSQL database for prototyping (no sensitive or production data)"
+      metadata:
+        bullets:
+          - "Shared RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "Free shared plan"
+      free: true
+      backup_retention_period: 14
+      adapter: shared
+      dbType: postgres
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
       description: "Dedicated recommended micro RDS PostgreSQL DB instance"
@@ -392,6 +414,28 @@ rds:
       storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "57dd4bf0-465b-4e11-838d-2142caa6d763"
+      name: "shared-mysql"
+      description: "Shared MySQL database for prototyping (no sensitive or production data)"
+      metadata:
+        bullets:
+          - "Shared RDS instance"
+          - "MySQL instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "Free shared plan"
+      free: true
+      backup_retention_period: 14
+      adapter: shared
+      dbType: mysql
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
         environment: (( grab meta.environment ))
