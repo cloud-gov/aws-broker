@@ -43,7 +43,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.33
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
       TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
@@ -355,7 +355,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.33
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
       TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
@@ -704,53 +704,6 @@ jobs:
     params:
       <<: *plan-params
       TERRAFORM_ACTION: apply
-<<<<<<< HEAD
-=======
-      TEMPLATE_SUBDIR: ci/terraform
-      STACK_NAME: ((prod-stack-name))
-      S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
-      AWS_DEFAULT_REGION: ((prod-aws-default-region))
-
-      TF_VAR_base_stack: ((prod-stack-base))
-      TF_VAR_stack_description: ((prod-stack-name))
-      TF_VAR_remote_state_bucket: ((prod-s3-tfstate-bucket))
-
-      TF_VAR_rds_internal_instance_type: db.m3.medium
-      TF_VAR_rds_internal_db_size: 10
-      TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
-      TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.5
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
-      TF_VAR_rds_internal_multi_az: true
-      TF_VAR_rds_internal_username: ((prod-rds-internal-username))
-      TF_VAR_rds_internal_password: ((prod-rds-internal-password))
-      TF_VAR_rds_internal_apply_immediately: "true"
-      TF_VAR_rds_internal_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
-      TF_VAR_rds_shared_mysql_db_size: 100
-      TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.51
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.6
-      TF_VAR_rds_shared_mysql_multi_az: true
-      TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
-      TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
-      TF_VAR_rds_shared_mysql_apply_immediately: "true"
-      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
-      TF_VAR_rds_shared_postgres_db_size: 100
-      TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
-      TF_VAR_rds_shared_postgres_multi_az: true
-      TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
-      TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
-      TF_VAR_rds_shared_postgres_apply_immediately: "true"
-      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
->>>>>>> mooooooreeee-rds-versions
 
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
@@ -997,11 +950,11 @@ jobs:
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
         params:
-          CF_API_URL: ((production-cf-api-url))
-          CF_USERNAME: ((production-cf-deploy-username))
-          CF_PASSWORD: ((production-cf-deploy-password))
-          CF_ORGANIZATION: ((production-cf-organization))
-          CF_SPACE: ((production-cf-space))
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
 
