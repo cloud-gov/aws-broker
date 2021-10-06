@@ -20,6 +20,8 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string) (base.InstanceState, error)
+	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
+	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 }
@@ -32,6 +34,16 @@ type mockDBAdapter struct {
 }
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	// TODO
+	return base.InstanceReady, nil
+}
+
+func (d *mockDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -87,6 +99,14 @@ func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.Instan
 	return base.InstanceReady, nil
 }
 
+func (d *sharedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	return base.InstanceNotModified, nil
+}
+
+func (d *sharedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
+	return base.InstanceReady, nil
+}
+
 func (d *sharedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
 	return i.getCredentials(password)
 }
@@ -106,35 +126,62 @@ type dedicatedDBAdapter struct {
 	settings config.Settings
 }
 
-// This is the prefix for all pgroups created by the broker.
+// PgroupPrefix is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-aws-broker-"
 
-// This function will return the a custom parameter group with whatever custom parameters
-// have been requested.  If there is no custom parameter group, it will be created.
+// This function will return the a custom parameter group with whatever custom
+// parameters have been requested.  If there is no custom parameter group, it
+// will be created.
 func getCustomParameterGroup(pgroupName string, i *RDSInstance, customparams map[string]map[string]string, svc *rds.RDS) (string, error) {
-	input := &rds.DescribeDBParametersInput{
+	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(pgroupName),
 		MaxRecords:           aws.Int64(20),
 		Source:               aws.String("system"),
 	}
 
 	// If the db parameter group has already been created, we can return.
-	_, err := svc.DescribeDBParameters(input)
+	_, err := svc.DescribeDBParameters(dbParametersInput)
 	if err == nil {
 		log.Printf("%s parameter group already exists", pgroupName)
 	} else {
-		// Otherwise, create a new parameter group in the proper family
-		re := regexp.MustCompile(`^\d+\.*\d*`)
-		dbversion := re.Find([]byte(i.DbVersion))
-		pgroupFamily := i.DbType + string(dbversion)
-		log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
+		// Otherwise, create a new parameter group in the proper family.
+		pgroupFamily := ""
 
-		createinput := &rds.CreateDBParameterGroupInput{
+		// If the DB version is not set (e.g., creating a new instance without
+		// providing a specific version), determine the default parameter group
+		// name from the default engine that will be chosen.
+		if i.DbVersion == "" {
+			dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
+				DefaultOnly: aws.Bool(true),
+				Engine:      aws.String(i.DbType),
+			}
+
+			// This call requires that the broker have permissions to make it.
+			defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
+
+			if err != nil {
+				return "Error retrieving default parameter group name", err
+			}
+
+			// The value from the engine info is a string pointer, so we must
+			// retrieve its actual value.
+			pgroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
+		} else {
+			// The DB instance has a version, therefore we can derive the
+			// parameter group family directly.
+			re := regexp.MustCompile(`^\d+\.*\d*`)
+			dbversion := re.Find([]byte(i.DbVersion))
+			pgroupFamily = i.DbType + string(dbversion)
+			log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
+		}
+
+		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(pgroupFamily),
 			DBParameterGroupName:   aws.String(pgroupName),
 			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
 		}
-		_, err = svc.CreateDBParameterGroup(createinput)
+
+		_, err = svc.CreateDBParameterGroup(createInput)
 		if err != nil {
 			return pgroupName, err
 		}
@@ -245,11 +292,100 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	resp, err := svc.CreateDBInstance(params)
 	// Pretty-print the response data.
-	log.Println(awsutil.StringValue(resp))
+	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		return base.InstanceInProgress, nil
 	}
+	return base.InstanceNotCreated, nil
+}
+
+// This should ultimately get exposed as part of the "update-service" method for the broker:
+// cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
+	// NOTE:  Only the following actions are allowed at this point:
+	// - Instance class modification (change of plan)
+	// - Multi AZ (redundancy)
+	// - Allocated storage
+	// These actions are applied immediately.
+	params := &rds.ModifyDBInstanceInput{
+		AllocatedStorage:     aws.Int64(i.AllocatedStorage),
+		ApplyImmediately:     aws.Bool(true),
+		DBInstanceClass:      &d.Plan.InstanceClass,
+		MultiAZ:              &d.Plan.Redundant,
+		DBInstanceIdentifier: &i.Database,
+	}
+
+	resp, err := svc.ModifyDBInstance(params)
+	// Pretty-print the response data.
+	fmt.Println(awsutil.StringValue(resp))
+
+	// Decide if AWS service call was successful
+	if yes := d.didAwsCallSucceed(err); yes {
+		return base.InstanceInProgress, nil
+	}
+
+	return base.InstanceNotModified, nil
+}
+
+func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
+	// First, we need to check if the instance is up and available.
+	// Only search for details if the instance was not indicated as ready.
+	if i.State != base.InstanceReady {
+		svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &rds.DescribeDBInstancesInput{
+			DBInstanceIdentifier: aws.String(i.Database),
+		}
+
+		resp, err := svc.DescribeDBInstances(params)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			return base.InstanceNotCreated, err
+		}
+
+		// Pretty-print the response data.
+		fmt.Println(awsutil.StringValue(resp))
+
+		// Get the details (host and port) for the instance.
+		numOfInstances := len(resp.DBInstances)
+		if numOfInstances > 0 {
+			for _, value := range resp.DBInstances {
+				// First check that the instance is up.
+				fmt.Println("Database Instance:" + i.Database + " is " + *(value.DBInstanceStatus))
+				switch *(value.DBInstanceStatus) {
+				case "available":
+					return base.InstanceReady, nil
+				case "creating":
+					return base.InstanceInProgress, nil
+				case "deleting":
+					return base.InstanceNotGone, nil
+				case "failed":
+					return base.InstanceNotCreated, nil
+				default:
+					return base.InstanceInProgress, nil
+				}
+
+			}
+		} else {
+			// Couldn't find any instances.
+			return base.InstanceNotCreated, errors.New("Couldn't find any instances.")
+		}
+	}
+
 	return base.InstanceNotCreated, nil
 }
 
@@ -357,6 +493,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	params := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(i.Database), // Required
 		// FinalDBSnapshotIdentifier: aws.String("String"),
+		DeleteAutomatedBackups: aws.Bool(false),
 		SkipFinalSnapshot: aws.Bool(true),
 	}
 	resp, err := svc.DeleteDBInstance(params)

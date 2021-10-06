@@ -43,11 +43,12 @@ type PlanMetadata struct {
 // Plan is a generic struct for a Cloud Foundry service plan
 // http://docs.cloudfoundry.org/services/api.html
 type Plan struct {
-	ID          string       `yaml:"id" json:"id" validate:"required"`
-	Name        string       `yaml:"name" json:"name" validate:"required"`
-	Description string       `yaml:"description" json:"description" validate:"required"`
-	Metadata    PlanMetadata `yaml:"metadata" json:"metadata" validate:"required"`
-	Free        bool         `yaml:"free" json:"free"`
+	ID             string       `yaml:"id" json:"id" validate:"required"`
+	Name           string       `yaml:"name" json:"name" validate:"required"`
+	Description    string       `yaml:"description" json:"description" validate:"required"`
+	Metadata       PlanMetadata `yaml:"metadata" json:"metadata" validate:"required"`
+	Free           bool         `yaml:"free" json:"free"`
+	PlanUpdateable bool         `yaml:"plan_updateable" json:"plan_updateable"`
 }
 
 var (
@@ -88,15 +89,105 @@ type RDSPlan struct {
 	Encrypted             bool              `yaml:"encrypted" json:"-"`
 	StorageType           string            `yaml:"storage_type" json:"-"`
 	AllocatedStorage      int64             `yaml:"allocatedStorage" json:"-"`
-	BackupRetentionPeriod int64             `yaml:"backup_retention_period" json:"-"" validate:"required"`
+	BackupRetentionPeriod int64             `yaml:"backup_retention_period" json:"-" validate:"required"`
 	SubnetGroup           string            `yaml:"subnetGroup" json:"-" validate:"required"`
 	SecurityGroup         string            `yaml:"securityGroup" json:"-" validate:"required"`
+	ApprovedMajorVersions []string          `yaml:"approvedMajorVersions" json:"-"`
+}
+
+// CheckVersion verifies that a specific version chosen by the user for a new
+// RDS instances is valid and supported in the chosen plan.
+func (p RDSPlan) CheckVersion(version string) bool {
+	// Return true if there are no valid major versions set in the plan; this
+	// lets the calls proceed and the AWS API will error out if an invalid
+	// version is provided.
+	if len(p.ApprovedMajorVersions) == 0 {
+		return true
+	}
+
+	for _, approvedVersion := range p.ApprovedMajorVersions {
+		if version == approvedVersion {
+			return true
+		}
+	}
+
+	return false
+}
+
+// RedisService describes the Redis Service. It contains the basic Service details as well as a list of Redis Plans
+type RedisService struct {
+	Service `yaml:",inline" validate:"required"`
+	Plans   []RedisPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
+}
+
+// FetchPlan will look for a specific RedisSecret Plan based on the plan ID.
+func (s RedisService) FetchPlan(planID string) (RedisPlan, response.Response) {
+	for _, plan := range s.Plans {
+		if plan.ID == planID {
+			return plan, nil
+		}
+	}
+	return RedisPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
+}
+
+// RedisPlan inherits from a plan and adds fields needed for AWS Redis.
+type RedisPlan struct {
+	Plan                       `yaml:",inline" validate:"required"`
+	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required"`
+	EngineVersion              string            `yaml:"engineVersion" json:"-"`
+	SubnetGroup                string            `yaml:"subnetGroup" json:"-" validate:"required"`
+	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
+	CacheNodeType              string            `yaml:"nodeType" json:"-" validate:"required"`
+	NumCacheClusters           int               `yaml:"numberCluster" json:"-" validate:"required"`
+	ParameterGroup             string            `yaml:"parameterGroup" json:"-" validate:"required"`
+	PreferredMaintenanceWindow string            `yaml:"preferredMaintenanceWindow" json:"-" validate:"required"`
+	SnapshotWindow             string            `yaml:"snapshotWindow" json:"-" validate:"required"`
+	SnapshotRetentionLimit     int               `yaml:"snapshotRetentionLimit" json:"-"`
+	AutomaticFailoverEnabled   bool              `yaml:"automaticFailoverEnabled" json:"-"`
+}
+
+// ElasticsearchService describes the Elasticsearch Service. It contains the basic Service details as well as a list of Elasticsearch Plans
+type ElasticsearchService struct {
+	Service `yaml:",inline" validate:"required"`
+	Plans   []ElasticsearchPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
+}
+
+// FetchPlan will look for a specific ElasticsearchSecret Plan based on the plan ID.
+func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, response.Response) {
+	for _, plan := range s.Plans {
+		if plan.ID == planID {
+			return plan, nil
+		}
+	}
+	return ElasticsearchPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
+}
+
+// ElasticsearchPlan inherits from a plan and adds fields needed for AWS Redis.
+type ElasticsearchPlan struct {
+	Plan                       `yaml:",inline" validate:"required"`
+	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required" `
+	ElasticsearchVersion       string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
+	MasterCount                string            `yaml:"masterCount" json:"-"`
+	DataCount                  string            `yaml:"dataCount" json:"-" validate:"required"`
+	InstanceType               string            `yaml:"instanceType" json:"-" validate:"required"`
+	MasterInstanceType         string            `yaml:"masterInstanceType" json:"-"`
+	VolumeSize                 string            `yaml:"volumeSize" json:"-" validate:"required"`
+	VolumeType                 string            `yaml:"volumeType" json:"-" validate:"required"`
+	MasterEnabled              bool              `yaml:"masterEnabled" json:"-"`
+	NodeToNodeEncryption       bool              `yaml:"nodeToNodeEncryption" json:"-"`
+	EncryptAtRest              bool              `yaml:"encryptAtRest" json:"-"`
+	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
+	SubnetIDAZ1                string            `yaml:"subnetIDaz1" json:"-" validate:"required"`
+	SubnetIDAZ2                string            `yaml:"subnetIDaz2" json:"-" validate:"required"`
+	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
 }
 
 // Catalog struct holds a collections of services
 type Catalog struct {
 	// Instances of Services
-	RdsService RDSService `yaml:"rds" json:"-"`
+	RdsService           RDSService           `yaml:"rds" json:"-"`
+	RedisService         RedisService         `yaml:"redis" json:"-"`
+	ElasticsearchService ElasticsearchService `yaml:"elasticsearch" json:"-"`
 
 	// All helper structs to be unexported
 	secrets   Secrets   `yaml:"-" json:"-"`

@@ -5,11 +5,12 @@ image_resource:
   type: docker-image
   source:
     repository: golang
-    tag: latest
+    tag: 1.14
 
 inputs:
 - name: aws-broker-app
-  path: gopath/src/github.com/18F/aws-broker
+  path: aws-broker
 
 run:
-  path: gopath/src/github.com/18F/aws-broker/ci/run_tests.sh
+  path: ci/run_tests.sh
+  dir: aws-broker

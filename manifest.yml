@@ -4,4 +4,5 @@ applications:
   buildpack: go_buildpack
   memory: 256M
   env:
-    GOVERSION: go1.12
+    GOVERSION: go1.16
+    

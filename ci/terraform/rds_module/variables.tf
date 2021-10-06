@@ -1,4 +1,5 @@
-variable "stack_description" {}
+variable "stack_description" {
+}
 
 variable "rds_instance_type" {
   default = "db.m4.large"
@@ -16,24 +17,28 @@ variable "rds_db_iops" {
   default = 0
 }
 
-variable "rds_db_name" {}
+variable "rds_db_name" {
+}
 
 variable "rds_db_engine" {
   default = "postgres"
 }
 
 variable "rds_db_engine_version" {
-  default = "9.6.15"
+  default = "12.3"
 }
 
-variable "rds_username" {}
+variable "rds_username" {
+}
 
-variable "rds_password" {}
+variable "rds_password" {
+}
 
-variable "rds_subnet_group" {}
+variable "rds_subnet_group" {
+}
 
 variable "rds_security_groups" {
-  type = "list"
+  type = list(string)
 }
 
 variable "rds_force_ssl" {
@@ -45,7 +50,7 @@ variable "rds_parameter_group_name" {
 }
 
 variable "rds_parameter_group_family" {
-  default = "postgres9.6"
+  default = "postgres12"
 }
 
 variable "rds_multi_az" {

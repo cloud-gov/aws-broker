@@ -13,6 +13,7 @@ import (
 type Settings struct {
 	EncryptionKey             string
 	DbNamePrefix              string
+	DbShorthandPrefix         string
 	MaxAllocatedStorage       int64
 	DbConfig                  *common.DBConfig
 	Environment               string
@@ -65,6 +66,11 @@ func (s *Settings) LoadFromEnv() error {
 	s.DbNamePrefix = os.Getenv("DB_PREFIX")
 	if s.DbNamePrefix == "" {
 		s.DbNamePrefix = "db"
+	}
+
+	s.DbShorthandPrefix = os.Getenv("DB_SHORTHAND_PREFIX")
+	if s.DbShorthandPrefix == "" {
+		s.DbShorthandPrefix = "db"
 	}
 
 	// Set env to production

@@ -2,6 +2,7 @@ package response
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 )
@@ -31,7 +32,7 @@ func TestGenericSuccessResponse(t *testing.T) {
 			t.Error("Different JSON strings: expected " + test.expectedJSONString + " found " + jsonStr)
 		}
 		if test.givenResponse.GetStatusCode() != test.expectedStatusCode {
-			t.Error("Different status codes: expected " + string(test.expectedStatusCode) + " found " + string(test.givenResponse.GetStatusCode()))
+			t.Error("Different status codes: expected " + fmt.Sprint(test.expectedStatusCode) + " found " + fmt.Sprint(test.givenResponse.GetStatusCode()))
 		}
 		if test.givenResponse.GetResponseType() != test.expectedType {
 			t.Error("Different response types: expected " + test.expectedType + " found " + test.givenResponse.GetResponseType())

@@ -29,7 +29,7 @@ type RDSInstance struct {
 	Tags                  map[string]string `sql:"-"`
 	BackupRetentionPeriod int64             `sql:"-"`
 	DbSubnetGroup         string            `sql:"-"`
-	AllocatedStorage      int64             `sql:"-"`
+	AllocatedStorage      int64             `sql:"size(255)"`
 	SecGroup              string            `sql:"-"`
 	EnableFunctions       bool              `sql:"-"`
 	PubliclyAccessible    bool              `sql:"-"`
@@ -110,6 +110,7 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 		"host":     i.Host,
 		"port":     strconv.FormatInt(i.Port, 10),
 		"db_name":  i.FormatDBName(),
+		"name":     i.FormatDBName(),
 	}
 	return credentials, nil
 }
@@ -119,7 +120,7 @@ func (i *RDSInstance) init(uuid string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RDSPlan,
-	options RDSOptions,
+	options Options,
 	s *config.Settings) error {
 
 	i.Uuid = uuid
@@ -132,17 +133,26 @@ func (i *RDSInstance) init(uuid string,
 
 	// Load AWS values
 	i.DbType = plan.DbType
-	i.DbVersion = plan.DbVersion
+
+	// Set the DB Version
+	// Currently only supported for MySQL and PostgreSQL instances.
+	if (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != "" {
+		i.DbVersion = options.Version
+	} else {
+		// Default to the version provided by the plan chosen in catalog.
+		i.DbVersion = plan.DbVersion
+	}
+
 	i.BackupRetentionPeriod = plan.BackupRetentionPeriod
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = s.DbNamePrefix + helpers.RandStr(15)
-	i.Username = "u" + helpers.RandStr(15)
+	i.Database = s.DbNamePrefix + helpers.RandStrNoCaps(15)
+	i.Username = "u" + helpers.RandStrNoCaps(15)
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
-	password := helpers.RandStr(25)
+	password := helpers.RandStrNoCaps(25)
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err
 	}

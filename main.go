@@ -7,10 +7,11 @@ import (
 	"github.com/martini-contrib/auth"
 	"github.com/martini-contrib/render"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/db"
 	"log"
 	"os"
+
+	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/db"
 )
 
 func main() {
@@ -65,7 +66,14 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 	})
 
 	// Create the service instance (cf create-service-instance)
+	// This is a PUT per https://github.com/openservicebrokerapi/servicebroker/blob/v2.16/spec.md#provisioning
 	m.Put("/v2/service_instances/:id", CreateInstance)
+
+	// Update the service instance
+	m.Patch("/v2/service_instances/:id", ModifyInstance)
+
+	// Poll service endpoint to get status of rds or elasticache
+	m.Get("/v2/service_instances/:instance_id/last_operation", LastOperation)
 
 	// Bind the service to app (cf bind-service)
 	m.Put("/v2/service_instances/:instance_id/service_bindings/:id", BindInstance)

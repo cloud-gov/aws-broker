@@ -5,19 +5,36 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"math/big"
 )
 
 // RandStr will generate a random alphanumeric string of the specified length.
 func RandStr(strSize int) string {
 
 	var dictionary string
-	dictionary = "0123456789abcdefghijklmnopqrstuvwxyz"
+	dictionary = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	return StringWithCharset(strSize, dictionary)
+}
 
-	bytes := generateIv(strSize)
-	for k, v := range bytes {
-		bytes[k] = dictionary[v%byte(len(dictionary))]
+// RandStrNoCaps will generate a random alphanumeric string of the specified length.
+func RandStrNoCaps(strSize int) string {
+
+	var dictionary string
+	dictionary = "abcdefghijklmnopqrstuvwxyz0123456789"
+	return StringWithCharset(strSize, dictionary)
+}
+
+func StringWithCharset(length int, charset string) string {
+
+	b := make([]byte, length)
+	charsetLen := big.NewInt(int64(len(charset)))
+
+	for i := range b {
+		idx, _ := rand.Int(rand.Reader, charsetLen)
+		idx64 := idx.Int64()
+		b[i] = charset[idx64]
 	}
-	return string(bytes)
+	return string(b)
 }
 
 // Encrypt will encrypt the given plain text string.

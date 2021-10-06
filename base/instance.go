@@ -1,12 +1,13 @@
 package base
 
 import (
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
-	"github.com/jinzhu/gorm"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/18F/aws-broker/helpers/request"
+	"github.com/18F/aws-broker/helpers/response"
+	"github.com/jinzhu/gorm"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.
@@ -17,12 +18,14 @@ const (
 	InstanceNotCreated InstanceState = iota // 0
 	// InstanceInProgress indicates that the instance is in a intermediate step.
 	InstanceInProgress // 1
-	// InstanceReady indicates that the instance is created and ready to be used.
+	// InstanceReady indicates that the instance is created or modified and ready to be used.
 	InstanceReady // 2
 	// InstanceGone indicates that the instance is deleted.
 	InstanceGone // 3
-	// InstanceNotGone indicates that the instance is successfully deleted.
+	// InstanceNotGone indicates that the instance is not deleted.
 	InstanceNotGone // 4
+	// InstanceNotModified indicates that the instance is not modified.
+	InstanceNotModified // 5
 )
 
 type Instance struct {

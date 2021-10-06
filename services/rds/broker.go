@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 
@@ -14,16 +15,25 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-type RDSOptions struct {
-	AllocatedStorage   int64 `json:"storage"`
-	EnableFunctions    bool  `json:"enable_functions"`
-	PubliclyAccessible bool  `json:"publicly_accessible"`
+// Options is a struct containing all of the custom parameters supported by
+// the broker for the "cf create-service" and "cf update-service" commands -
+// they are passed in via the "-c <JSON string or file>" flag.
+type Options struct {
+	AllocatedStorage   int64  `json:"storage"`
+	EnableFunctions    bool   `json:"enable_functions"`
+	PubliclyAccessible bool   `json:"publicly_accessible"`
+	Version            string `json:"version"`
 }
 
-func (r RDSOptions) Validate(settings *config.Settings) error {
-	if r.AllocatedStorage > settings.MaxAllocatedStorage {
-		return fmt.Errorf("Invalid storage %d; must be <= %d", r.AllocatedStorage, settings.MaxAllocatedStorage)
+// Validate the custom parameters passed in via the "-c <JSON string or file>"
+// flag that do not require checks against specific plan information.
+func (o Options) Validate(settings *config.Settings) error {
+	// Check to make sure that the allocated storage is less than the maximum
+	// allowed.  If allocated storage is passed in, the value defaults to 0.
+	if o.AllocatedStorage > settings.MaxAllocatedStorage {
+		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
+
 	return nil
 }
 
@@ -74,7 +84,7 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := RDSInstance{}
 
-	options := RDSOptions{}
+	options := Options{}
 	if len(createRequest.RawParameters) > 0 {
 		err := json.Unmarshal(createRequest.RawParameters, &options)
 		if err != nil {
@@ -97,6 +107,18 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return planErr
 	}
 
+	// Check to see if there is a major version specified and if so, check to
+	// make sure it's a valid major version.
+	if options.Version != "" {
+		// Check to make sure that the version specified is allowed by the plan.
+		if !plan.CheckVersion(options.Version) {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				options.Version+" is not a supported major version; major version must be one of: "+strings.Join(plan.ApprovedMajorVersions, ", ")+".",
+			)
+		}
+	}
+
 	err := newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
@@ -114,6 +136,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if adapterErr != nil {
 		return adapterErr
 	}
+
 	// Create the database instance.
 	status, err := adapter.createDB(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
@@ -139,10 +162,156 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
-	return response.SuccessCreateResponse
+	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
+	existingInstance := RDSInstance{}
+
+	options := Options{}
+	if len(modifyRequest.RawParameters) > 0 {
+		err := json.Unmarshal(modifyRequest.RawParameters, &options)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+	}
+
+	// Load the existing instance provided.
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
+	}
+
+	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
+	if options.AllocatedStorage > 0 {
+		// Check that we are not decreasing the size of the instance.
+		if options.AllocatedStorage < existingInstance.AllocatedStorage {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				"Cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance.",
+			)
+		}
+
+		// Update the existing instance with the new allocated storage.
+		existingInstance.AllocatedStorage = options.AllocatedStorage
+	}
+
+	// Fetch the new plan that has been requested.
+	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
+	if newPlanErr != nil {
+		return newPlanErr
+	}
+
+	// Check to make sure that we're not switching database engines; this is not
+	// allowed.
+	if newPlan.DbType != existingInstance.DbType {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch between database engines/types. Please select a plan with the same database engine/type.",
+		)
+	}
+
+	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
+	// are not allowed or enabled, but in case we do, explicitly error out.
+	if existingInstance.Adapter == "shared" {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch from a shared database instance. Please migrate your database to a dedicated instance plan instead.",
+		)
+	}
+
+	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
+	// are not allowed or enabled, but in case we do, explicitly error out.
+	if newPlan.Adapter == "shared" {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch to a shared database instance. Please choose a dedicated instance plan instead.",
+		)
+	}
+
+	// Don't allow updating to a service plan that doesn't support updates.
+	if newPlan.PlanUpdateable == false {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot switch to "+newPlan.Name+" because the service plan does not allow updates or modification.",
+		)
+	}
+
+	// Connect to the existing instance.
+	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	// Modify the database instance.
+	status, err := adapter.modifyDB(&existingInstance, existingInstance.ClearPassword)
+
+	if status == base.InstanceNotModified {
+		desc := "There was an error modifying the instance."
+
+		if err != nil {
+			desc = desc + " Error: " + err.Error()
+		}
+
+		return response.NewErrorResponse(http.StatusBadRequest, desc)
+	}
+
+	// Update the existing instance in the broker.
+	existingInstance.State = status
+	existingInstance.PlanID = newPlan.ID
+	err = broker.brokerDB.Save(&existingInstance).Error
+
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+	}
+
+	return response.SuccessAcceptedResponse
+}
+
+func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+	existingInstance := RDSInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	}
+
+	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	var state string
+	status, _ := adapter.checkDBStatus(&existingInstance)
+	switch status {
+	case base.InstanceInProgress:
+		state = "in progress"
+	case base.InstanceReady:
+		state = "succeeded"
+	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotModified:
+		state = "failed"
+	case base.InstanceNotGone:
+		state = "failed"
+	default:
+		state = "in progress"
+	}
+	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+}
+
+func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
 	var count int64

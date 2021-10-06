@@ -37,7 +37,7 @@ while true; do
 done
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
-cf push "smoke-tests-${SERVICE_PLAN}" 
+cf push "smoke-tests-${SERVICE_PLAN}"
 
 # Clean up app and service
 cf delete -f "smoke-tests-$SERVICE_PLAN"

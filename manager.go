@@ -1,14 +1,17 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/services/elasticsearch"
 	"github.com/18F/aws-broker/services/rds"
+	"github.com/18F/aws-broker/services/redis"
 	"github.com/jinzhu/gorm"
-	"net/http"
 )
 
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings) (base.Broker, response.Response) {
@@ -16,33 +19,87 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	// RDS Service
 	case c.RdsService.ID:
 		return rds.InitRDSBroker(brokerDb, settings), nil
+	case c.RedisService.ID:
+		return redis.InitRedisBroker(brokerDb, settings), nil
+	case c.ElasticsearchService.ID:
+		return elasticsearch.InitElasticsearchBroker(brokerDb, settings), nil
 	}
 
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
 func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
-	createRequest, resp := request.ExtractRequest(req)
-	if resp != nil {
-		return resp
+	createRequest, err := request.ExtractRequest(req)
+	if err != nil {
+		return err
 	}
-	broker, resp := findBroker(createRequest.ServiceID, c, brokerDb, settings)
-	if resp != nil {
-		return resp
+	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings)
+	if err != nil {
+		return err
+	}
+
+	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+	if !asyncAllowed {
+		return response.ErrUnprocessableEntityResponse
 	}
 
 	// Create instance
-	resp = broker.CreateInstance(c, id, createRequest)
+	resp := broker.CreateInstance(c, id, createRequest)
+
 	if resp.GetResponseType() != response.ErrorResponseType {
 		instance := base.Instance{Uuid: id, Request: createRequest}
 		brokerDb.NewRecord(instance)
-		brokerDb.Create(&instance)
-		// TODO check save error
+
+		err := brokerDb.Create(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
 	}
+
 	return resp
 }
 
-func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	// Extract the request information.
+	modifyRequest, err := request.ExtractRequest(req)
+	if err != nil {
+		return err
+	}
+
+	// Find the requested instance in the broker.
+	instance, err := base.FindBaseInstance(brokerDb, id)
+	if err != nil {
+		return err
+	}
+
+	// Retrieve the correct broker.
+	broker, err := findBroker(instance.ServiceID, c, brokerDb, settings)
+	if err != nil {
+		return err
+	}
+
+	// Check if async calls are allowed.
+	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+	if !asyncAllowed {
+		return response.ErrUnprocessableEntityResponse
+	}
+
+	// Attempt to modify the database instance.
+	resp := broker.ModifyInstance(c, id, modifyRequest, instance)
+
+	if resp.GetResponseType() != response.ErrorResponseType {
+		err := brokerDb.Save(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
+	}
+
+	return resp
+}
+
+func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
@@ -52,7 +109,26 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 		return resp
 	}
 
-	return broker.BindInstance(c, id, instance)
+	return broker.LastOperation(c, id, instance)
+}
+
+func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+	// Extract the request information.
+	bindRequest, err := request.ExtractRequest(req)
+	if err != nil {
+		return err
+	}
+
+	instance, resp := base.FindBaseInstance(brokerDb, id)
+	if resp != nil {
+		return resp
+	}
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	if resp != nil {
+		return resp
+	}
+
+	return broker.BindInstance(c, id, bindRequest, instance)
 }
 
 func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {

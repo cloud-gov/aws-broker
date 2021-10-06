@@ -27,31 +27,37 @@ jobs:
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_instance_type: db.t3.micro
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.5.15
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_internal_db_engine_version: 12.3
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
+      TF_VAR_rds_internal_multi_az: false
       TF_VAR_rds_internal_username: ((development-rds-internal-username))
       TF_VAR_rds_internal_password: ((development-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.t2.small
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
+      TF_VAR_rds_shared_mysql_apply_immediately: "true"
+      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.3
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
+      TF_VAR_rds_shared_postgres_multi_az: false
       TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -86,6 +92,7 @@ jobs:
       current_app_name: aws-broker
       environment_variables:
         DB_PREFIX: ((development-db-name-prefix))
+        DB_SHORTHAND_PREFIX: dev
         AUTH_PASS: ((development-auth-pass))
         AUTH_USER: ((development-auth-user))
         AWS_DEFAULT_REGION: ((development-aws-default-region))
@@ -126,7 +133,7 @@ jobs:
       BROKER_NAME: ((development-broker-name))
       AUTH_USER: ((development-auth-user))
       AUTH_PASS: ((development-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
+      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-mysql-redundant aws-rds:micro-psql-redundant aws-rds:small-mysql-redundant aws-rds:small-psql aws-rds:small-psql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:redis-dev aws-elasticache-redis:redis-3node aws-elasticache-redis:redis-5node aws-elasticache-redis:redis-3node-large aws-elasticache-redis:redis-5node-large aws-elasticsearch:es-dev aws-elasticsearch:es-medium aws-elasticsearch:es-medium-ha aws-elasticsearch:es-large aws-elasticsearch:es-large-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -139,7 +146,7 @@ jobs:
       BROKER_NAME: ((development-broker-name))
       AUTH_USER: ((development-auth-user))
       AUTH_PASS: ((development-auth-pass))
-      SERVICES: aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-development
@@ -160,7 +167,42 @@ jobs:
           CF_PASSWORD: ((development-cf-deploy-password))
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
-          SERVICE_PLAN: medium-psql
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-update-micro-to-small
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: small-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          DB_VERSION: 11
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: micro-psql
           DB_TYPE: postgres
 
       - task: smoke-tests-shared-postgres
@@ -173,7 +215,6 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
-          DB_VERSION: 9.5.15
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -183,7 +224,42 @@ jobs:
           CF_PASSWORD: ((development-cf-deploy-password))
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
-          SERVICE_PLAN: medium-mysql
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-small-to-medium
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: small-mysql
+          NEW_SERVICE_PLAN: medium-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          DB_VERSION: 5.7
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
 
       - task: smoke-tests-shared-mysql
@@ -196,7 +272,6 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: shared-mysql
           DB_TYPE: mysql
-          DB_VERSION: 5.6.41
 
       - task: smoke-tests-oracle
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -208,6 +283,39 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: redis-dev
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
   on_success:
     put: slack
     params:
@@ -253,31 +361,37 @@ jobs:
       TF_VAR_stack_description: ((staging-stack-name))
       TF_VAR_remote_state_bucket: ((staging-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_rds_internal_instance_type: db.t3.micro
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.5.15
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_internal_db_engine_version: 12.3
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
+      TF_VAR_rds_internal_multi_az: false
       TF_VAR_rds_internal_username: ((staging-rds-internal-username))
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.t2.small
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
+      TF_VAR_rds_shared_mysql_apply_immediately: "true"
+      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((staging-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.3
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
+      TF_VAR_rds_shared_postgres_multi_az: false
       TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -312,6 +426,7 @@ jobs:
       current_app_name: aws-broker
       environment_variables:
         DB_PREFIX: ((staging-db-name-prefix))
+        DB_SHORTHAND_PREFIX: stg
         AUTH_PASS: ((staging-auth-pass))
         AUTH_USER: ((staging-auth-user))
         AWS_DEFAULT_REGION: ((staging-aws-default-region))
@@ -352,7 +467,7 @@ jobs:
       BROKER_NAME: ((staging-broker-name))
       AUTH_USER: ((staging-auth-user))
       AUTH_PASS: ((staging-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
+      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-mysql-redundant aws-rds:micro-psql-redundant aws-rds:small-mysql-redundant aws-rds:small-psql aws-rds:small-psql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:redis-dev aws-elasticache-redis:redis-3node aws-elasticache-redis:redis-5node aws-elasticache-redis:redis-3node-large aws-elasticache-redis:redis-5node-large aws-elasticsearch:es-dev aws-elasticsearch:es-medium aws-elasticsearch:es-medium-ha aws-elasticsearch:es-large aws-elasticsearch:es-large-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -365,7 +480,7 @@ jobs:
       BROKER_NAME: ((staging-broker-name))
       AUTH_USER: ((staging-auth-user))
       AUTH_PASS: ((staging-auth-pass))
-      SERVICES: aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-staging
@@ -385,7 +500,43 @@ jobs:
           CF_PASSWORD: ((staging-cf-deploy-password))
           CF_ORGANIZATION: ((staging-cf-organization))
           CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: medium-psql
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: medium-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          DB_VERSION: 11
+
+      - task: smoke-tests-postgres-update-micro-to-small
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: small-psql
           DB_TYPE: postgres
 
       - task: smoke-tests-shared-postgres
@@ -398,7 +549,6 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
-          DB_VERSION: 9.5.15
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -408,7 +558,42 @@ jobs:
           CF_PASSWORD: ((staging-cf-deploy-password))
           CF_ORGANIZATION: ((staging-cf-organization))
           CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: medium-mysql
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          DB_VERSION: 5.7
+
+      - task: smoke-tests-mysql-update-small-to-medium
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          NEW_SERVICE_PLAN: medium-mysql
           DB_TYPE: mysql
 
       - task: smoke-tests-shared-mysql
@@ -432,6 +617,39 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: redis-dev
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
   on_success:
     put: slack
     params:
@@ -481,8 +699,9 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.5.15
+      TF_VAR_rds_internal_db_engine_version: 9.5
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
@@ -493,15 +712,20 @@ jobs:
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.6.41
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.6
+      TF_VAR_rds_shared_mysql_multi_az: true
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
+      TF_VAR_rds_shared_mysql_apply_immediately: "true"
+      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
       TF_VAR_rds_shared_postgres_instance_type: db.m4.large
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5.15
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.5
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
@@ -554,6 +778,7 @@ jobs:
       current_app_name: aws-broker
       environment_variables:
         DB_PREFIX: ((prod-db-name-prefix))
+        DB_SHORTHAND_PREFIX: prd
         AUTH_PASS: ((prod-auth-pass))
         AUTH_USER: ((prod-auth-user))
         AWS_DEFAULT_REGION: ((prod-aws-default-region))
@@ -594,7 +819,7 @@ jobs:
       BROKER_NAME: ((prod-broker-name))
       AUTH_USER: ((prod-auth-user))
       AUTH_PASS: ((prod-auth-pass))
-      SERVICES: aws-rds:shared-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-psql aws-rds:large-psql-redundant aws-rds:xlarge-psql aws-rds:xlarge-psql-redundant aws-rds:shared-mysql aws-rds:medium-mysql aws-rds:medium-mysql-redundant aws-rds:large-mysql aws-rds:large-mysql-redundant aws-rds:xlarge-mysql aws-rds:xlarge-mysql-redundant aws-rds:medium-oracle-se2
+      SERVICES: aws-rds:shared-psql aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:shared-mysql aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-mysql-redundant aws-rds:micro-psql-redundant aws-rds:small-mysql-redundant aws-rds:small-psql aws-rds:small-psql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:redis-dev aws-elasticache-redis:redis-3node aws-elasticache-redis:redis-5node aws-elasticache-redis:redis-3node-large aws-elasticache-redis:redis-5node-large aws-elasticsearch:es-dev aws-elasticsearch:es-medium aws-elasticsearch:es-medium-ha aws-elasticsearch:es-large aws-elasticsearch:es-large-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -607,7 +832,7 @@ jobs:
       BROKER_NAME: ((prod-broker-name))
       AUTH_USER: ((prod-auth-user))
       AUTH_PASS: ((prod-auth-pass))
-      SERVICES: aws-rds:large-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-prod
@@ -627,7 +852,42 @@ jobs:
           CF_PASSWORD: ((prod-cf-deploy-password))
           CF_ORGANIZATION: ((prod-cf-organization))
           CF_SPACE: ((prod-cf-space))
-          SERVICE_PLAN: medium-psql
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          DB_VERSION: 11
+
+      - task: smoke-tests-postgres-update-micro-to-small
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: small-psql
           DB_TYPE: postgres
 
       - task: smoke-tests-shared-postgres
@@ -640,7 +900,6 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: shared-psql
           DB_TYPE: postgres
-          DB_VERSION: 9.5.15
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -650,7 +909,42 @@ jobs:
           CF_PASSWORD: ((prod-cf-deploy-password))
           CF_ORGANIZATION: ((prod-cf-organization))
           CF_SPACE: ((prod-cf-space))
-          SERVICE_PLAN: medium-mysql
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          DB_VERSION: 5.7
+
+      - task: smoke-tests-mysql-update-small-to-medium
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: small-mysql
+          NEW_SERVICE_PLAN: medium-mysql
           DB_TYPE: mysql
 
       - task: smoke-tests-shared-mysql
@@ -674,6 +968,40 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: redis-dev
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          CF_API_URL: ((production-cf-api-url))
+          CF_USERNAME: ((production-cf-deploy-username))
+          CF_PASSWORD: ((production-cf-deploy-password))
+          CF_ORGANIZATION: ((production-cf-organization))
+          CF_SPACE: ((production-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+
   on_success:
     put: slack
     params:

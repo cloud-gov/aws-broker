@@ -1,3 +1,149 @@
+elasticsearch:
+  id: "90413816-9c77-418b-9fc7-b9739e7c1254"
+  name: "aws-elasticsearch"
+  description: "elasticsearch Broker"
+  bindable: true
+  tags:
+  - "elasticsearch"
+  metadata:
+    displayName: elasticsearch Broker
+    imageUrl:
+    longDescription:
+    providerDisplayName: elasticsearch
+    documentationUrl:
+    supportUrl:
+  plans:
+  - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+    name: "aws-standard"
+    description: "elasticsearch Test"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "on AWS!"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "Free elasticsearch"
+    free: true
+    elasticsearchVersion: 7.4
+    masterCount: 2
+    dataCount: 2
+    instanceType: c5.large.elasticsearch
+    masterInstanceType: c5.large.elasticsearch
+    volumeSize: 10
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: sec-group
+    subnetIDaz1: subnet-1
+    subnetIDaz2: subnet-2
+    tags:
+      environment: "cf-env-dev"
+      client: "the client"
+      service: "aws-broker"
+  - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
+    name: "aws-dev"
+    description: "elasticsearch Test"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "on AWS!"
+      costs:
+      - amount:
+          usd: 0
+        unit: "MONTHLY"
+      displayName: "Free elasticsearch"
+    free: true
+    elasticsearchVersion: 7.4
+    dataCount: 1
+    instanceType: t2.small.elasticsearch
+    volumeSize: 10
+    volumeType: gp2
+    encryptAtRest: false
+    automatedSnapshotStartHour: 7
+    securityGroup: sec-group
+    subnetIDaz1: subnet-1
+    subnetIDaz2: subnet-2
+    tags:
+      environment: "cf-env-dev"
+      client: "the client"
+      service: "aws-broker"
+redis:
+  id: "cda65825-e357-4a93-a24b-9ab138d97815"
+  name: "redis"
+  description: "redis Broker"
+  bindable: true
+  tags:
+    - "redis"
+  metadata:
+    displayName: Redis Broker
+    imageUrl:
+    longDescription:
+    providerDisplayName: Redis
+    documentationUrl:
+    supportUrl:
+  plans:
+    -
+      id: "475e36bf-387f-44c1-9b81-575fec2ee443"
+      name: "test-aws-redis"
+      description: "Redis Test"
+      metadata:
+        bullets:
+          - "Redis"
+          - "on AWS!"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "Free redis"
+      free: true
+      securityGroup: sg-123456
+      engineVersion: 5.0.3
+      numberCluster: 5
+      nodeType: cache.t3.micro
+      parameterGroup: default.redis5.0
+      preferredMaintenanceWindow: sun:23:00-mon:02:30
+      snapshotWindow: 01:00-02:00
+      snapshotRetentionLimit: 6
+      subnetGroup: subnet-group
+      tags:
+        environment: "cf-env-dev"
+        client: "the client"
+        service: "aws-broker"
+    -
+      id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+      name: "BETA-redis-5node"
+      description: "BETA AWS Elasticache Redis 5.0.6 Five node"
+      metadata:
+        bullets:
+          - "redis"
+          - "redis506"
+          - "5node"
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "MONTHLY"
+        displayName: "5 node redis5.0.6, persistent storage, 512Mb memory limit"
+      free: true
+      securityGroup: (( grab meta.redis.security_group ))
+      engineVersion: 5.0.6
+      numberCluster: 5
+      nodeType: cache.t3.micro
+      subnetGroup: (( grab meta.redis.subnet_group ))
+      parameterGroup: default.redis5.0
+      preferredMaintenanceWindow: mon:07:00-mon:08:00
+      snapshotWindow: 06:00-07:00
+      snapshotRetentionLimit: 3
+      automaticFailoverEnabled: true
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
 rds:
   id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
   name: "rds"
@@ -18,8 +164,7 @@ rds:
     documentationUrl:
     supportUrl:
   plans:
-    -
-      id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
+    - id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a3"
       name: "shared-psql"
       description: "Shared infrastructure for Postgres DB"
       metadata:
@@ -27,12 +172,12 @@ rds:
           - "Shared RDS Instance"
           - "Postgres instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "MONTHLY"
         displayName: "Free Shared Plan"
       free: true
+      backup_retention_period: 14
       adapter: shared
       dbType: postgres
       securityGroup: sg-123456
@@ -41,56 +186,102 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
+    - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
-      description: "Dedicated Micro RDS Postgres DB Instance"
+      description: "Dedicated micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
-          -
-            amount:
-              usd: 0.036
+          - amount:
+              usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated Micro Postgres"
-      free: false
+        displayName: "Dedicated micro PostgreSQL"
+      free: true
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
-        environment: "cf-env"
-        client: "the client"
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78e"
+    - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
       name: "medium-psql"
-      description: "Dedicated Medium RDS Postgres DB Instance"
+      description: "Dedicated medium RDS PostgreSQL DB instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Postgres instance"
+          - "Dedicated RDS instance"
+          - "PostgreSQL instance"
         costs:
-          -
-            amount:
-              usd: 0.19
+          - amount:
+              usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated Medium Postgres"
+        displayName: "Dedicated medium PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.m3.medium
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
       dbType: postgres
-      securityGroup: sg-123456
-      subnetGroup: subnet-group
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
       tags:
-        environment: "cf-env"
-        client: "the client"
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
         service: "aws-broker"
-    -
-      id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"
+    - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
+      name: "medium-psql-redundant"
+      description: "Dedicated redundant medium RDS PostgreSQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant RDS instance"
+          - "PostgreSQL instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant medium PostgreSQL"
+      free: false
+      adapter: dedicated
+      instanceClass: db.m3.medium
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
+      dbType: postgres
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "44d24fc7-f7a4-4ac1-b7a0-de82836e89a4"
       name: "shared-mysql"
       description: "Shared infrastructure for MySQL DB"
       metadata:
@@ -98,12 +289,12 @@ rds:
           - "Shared RDS Instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
+          - amount:
               usd: 0
             unit: "MONTHLY"
         displayName: "Free Shared Plan"
       free: true
+      backup_retention_period: 14
       adapter: shared
       dbType: mysql
       securityGroup: sg-123456
@@ -112,56 +303,65 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
-      name: "micro-mysql"
-      description: "Dedicated Micro RDS Postgres DB Instance"
+    - id: "da91e15c-98c9-46a9-b114-02b8d28062c7"
+      name: "small-mysql"
+      description: "Dedicated small RDS MySQL DB Instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
-              usd: 0.036
+          - amount:
+              usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated Micro MySQL"
-      free: false
+        displayName: "Dedicated small MySQL"
+      free: true
       adapter: dedicated
-      instanceClass: db.t2.micro
+      instanceClass: db.t2.small
       dbType: mysql
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
+      plan_updateable: true
       securityGroup: sg-123456
+      storage_type: gp2
+      backup_retention_period: 14
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78d"
+    - id: "332e0168-6969-4bd7-b07f-29f08c4bf78d"
       name: "medium-mysql"
       description: "Dedicated Medium RDS MySQL DB Instance"
       metadata:
         bullets:
-          - "Dedicated Redundant RDS Instance"
+          - "Dedicated RDS Instance"
           - "MySQL instance"
         costs:
-          -
-            amount:
-              usd: 0.19
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated Medium MySQL"
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
+      plan_updateable: true
       securityGroup: sg-123456
+      storage_type: gp2
+      backup_retention_period: 14
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "332e0168-6969-4bd7-b07f-29f08c4bf78f"
+    - id: "332e0168-6969-4bd7-b07f-29f08c4bf78f"
       name: "medium-oracle-se2"
       description: "Dedicated Medium RDS Oracle Standard Edition 2 DB Instance"
       metadata:
@@ -170,12 +370,12 @@ rds:
           - "Oracle DB instance"
           - "Oracle Standard Edition 2"
         costs:
-          -
-            amount:
-              usd: 19.19
+          - amount:
+              usd: 0
             unit: "HOURLY"
         displayName: "Dedicated Medium Oracle SE2"
       free: false
+      backup_retention_period: 14
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: oracle-se2
