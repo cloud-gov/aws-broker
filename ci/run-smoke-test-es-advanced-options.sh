@@ -89,6 +89,34 @@ test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
 
 get_task_state $test_app_guid
 
+# Create service
+cf update-service $TEST_SERVICE -c '{"advanced_options": {"indices.fielddata.cache.size": "40", "indices.query.bool.max_clause_count": "1023"}}'
+
+# Wait for service to be created
+wait_for_service_instance $TEST_SERVICE
+
+# Bind service to app
+while true; do
+  if out=$(cf bind-service $TEST_APP $TEST_SERVICE); then
+    break
+  fi
+  if [[ $out =~ "Instance not available yet" ]]; then
+    echo "${out}"
+  fi
+  sleep 90
+done
+
+# Start app
+cf restage $TEST_APP
+
+# Run task
+cf run-task $TEST_APP "python run.py -s $TEST_SERVICE"
+
+# Get finished task state with app guid
+test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
+
+get_task_state $test_app_guid
+
 # Clean up app and service
 cf delete -f $TEST_APP
 cf delete-service -f $TEST_SERVICE
