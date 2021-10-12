@@ -176,3 +176,12 @@ func (i *ElasticsearchInstance) init(uuid string,
 
 	return nil
 }
+
+func (i *ElasticsearchInstance) update(
+	options ElasticsearchOptions,
+) error {
+
+	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
+	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	return nil
+}

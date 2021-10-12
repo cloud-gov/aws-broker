@@ -3,7 +3,9 @@ package elasticsearch
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -117,8 +119,55 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 }
 
 func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
-	// Note:  This is not currently supported for Redis instances.
-	return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
+	logger := lager.NewLogger("aws-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	esInstance := ElasticsearchInstance{}
+	options := ElasticsearchOptions{}
+	if len(updateRequest.RawParameters) > 0 {
+		err := json.Unmarshal(updateRequest.RawParameters, &options)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+	}
+
+	plan, planErr := c.ElasticsearchService.FetchPlan(updateRequest.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	if adapterErr != nil {
+		return adapterErr
+	}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&esInstance).Count(&count)
+	if count != 1 {
+		return response.NewErrorResponse(http.StatusNotFound, "The instance doesn't exist")
+	}
+	if esInstance.PlanID != updateRequest.PlanID {
+		return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
+	}
+	err := esInstance.update(options)
+	if err != nil {
+		logger.Error("Updating instance failed", err)
+		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
+	}
+	err = broker.brokerDB.Save(&esInstance).Error
+	if err != nil {
+		logger.Error("Saving instance failed", err)
+		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
+	}
+
+	_, err = adapter.modifyElasticsearch(&esInstance, esInstance.ClearPassword)
+	if err != nil {
+		logger.Error("AWS call updating instance failed", err)
+		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
+	}
+	return response.SuccessAcceptedResponse
 }
 
 func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {

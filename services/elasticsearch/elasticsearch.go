@@ -262,7 +262,29 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 }
 
 func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	return base.InstanceNotModified, nil
+	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	AdvancedOptions := make(map[string]*string)
+
+	if i.IndicesFieldDataCacheSize != "" {
+		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "" {
+		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
+	}
+	//Standard Parameters
+	params := &elasticsearchservice.UpdateElasticsearchDomainConfigInput{
+		DomainName:      aws.String(i.Domain),
+		AdvancedOptions: AdvancedOptions,
+	}
+	resp, err := svc.UpdateElasticsearchDomainConfig(params)
+	fmt.Println(awsutil.StringValue(resp))
+	if d.didAwsCallSucceed(err) {
+		return base.InstanceInProgress, nil
+	} else {
+		return base.InstanceNotModified, err
+	}
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
