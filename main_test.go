@@ -163,7 +163,7 @@ var createElasticsearchInstanceReq = []byte(
 	"space_guid":"a-space"
 }`)
 
-var modifyElasticsearchInstanceReq = []byte(
+var modifyElasticsearchInstancePlanReq = []byte(
 	`{
 	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
 	"plan_id":"162ffae8-9cf8-4806-80e5-a7f92d514198",
@@ -171,6 +171,20 @@ var modifyElasticsearchInstanceReq = []byte(
 	"space_guid":"a-space",
 	"previous_values": {
 		"plan_id": "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+	}
+}`)
+
+var modifyElasticsearchInstanceParamsReq = []byte(
+	`{
+	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
+	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
+		"advanced_options": {
+			"indices.query.bool.max_clause_count": "1024",
+			"indices.fielddata.cache.size": "80"
+		}
 	}
 }`)
 
@@ -975,7 +989,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	}
 }
 
-func TestModifyElasticsearchInstance(t *testing.T) {
+func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	// We need to create an instance first before we can try to modify it.
 	createURL := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
@@ -999,7 +1013,7 @@ func TestModifyElasticsearchInstance(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
-	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceReq))
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
@@ -1007,7 +1021,64 @@ func TestModifyElasticsearchInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
-	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceReq))
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+	i = elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.IndicesFieldDataCacheSize != "80" {
+		t.Error("The instance should have IndicesFieldDataCacheSize 80 but has it as", i.IndicesFieldDataCacheSize)
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "1024" {
+		t.Error("The instance should have IndicesQueryBoolMaxClauseCount 1024 but has it as", i.IndicesQueryBoolMaxClauseCount)
+	}
+
+}
+
+func TestModifyElasticsearchInstancePlan(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := elasticsearch.ElasticsearchInstance{}
+	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalElasticsearchPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusBadRequest {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
