@@ -43,7 +43,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.33
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
       TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
@@ -377,7 +377,7 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.30
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.33
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
       TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
@@ -994,11 +994,11 @@ jobs:
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
         params:
-          CF_API_URL: ((production-cf-api-url))
-          CF_USERNAME: ((production-cf-deploy-username))
-          CF_PASSWORD: ((production-cf-deploy-password))
-          CF_ORGANIZATION: ((production-cf-organization))
-          CF_SPACE: ((production-cf-space))
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
 
