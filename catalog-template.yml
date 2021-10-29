@@ -1179,3 +1179,67 @@ elasticsearch:
       environment: (( grab meta.environment ))
       client: "the client"
       service: "aws-broker"
+  - id: "31D9ABDC-424B-4E75-A43F-A09CD64216E9"
+    name: "es-xlarge"
+    description: "AWS Large Elasticsearch 7.4 - 3 node master with 2 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "2 data nodes"
+      costs:
+      - amount:
+          usd: 3000.0
+        unit: "MONTHLY"
+      displayName: "es xlarge cluster 3 master 2 data based on elasticsearch 7.4"
+    free: false
+    elasticsearchVersion: 7.4
+    masterCount: 3
+    dataCount: 2
+    instanceType: c6g.2xlarge.search
+    masterInstanceType: c6g.2xlarge.search
+    volumeSize: 30
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
+  - id: "A40344FC-73EC-461D-952E-5601FEC173B1"
+    name: "es-xlarge-ha"
+    description: "AWS Large Elasticsearch 7.4 - 3 node master with 4 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "4 data nodes"
+      costs:
+      - amount:
+          usd: 4200.0
+        unit: "MONTHLY"
+      displayName: "es xlarge cluster 3 master 4 data based on elasticsearch 7.4"
+    free: false
+    elasticsearchVersion: 7.4
+    masterCount: 3
+    dataCount: 4
+    instanceType: c6g.2xlarge.search
+    masterInstanceType: c6g.2xlarge.search
+    volumeSize: 30
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
