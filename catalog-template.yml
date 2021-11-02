@@ -1179,7 +1179,7 @@ elasticsearch:
       environment: (( grab meta.environment ))
       client: "the client"
       service: "aws-broker"
-  - id: "31D9ABDC-424B-4E75-A43F-A09CD64216E9"
+  - id: "31d9abdc-424b-4e75-a43f-a09cd64216e9"
     name: "es-xlarge"
     description: "AWS Large Elasticsearch 7.4 - 3 node master with 2 data nodes"
     metadata:
@@ -1211,7 +1211,7 @@ elasticsearch:
       environment: (( grab meta.environment ))
       client: "the client"
       service: "aws-broker"
-  - id: "A40344FC-73EC-461D-952E-5601FEC173B1"
+  - id: "a40344fc-73ec-461d-952e-5601fec173b1"
     name: "es-xlarge-ha"
     description: "AWS Large Elasticsearch 7.4 - 3 node master with 4 data nodes"
     metadata:
