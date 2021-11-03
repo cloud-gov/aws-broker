@@ -1196,8 +1196,8 @@ elasticsearch:
     elasticsearchVersion: 7.4
     masterCount: 3
     dataCount: 2
-    instanceType: c6g.2xlarge.search
-    masterInstanceType: c6g.2xlarge.search
+    instanceType: c6g.2xlarge.elasticsearch
+    masterInstanceType: c6g.2xlarge.elasticsearch
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
@@ -1228,8 +1228,8 @@ elasticsearch:
     elasticsearchVersion: 7.4
     masterCount: 3
     dataCount: 4
-    instanceType: c6g.2xlarge.search
-    masterInstanceType: c6g.2xlarge.search
+    instanceType: c6g.2xlarge.elasticsearch
+    masterInstanceType: c6g.2xlarge.elasticsearch
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
