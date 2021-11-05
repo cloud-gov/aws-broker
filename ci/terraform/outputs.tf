@@ -21,3 +21,7 @@ output "rds_shared_mysql_rds_host" {
 output "rds_shared_mysql_rds_port" {
   value = module.rds_shared_mysql.rds_port
 }
+
+output "s3_snapshots_bucket_id"{
+  value = module.snapshot_bucket.s3_bucket_id
+}
