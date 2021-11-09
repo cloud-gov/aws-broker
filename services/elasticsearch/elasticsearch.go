@@ -334,130 +334,26 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		}
 
 	}
+	// add broker snapshot bucket and create roles and policies
+	if len(i.BrokerSnapshotBucket) > 0 {
+		// specify a path for the bucket access policy to scope to this instance
+		// TODO: instead of ServiceId should we use domain?
+		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
+		err := d.createUpdateBucketRolesAndPolicies(i, i.BrokerSnapshotBucket, path)
+		if err != nil {
+			return nil, err
+		}
+		err = d.createSnapshotPolicy(i, i.BrokerSnapshotBucket, path)
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	// add client bucket and adjust policies and roles if present
 	if len(i.Bucket) > 0 {
-		iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-		assumeRolePolicy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		roleInput := &iam.CreateRoleInput{
-			AssumeRolePolicyDocument: aws.String(assumeRolePolicy),
-			RoleName:                 aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
-		resp, err := iamsvc.CreateRole(roleInput)
+		err := d.createUpdateBucketRolesAndPolicies(i, i.Bucket, "")
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
 			return nil, err
-		}
-		if resp.Role.Arn != nil {
-			i.SnapshotARN = *(resp.Role.Arn)
-			fmt.Println(i.getCredentials(password))
-		}
-		//Policy to for ES to passRole
-		s3Policy := `{"Version": "2012-10-17","Statement": [{"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]},{"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}]}`
-		rolePolicyInput := &iam.CreatePolicyInput{
-			PolicyName:     aws.String(i.Domain + "-to-S3-RolePolicy"),
-			PolicyDocument: aws.String(s3Policy),
-		}
-
-		respPolicy, err := iamsvc.CreatePolicy(rolePolicyInput)
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
-			return nil, err
-		}
-		if respPolicy.Policy.Arn != nil && resp.Role.RoleName != nil {
-			i.SnapshotPolicyARN = *(respPolicy.Policy.Arn)
-			roleAttachPolicyInput := &iam.AttachRolePolicyInput{
-				PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
-				RoleName:  aws.String(*(resp.Role.RoleName)),
-			}
-
-			respAttachPolicy, err := iamsvc.AttachRolePolicy(roleAttachPolicyInput)
-			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					// Generic AWS error with Code, Message, and original error (if any)
-					fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-					if reqErr, ok := err.(awserr.RequestFailure); ok {
-						// A service error occurred
-						fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-					}
-				} else {
-					// This case should never be hit, the SDK should always return an
-					// error which satisfies the awserr.Error interface.
-					fmt.Println(err.Error())
-				}
-				return nil, err
-			}
-			fmt.Println(awsutil.StringValue(respAttachPolicy))
-		}
-
-		esPermissionPolicy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
-
-		rolePolicyInput = &iam.CreatePolicyInput{
-			PolicyName:     aws.String(i.Domain + "-to-S3-ESRolePolicy"),
-			PolicyDocument: aws.String(esPermissionPolicy),
-		}
-
-		respPolicy, err = iamsvc.CreatePolicy(rolePolicyInput)
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
-			return nil, err
-		}
-		fmt.Println(awsutil.StringValue(respPolicy))
-		if respPolicy.Policy.Arn != nil {
-			i.IamPassRolePolicyARN = *(respPolicy.Policy.Arn)
-			userAttachPolicyInput := &iam.AttachUserPolicyInput{
-				PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
-				UserName:  aws.String(i.Domain),
-			}
-			_, err := iamsvc.AttachUserPolicy(userAttachPolicyInput)
-			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					// Generic AWS error with Code, Message, and original error (if any)
-					fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-					if reqErr, ok := err.(awserr.RequestFailure); ok {
-						// A service error occurred
-						fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-					}
-				} else {
-					// This case should never be hit, the SDK should always return an
-					// error which satisfies the awserr.Error interface.
-					fmt.Println(err.Error())
-				}
-				return nil, err
-			}
 		}
 	}
 	// If we get here that means the instance is up and we have the information for it.
@@ -605,4 +501,92 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 		return false
 	}
 	return true
+}
+
+// utility to run native api calls on ES instance to create a snapshot policy using the bucket name provided
+func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchInstance, bucket string, path string) error {
+	if i.State != base.InstanceReady {
+		return errors.New("instance is not ready, cannont execute api calls")
+	}
+
+	return nil
+}
+
+// utility to create roles and policies to enable snapshots in an s3 bucket
+func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
+	ip := NewIamPolicyHandler(d.settings.Region)
+	var snapshotRole *iam.Role
+
+	// create snapshotrole if not done yet
+	if i.SnapshotARN == "" {
+		rolename := i.Domain + "-to-s3-SnapshotRole"
+		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
+		arole, err := ip.createRole(policy, rolename)
+		if err != nil {
+			return err
+		}
+		i.SnapshotARN = *arole.Arn
+		snapshotRole = &arole
+
+	}
+
+	// create PassRolePolicy if DNE
+	if i.IamPassRolePolicyARN == "" {
+		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
+		policyname := i.Domain + "-to-S3-ESRolePolicy"
+		username := i.Domain
+		policyarn, err := ip.createUserPolicy(policy, policyname, username)
+		if err != nil {
+			return err
+		}
+		i.IamPassRolePolicyARN = policyarn
+	}
+
+	// Create PolicyDoc Statements
+	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
+	bucketArn := "arn:aws-us-gov:s3:::" + bucket
+	listStatement := PolicyStatementEntry{
+		Action:   []string{"s3:ListBucket"},
+		Effect:   "Allow",
+		Resource: []string{bucketArn},
+	}
+	// add wildcard for any path including empty one
+	// path will now limit access to the specific path provided
+	path += "/*"
+	// Looks like: {"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}
+	objectStatement := PolicyStatementEntry{
+		Action:   []string{"s3:GetObject", "s3:PutObject", "s3:DeleteObject"},
+		Effect:   "Allow",
+		Resource: []string{bucketArn + path},
+	}
+
+	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
+	if i.SnapshotPolicyARN == "" {
+
+		policyDoc := PolicyDocument{
+			Version:   "2012-10-17",
+			Statement: []PolicyStatementEntry{listStatement, objectStatement},
+		}
+
+		policyname := i.Domain + "-to-S3-RolePolicy"
+		policy, err := policyDoc.toString()
+		if err != nil {
+			return err
+		}
+		policyarn, err := ip.createPolicyAttachRole(policyname, policy, *snapshotRole)
+		if err != nil {
+			return err
+		}
+		i.SnapshotPolicyARN = policyarn
+
+	} else {
+		//snaphostpolicy has already be created so we need to add the new statements for this new bucket
+		//to the existing policy version.
+		err := ip.updateExistingPolicy(i.SnapshotPolicyARN, []PolicyStatementEntry{listStatement, objectStatement})
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
 }
