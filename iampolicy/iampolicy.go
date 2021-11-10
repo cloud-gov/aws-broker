@@ -1,4 +1,4 @@
-package elasticsearch
+package iampolicy
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
 
 type PolicyDocument struct {
@@ -23,28 +24,30 @@ type PolicyStatementEntry struct {
 }
 
 type IamPolicyHandler struct {
-	iamsvc *iam.IAM
+	iamsvc iamiface.IAMAPI // *iam.IAM interface, doing this allows for test mocking
 }
 
-func (pd *PolicyDocument) toString() (string, error) {
+func (pd *PolicyDocument) ToString() (string, error) {
 	retbytes, err := json.Marshal(pd)
 	rval := string(retbytes)
 	return rval, err
 }
 
-func (pd *PolicyDocument) fromString(docstring string) error {
+func (pd *PolicyDocument) FromString(docstring string) error {
 	err := json.Unmarshal([]byte(docstring), &pd)
 	return err
 }
 
 func NewIamPolicyHandler(region string) *IamPolicyHandler {
 	ip := IamPolicyHandler{}
-	ip.iamsvc = iam.New(session.New(), aws.NewConfig().WithRegion(region))
+	newsession := session.Must(session.NewSession())
+	ip.iamsvc = iam.New(newsession, aws.NewConfig().WithRegion(region))
 	return &ip
 }
 
-func (ip *IamPolicyHandler) createRole(policy string, rolename string) (iam.Role, error) {
-	role := iam.Role{}
+// create new assumable role with the trust policy
+func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*iam.Role, error) {
+	role := &iam.Role{}
 	roleInput := &iam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(policy),
 		RoleName:                 aws.String(rolename),
@@ -66,12 +69,13 @@ func (ip *IamPolicyHandler) createRole(policy string, rolename string) (iam.Role
 		return role, err
 	}
 
-	return *resp.Role, nil
+	return resp.Role, nil
 
 }
 
 // create a policy and attach to a user, return the policy ARN
-func (ip *IamPolicyHandler) createUserPolicy(policy string, policyname string, username string) (string, error) {
+// the does not validate the policy
+func (ip *IamPolicyHandler) CreateUserPolicy(policy string, policyname string, username string) (string, error) {
 
 	IamRolePolicyARN := ""
 
@@ -94,10 +98,12 @@ func (ip *IamPolicyHandler) createUserPolicy(policy string, policyname string, u
 			// error which satisfies the awserr.Error interface.
 			fmt.Println(err.Error())
 		}
+		// return if error
 		return IamRolePolicyARN, err
 	}
 
 	fmt.Println(awsutil.StringValue(respPolicy))
+
 	if respPolicy.Policy.Arn != nil {
 		IamRolePolicyARN = *(respPolicy.Policy.Arn)
 		userAttachPolicyInput := &iam.AttachUserPolicyInput{
@@ -124,7 +130,9 @@ func (ip *IamPolicyHandler) createUserPolicy(policy string, policyname string, u
 	return IamRolePolicyARN, nil
 }
 
-func (ip *IamPolicyHandler) createPolicyAttachRole(policyname string, policy string, role iam.Role) (policyarn string, err error) {
+// create a new policy and attach to a specific role
+// this does not validate the policy
+func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy string, role iam.Role) (policyarn string, err error) {
 	rolePolicyInput := &iam.CreatePolicyInput{
 		PolicyName:     aws.String(policyname), //(i.Domain + "-to-S3-RolePolicy"),
 		PolicyDocument: aws.String(policy),
@@ -174,7 +182,9 @@ func (ip *IamPolicyHandler) createPolicyAttachRole(policyname string, policy str
 	return policyarn, nil
 }
 
-func (ip IamPolicyHandler) updateExistingPolicy(policyARN string, policyStatements []PolicyStatementEntry) error {
+// update a specific policy by adding new statements and updating the policyversion
+// this does not validate the policy
+func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatements []PolicyStatementEntry) error {
 	var policyDoc PolicyDocument
 
 	// get existing policy
@@ -222,7 +232,7 @@ func (ip IamPolicyHandler) updateExistingPolicy(policyARN string, policyStatemen
 
 		// convert policy document string into PolicyDocument
 		if resPolicyVersion.PolicyVersion.Document != nil {
-			err = policyDoc.fromString(*resPolicyVersion.PolicyVersion.Document)
+			err = policyDoc.FromString(*resPolicyVersion.PolicyVersion.Document)
 			if err != nil {
 				return err
 			}
@@ -230,8 +240,11 @@ func (ip IamPolicyHandler) updateExistingPolicy(policyARN string, policyStatemen
 	}
 	// now add new statement entries to PolicyDoc
 	policyDoc.Statement = append(policyDoc.Statement, policyStatements...)
-	// unmarshall policydoc and create new policyversion to update policy
-	docstring, err := policyDoc.toString()
+	// convert PolicyDoc to string and create new policyversion to update policy
+	docstring, err := policyDoc.ToString()
+	if err != nil {
+		return err
+	}
 	policyUpdatedVersion := &iam.CreatePolicyVersionInput{
 		PolicyArn:      aws.String(policyARN),
 		PolicyDocument: aws.String(docstring),

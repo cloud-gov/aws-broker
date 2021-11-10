@@ -20,6 +20,7 @@ import (
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/iampolicy"
 
 	"fmt"
 )
@@ -514,19 +515,19 @@ func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchIns
 
 // utility to create roles and policies to enable snapshots in an s3 bucket
 func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
-	ip := NewIamPolicyHandler(d.settings.Region)
+	ip := iampolicy.NewIamPolicyHandler(d.settings.Region)
 	var snapshotRole *iam.Role
 
 	// create snapshotrole if not done yet
 	if i.SnapshotARN == "" {
 		rolename := i.Domain + "-to-s3-SnapshotRole"
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		arole, err := ip.createRole(policy, rolename)
+		arole, err := ip.CreateAssumeRole(policy, rolename)
 		if err != nil {
 			return err
 		}
 		i.SnapshotARN = *arole.Arn
-		snapshotRole = &arole
+		snapshotRole = arole
 
 	}
 
@@ -535,7 +536,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
 		policyname := i.Domain + "-to-S3-ESRolePolicy"
 		username := i.Domain
-		policyarn, err := ip.createUserPolicy(policy, policyname, username)
+		policyarn, err := ip.CreateUserPolicy(policy, policyname, username)
 		if err != nil {
 			return err
 		}
@@ -545,16 +546,16 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	// Create PolicyDoc Statements
 	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
 	bucketArn := "arn:aws-us-gov:s3:::" + bucket
-	listStatement := PolicyStatementEntry{
+	listStatement := iampolicy.PolicyStatementEntry{
 		Action:   []string{"s3:ListBucket"},
 		Effect:   "Allow",
 		Resource: []string{bucketArn},
 	}
 	// add wildcard for any path including empty one
-	// path will now limit access to the specific path provided
+	// using path will now limit access to the specific path provided
 	path += "/*"
 	// Looks like: {"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}
-	objectStatement := PolicyStatementEntry{
+	objectStatement := iampolicy.PolicyStatementEntry{
 		Action:   []string{"s3:GetObject", "s3:PutObject", "s3:DeleteObject"},
 		Effect:   "Allow",
 		Resource: []string{bucketArn + path},
@@ -563,17 +564,17 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
 	if i.SnapshotPolicyARN == "" {
 
-		policyDoc := PolicyDocument{
+		policyDoc := iampolicy.PolicyDocument{
 			Version:   "2012-10-17",
-			Statement: []PolicyStatementEntry{listStatement, objectStatement},
+			Statement: []iampolicy.PolicyStatementEntry{listStatement, objectStatement},
 		}
 
 		policyname := i.Domain + "-to-S3-RolePolicy"
-		policy, err := policyDoc.toString()
+		policy, err := policyDoc.ToString()
 		if err != nil {
 			return err
 		}
-		policyarn, err := ip.createPolicyAttachRole(policyname, policy, *snapshotRole)
+		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole)
 		if err != nil {
 			return err
 		}
@@ -582,7 +583,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	} else {
 		//snaphostpolicy has already be created so we need to add the new statements for this new bucket
 		//to the existing policy version.
-		err := ip.updateExistingPolicy(i.SnapshotPolicyARN, []PolicyStatementEntry{listStatement, objectStatement})
+		err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
 			return err
 		}
