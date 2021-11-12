@@ -42,6 +42,7 @@ type ElasticsearchInstance struct {
 	AutomatedSnapshotStartHour     int    `sql:"size(255)"`
 	Bucket                         string `sql:"size(255)"`
 	BrokerSnapshotBucket           string `sql:"size(255)"`
+	BrokerSnapshotsEnabled         bool   `sql:"size(255)"`
 	SnapshotARN                    string `sql:"size(255)"`
 	SnapshotPolicyARN              string `sql:"size(255)"`
 	IamPassRolePolicyARN           string `sql:"size(255)"`
@@ -126,6 +127,11 @@ func (i *ElasticsearchInstance) setBucket(bucket string) error {
 	return nil
 }
 
+func (i *ElasticsearchInstance) setBrokerBucket(bucket string) error {
+	i.BrokerSnapshotBucket = bucket
+	return nil
+}
+
 func (i *ElasticsearchInstance) init(uuid string,
 	orgGUID string,
 	spaceGUID string,
@@ -167,6 +173,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.SubnetIDAZ2 = plan.SubnetIDAZ2
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	i.BrokerSnapshotsEnabled = false
+	i.BrokerSnapshotBucket = s.SnapshotsBucketName
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

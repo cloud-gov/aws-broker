@@ -335,8 +335,8 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		}
 
 	}
-	// add broker snapshot bucket and create roles and policies
-	if len(i.BrokerSnapshotBucket) > 0 {
+	// add broker snapshot bucket and create roles and policies if it hasnt been done.
+	if i.BrokerSnapshotBucket != "" && !i.BrokerSnapshotsEnabled {
 		// specify a path for the bucket access policy to scope to this instance
 		// TODO: instead of ServiceId should we use domain?
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
@@ -348,10 +348,11 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		if err != nil {
 			return nil, err
 		}
+		i.BrokerSnapshotsEnabled = true
 	}
 
 	// add client bucket and adjust policies and roles if present
-	if len(i.Bucket) > 0 {
+	if i.Bucket != "" {
 		err := d.createUpdateBucketRolesAndPolicies(i, i.Bucket, "")
 		if err != nil {
 			return nil, err
@@ -514,6 +515,7 @@ func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchIns
 }
 
 // utility to create roles and policies to enable snapshots in an s3 bucket
+// we pass bucket-name separately to enable reuse for client and broker buckets
 func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
 	ip := iampolicy.NewIamPolicyHandler(d.settings.Region)
 	var snapshotRole *iam.Role
@@ -583,7 +585,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	} else {
 		//snaphostpolicy has already be created so we need to add the new statements for this new bucket
 		//to the existing policy version.
-		err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
+		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
 			return err
 		}

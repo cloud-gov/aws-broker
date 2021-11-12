@@ -184,9 +184,9 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 
 // update a specific policy by adding new statements and updating the policyversion
 // this does not validate the policy
-func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatements []PolicyStatementEntry) error {
+func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatements []PolicyStatementEntry) (*iam.PolicyVersion, error) {
 	var policyDoc PolicyDocument
-
+	var respPolVer *(iam.PolicyVersion)
 	// get existing policy
 	resPolicy, err := ip.iamsvc.GetPolicy(&iam.GetPolicyInput{
 		PolicyArn: aws.String(policyARN),
@@ -204,7 +204,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 			// error which satisfies the awserr.Error interface.
 			fmt.Println(err.Error())
 		}
-		return err
+		return respPolVer, err
 	}
 	// get existing policy's current version number
 	if resPolicy.Policy.DefaultVersionId != nil {
@@ -227,14 +227,14 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 				// error which satisfies the awserr.Error interface.
 				fmt.Println(err.Error())
 			}
-			return err
+			return respPolVer, err
 		}
 
 		// convert policy document string into PolicyDocument
 		if resPolicyVersion.PolicyVersion.Document != nil {
 			err = policyDoc.FromString(*resPolicyVersion.PolicyVersion.Document)
 			if err != nil {
-				return err
+				return respPolVer, err
 			}
 		}
 	}
@@ -243,14 +243,14 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 	// convert PolicyDoc to string and create new policyversion to update policy
 	docstring, err := policyDoc.ToString()
 	if err != nil {
-		return err
+		return respPolVer, err
 	}
 	policyUpdatedVersion := &iam.CreatePolicyVersionInput{
 		PolicyArn:      aws.String(policyARN),
 		PolicyDocument: aws.String(docstring),
 		SetAsDefault:   aws.Bool(true),
 	}
-	_, err = ip.iamsvc.CreatePolicyVersion(policyUpdatedVersion)
+	resp, err := ip.iamsvc.CreatePolicyVersion(policyUpdatedVersion)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			// Generic AWS error with Code, Message, and original error (if any)
@@ -264,7 +264,10 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 			// error which satisfies the awserr.Error interface.
 			fmt.Println(err.Error())
 		}
-		return err
+		return respPolVer, err
 	}
-	return nil
+	if resp.PolicyVersion != nil {
+		respPolVer = resp.PolicyVersion
+	}
+	return respPolVer, nil
 }
