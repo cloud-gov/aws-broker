@@ -235,7 +235,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Don't allow updating to a service plan that doesn't support updates.
-	if newPlan.PlanUpdateable == false {
+	if !newPlan.PlanUpdateable {
 		return response.NewErrorResponse(
 			http.StatusBadRequest,
 			"Cannot switch to "+newPlan.Name+" because the service plan does not allow updates or modification.",

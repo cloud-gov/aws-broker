@@ -253,7 +253,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		}
 		resp1, err := svc.AddTags(paramsTags)
 		fmt.Println(awsutil.StringValue(resp1))
-		if d.didAwsCallSucceed(err) == false {
+		if !d.didAwsCallSucceed(err) {
 			return base.InstanceNotCreated, nil
 		}
 		return base.InstanceInProgress, nil
@@ -316,7 +316,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		// Pretty-print the response data.
 		fmt.Println(awsutil.StringValue(resp))
 
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) == true {
+		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
 				fmt.Printf("endpoint: %s ARN: %s \n", *(resp.DomainStatus.Endpoints["vpc"]), *(resp.DomainStatus.ARN))
 				i.Host = *(resp.DomainStatus.Endpoints["vpc"])
@@ -569,7 +569,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		// Pretty-print the response data.
 		fmt.Println(awsutil.StringValue(resp))
 
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) == true {
+		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {
 			case false:
 				return base.InstanceReady, nil
