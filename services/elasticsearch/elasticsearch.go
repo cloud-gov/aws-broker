@@ -133,8 +133,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	time.Sleep(5 * time.Second)
 
 	for k, v := range i.Tags {
-		var tag elasticsearchservice.Tag
-		tag = elasticsearchservice.Tag{
+		tag := elasticsearchservice.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		}

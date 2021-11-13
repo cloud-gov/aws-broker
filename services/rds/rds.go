@@ -227,8 +227,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	var rdsTags []*rds.Tag
 
 	for k, v := range i.Tags {
-		var tag rds.Tag
-		tag = rds.Tag{
+		tag := rds.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		}
@@ -494,7 +493,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 		DBInstanceIdentifier: aws.String(i.Database), // Required
 		// FinalDBSnapshotIdentifier: aws.String("String"),
 		DeleteAutomatedBackups: aws.Bool(false),
-		SkipFinalSnapshot: aws.Bool(true),
+		SkipFinalSnapshot:      aws.Bool(true),
 	}
 	resp, err := svc.DeleteDBInstance(params)
 	// Pretty-print the response data.
