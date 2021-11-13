@@ -23,14 +23,10 @@ import (
 )
 
 var (
-	originalRDSPlanID                = "da91e15c-98c9-46a9-b114-02b8d28062c6"
-	originalRDSMySQLPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c7"
-	updateableRDSPlanID              = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-	nonUpdateableRDSPlan             = "ee75aef3-7697-4906-9330-fb1f83d719be"
-	originalRedisPlanID              = "475e36bf-387f-44c1-9b81-575fec2ee443"
-	nonUpdateableRedisPlanID         = "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
-	originalElasticsearchPlanID      = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
-	nonUpdateableElasticsearchPlanID = "162ffae8-9cf8-4806-80e5-a7f92d514198"
+	originalRDSPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	updateableRDSPlanID         = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
+	originalRedisPlanID         = "475e36bf-387f-44c1-9b81-575fec2ee443"
+	originalElasticsearchPlanID = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
 )
 
 // micro-psql plan
@@ -38,28 +34,6 @@ var createRDSInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSMySQLInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c7",
-	"parameters": {
-		"version": "5.7"
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSLatestMySQLInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c7",
-	"parameters": {
-		"version": "8.0"
-	},
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
