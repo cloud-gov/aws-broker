@@ -14,8 +14,6 @@ var rdsMySQLTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c7"
 var rdsMySQLValidVersion = "8.0"
 var rdsMySQLInvalidVersion = "5.6"
 
-var rdsOracleTestPlanID = "332e0168-6969-4bd7-b07f-29f08c4bf78f"
-
 func TestInitCatalog(t *testing.T) {
 	wd, _ := os.Getwd()
 	path := filepath.Join(wd, "..")
