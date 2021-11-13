@@ -567,7 +567,7 @@ func TestRDSBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		Uri      string
+		URI      string
 		Username string
 		Password string
 		Host     string
@@ -583,7 +583,7 @@ func TestRDSBindInstance(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &r)
 
 	// Does it contain "uri"
-	if r.Credentials.Uri == "" {
+	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
 	}
 
@@ -795,7 +795,7 @@ func TestRedisBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		Uri      string
+		URI      string
 		Username string
 		Password string
 		Host     string
@@ -811,7 +811,7 @@ func TestRedisBindInstance(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &r)
 
 	// Does it contain "uri"
-	if r.Credentials.Uri == "" {
+	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
 	}
 
@@ -1126,7 +1126,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		Uri      string
+		URI      string
 		Username string
 		Password string
 		Host     string
@@ -1142,7 +1142,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &r)
 
 	// Does it contain "uri"
-	if r.Credentials.Uri == "" {
+	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
 	}
 
