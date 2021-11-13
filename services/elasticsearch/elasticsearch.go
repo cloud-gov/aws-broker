@@ -92,7 +92,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	user := awsiam.NewIAMUser(iamsvc, logger)
 	stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	//IAM User and policy before domain starts creating so it can be used to create access control policy
+	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	_, err := user.Create(i.Domain, "")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -211,7 +211,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		})
 	}
 
-	//Standard Parameters
+	// Standard Parameters
 	params := &elasticsearchservice.CreateElasticsearchDomainInput{
 		DomainName:                  aws.String(i.Domain),
 		ElasticsearchVersion:        aws.String(i.ElasticsearchVersion),
@@ -272,7 +272,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
-	//Standard Parameters
+	// Standard Parameters
 	params := &elasticsearchservice.UpdateElasticsearchDomainConfigInput{
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,

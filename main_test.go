@@ -487,7 +487,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	//Pull in AllocatedStorage and increase the storage
+	// Pull in AllocatedStorage and increase the storage
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
@@ -496,7 +496,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
-	//Check to make sure storage size actually increased
+	// Check to make sure storage size actually increased
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
