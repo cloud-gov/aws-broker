@@ -362,7 +362,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			i.SnapshotARN = *(resp.Role.Arn)
 			fmt.Println(i.getCredentials(password))
 		}
-		//Policy to for ES to passRole
+		// Policy to for ES to passRole
 		s3Policy := `{"Version": "2012-10-17","Statement": [{"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]},{"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}]}`
 		rolePolicyInput := &iam.CreatePolicyInput{
 			PolicyName:     aws.String(i.Domain + "-to-S3-RolePolicy"),
