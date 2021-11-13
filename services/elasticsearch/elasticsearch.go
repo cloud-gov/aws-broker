@@ -281,9 +281,8 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	fmt.Println(awsutil.StringValue(resp))
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
-	} else {
-		return base.InstanceNotModified, err
 	}
+	return base.InstanceNotModified, err
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
