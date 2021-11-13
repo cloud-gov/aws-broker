@@ -257,7 +257,7 @@ func TestCreateRDSInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -297,7 +297,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -337,7 +337,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(res.Body.Bytes()), "is not a supported major version; major version must be one of:") {
+	if !strings.Contains(res.Body.String(), "is not a supported major version; major version must be one of:") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
 	}
 }
@@ -385,7 +385,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(resp.Body.Bytes()), "accepted") {
+	if !strings.Contains(resp.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 
@@ -441,7 +441,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(resp.Body.Bytes()), "because the service plan does not allow updates or modification.") {
+	if !strings.Contains(resp.Body.String(), "because the service plan does not allow updates or modification.") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the plan cannot be chosen")
 	}
 
@@ -501,7 +501,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
@@ -608,7 +608,7 @@ func TestRDSUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if string(res.Body.Bytes()) != "{}" {
+	if res.Body.String() != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
@@ -670,7 +670,7 @@ func TestCreateRedisInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -732,7 +732,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(string(resp.Body.Bytes()), "Updating Redis service instances is not supported at this time") {
+	if !strings.Contains(resp.Body.String(), "Updating Redis service instances is not supported at this time") {
 		t.Error(urlAcceptsIncomplete, "should return a message that Redis services cannot be modified at this time")
 	}
 
@@ -836,7 +836,7 @@ func TestRedisUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if string(res.Body.Bytes()) != "{}" {
+	if res.Body.String() != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
@@ -898,7 +898,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -936,7 +936,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncompleteAdv, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncompleteAdv, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -1063,7 +1063,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(string(resp.Body.Bytes()), "Updating Elasticsearch service instances is not supported at this time") {
+	if !strings.Contains(resp.Body.String(), "Updating Elasticsearch service instances is not supported at this time") {
 		t.Error(urlAcceptsIncomplete, "should return a message that Elasticsearch services cannot be modified at this time")
 	}
 
@@ -1167,7 +1167,7 @@ func TestElasticsearchUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if string(res.Body.Bytes()) != "{}" {
+	if res.Body.String() != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
