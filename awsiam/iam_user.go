@@ -163,7 +163,10 @@ func (i *IAMUser) CreatePolicy(policyName, iamPath, policyTemplate string, resou
 			for idx, resource := range resources {
 				resourcePaths[idx] = resource + suffix
 			}
-			marshaled, _ := json.Marshal(resourcePaths)
+			marshaled, err := json.Marshal(resourcePaths)
+			if err != nil {
+				panic(err)
+			}
 			return string(marshaled)
 		},
 	}).Parse(policyTemplate)
