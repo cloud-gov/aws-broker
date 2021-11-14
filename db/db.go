@@ -18,7 +18,7 @@ const maxDbConnections = 10
 func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	db, err := common.DBInit(dbConfig)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	db.DB().SetMaxOpenConns(maxDbConnections)
 	log.Println("Migrating")
