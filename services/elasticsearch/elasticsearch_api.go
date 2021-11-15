@@ -110,7 +110,7 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) (*h
 	endpoint = es.domain_uri + endpoint
 	body := strings.NewReader(content)
 	// form new request
-	req, err := http.NewRequest(http.MethodPut, endpoint, body)
+	req, err := http.NewRequest(method, endpoint, body)
 	if err != nil {
 		fmt.Print(err)
 		return nil, err
