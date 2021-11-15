@@ -344,7 +344,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		if err != nil {
 			return nil, err
 		}
-		err = d.createSnapshotPolicy(i, i.BrokerSnapshotBucket, path)
+		err = d.createSnapshotPolicy(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
 		if err != nil {
 			return nil, err
 		}
@@ -506,11 +506,31 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 }
 
 // utility to run native api calls on ES instance to create a snapshot policy using the bucket name provided
-func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchInstance, bucket string, path string) error {
+func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
 	if i.State != base.InstanceReady {
 		return errors.New("instance is not ready, cannont execute api calls")
 	}
+	creds, err := i.getCredentials(password)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
+	esApi := &EsApiHandler{}
+	esApi.Init(creds, region)
 
+	// create snapshot repo
+	err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// create policy on repo for daily snapshots ( default @3am )
+	err = esApi.CreateSnapshotPolicy(d.settings.SnapshotsPolicyName, d.settings.SnapshotsRepoName, "")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 	return nil
 }
 

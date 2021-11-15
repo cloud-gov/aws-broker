@@ -22,6 +22,8 @@ type Settings struct {
 	PubliclyAccessibleFeature bool
 	EnableFunctionsFeature    bool
 	SnapshotsBucketName       string
+	SnapshotsRepoName         string
+	SnapshotsPolicyName       string
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -108,6 +110,15 @@ func (s *Settings) LoadFromEnv() error {
 	// set the bucketname created by TF, empty string is ok.
 	// broker will check for nil and skip snaphot config
 	s.SnapshotsBucketName = os.Getenv("S3_SNAPSHOTS_BUCKET")
-
+	// look for snapshot policy name
+	s.SnapshotsPolicyName = os.Getenv("SNAPSHOTS_POLICY_NAME")
+	if s.SnapshotsPolicyName == "" {
+		s.SnapshotsPolicyName = "nightly-snapshots"
+	}
+	// look for snapshot repository name
+	s.SnapshotsRepoName = os.Getenv("SNAPSHOTS_REPO_NAME")
+	if s.SnapshotsRepoName == "" {
+		s.SnapshotsRepoName = "platform-archive"
+	}
 	return nil
 }
