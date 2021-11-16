@@ -520,7 +520,7 @@ func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchIns
 	esApi.Init(creds, region)
 
 	// create snapshot repo
-	err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path)
+	err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
 	if err != nil {
 		fmt.Println(err)
 		return err

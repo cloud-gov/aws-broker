@@ -35,14 +35,18 @@ type SnapshotRepoSettings struct {
 	Bucket   string `json:"bucket"`
 	BasePath string `json:"base_path"`              //omit leading '/'
 	SSE      bool   `json:"server_side_encryption"` //we set this to true, default is false
+	Region   string `json:"region"`
+	RoleArn  string `json:"role_arn"`
 }
 
-func NewSnapshotRepo(bucketname string, path string) *SnapshotRepo {
+func NewSnapshotRepo(bucketname string, path string, region string, rolearn string) *SnapshotRepo {
 	sr := &SnapshotRepo{}
 	sr.Type = "s3"
 	sr.Settings = SnapshotRepoSettings{
 		Bucket:   bucketname,
 		BasePath: path,
+		Region:   region,
+		RoleArn:  rolearn,
 		SSE:      true,
 	}
 	return sr
@@ -131,8 +135,8 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) (*h
 	return resp, err
 }
 
-func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string) error {
-	snaprepo, err := NewSnapshotRepo(bucketname, path).ToString()
+func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string, region string, rolearn string) error {
+	snaprepo, err := NewSnapshotRepo(bucketname, path, region, rolearn).ToString()
 	if err != nil {
 		fmt.Print(err)
 		return err

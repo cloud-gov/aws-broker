@@ -3,7 +3,6 @@ package elasticsearch
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 )
 
@@ -11,9 +10,11 @@ var bucket = "mys3bucket"
 var path = "foo/bar/baz"
 var reponame = "my-snapshots"
 var policyname = "daily-snaps"
+var region = "us-east-1"
+var rolearn = "arn:aws:iam::123456789012:role/snapshot-role"
 var svcInfo = map[string]string{
-	"access_key": os.Getenv("AWS_ACCESS_KEY_ID"),
-	"secret_key": os.Getenv("AWS_SECRET_ACCESS_KEY"),
+	"access_key": "foo", //os.Getenv("AWS_ACCESS_KEY_ID"),
+	"secret_key": "bar", //os.Getenv("AWS_SECRET_ACCESS_KEY"),
 	"host":       "myesdomain.amazonws.com",
 }
 
@@ -47,7 +48,7 @@ func createMockESHandler() *EsApiHandler {
 
 func TestNewSnapShotRepo(t *testing.T) {
 
-	snaprepo := NewSnapshotRepo(bucket, path)
+	snaprepo := NewSnapshotRepo(bucket, path, region, rolearn)
 
 	if snaprepo != nil {
 		if snaprepo.Settings.BasePath != path {
@@ -63,8 +64,8 @@ func TestNewSnapShotRepo(t *testing.T) {
 }
 
 func TestSnapshotRepoToString(t *testing.T) {
-	expected := "{\"type\":\"s3\",\"settings\":{\"bucket\":\"" + bucket + "\",\"base_path\":\"" + path + "\",\"server_side_encryption\":true}}"
-	snaprepo := NewSnapshotRepo(bucket, path)
+	expected := "{\"type\":\"s3\",\"settings\":{\"bucket\":\"" + bucket + "\",\"base_path\":\"" + path + "\",\"server_side_encryption\":true,\"region\":\"" + region + "\",\"role_arn\":\"" + rolearn + "\"}}"
+	snaprepo := NewSnapshotRepo(bucket, path, region, rolearn)
 	result, err := snaprepo.ToString()
 	if err != nil {
 		t.Error("Got non-nil error in ToString")
@@ -92,6 +93,7 @@ func TestNewSnapShotPolicy(t *testing.T) {
 
 func TestSnapshotPolicyToString(t *testing.T) {
 	expected := "{\"schedule\":\"0 0 3 * * *\",\"name\":\"\\u003c" + policyname + "{now/d}\\u003e\",\"repository\":\"" + reponame + "\",\"config\":{\"indices\":[\"*\"]}}"
+
 	snappol := NewSnapshotPolicy(reponame, policyname, "")
 	result, err := snappol.ToString()
 	if err != nil {
@@ -104,7 +106,7 @@ func TestSnapshotPolicyToString(t *testing.T) {
 
 func TestCreateSnapshotRepo(t *testing.T) {
 	es := createMockESHandler()
-	err := es.CreateSnapshotRepo(reponame, bucket, path)
+	err := es.CreateSnapshotRepo(reponame, bucket, path, region, rolearn)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
 	}
