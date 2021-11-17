@@ -1,6 +1,6 @@
 module "aws_s3_bucket"{
   source = "terraform-aws-modules/s3-bucket/aws"
-
+  version = "2.8.0"
   bucket_prefix = var.s3_bucket_prefix
   acl    = var.s3_acl
   
