@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -62,7 +63,7 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 	return repo, nil
 }
 
-type SnapshotPolicy struct {
+/* type SnapshotPolicy struct {
 	Schedule   string               `json:"schedule"`
 	Name       string               `json:"name"`
 	Repository string               `json:"repository"`
@@ -94,7 +95,7 @@ func (sp *SnapshotPolicy) ToString() (string, error) {
 	}
 	policy := string(bytestr)
 	return policy, nil
-}
+} */
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
@@ -110,14 +111,16 @@ func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
 	return nil
 }
 
-func (es *EsApiHandler) Send(method string, endpoint string, content string) (*http.Response, error) {
+// makes the api request with v4 signing and then returns the body of the response as string
+func (es *EsApiHandler) Send(method string, endpoint string, content string) (string, error) {
 	endpoint = es.domain_uri + endpoint
 	body := strings.NewReader(content)
+	result := ""
 	// form new request
 	req, err := http.NewRequest(method, endpoint, body)
 	if err != nil {
 		fmt.Print(err)
-		return nil, err
+		return result, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 
@@ -125,54 +128,65 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) (*h
 	_, err = es.signer.Sign(req, body, es.service, es.region, time.Now())
 	if err != nil {
 		fmt.Print(err)
-		return nil, err
+		return result, err
 	}
 	resp, err := es.client.Do(req)
+
 	if err != nil {
 		fmt.Print(err)
+		return result, err
 	}
-	fmt.Print(resp.Status + "\n")
-	return resp, err
+	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Print(err)
+		return result, err
+	}
+	result = string(bodyBytes)
+	return result, nil
 }
 
-func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string, region string, rolearn string) error {
+func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string, region string, rolearn string) (string, error) {
 	snaprepo, err := NewSnapshotRepo(bucketname, path, region, rolearn).ToString()
 	if err != nil {
 		fmt.Print(err)
-		return err
+		return "", err
 
 	}
 	endpoint := "/_snapshot/" + reponame
 	resp, err := es.Send(http.MethodPut, endpoint, snaprepo)
 	if err != nil {
 		fmt.Print(err)
-		return err
+		return "", err
 	}
-	defer resp.Body.Close()
-	return nil
+	return resp, err
 }
 
-func (es *EsApiHandler) CreateSnapshotPolicy(policyname string, reponame string, cron string) error {
-	snappol, err := NewSnapshotPolicy(policyname, reponame, cron).ToString()
+func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (string, error) {
+
+	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
+	resp, err := es.Send(http.MethodPut, endpoint, "")
 	if err != nil {
 		fmt.Print(err)
-		return err
-
 	}
-	endpoint := "/_slm/policy/" + policyname
-	resp, err := es.Send(http.MethodPut, endpoint, snappol)
+	return resp, err
+}
+
+func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
+	endpoint := "/_snapshot/" + reponame
+	resp, err := es.Send(http.MethodGet, endpoint, "")
 	if err != nil {
 		fmt.Print(err)
-		return err
 	}
-	defer resp.Body.Close()
-	return nil
+	return resp, err
 }
 
-func (es *EsApiHandler) GetSnapshotRepo(reponame string) error {
-	return nil
-}
+func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
 
-func (es *EsApiHandler) GetSnapshotPolicy(policyname string) error {
-	return nil
+	endpoint := "/_snapshot/" + reponame + "/" + snapshotname + "/_status"
+	resp, err := es.Send(http.MethodGet, endpoint, "")
+	if err != nil {
+		fmt.Print(err)
+	}
+	return resp, err
 }

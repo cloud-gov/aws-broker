@@ -344,7 +344,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		if err != nil {
 			return nil, err
 		}
-		err = d.createSnapshotPolicy(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
+		err = d.CreateSnapshotRepo(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
 		if err != nil {
 			return nil, err
 		}
@@ -505,8 +505,8 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 	return true
 }
 
-// utility to run native api calls on ES instance to create a snapshot policy using the bucket name provided
-func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
+// utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
+func (d *dedicatedElasticsearchAdapter) CreateSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
 	if i.State != base.InstanceReady {
 		return errors.New("instance is not ready, cannont execute api calls")
 	}
@@ -520,13 +520,7 @@ func (d *dedicatedElasticsearchAdapter) createSnapshotPolicy(i *ElasticsearchIns
 	esApi.Init(creds, region)
 
 	// create snapshot repo
-	err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	// create policy on repo for daily snapshots ( default @3am )
-	err = esApi.CreateSnapshotPolicy(d.settings.SnapshotsPolicyName, d.settings.SnapshotsRepoName, "")
+	_, err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
 	if err != nil {
 		fmt.Println(err)
 		return err
