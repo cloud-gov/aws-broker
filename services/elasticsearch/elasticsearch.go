@@ -93,7 +93,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	user := awsiam.NewIAMUser(iamsvc, logger)
 	stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	//IAM User and policy before domain starts creating so it can be used to create access control policy
+	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	_, err := user.Create(i.Domain, "")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -134,8 +134,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	time.Sleep(5 * time.Second)
 
 	for k, v := range i.Tags {
-		var tag elasticsearchservice.Tag
-		tag = elasticsearchservice.Tag{
+		tag := elasticsearchservice.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		}
@@ -213,7 +212,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		})
 	}
 
-	//Standard Parameters
+	// Standard Parameters
 	params := &elasticsearchservice.CreateElasticsearchDomainInput{
 		DomainName:                  aws.String(i.Domain),
 		ElasticsearchVersion:        aws.String(i.ElasticsearchVersion),
@@ -254,7 +253,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		}
 		resp1, err := svc.AddTags(paramsTags)
 		fmt.Println(awsutil.StringValue(resp1))
-		if d.didAwsCallSucceed(err) == false {
+		if !d.didAwsCallSucceed(err) {
 			return base.InstanceNotCreated, nil
 		}
 		return base.InstanceInProgress, nil
@@ -274,7 +273,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
-	//Standard Parameters
+	// Standard Parameters
 	params := &elasticsearchservice.UpdateElasticsearchDomainConfigInput{
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
@@ -283,9 +282,8 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	fmt.Println(awsutil.StringValue(resp))
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
-	} else {
-		return base.InstanceNotModified, err
 	}
+	return base.InstanceNotModified, err
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
@@ -317,7 +315,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		// Pretty-print the response data.
 		fmt.Println(awsutil.StringValue(resp))
 
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) == true {
+		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
 				fmt.Printf("endpoint: %s ARN: %s \n", *(resp.DomainStatus.Endpoints["vpc"]), *(resp.DomainStatus.ARN))
 				i.Host = *(resp.DomainStatus.Endpoints["vpc"])

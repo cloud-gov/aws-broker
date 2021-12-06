@@ -81,7 +81,7 @@ func TestRandStringDistribution(t *testing.T) {
 	dict := make(map[string]int)
 	for i := 0; i < 1000000; i++ {
 		randstring := RandStr(1)
-		dict[randstring] = dict[randstring] + 1
+		dict[randstring]++
 	}
 	fmt.Println(dict)
 	min := 1000000

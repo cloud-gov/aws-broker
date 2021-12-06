@@ -93,8 +93,7 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 	var redisTags []*elasticache.Tag
 
 	for k, v := range i.Tags {
-		var tag elasticache.Tag
-		tag = elasticache.Tag{
+		tag := elasticache.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		}

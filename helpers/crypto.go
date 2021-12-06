@@ -10,22 +10,17 @@ import (
 
 // RandStr will generate a random alphanumeric string of the specified length.
 func RandStr(strSize int) string {
-
-	var dictionary string
-	dictionary = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	dictionary := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	return StringWithCharset(strSize, dictionary)
 }
 
 // RandStrNoCaps will generate a random alphanumeric string of the specified length.
 func RandStrNoCaps(strSize int) string {
-
-	var dictionary string
-	dictionary = "abcdefghijklmnopqrstuvwxyz0123456789"
+	dictionary := "abcdefghijklmnopqrstuvwxyz0123456789"
 	return StringWithCharset(strSize, dictionary)
 }
 
 func StringWithCharset(length int, charset string) string {
-
 	b := make([]byte, length)
 	charsetLen := big.NewInt(int64(len(charset)))
 

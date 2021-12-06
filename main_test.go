@@ -23,14 +23,10 @@ import (
 )
 
 var (
-	originalRDSPlanID                = "da91e15c-98c9-46a9-b114-02b8d28062c6"
-	originalRDSMySQLPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c7"
-	updateableRDSPlanID              = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-	nonUpdateableRDSPlan             = "ee75aef3-7697-4906-9330-fb1f83d719be"
-	originalRedisPlanID              = "475e36bf-387f-44c1-9b81-575fec2ee443"
-	nonUpdateableRedisPlanID         = "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
-	originalElasticsearchPlanID      = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
-	nonUpdateableElasticsearchPlanID = "162ffae8-9cf8-4806-80e5-a7f92d514198"
+	originalRDSPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c6"
+	updateableRDSPlanID         = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
+	originalRedisPlanID         = "475e36bf-387f-44c1-9b81-575fec2ee443"
+	originalElasticsearchPlanID = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
 )
 
 // micro-psql plan
@@ -38,28 +34,6 @@ var createRDSInstanceReq = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSMySQLInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c7",
-	"parameters": {
-		"version": "5.7"
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSLatestMySQLInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c7",
-	"parameters": {
-		"version": "8.0"
-	},
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
 }`)
@@ -283,7 +257,7 @@ func TestCreateRDSInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -323,7 +297,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -363,7 +337,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(res.Body.Bytes()), "is not a supported major version; major version must be one of:") {
+	if !strings.Contains(res.Body.String(), "is not a supported major version; major version must be one of:") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
 	}
 }
@@ -411,7 +385,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(resp.Body.Bytes()), "accepted") {
+	if !strings.Contains(resp.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 
@@ -467,7 +441,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(string(resp.Body.Bytes()), "because the service plan does not allow updates or modification.") {
+	if !strings.Contains(resp.Body.String(), "because the service plan does not allow updates or modification.") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the plan cannot be chosen")
 	}
 
@@ -513,7 +487,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	//Pull in AllocatedStorage and increase the storage
+	// Pull in AllocatedStorage and increase the storage
 	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
@@ -522,12 +496,12 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
-	//Check to make sure storage size actually increased
+	// Check to make sure storage size actually increased
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
@@ -593,7 +567,7 @@ func TestRDSBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		Uri      string
+		URI      string
 		Username string
 		Password string
 		Host     string
@@ -609,7 +583,7 @@ func TestRDSBindInstance(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &r)
 
 	// Does it contain "uri"
-	if r.Credentials.Uri == "" {
+	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
 	}
 
@@ -634,7 +608,7 @@ func TestRDSUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if string(res.Body.Bytes()) != "{}" {
+	if res.Body.String() != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
@@ -696,7 +670,7 @@ func TestCreateRedisInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -758,7 +732,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(string(resp.Body.Bytes()), "Updating Redis service instances is not supported at this time") {
+	if !strings.Contains(resp.Body.String(), "Updating Redis service instances is not supported at this time") {
 		t.Error(urlAcceptsIncomplete, "should return a message that Redis services cannot be modified at this time")
 	}
 
@@ -821,7 +795,7 @@ func TestRedisBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		Uri      string
+		URI      string
 		Username string
 		Password string
 		Host     string
@@ -837,7 +811,7 @@ func TestRedisBindInstance(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &r)
 
 	// Does it contain "uri"
-	if r.Credentials.Uri == "" {
+	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
 	}
 
@@ -862,7 +836,7 @@ func TestRedisUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if string(res.Body.Bytes()) != "{}" {
+	if res.Body.String() != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
@@ -924,7 +898,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -962,7 +936,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncompleteAdv, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(string(res.Body.Bytes()), "accepted") {
+	if !strings.Contains(res.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncompleteAdv, "should return the instance accepted message")
 	}
 	// Is it in the database and has a username and password?
@@ -1089,7 +1063,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(string(resp.Body.Bytes()), "Updating Elasticsearch service instances is not supported at this time") {
+	if !strings.Contains(resp.Body.String(), "Updating Elasticsearch service instances is not supported at this time") {
 		t.Error(urlAcceptsIncomplete, "should return a message that Elasticsearch services cannot be modified at this time")
 	}
 
@@ -1152,7 +1126,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		Uri      string
+		URI      string
 		Username string
 		Password string
 		Host     string
@@ -1168,7 +1142,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &r)
 
 	// Does it contain "uri"
-	if r.Credentials.Uri == "" {
+	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
 	}
 
@@ -1193,7 +1167,7 @@ func TestElasticsearchUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if string(res.Body.Bytes()) != "{}" {
+	if res.Body.String() != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }

@@ -14,10 +14,17 @@ var rdsMySQLTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c7"
 var rdsMySQLValidVersion = "8.0"
 var rdsMySQLInvalidVersion = "5.6"
 
-var rdsOracleTestPlanID = "332e0168-6969-4bd7-b07f-29f08c4bf78f"
+// Helper function to call os.Getwd with error checking
+func checkedGetwd(t *testing.T) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error calling os.Getwd(): %s", err)
+	}
+	return wd
+}
 
 func TestInitCatalog(t *testing.T) {
-	wd, _ := os.Getwd()
+	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
 	catalog := InitCatalog(path)
 	if catalog == nil {
@@ -26,7 +33,7 @@ func TestInitCatalog(t *testing.T) {
 }
 
 func TestFetchPlan(t *testing.T) {
-	wd, _ := os.Getwd()
+	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
 	catalog := InitCatalog(path)
 
@@ -38,7 +45,7 @@ func TestFetchPlan(t *testing.T) {
 }
 
 func TestRDSPGCheckVersion(t *testing.T) {
-	wd, _ := os.Getwd()
+	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
 	catalog := InitCatalog(path)
 
@@ -64,7 +71,7 @@ func TestRDSPGCheckVersion(t *testing.T) {
 }
 
 func TestRDSMySQLCheckVersion(t *testing.T) {
-	wd, _ := os.Getwd()
+	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
 	catalog := InitCatalog(path)
 
@@ -90,7 +97,7 @@ func TestRDSMySQLCheckVersion(t *testing.T) {
 }
 
 func TestRDSCheckVersionEmpty(t *testing.T) {
-	wd, _ := os.Getwd()
+	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
 	catalog := InitCatalog(path)
 

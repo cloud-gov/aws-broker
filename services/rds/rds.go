@@ -227,8 +227,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	var rdsTags []*rds.Tag
 
 	for k, v := range i.Tags {
-		var tag rds.Tag
-		tag = rds.Tag{
+		tag := rds.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		}
@@ -469,14 +468,12 @@ func cleanupCustomParameterGroups(svc *rds.RDS) {
 					_, err := svc.DeleteDBParameterGroup(deleteinput)
 					if err == nil {
 						log.Printf("cleaned up %s parameter group", *pgroup.DBParameterGroupName)
-					} else {
+					} else if err.(awserr.Error).Code() != "InvalidDBParameterGroupState" {
 						// If you can't delete it because it's in use, that is fine.
 						// The db takes a while to delete, so we will clean it up the
 						// next time this is called.  Otherwise there is some sort of AWS error
 						// and we should log that.
-						if err.(awserr.Error).Code() != "InvalidDBParameterGroupState" {
-							log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
-						}
+						log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
 					}
 				}
 			}
@@ -494,7 +491,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 		DBInstanceIdentifier: aws.String(i.Database), // Required
 		// FinalDBSnapshotIdentifier: aws.String("String"),
 		DeleteAutomatedBackups: aws.Bool(false),
-		SkipFinalSnapshot: aws.Bool(true),
+		SkipFinalSnapshot:      aws.Bool(true),
 	}
 	resp, err := svc.DeleteDBInstance(params)
 	// Pretty-print the response data.
