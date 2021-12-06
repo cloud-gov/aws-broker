@@ -30,7 +30,7 @@ type ElasticsearchAdapter interface {
 	modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -56,7 +56,7 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials(password)
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -344,7 +344,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		if err != nil {
 			return nil, err
 		}
-		err = d.CreateSnapshotRepo(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
+		err = d.createSnapshotRepo(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
 		if err != nil {
 			return nil, err
 		}
@@ -362,80 +362,10 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
-	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-	logger := lager.NewLogger("aws-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
-	user := awsiam.NewIAMUser(iamsvc, logger)
-
-	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
-		return base.InstanceNotGone, err
-	}
-
-	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
-		return base.InstanceNotGone, err
-	}
-
-	if len(i.Bucket) > 0 {
-		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		roleDetachPolicyInput := &iam.DetachRolePolicyInput{
-			PolicyArn: aws.String(i.SnapshotPolicyARN),
-			RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
-
-		if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		rolePolicyDeleteInput := &iam.DeleteRoleInput{
-			RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
-
-		if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-	}
-
-	if err := user.Delete(i.Domain); err != nil {
-		fmt.Println(err.Error())
-		return base.InstanceNotGone, err
-	}
-
-	if err := user.DeletePolicy(i.IamPolicyARN); err != nil {
-		fmt.Println(err.Error())
-		return base.InstanceNotGone, err
-	}
-
-	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
-		DomainName: aws.String(i.Domain), // Required
-	}
-	resp, err := svc.DeleteElasticsearchDomain(params)
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
-
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		return base.InstanceGone, nil
-	}
-	return base.InstanceNotGone, nil
+// we make the deletion async and return a 202
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+	go d.asyncDeleteElasticSearchDomain(i, password)
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
@@ -506,7 +436,7 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 }
 
 // utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
-func (d *dedicatedElasticsearchAdapter) CreateSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
+func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
 	if i.State != base.InstanceReady {
 		return errors.New("instance is not ready, cannont execute api calls")
 	}
@@ -604,6 +534,135 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 			return err
 		}
 
+	}
+	return nil
+}
+
+func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string) {
+	err := d.takeLastSnapshot(i, password)
+	if err != nil {
+		fmt.Println(err.Error())
+		i.State = base.InstanceNotGone
+		return
+	}
+	err = d.cleanupRolesAndPolicies(i)
+	if err != nil {
+		fmt.Println(err.Error())
+		i.State = base.InstanceNotGone
+		return
+	}
+	err = d.cleanupElasticSearchDomain(i)
+	if err != nil {
+		fmt.Println(err.Error())
+		i.State = base.InstanceNotGone
+		return
+	}
+	i.State = base.InstanceGone
+}
+
+// in which we make the ES API call to take a snapshot and poll for completion
+// then poll for snapshot completetion, may block for a considerable time
+func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
+	// catch legacy domains that dont have snapshotbucket configured
+	if i.BrokerSnapshotBucket == "" {
+		i.BrokerSnapshotBucket = d.settings.SnapshotsBucketName
+		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
+		err := d.createUpdateBucketRolesAndPolicies(i, i.BrokerSnapshotBucket, path)
+		if err != nil {
+			return err
+		}
+		err = d.createSnapshotRepo(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
+		if err != nil {
+			return err
+		}
+		i.BrokerSnapshotsEnabled = true
+	}
+	// exec snapshot request
+
+	// poll for snapshot completion
+
+	return nil
+}
+
+// in which we finally delete the ES Domain
+func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *ElasticsearchInstance) error {
+	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
+		DomainName: aws.String(i.Domain), // Required
+	}
+	resp, err := svc.DeleteElasticsearchDomain(params)
+	// Pretty-print the response data.
+	fmt.Println(awsutil.StringValue(resp))
+
+	// Decide if AWS service call was successful
+	if yes := d.didAwsCallSucceed(err); yes {
+		return nil
+	}
+	return err
+}
+
+//in which we clean up all the roles and policies for the ES domain
+func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
+	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	logger := lager.NewLogger("aws-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	user := awsiam.NewIAMUser(iamsvc, logger)
+
+	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if i.BrokerSnapshotBucket != "" {
+		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		roleDetachPolicyInput := &iam.DetachRolePolicyInput{
+			PolicyArn: aws.String(i.SnapshotPolicyARN),
+			RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+
+		if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		rolePolicyDeleteInput := &iam.DeleteRoleInput{
+			RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+
+		if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+	}
+
+	if err := user.Delete(i.Domain); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if err := user.DeletePolicy(i.IamPolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
 	}
 	return nil
 }

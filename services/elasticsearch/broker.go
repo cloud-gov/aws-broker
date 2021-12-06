@@ -199,6 +199,10 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		state = "succeeded"
 	case base.InstanceNotCreated:
 		state = "failed"
+	/* Async Delete
+	case base.InstanceGone:
+		state = "deleted"
+	*/
 	case base.InstanceNotGone:
 		state = "failed"
 	default:
@@ -279,19 +283,25 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 	if planErr != nil {
 		return planErr
 	}
+	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
+	}
 
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
 	if adapterErr != nil {
 		return adapterErr
 	}
+
 	// Delete the database instance.
-	if status, err := adapter.deleteElasticsearch(&existingInstance); status == base.InstanceNotGone {
+	if status, err := adapter.deleteElasticsearch(&existingInstance, password); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
+	// we need make this an async cleanup when base.InstanceGone state is set.
 	broker.brokerDB.Unscoped().Delete(&existingInstance)
 	return response.SuccessDeleteResponse
 }
