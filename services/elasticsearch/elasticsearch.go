@@ -395,7 +395,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		// Pretty-print the response data.
 		fmt.Println(awsutil.StringValue(resp))
 
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) == true {
+		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {
 			case false:
 				return base.InstanceReady, nil
