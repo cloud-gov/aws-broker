@@ -561,10 +561,10 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 // in which we make the ES API call to take a snapshot
 // then poll for snapshot completetion, may block for a considerable time
 func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
-	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
-	snapshotname := "cg-last-snapshot"
 
-	if i.BrokerSnapshotBucket == "" {
+	snapshotname := "cg-last-snapshot"
+	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
+	if i.BrokerSnapshotBucket == "" || !i.BrokerSnapshotsEnabled {
 		i.BrokerSnapshotBucket = d.settings.SnapshotsBucketName
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
 		err := d.createUpdateBucketRolesAndPolicies(i, i.BrokerSnapshotBucket, path)
