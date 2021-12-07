@@ -40,6 +40,19 @@ type SnapshotRepoSettings struct {
 	RoleArn  string `json:"role_arn"`
 }
 
+type Snapshot struct {
+	Snapshot  string   `json:"snapshot"`
+	Version   string   `json:"version"`
+	State     string   `json:"state"`
+	Indicies  []string `json:"indicies"`
+	StartTime string   `json:"start_time"`
+	EndTime   string   `json:"end_time"`
+}
+
+type Snapshots struct {
+	Snapshots []Snapshot `json:"snapshots"`
+}
+
 func NewSnapshotRepo(bucketname string, path string, region string, rolearn string) *SnapshotRepo {
 	sr := &SnapshotRepo{}
 	sr.Type = "s3"
@@ -112,10 +125,10 @@ func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
 }
 
 // makes the api request with v4 signing and then returns the body of the response as string
-func (es *EsApiHandler) Send(method string, endpoint string, content string) (string, error) {
+func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]byte, error) {
 	endpoint = es.domain_uri + endpoint
 	body := strings.NewReader(content)
-	result := ""
+	result := []byte{}
 	// form new request
 	req, err := http.NewRequest(method, endpoint, body)
 	if err != nil {
@@ -137,13 +150,11 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) (st
 		return result, err
 	}
 	defer resp.Body.Close()
-	bodyBytes, err := io.ReadAll(resp.Body)
+	result, err = io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Print(err)
-		return result, err
 	}
-	result = string(bodyBytes)
-	return result, nil
+	return result, err
 }
 
 func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string, region string, rolearn string) (string, error) {
@@ -159,7 +170,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 		fmt.Print(err)
 		return "", err
 	}
-	return resp, err
+	return string(resp), err
 }
 
 func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (string, error) {
@@ -169,7 +180,7 @@ func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (st
 	if err != nil {
 		fmt.Print(err)
 	}
-	return resp, err
+	return string(resp), err
 }
 
 func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
@@ -178,7 +189,7 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 	if err != nil {
 		fmt.Print(err)
 	}
-	return resp, err
+	return string(resp), err
 }
 
 func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
@@ -187,6 +198,13 @@ func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) 
 	resp, err := es.Send(http.MethodGet, endpoint, "")
 	if err != nil {
 		fmt.Print(err)
+		return "", err
 	}
-	return resp, err
+	snapshots := Snapshots{}
+	err = json.Unmarshal(resp, &snapshots)
+	if err != nil {
+		fmt.Print(err)
+		return "", err
+	}
+	return snapshots.Snapshots[0].State, nil
 }

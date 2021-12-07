@@ -1,8 +1,9 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"testing"
 )
@@ -11,7 +12,6 @@ var bucket = "mys3bucket"
 var path = "foo/bar/baz"
 var reponame = "my-snapshots"
 var snapshotname = "backup"
-var policyname = "daily-snaps"
 var region = "us-east-1"
 var rolearn = "arn:aws:iam::123456789012:role/snapshot-role"
 var svcInfo = map[string]string{
@@ -20,31 +20,23 @@ var svcInfo = map[string]string{
 	"host":       "myesdomain.amazonws.com",
 }
 
-// we need to mock the body interface io.Reader to make close testable
-type mockBody struct{}
-
-func (b *mockBody) Close() error {
-	return nil
-}
-
-func (b *mockBody) Read(p []byte) (n int, err error) {
-	return 0, io.EOF
-}
+var snapshotstatus = "{\"snapshots\":[{\"snapshot\":\"backup3\",\"uuid\":\"kKUia17LT2iJ1nKdhrVgsw\",\"version_id\":7070099,\"version\":\"7.7.0\",\"indices\":[\".kibana_2\",\"test\",\".kibana_1\",\".opendistro-job-scheduler-lock\",\"movies\"],\"include_global_state\":true,\"state\":\"SUCCESS\",\"start_time\":\"2021-12-06T22:16:03.090Z\",\"start_time_in_millis\":1638828963090,\"end_time\":\"2021-12-06T22:16:04.891Z\",\"end_time_in_millis\":1638828964891,\"duration_in_millis\":1801,\"failures\":[],\"shards\":{\"total\":17,\"failed\":0,\"successful\":17}}]}"
 
 // and we mock the http.Client interface to make Do testable.
 type mockClient struct {
+	response string
 }
 
 func (c *mockClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
-		Body: &mockBody{},
+		Body: ioutil.NopCloser(bytes.NewReader([]byte(c.response))),
 	}, nil
 }
 
-func createMockESHandler() *EsApiHandler {
+func createMockESHandler(testresponse string) *EsApiHandler {
 	var es EsApiHandler
 	es.Init(svcInfo, "us-east-1")
-	es.client = &mockClient{}
+	es.client = &mockClient{response: testresponse}
 	return &es
 }
 
@@ -107,7 +99,7 @@ func TestSnapshotPolicyToString(t *testing.T) {
 } */
 
 func TestCreateSnapshotRepo(t *testing.T) {
-	es := createMockESHandler()
+	es := createMockESHandler("")
 	_, err := es.CreateSnapshotRepo(reponame, bucket, path, region, rolearn)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
@@ -115,7 +107,7 @@ func TestCreateSnapshotRepo(t *testing.T) {
 }
 
 func TestCreateSnapshot(t *testing.T) {
-	es := createMockESHandler()
+	es := createMockESHandler("")
 	_, err := es.CreateSnapshot(reponame, snapshotname)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
@@ -123,17 +115,20 @@ func TestCreateSnapshot(t *testing.T) {
 }
 
 func TestGetSnapshotRepo(t *testing.T) {
-	es := createMockESHandler()
+	es := createMockESHandler("")
 	_, err := es.GetSnapshotRepo(reponame)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
 	}
 }
 
-func TestGetSnapshotPolicy(t *testing.T) {
-	es := createMockESHandler()
-	_, err := es.GetSnapshotStatus(reponame, snapshotname)
+func TestGetSnapshotStatus(t *testing.T) {
+	es := createMockESHandler(snapshotstatus)
+	resp, err := es.GetSnapshotStatus(reponame, snapshotname)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
+	}
+	if resp != "SUCCESS" {
+		t.Errorf("Response is %s, not SUCCESS", resp)
 	}
 }

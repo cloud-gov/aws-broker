@@ -558,10 +558,12 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	i.State = base.InstanceGone
 }
 
-// in which we make the ES API call to take a snapshot and poll for completion
+// in which we make the ES API call to take a snapshot
 // then poll for snapshot completetion, may block for a considerable time
 func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
-	// catch legacy domains that dont have snapshotbucket configured
+	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
+	snapshotname := "cg-last-snapshot"
+
 	if i.BrokerSnapshotBucket == "" {
 		i.BrokerSnapshotBucket = d.settings.SnapshotsBucketName
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
@@ -576,8 +578,34 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		i.BrokerSnapshotsEnabled = true
 	}
 	// exec snapshot request
+	creds, err := i.getCredentials(password)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
+	esApi := &EsApiHandler{}
+	esApi.Init(creds, d.settings.Region)
 
-	// poll for snapshot completion
+	// create snapshot
+	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, snapshotname)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
+	for {
+		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotname)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		if res != "IN_PROGRESS" {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
 
 	return nil
 }
