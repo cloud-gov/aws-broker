@@ -34,8 +34,6 @@ func (o Operation) String() string {
 	}
 }
 
-func (o Operation) Op(string)
-
 // Broker is the interface that every type of broker should implement.
 type Broker interface {
 	// CreateInstance uses the catalog and parsed request to create an instance for the particular type of service.
