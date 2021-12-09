@@ -56,6 +56,22 @@ func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, c *ca
 	return elasticsearchAdapter, nil
 }
 
+// this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
+func (broker *elasticsearchBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
+	switch o {
+	case base.DeleteOp:
+		return true
+	case base.CreateOp:
+		return true
+	case base.ModifyOp:
+		return true
+	case base.BindOp:
+		return false
+	default:
+		return false
+	}
+}
+
 func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := ElasticsearchInstance{}
 
@@ -115,7 +131,7 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
-	return response.SuccessAcceptedResponse
+	return response.NewAsyncOperationResponse(base.CreateOp.String())
 }
 
 func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
@@ -167,10 +183,10 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
-	return response.SuccessAcceptedResponse
+	return response.NewAsyncOperationResponse(base.ModifyOp.String())
 }
 
-func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
 	existingInstance := ElasticsearchInstance{}
 
 	var count int64
@@ -190,8 +206,8 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	}
 
 	var state string
-
-	status, _ := adapter.checkElasticsearchStatus(&existingInstance)
+	// two async ops -- create and delete
+	status, _ := adapter.checkElasticsearchStatus(&existingInstance, operation)
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
@@ -199,10 +215,10 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		state = "succeeded"
 	case base.InstanceNotCreated:
 		state = "failed"
-	/* Async Delete
 	case base.InstanceGone:
-		state = "deleted"
-	*/
+		state = "succeeded"
+		broker.brokerDB.Unscoped().Delete(&existingInstance)
+		broker.brokerDB.Unscoped().Delete(&baseInstance)
 	case base.InstanceNotGone:
 		state = "failed"
 	default:
@@ -293,15 +309,19 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		return adapterErr
 	}
 
-	// Delete the database instance.
-	if status, err := adapter.deleteElasticsearch(&existingInstance, password); status == base.InstanceNotGone {
+	// send async deletion request.
+	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.brokerDB)
+	if status != base.InstanceInProgress {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
+	// save the state for polling
+	broker.brokerDB.Save(&existingInstance)
+	return response.NewAsyncOperationResponse(base.DeleteOp.String())
 	// we need make this an async cleanup when base.InstanceGone state is set.
-	broker.brokerDB.Unscoped().Delete(&existingInstance)
-	return response.SuccessDeleteResponse
+	//broker.brokerDB.Unscoped().Delete(&existingInstance)
+
 }

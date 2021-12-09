@@ -127,11 +127,6 @@ func (i *ElasticsearchInstance) setBucket(bucket string) error {
 	return nil
 }
 
-func (i *ElasticsearchInstance) setBrokerBucket(bucket string) error {
-	i.BrokerSnapshotBucket = bucket
-	return nil
-}
-
 func (i *ElasticsearchInstance) init(uuid string,
 	orgGUID string,
 	spaceGUID string,
@@ -174,7 +169,6 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	i.BrokerSnapshotsEnabled = false
-	i.BrokerSnapshotBucket = s.SnapshotsBucketName
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid

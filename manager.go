@@ -108,8 +108,9 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 	if resp != nil {
 		return resp
 	}
-
-	return broker.LastOperation(c, id, instance)
+	// pass in the operation parameter from request
+	operation := req.URL.Query().Get("operation")
+	return broker.LastOperation(c, id, instance, operation)
 }
 
 func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
@@ -140,9 +141,16 @@ func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	if resp != nil {
 		return resp
 	}
-
+	if broker.AsyncOperationRequired(c, instance, base.DeleteOp) {
+		// Check if async calls are allowed.
+		asyncAllowed := req.FormValue("accepts_incomplete") == "true"
+		if !asyncAllowed {
+			return response.ErrUnprocessableEntityResponse
+		}
+	}
 	resp = broker.DeleteInstance(c, id, instance)
-	if resp.GetResponseType() != response.ErrorResponseType {
+	//only delete from DB if it was a sync delete and succeeded
+	if resp.GetResponseType() == response.SuccessDeleteResponseType {
 		brokerDb.Unscoped().Delete(&instance)
 		// TODO check delete error
 	}

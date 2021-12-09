@@ -28,9 +28,9 @@ import (
 type ElasticsearchAdapter interface {
 	createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
 	modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
-	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
+	checkElasticsearchStatus(i *ElasticsearchInstance, operation string) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance, passoword string) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string, db *gorm.DB) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -46,7 +46,7 @@ func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance,
 	return base.InstanceReady, nil
 }
 
-func (d *mockElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance, operation string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -56,7 +56,7 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials(password)
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, db *gorm.DB) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -333,16 +333,18 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		}
 
 	}
+
 	// add broker snapshot bucket and create roles and policies if it hasnt been done.
-	if i.BrokerSnapshotBucket != "" && !i.BrokerSnapshotsEnabled {
+	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
+
 		// specify a path for the bucket access policy to scope to this instance
 		// TODO: instead of ServiceId should we use domain?
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
-		err := d.createUpdateBucketRolesAndPolicies(i, i.BrokerSnapshotBucket, path)
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
 		if err != nil {
 			return nil, err
 		}
-		err = d.createSnapshotRepo(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
+		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, path, d.settings.Region)
 		if err != nil {
 			return nil, err
 		}
@@ -360,16 +362,19 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	return i.getCredentials(password)
 }
 
-// we make the deletion async and return a 202
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	go d.asyncDeleteElasticSearchDomain(i, password)
+// we make the deletion async, set status to in-progress and rollup to return a 202
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+	go d.asyncDeleteElasticSearchDomain(i, password, db)
+	i.State = base.InstanceInProgress
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
-	// First, we need to check if the instance state
+// this should only be called in relation to create, modify or delete operations polling
+func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance, operation string) (base.InstanceState, error) {
+
 	// Only search for details if the instance was not indicated as ready.
-	if i.State != base.InstanceReady {
+	if i.State == base.InstanceInProgress {
+
 		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
 			DomainName: aws.String(i.Domain), // Required
@@ -384,10 +389,10 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 					// A service error occurred
 					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
 				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
+				// Instance no longer exists
+				if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+					return base.InstanceGone, err
+				}
 			}
 			return base.InstanceNotCreated, err
 		}
@@ -395,22 +400,47 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		// Pretty-print the response data.
 		fmt.Println(awsutil.StringValue(resp))
 
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
+		// determine which op is being polled for
+		switch operation {
+		case base.DeleteOp.String():
+			if resp.DomainStatus != nil {
+				switch *(resp.DomainStatus.Deleted) {
+				case true:
+					return base.InstanceInProgress, nil // true = in progress according to SDK
+				case false:
+					return base.InstanceNotGone, nil //false=no deletion according to SDK
+				default:
+					return base.InstanceNotGone, nil
+				}
+			} else { // No DomainStatus == No Domain
+				return base.InstanceGone, nil
+			}
+		case base.ModifyOp.String():
 			switch *(resp.DomainStatus.Processing) {
-			case false:
-				return base.InstanceReady, nil
 			case true:
 				return base.InstanceInProgress, nil
-			default:
-				return base.InstanceInProgress, nil
+			case false:
+				return base.InstanceReady, nil
 			}
-		} else {
-			// Instance not up yet.
-			return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
-		}
-	}
 
-	return base.InstanceNotCreated, nil
+		default: // base.CreateOp.String() or unknown/empty
+			if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
+				switch *(resp.DomainStatus.Processing) {
+				case false:
+					return base.InstanceReady, nil
+				case true:
+					return base.InstanceInProgress, nil
+				default:
+					return base.InstanceInProgress, nil
+				}
+			} else {
+				// Instance not up yet.
+				return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
+			}
+		}
+
+	}
+	return i.State, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
@@ -536,42 +566,47 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	return nil
 }
 
-func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string) {
+// state is persisted for LastOperations polling.
+func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, db *gorm.DB) {
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
 		fmt.Println(err.Error())
 		i.State = base.InstanceNotGone
+		db.Save(&i)
 		return
 	}
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
 		fmt.Println(err.Error())
 		i.State = base.InstanceNotGone
+		db.Save(&i)
 		return
 	}
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
 		fmt.Println(err.Error())
 		i.State = base.InstanceNotGone
+		db.Save(&i)
 		return
 	}
 	i.State = base.InstanceGone
+	db.Save(&i)
 }
 
 // in which we make the ES API call to take a snapshot
 // then poll for snapshot completetion, may block for a considerable time
 func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
 
-	snapshotname := "cg-last-snapshot"
+	var sleep = 10 * time.Second
 	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
-	if i.BrokerSnapshotBucket == "" || !i.BrokerSnapshotsEnabled {
-		i.BrokerSnapshotBucket = d.settings.SnapshotsBucketName
+	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
+
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
-		err := d.createUpdateBucketRolesAndPolicies(i, i.BrokerSnapshotBucket, path)
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
 		if err != nil {
 			return err
 		}
-		err = d.createSnapshotRepo(i, password, i.BrokerSnapshotBucket, path, d.settings.Region)
+		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, path, d.settings.Region)
 		if err != nil {
 			return err
 		}
@@ -588,7 +623,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	esApi.Init(creds, d.settings.Region)
 
 	// create snapshot
-	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, snapshotname)
+	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -596,7 +631,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
 	for {
-		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotname)
+		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -604,7 +639,8 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		if res != "IN_PROGRESS" {
 			break
 		}
-		time.Sleep(5 * time.Second)
+		fmt.Printf("Snapshot in progress, waiting for %s", sleep)
+		time.Sleep(sleep)
 	}
 
 	return nil
@@ -645,7 +681,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
-	if i.BrokerSnapshotBucket != "" {
+	if i.BrokerSnapshotsEnabled || i.Bucket != "" {
 		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
 			fmt.Println(err.Error())
 			return err
