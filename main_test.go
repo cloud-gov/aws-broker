@@ -898,9 +898,13 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	// if !strings.Contains(res.Body.String(), "accepted") {
+	// 	t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	// }
+	if res.Code != http.StatusAccepted {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted")
 	}
+
 	// Is it in the database and has a username and password?
 	i := elasticsearch.ElasticsearchInstance{}
 	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
@@ -936,9 +940,13 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncompleteAdv, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncompleteAdv, "should return the instance accepted message")
+	// if !strings.Contains(res.Body.String(), "accepted") {
+	// 	t.Error(urlAcceptsIncompleteAdv, "should return the instance accepted message")
+	// }
+	if res.Code != http.StatusAccepted {
+		t.Error(urlAcceptsIncompleteAdv, "should return the instance accepted")
 	}
+
 	// Is it in the database and has a username and password?
 	i = elasticsearch.ElasticsearchInstance{}
 	brokerDB.Where("uuid = ?", "the_advanced_elasticsearch_instance").First(&i)
