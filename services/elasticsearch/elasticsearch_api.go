@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -170,6 +171,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 		fmt.Print(err)
 		return "", err
 	}
+	fmt.Printf("CreateSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
 	return string(resp), err
 }
 
@@ -178,8 +180,9 @@ func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (st
 	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
 	resp, err := es.Send(http.MethodPut, endpoint, "")
 	if err != nil {
-		fmt.Print(err)
+		fmt.Printf("es_api createsnapshot error:%v", err)
 	}
+	fmt.Printf("CreateSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
 	return string(resp), err
 }
 
@@ -189,6 +192,7 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 	if err != nil {
 		fmt.Print(err)
 	}
+	fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
 	return string(resp), err
 }
 
@@ -197,14 +201,19 @@ func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) 
 	endpoint := "/_snapshot/" + reponame + "/" + snapshotname + "/_status"
 	resp, err := es.Send(http.MethodGet, endpoint, "")
 	if err != nil {
-		fmt.Print(err)
+		fmt.Printf("es_api getsnapshot status error %v", err)
 		return "", err
 	}
 	snapshots := Snapshots{}
 	err = json.Unmarshal(resp, &snapshots)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Printf("es_api unmarshall reply error: %v", err)
 		return "", err
 	}
+	if len(snapshots.Snapshots) == 0 {
+		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v", snapshots)
+		return "FAILED", errors.New("SnapshotStatus returned empty")
+	}
+	fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
 	return snapshots.Snapshots[0].State, nil
 }

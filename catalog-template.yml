@@ -1039,7 +1039,7 @@ elasticsearch:
     free: false
     elasticsearchVersion: 7.4
     dataCount: 1
-    instanceType: t2.small.elasticsearch
+    instanceType: t3.small.elasticsearch
     volumeSize: 15
     volumeType: gp2
     encryptAtRest: false

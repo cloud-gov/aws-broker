@@ -41,7 +41,6 @@ type ElasticsearchInstance struct {
 	EncryptAtRest                  bool   `sql:"size(255)"`
 	AutomatedSnapshotStartHour     int    `sql:"size(255)"`
 	Bucket                         string `sql:"size(255)"`
-	BrokerSnapshotBucket           string `sql:"size(255)"`
 	BrokerSnapshotsEnabled         bool   `sql:"size(255)"`
 	SnapshotARN                    string `sql:"size(255)"`
 	SnapshotPolicyARN              string `sql:"size(255)"`
