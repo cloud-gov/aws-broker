@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -224,6 +225,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	default:
 		state = "in progress"
 	}
+	fmt.Printf("LastOperation - Final\n\tstate: %s", state)
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 

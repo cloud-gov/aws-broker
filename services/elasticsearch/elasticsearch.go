@@ -403,6 +403,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		// determine which op is being polled for
 		switch operation {
 		case base.DeleteOp.String():
+			fmt.Printf("checkESstatus -  DeleteOp:\n\tdomainstatus: %v", resp.DomainStatus)
 			if resp.DomainStatus != nil {
 				switch *(resp.DomainStatus.Deleted) {
 				case true:
@@ -440,6 +441,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		}
 
 	}
+	fmt.Printf("checkESstatus -  Final:\n\tInstance State: %v", i.State)
 	return i.State, nil
 }
 
@@ -572,21 +574,21 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
-		fmt.Printf("takeLastSnapshot returns error: %v", err)
+		fmt.Printf("asyncDelete - \n\t takeLastSnapshot returns error: %v\n", err)
 		i.State = base.InstanceNotGone
 		db.Save(&i)
 		return
 	}
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
-		fmt.Printf("cleanuproles returns error: %v", err)
+		fmt.Printf("asyncDelete - \n\t cleanuproles returns error: %v\n", err)
 		i.State = base.InstanceNotGone
 		db.Save(&i)
 		return
 	}
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
-		fmt.Printf("cleanupdomain returns error: %v", err)
+		fmt.Printf("asyncDelete - \n\t cleanupdomain returns error: %v\n", err)
 		i.State = base.InstanceNotGone
 		db.Save(&i)
 		return
@@ -601,7 +603,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 	var sleep = 10 * time.Second
 	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
-	fmt.Printf("TakeLastSnapshot - n\tbucketname: %s\n\tbrokersnapshot enabled: %v", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
+	fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
 	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 		fmt.Println("TakeLastSnapshot - Creating Policies and Repo ")
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
@@ -624,29 +626,30 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi := &EsApiHandler{}
 	esApi.Init(creds, d.settings.Region)
-	fmt.Println("TakeLastSnapshot - Creating Snapshot ")
+	fmt.Println("TakeLastSnapshot - Creating Snapshot")
 	// create snapshot
 	res, err := esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("CreateSnapshot returns error: %v\n", err)
 		return err
 	}
-	fmt.Printf("TakeLastSnapshot - Snapshot Response: %v", res)
+	fmt.Printf("TakeLastSnapshot - \n\tSnapshot Response: %v\n", res)
 	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
 	for {
+		fmt.Println("TakeLastSnapshot - Polling for Snapshot Completion")
 		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
 		if res != "IN_PROGRESS" {
-			fmt.Printf("TakeLastSnapshot - \nSnapshot finished, response %v", res)
+			fmt.Printf("TakeLastSnapshot - \nSnapshot finished, response %v\n", res)
 			break
 		}
-		fmt.Printf("Snapshot in progress, waiting for %s", sleep)
+		fmt.Printf("Snapshot in progress, waiting for %s\n", sleep)
 		time.Sleep(sleep)
 	}
-	fmt.Printf("TakeLastSnapshot - Completed")
+	fmt.Println("TakeLastSnapshot - Completed")
 	return nil
 }
 
