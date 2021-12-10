@@ -364,6 +364,28 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
 func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+	//check for backing resource and do async otherwise remove from db
+	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+		DomainName: aws.String(i.Domain), // Required
+	}
+	_, err := svc.DescribeElasticsearchDomain(params)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			// Generic AWS error with Code, Message, and original error (if any)
+			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+			if reqErr, ok := err.(awserr.RequestFailure); ok {
+				// A service error occurred
+				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+			}
+			// Instance no longer exists
+			if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+				fmt.Println("DeleteES - No backing resource found returning InstanceGone")
+				return base.InstanceGone, err
+			}
+		}
+		return base.InstanceNotGone, err
+	}
 	go d.asyncDeleteElasticSearchDomain(i, password, db)
 	i.State = base.InstanceInProgress
 	return base.InstanceInProgress, nil
@@ -391,6 +413,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 				}
 				// Instance no longer exists
 				if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+					fmt.Println("CheckESStatus - No backing resource found returning InstanceGone")
 					return base.InstanceGone, err
 				}
 			}
@@ -398,6 +421,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		}
 
 		// Pretty-print the response data.
+		fmt.Println("checkESStatus - DescribeDomain response")
 		fmt.Println(awsutil.StringValue(resp))
 
 		// determine which op is being polled for
