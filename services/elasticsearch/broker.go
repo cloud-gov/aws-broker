@@ -209,6 +209,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	var state string
 	// two async ops -- create and delete
 	status, _ := adapter.checkElasticsearchStatus(&existingInstance, operation)
+	broker.brokerDB.Save(&existingInstance)
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
@@ -268,7 +269,7 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 
 	var credentials map[string]string
 	// Bind the database instance to the application.
-	originalInstanceState := existingInstance.State
+	//originalInstanceState := existingInstance.State
 	existingInstance.setBucket(options.Bucket)
 	if credentials, err = adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
@@ -278,14 +279,14 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
 
-	if len(existingInstance.Bucket) > 0 {
-		broker.brokerDB.Save(&existingInstance)
-	}
-	// If the state of the instance has changed, update it.
-	if existingInstance.State != originalInstanceState {
-		broker.brokerDB.Save(&existingInstance)
-	}
-
+	// if len(existingInstance.Bucket) > 0 {
+	// 	broker.brokerDB.Save(&existingInstance)
+	// }
+	// // If the state of the instance has changed, update it.
+	// if existingInstance.State != originalInstanceState {
+	// 	broker.brokerDB.Save(&existingInstance)
+	// }
+	broker.brokerDB.Save(&existingInstance)
 	return response.NewSuccessBindResponse(credentials)
 }
 
@@ -327,6 +328,7 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
+		broker.brokerDB.Save(&existingInstance)
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
 	// if status != base.InstanceInProgress {

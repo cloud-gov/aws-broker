@@ -171,7 +171,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 		fmt.Print(err)
 		return "", err
 	}
-	fmt.Printf("CreateSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
+	fmt.Printf("CreateSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
