@@ -313,17 +313,33 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 
 	// send async deletion request.
 	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.brokerDB)
-	if status != base.InstanceInProgress {
+	switch status {
+	case base.InstanceGone: // somehow the instance is gone already
+		broker.brokerDB.Unscoped().Delete(&existingInstance)
+		broker.brokerDB.Unscoped().Delete(&baseInstance)
+		return response.SuccessDeleteResponse
+
+	case base.InstanceInProgress: // we have done an async request
+		broker.brokerDB.Save(&existingInstance)
+		return response.NewAsyncOperationResponse(base.DeleteOp.String())
+	default:
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-	// save the state for polling
-	broker.brokerDB.Save(&existingInstance)
-	return response.NewAsyncOperationResponse(base.DeleteOp.String())
-	// we need make this an async cleanup when base.InstanceGone state is set.
-	//broker.brokerDB.Unscoped().Delete(&existingInstance)
+	// if status != base.InstanceInProgress {
+	// 	desc := "There was an error deleting the instance."
+	// 	if err != nil {
+	// 		desc = desc + " Error: " + err.Error()
+	// 	}
+	// 	return response.NewErrorResponse(http.StatusBadRequest, desc)
+	// }
+	// // save the state for polling
+	// broker.brokerDB.Save(&existingInstance)
+	// return response.NewAsyncOperationResponse(base.DeleteOp.String())
+	// // we need make this an async cleanup when base.InstanceGone state is set.
+	// //broker.brokerDB.Unscoped().Delete(&existingInstance)
 
 }

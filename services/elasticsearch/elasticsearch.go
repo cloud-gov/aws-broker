@@ -378,20 +378,21 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 				// A service error occurred
 				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
 			}
-			// Instance no longer exists
+			// Instance no longer exists, force a removal from brokerdb
 			if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
-				fmt.Println("DeleteES - No backing resource found returning InstanceGone")
+				fmt.Println("DeleteES - No backing resource found, returning InstanceGone")
 				return base.InstanceGone, err
 			}
 		}
 		return base.InstanceNotGone, err
 	}
+	// perform async deletion and return in progress
 	go d.asyncDeleteElasticSearchDomain(i, password, db)
 	i.State = base.InstanceInProgress
 	return base.InstanceInProgress, nil
 }
 
-// this should only be called in relation to create, modify or delete operations polling
+// this should only be called in relation to async create, modify or delete operations polling for completion
 func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance, operation string) (base.InstanceState, error) {
 
 	// Only search for details if the instance was not indicated as ready.
@@ -424,7 +425,8 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		fmt.Println("checkESStatus - DescribeDomain response")
 		fmt.Println(awsutil.StringValue(resp))
 
-		// determine which op is being polled for
+		// determine which op is being polled for using the 'operation' query param.
+		// this initially gets sent in a response for an async request
 		switch operation {
 		case base.DeleteOp.String():
 			fmt.Printf("checkESstatus -  DeleteOp:\n\tdomainstatus: %v", resp.DomainStatus)
