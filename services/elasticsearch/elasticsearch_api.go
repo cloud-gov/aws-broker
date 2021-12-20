@@ -182,7 +182,7 @@ func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (st
 	if err != nil {
 		fmt.Printf("es_api createsnapshot error:%v", err)
 	}
-	fmt.Printf("CreateSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
+	fmt.Printf("CreateSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -192,7 +192,7 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 	if err != nil {
 		fmt.Print(err)
 	}
-	fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
+	fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -214,6 +214,6 @@ func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) 
 		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v", snapshots)
 		return "FAILED", errors.New("SnapshotStatus returned empty")
 	}
-	fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, resp)
+	fmt.Printf("GetSnapshotSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return snapshots.Snapshots[0].State, nil
 }

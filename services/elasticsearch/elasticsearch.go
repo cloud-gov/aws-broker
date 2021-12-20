@@ -338,8 +338,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 
 		// specify a path for the bucket access policy to scope to this instance
-		// TODO: instead of ServiceId should we use domain?
-		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
+		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
 		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
 		if err != nil {
 			return nil, err
@@ -389,6 +388,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 	// perform async deletion and return in progress
 	go d.asyncDeleteElasticSearchDomain(i, password, db)
 	i.State = base.InstanceInProgress
+	db.Save((&i))
 	return base.InstanceInProgress, nil
 }
 
@@ -422,14 +422,14 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		}
 
 		// Pretty-print the response data.
-		fmt.Println("checkESStatus - DescribeDomain response")
+		fmt.Printf("checkESStatus - Operations: %s\nDescribeDomain response:\n")
 		fmt.Println(awsutil.StringValue(resp))
 
 		// determine which op is being polled for using the 'operation' query param.
 		// this initially gets sent in a response for an async request
 		switch operation {
 		case base.DeleteOp.String():
-			fmt.Printf("checkESstatus -  DeleteOp:\n\tdomainstatus: %v", resp.DomainStatus)
+			fmt.Printf("checkESstatus -  DeleteOp:\n\tInstance State: %v", i.State)
 			if resp.DomainStatus != nil {
 				switch *(resp.DomainStatus.Deleted) {
 				case true:
@@ -443,6 +443,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 				return base.InstanceGone, nil
 			}
 		case base.ModifyOp.String():
+			fmt.Printf("checkESstatus -  ModifyOp:\n\tInstance State: %v", i.State)
 			switch *(resp.DomainStatus.Processing) {
 			case true:
 				return base.InstanceInProgress, nil
@@ -451,6 +452,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			}
 
 		default: // base.CreateOp.String() or unknown/empty
+			fmt.Printf("checkESstatus -  DefaultOps:\n\tInstance State: %v", i.State)
 			if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 				switch *(resp.DomainStatus.Processing) {
 				case false:
@@ -597,7 +599,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 
 // state is persisted for LastOperations polling.
 func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, db *gorm.DB) {
-
+	fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Started\n")
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
 		fmt.Printf("asyncDelete - \n\t takeLastSnapshot returns error: %v\n", err)
@@ -605,6 +607,8 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		db.Save(&i)
 		return
 	}
+	fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Completed\n")
+	fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Started\n")
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
 		fmt.Printf("asyncDelete - \n\t cleanuproles returns error: %v\n", err)
@@ -612,6 +616,9 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		db.Save(&i)
 		return
 	}
+	fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Completed\n")
+
+	fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Started\n")
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
 		fmt.Printf("asyncDelete - \n\t cleanupdomain returns error: %v\n", err)
@@ -619,7 +626,8 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		db.Save(&i)
 		return
 	}
-	i.State = base.InstanceGone
+	fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Completed\n")
+	i.State = base.InstanceInProgress
 	db.Save(&i)
 }
 
@@ -687,11 +695,13 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 		DomainName: aws.String(i.Domain), // Required
 	}
 	resp, err := svc.DeleteElasticsearchDomain(params)
+
 	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
+	fmt.Printf("CleanupESDomain: \n\t%s\n", awsutil.StringValue(resp))
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
+		time.Sleep(10 * time.Second) //give the service time to change 'delete' state
 		return nil
 	}
 	return err
