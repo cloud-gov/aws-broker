@@ -141,12 +141,14 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	// Sign the request, send it, and print the response
 	_, err = es.signer.Sign(req, body, es.service, es.region, time.Now())
 	if err != nil {
+		fmt.Println("ESAPI -- Send -- Signing Error:")
 		fmt.Print(err)
 		return result, err
 	}
 	resp, err := es.client.Do(req)
 
 	if err != nil {
+		fmt.Println("ESAPI -- Send -- Do Error:")
 		fmt.Print(err)
 		return result, err
 	}
@@ -155,6 +157,7 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	if err != nil {
 		fmt.Print(err)
 	}
+	fmt.Printf("ESAPI -- Send -- Result: %v", result)
 	return result, err
 }
 
