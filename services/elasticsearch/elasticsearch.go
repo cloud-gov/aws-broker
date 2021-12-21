@@ -256,6 +256,12 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		if !d.didAwsCallSucceed(err) {
 			return base.InstanceNotCreated, nil
 		}
+		// try setup of roles and policies on create
+		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
+		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
+		if err != nil {
+			return base.InstanceNotCreated, nil
+		}
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
@@ -339,11 +345,11 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 		// specify a path for the bucket access policy to scope to this instance
 		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
-		if err != nil {
-			return nil, err
-		}
-		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, path, d.settings.Region)
+		// err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		err := d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, path, d.settings.Region)
 		if err != nil {
 			return nil, err
 		}
@@ -422,14 +428,14 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		}
 
 		// Pretty-print the response data.
-		fmt.Printf("checkESStatus - Operations: %s\nDescribeDomain response:\n")
+		fmt.Printf("checkESStatus - Operations: %s\nDescribeDomain response:\n", operation)
 		fmt.Println(awsutil.StringValue(resp))
 
 		// determine which op is being polled for using the 'operation' query param.
 		// this initially gets sent in a response for an async request
 		switch operation {
 		case base.DeleteOp.String():
-			fmt.Printf("checkESstatus -  DeleteOp:\n\tInstance State: %v", i.State)
+			fmt.Printf("checkESstatus -  DeleteOp:\n\tInstance State: %v\n", i.State)
 			if resp.DomainStatus != nil {
 				switch *(resp.DomainStatus.Deleted) {
 				case true:
@@ -443,7 +449,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 				return base.InstanceGone, nil
 			}
 		case base.ModifyOp.String():
-			fmt.Printf("checkESstatus -  ModifyOp:\n\tInstance State: %v", i.State)
+			fmt.Printf("checkESstatus -  ModifyOp:\n\tInstance State: %v\n", i.State)
 			switch *(resp.DomainStatus.Processing) {
 			case true:
 				return base.InstanceInProgress, nil
@@ -452,7 +458,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			}
 
 		default: // base.CreateOp.String() or unknown/empty
-			fmt.Printf("checkESstatus -  DefaultOps:\n\tInstance State: %v", i.State)
+			fmt.Printf("checkESstatus -  DefaultOps:\n\tInstance State: %v\n", i.State)
 			if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 				switch *(resp.DomainStatus.Processing) {
 				case false:
