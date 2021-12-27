@@ -430,13 +430,14 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		case base.DeleteOp.String():
 			fmt.Printf("checkESstatus -  DeleteOp:\n\tInstance State: %v\n", i.State)
 			if resp.DomainStatus != nil {
-				switch *(resp.DomainStatus.Deleted) {
-				case true:
-					return base.InstanceInProgress, nil // true = in progress according to SDK
-				case false:
-					return base.InstanceNotGone, nil //false=no deletion according to SDK
-				default:
-					return base.InstanceNotGone, nil
+				if *(resp.DomainStatus.Deleted) {
+					if *(resp.DomainStatus.Processing) {
+						return base.InstanceInProgress, nil // true = delete progress according to SDK
+					} else {
+						return base.InstanceGone, nil
+					}
+				} else {
+					return base.InstanceNotGone, nil //something failed, we shouldnt get here
 				}
 			} else { // No DomainStatus == No Domain
 				return base.InstanceGone, nil
