@@ -157,7 +157,7 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	if err != nil {
 		fmt.Print(err)
 	}
-	fmt.Printf("ESAPI -- Send -- Result: %v", result)
+	fmt.Printf("ESAPI -- Send -- Result: %v", string(result))
 	return result, err
 }
 

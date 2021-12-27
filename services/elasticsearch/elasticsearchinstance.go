@@ -44,6 +44,7 @@ type ElasticsearchInstance struct {
 	BrokerSnapshotsEnabled         bool   `sql:"size(255)"`
 	SnapshotARN                    string `sql:"size(255)"`
 	SnapshotPolicyARN              string `sql:"size(255)"`
+	SnapshotPath                   string `sql:"size(255)"`
 	IamPassRolePolicyARN           string `sql:"size(255)"`
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
@@ -167,6 +168,7 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.SubnetIDAZ2 = plan.SubnetIDAZ2
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
 	i.BrokerSnapshotsEnabled = false
 
 	// Tag instance with broker details

@@ -257,8 +257,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 			return base.InstanceNotCreated, nil
 		}
 		// try setup of roles and policies on create
-		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
-		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
+		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
 			return base.InstanceNotCreated, nil
 		}
@@ -343,13 +342,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	// add broker snapshot bucket and create roles and policies if it hasnt been done.
 	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 
-		// specify a path for the bucket access policy to scope to this instance
-		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
-		// err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		err := d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, path, d.settings.Region)
+		err := d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
 		if err != nil {
 			return nil, err
 		}
@@ -646,12 +639,12 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
 	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 		fmt.Println("TakeLastSnapshot - Creating Policies and Repo ")
-		path := "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, path)
+
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
 			return err
 		}
-		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, path, d.settings.Region)
+		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
 		if err != nil {
 			return err
 		}
