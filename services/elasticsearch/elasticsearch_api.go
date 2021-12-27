@@ -162,6 +162,9 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 }
 
 func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string, region string, rolearn string) (string, error) {
+	// the repo request cannot have a leading slash in the path
+	path = strings.TrimPrefix(path, "/")
+
 	snaprepo, err := NewSnapshotRepo(bucketname, path, region, rolearn).ToString()
 	if err != nil {
 		fmt.Print(err)
