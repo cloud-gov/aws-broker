@@ -437,7 +437,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 						return base.InstanceGone, nil
 					}
 				} else {
-					return base.InstanceNotGone, nil //something failed, we shouldnt get here
+					return base.InstanceInProgress, nil //we beat the AWS service updating itself. or theres a problem
 				}
 			} else { // No DomainStatus == No Domain
 				return base.InstanceGone, nil
