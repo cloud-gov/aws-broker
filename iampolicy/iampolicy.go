@@ -204,6 +204,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 			// error which satisfies the awserr.Error interface.
 			fmt.Println(err.Error())
 		}
+		fmt.Printf("UpdateExistingPolicy.GetPolicy with arn: %s failed", policyARN)
 		return respPolVer, err
 	}
 	// get existing policy's current version number
@@ -227,6 +228,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 				// error which satisfies the awserr.Error interface.
 				fmt.Println(err.Error())
 			}
+			fmt.Printf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed", *(resPolicy.Policy.DefaultVersionId))
 			return respPolVer, err
 		}
 
@@ -234,6 +236,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 		if resPolicyVersion.PolicyVersion.Document != nil {
 			err = policyDoc.FromString(*resPolicyVersion.PolicyVersion.Document)
 			if err != nil {
+				fmt.Printf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed", (*resPolicyVersion.PolicyVersion.Document))
 				return respPolVer, err
 			}
 		}
@@ -264,10 +267,12 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 			// error which satisfies the awserr.Error interface.
 			fmt.Println(err.Error())
 		}
+		fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v", policyUpdatedVersion)
 		return respPolVer, err
 	}
 	if resp.PolicyVersion != nil {
 		respPolVer = resp.PolicyVersion
 	}
+	fmt.Printf("UpdateExistingPolicy Success with: %v", respPolVer)
 	return respPolVer, nil
 }
