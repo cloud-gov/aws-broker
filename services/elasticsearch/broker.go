@@ -218,7 +218,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 			jobstate.State = base.InstanceNotGone //indicate a failure
 		}
 		status = jobstate.State
-		fmt.Printf("Deletion Job state: %s\n Message: %s", jobstate.State.String(), jobstate.Message)
+		fmt.Printf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message)
 
 	default: //all other ops use synchronous checking
 		status, _ = adapter.checkElasticsearchStatus(&existingInstance)

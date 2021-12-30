@@ -463,9 +463,7 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 
 // utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
 func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
-	if i.State != base.InstanceReady {
-		return errors.New("instance is not ready, cannont execute api calls")
-	}
+
 	creds, err := i.getCredentials(password)
 	if err != nil {
 		fmt.Println(err)
