@@ -3,6 +3,7 @@ package iampolicy
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -28,13 +29,18 @@ type IamPolicyHandler struct {
 }
 
 func (pd *PolicyDocument) ToString() (string, error) {
+
 	retbytes, err := json.Marshal(pd)
 	rval := string(retbytes)
 	return rval, err
 }
 
 func (pd *PolicyDocument) FromString(docstring string) error {
-	err := json.Unmarshal([]byte(docstring), &pd)
+	decodedstr, err := url.QueryUnescape(docstring)
+	if err != nil {
+		return fmt.Errorf("UrlDecoding failed in PolicyDoc.FromString")
+	}
+	err = json.Unmarshal([]byte(decodedstr), &pd)
 	return err
 }
 
