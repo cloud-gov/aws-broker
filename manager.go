@@ -11,10 +11,11 @@ import (
 	"github.com/18F/aws-broker/services/elasticsearch"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/18F/aws-broker/services/redis"
+	"github.com/18F/aws-broker/taskqueue"
 	"github.com/jinzhu/gorm"
 )
 
-func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings) (base.Broker, response.Response) {
+func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, response.Response) {
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
@@ -22,18 +23,18 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	case c.RedisService.ID:
 		return redis.InitRedisBroker(brokerDb, settings), nil
 	case c.ElasticsearchService.ID:
-		return elasticsearch.InitElasticsearchBroker(brokerDb, settings), nil
+		return elasticsearch.InitElasticsearchBroker(brokerDb, settings, taskqueue), nil
 	}
 
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
-func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
 	createRequest, err := request.ExtractRequest(req)
 	if err != nil {
 		return err
 	}
-	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings)
+	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings, taskqueue)
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
 	// Extract the request information.
 	modifyRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -74,7 +75,7 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	}
 
 	// Retrieve the correct broker.
-	broker, err := findBroker(instance.ServiceID, c, brokerDb, settings)
+	broker, err := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
 	if err != nil {
 		return err
 	}
@@ -99,12 +100,12 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
 	if resp != nil {
 		return resp
 	}
@@ -113,7 +114,7 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 	return broker.LastOperation(c, id, instance, operation)
 }
 
-func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
 	// Extract the request information.
 	bindRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -124,7 +125,7 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
 	if resp != nil {
 		return resp
 	}
@@ -132,12 +133,12 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	return broker.BindInstance(c, id, bindRequest, instance)
 }
 
-func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings) response.Response {
+func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
 	if resp != nil {
 		return resp
 	}

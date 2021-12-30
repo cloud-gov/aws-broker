@@ -20,6 +20,7 @@ import (
 	"github.com/18F/aws-broker/services/elasticsearch"
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/18F/aws-broker/services/redis"
+	"github.com/18F/aws-broker/taskqueue"
 )
 
 var (
@@ -176,8 +177,9 @@ func setup() *martini.ClassicMartini {
 	s.Environment = "test"
 	s.MaxAllocatedStorage = 1024
 	brokerDB, _ = db.InternalDBInit(&dbConfig)
+	tq := taskqueue.Init()
 
-	m := App(&s, brokerDB)
+	m := App(&s, brokerDB, tq)
 
 	return m
 }

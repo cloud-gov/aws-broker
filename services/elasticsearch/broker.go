@@ -14,6 +14,7 @@ import (
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
+	"github.com/18F/aws-broker/taskqueue"
 )
 
 type ElasticsearchAdvancedOptions struct {
@@ -32,13 +33,14 @@ func (r ElasticsearchOptions) Validate(settings *config.Settings) error {
 }
 
 type elasticsearchBroker struct {
-	brokerDB *gorm.DB
-	settings *config.Settings
+	brokerDB  *gorm.DB
+	settings  *config.Settings
+	taskqueue *taskqueue.QueueManager
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
-func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &elasticsearchBroker{brokerDB, settings}
+func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) base.Broker {
+	return &elasticsearchBroker{brokerDB, settings, taskqueue}
 }
 
 // initializeAdapter is the main function to create database instances
@@ -207,9 +209,23 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	}
 
 	var state string
-	// two async ops -- create and delete
-	status, _ := adapter.checkElasticsearchStatus(&existingInstance, operation)
-	broker.brokerDB.Save(&existingInstance)
+	var status base.InstanceState
+
+	switch operation {
+	case base.DeleteOp.String(): // delete is true concurrent operation
+		jobstate, err := broker.taskqueue.GetJobState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
+		if err != nil {
+			jobstate.State = base.InstanceNotGone //indicate a failure
+		}
+		status = jobstate.State
+		fmt.Printf("Deletion Job state: %s\n Message: %s", jobstate.State.String(), jobstate.Message)
+
+	default: //all other ops use synchronous checking
+		status, _ = adapter.checkElasticsearchStatus(&existingInstance, operation)
+		broker.brokerDB.Save(&existingInstance)
+
+	}
+
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
@@ -226,7 +242,8 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	default:
 		state = "in progress"
 	}
-	fmt.Printf("LastOperation - Final\n\tstate: %s", state)
+
+	fmt.Printf("LastOperation - Final\n\tstate: %s\n", state)
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
@@ -313,7 +330,7 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 	}
 
 	// send async deletion request.
-	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.brokerDB)
+	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.taskqueue)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)

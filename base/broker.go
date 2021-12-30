@@ -6,6 +6,7 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
+// operation represents the type of async operation a broker may require
 type Operation uint8
 
 const (

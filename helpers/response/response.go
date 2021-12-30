@@ -98,7 +98,7 @@ var (
 	SuccessDeleteResponse = newSuccessResponse(http.StatusOK, SuccessDeleteResponseType, "The instance was deleted")
 )
 
-// If a broker has an async operation ( create, modify, delete, bind) and want to return an "operation" they should use this
+// If a broker has an async operation ( create, modify, delete, bind) and wants to return an "operation" they should use this
 // Otherwise they can return SuccessAcceptedResponse
 func NewAsyncOperationResponse(operation string) Response {
 	return &asyncOperationResponse{baseResponse: baseResponse{StatusCode: http.StatusAccepted, StatusType: SuccessAcceptedResponseType}, Operation: operation}

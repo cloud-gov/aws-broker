@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/taskqueue"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -30,7 +31,7 @@ type ElasticsearchAdapter interface {
 	modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance, operation string) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance, passoword string, db *gorm.DB) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *taskqueue.QueueManager) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -56,7 +57,7 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials(password)
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -361,7 +362,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	//check for backing resource and do async otherwise remove from db
 	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	params := &elasticsearchservice.DescribeElasticsearchDomainInput{
@@ -385,9 +386,10 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 		return base.InstanceNotGone, err
 	}
 	// perform async deletion and return in progress
-	go d.asyncDeleteElasticSearchDomain(i, password, db)
-	i.State = base.InstanceInProgress
-	db.Save((&i))
+	jobchan, err := queue.RequestQueue(i.ServiceID, i.Uuid, base.DeleteOp)
+	if err == nil {
+		go d.asyncDeleteElasticSearchDomain(i, password, jobchan)
+	}
 	return base.InstanceInProgress, nil
 }
 
@@ -597,23 +599,40 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	return nil
 }
 
-// state is persisted for LastOperations polling.
-func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, db *gorm.DB) {
+// state is persisted in the taskqueue for LastOperations polling.
+func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan taskqueue.AsyncJobMsg) {
 	fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Started\n")
+	defer close(jobstate)
+
+	msg := taskqueue.AsyncJobMsg{
+		BrokerId:   i.ServiceID,
+		InstanceId: i.Uuid,
+		JobType:    base.DeleteOp,
+		JobState:   taskqueue.AsyncJobState{},
+	}
+	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Started for Service Instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceInProgress
+	jobstate <- msg
+
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
-		fmt.Printf("asyncDelete - \n\t takeLastSnapshot returns error: %v\n", err)
-		i.State = base.InstanceNotGone
-		db.Save(&i)
+		desc := fmt.Sprintf("asyncDelete - \n\t takeLastSnapshot returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
 		return
 	}
+
 	fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Completed\n")
 	fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Started\n")
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
-		fmt.Printf("asyncDelete - \n\t cleanuproles returns error: %v\n", err)
-		i.State = base.InstanceNotGone
-		db.Save(&i)
+		desc := fmt.Sprintf("asyncDelete - \n\t cleanupRolesAndPolicies returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
 		return
 	}
 	fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Completed\n")
@@ -621,14 +640,18 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Started\n")
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
-		fmt.Printf("asyncDelete - \n\t cleanupdomain returns error: %v\n", err)
-		i.State = base.InstanceNotGone
-		db.Save(&i)
+		desc := fmt.Sprintf("asyncDelete - \n\t cleanupElasticSearchDomain returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
 		return
 	}
+
+	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Completed for Service Instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceGone
+	jobstate <- msg
 	fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Completed\n")
-	i.State = base.InstanceInProgress
-	db.Save(&i)
 }
 
 // in which we make the ES API call to take a snapshot
@@ -643,10 +666,12 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
+			fmt.Printf("TakeLastSnapshot - Error in createUpdateRolesAndPolicies:\n %v\n", err)
 			return err
 		}
 		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
 		if err != nil {
+			fmt.Printf("TakeLastSnapshot - Error in createSnapshotRepo:\n %v\n", err)
 			return err
 		}
 		i.BrokerSnapshotsEnabled = true
@@ -685,26 +710,6 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	}
 	fmt.Println("TakeLastSnapshot - Completed")
 	return nil
-}
-
-// in which we finally delete the ES Domain
-func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *ElasticsearchInstance) error {
-	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
-		DomainName: aws.String(i.Domain), // Required
-	}
-	resp, err := svc.DeleteElasticsearchDomain(params)
-
-	// Pretty-print the response data.
-	fmt.Printf("CleanupESDomain: \n\t%s\n", awsutil.StringValue(resp))
-
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		time.Sleep(10 * time.Second) //give the service time to change 'delete' state
-		return nil
-	}
-	return err
 }
 
 //in which we clean up all the roles and policies for the ES domain
@@ -770,4 +775,48 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 	return nil
+}
+
+// in which we finally delete the ES Domain and wait for it to complete
+func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *ElasticsearchInstance) error {
+	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
+		DomainName: aws.String(i.Domain), // Required
+	}
+	resp, err := svc.DeleteElasticsearchDomain(params)
+
+	// Pretty-print the response data.
+	fmt.Printf("CleanupESDomain: \n\t%s\n", awsutil.StringValue(resp))
+
+	// Decide if AWS service call was successful
+	if success := d.didAwsCallSucceed(err); !success {
+		return err
+	}
+	// now we poll for completion
+	for {
+		time.Sleep(time.Minute)
+		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+			DomainName: aws.String(i.Domain), // Required
+		}
+
+		_, err := svc.DescribeElasticsearchDomain(params)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Instance no longer exists, this is success
+				if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+					fmt.Println("cleanupElasticSearchDomain - No ES Domain resource found, Deletion is a success")
+					return nil
+				}
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			}
+			return err
+		}
+	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/taskqueue"
 	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/render"
@@ -33,8 +34,8 @@ type CreateResponse struct {
 //   "organization_guid": "org-guid-here",
 //   "space_guid":        "space-guid-here"
 // }
-func CreateInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
-	resp := createInstance(req, c, brokerDb, p["id"], s)
+func CreateInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
+	resp := createInstance(req, c, brokerDb, p["id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
 }
 
@@ -47,28 +48,28 @@ func CreateInstance(p martini.Params, req *http.Request, r render.Render, broker
 //   "organization_guid": "org-guid-here",
 //   "space_guid":        "space-guid-here"
 // }
-func ModifyInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
-	resp := modifyInstance(req, c, brokerDb, p["id"], s)
+func ModifyInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
+	resp := modifyInstance(req, c, brokerDb, p["id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
 }
 
 // LastOperation processes all requests for binding a service instance to an application.
 // URL: /v2/service_instances/:instance_id/last_operation
-func LastOperation(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
-	resp := lastOperation(req, c, brokerDb, p["instance_id"], s)
+func LastOperation(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
+	resp := lastOperation(req, c, brokerDb, p["instance_id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
 }
 
 // BindInstance processes all requests for binding a service instance to an application.
 // URL: /v2/service_instances/:instance_id/service_bindings/:binding_id
-func BindInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
-	resp := bindInstance(req, c, brokerDb, p["instance_id"], s)
+func BindInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
+	resp := bindInstance(req, c, brokerDb, p["instance_id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
 }
 
 // DeleteInstance processes all requests for deleting an existing service instance.
 // URL: /v2/service_instances/:instance_id
-func DeleteInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog) {
-	resp := deleteInstance(req, c, brokerDb, p["instance_id"], s)
+func DeleteInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
+	resp := deleteInstance(req, c, brokerDb, p["instance_id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
 }

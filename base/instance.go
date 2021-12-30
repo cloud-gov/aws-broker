@@ -28,6 +28,25 @@ const (
 	InstanceNotModified // 5
 )
 
+func (i InstanceState) String() string {
+	switch i {
+	case InstanceNotCreated:
+		return "InstanceNotCreated"
+	case InstanceInProgress:
+		return "InstanceInProgress"
+	case InstanceReady:
+		return "InstanceReady"
+	case InstanceGone:
+		return "InstanceGone"
+	case InstanceNotGone:
+		return "InstanceNotGone"
+	case InstanceNotModified:
+		return "InstanceNotModified"
+	default:
+		return "Unknown"
+	}
+}
+
 type Instance struct {
 	Uuid string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
 
