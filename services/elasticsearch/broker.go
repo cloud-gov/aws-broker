@@ -221,7 +221,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		fmt.Printf("Deletion Job state: %s\n Message: %s", jobstate.State.String(), jobstate.Message)
 
 	default: //all other ops use synchronous checking
-		status, _ = adapter.checkElasticsearchStatus(&existingInstance, operation)
+		status, _ = adapter.checkElasticsearchStatus(&existingInstance)
 		broker.brokerDB.Save(&existingInstance)
 
 	}
