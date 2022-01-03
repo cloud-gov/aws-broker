@@ -8,11 +8,13 @@ import (
 	"github.com/go-co-op/gocron"
 )
 
+// job state object persisted for brokers to access
 type AsyncJobState struct {
 	State   base.InstanceState
 	Message string
 }
 
+// messages of job state delivered over chan that are persisited
 type AsyncJobMsg struct {
 	BrokerId   string
 	InstanceId string
@@ -20,7 +22,8 @@ type AsyncJobMsg struct {
 	JobState   AsyncJobState
 }
 
-// operations are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
+// Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
+// this identifier is used as the unique key to retrieve a chan and or job state
 type AsyncJobQueueKey struct {
 	BrokerId   string
 	InstanceId string
@@ -42,6 +45,8 @@ type QueueManager struct {
 }
 
 // can be called to initialize the manager
+// defaults to do clean-up of jobstates after an hour.
+// runs clean up check every 15 minutes
 func NewQueueManager() *QueueManager {
 	mgr := &QueueManager{
 		jobStates:    make(map[AsyncJobQueueKey]AsyncJobState),
@@ -54,7 +59,7 @@ func NewQueueManager() *QueueManager {
 	return mgr
 }
 
-// must be called to activate clean mechanism
+// must be called to activate cleanup mechanism
 // separated from constructor to allow config and testing
 func (q *QueueManager) Init() {
 	q.scheduler.Every(q.check).Do(q.cleanupJobStates)
@@ -79,6 +84,7 @@ func (q *QueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueue
 		q.processMsg(job)
 	}
 	delete(q.brokerQueues, *key)
+	// schedule clean up of this job's state in the future
 	q.cleanup[*key] = time.Now().Add(q.expiration)
 }
 
@@ -97,6 +103,7 @@ func (q *QueueManager) cleanupJobStates() {
 // a broker or adapter can request a channel to communicate state of async processes.
 // the queue manager will launch a channel monitor to recieve messages and update the state of that async operation.
 // will return an error if a channel has already been launched. Channels must be closed by the recipient after use.
+// job state will be persisted and retained for a period of time before being cleaned up.
 func (q *QueueManager) RequestQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   brokerid,
@@ -112,7 +119,8 @@ func (q *QueueManager) RequestQueue(brokerid string, instanceid string, operatio
 	return nil, fmt.Errorf("taskque: a job queue already exists for that key: %v ", key)
 }
 
-// a broker or adapter can query the state of a job, will return an error if there is no known state
+// a broker or adapter can query the state of a job, will return an error if there is no known state.
+// jobstates get cleaned-up automatically after a period of time after the chan is closed.
 func (q *QueueManager) GetJobState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   brokerid,

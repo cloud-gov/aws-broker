@@ -80,6 +80,7 @@ func (d *sharedElasticsearchAdapter) deleteRedis(i *ElasticsearchInstance) (base
 type dedicatedElasticsearchAdapter struct {
 	Plan     catalog.ElasticsearchPlan
 	settings config.Settings
+	logger   lager.Logger
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -378,7 +379,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 			}
 			// Instance no longer exists, force a removal from brokerdb
 			if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
-				fmt.Println("DeleteES - No backing resource found, returning InstanceGone")
+				d.logger.Debug("DeleteES - No backing resource found, returning InstanceGone")
 				return base.InstanceGone, err
 			}
 		}
@@ -466,7 +467,7 @@ func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInsta
 
 	creds, err := i.getCredentials(password)
 	if err != nil {
-		fmt.Println(err)
+		d.logger.Error("createSnapshotRepo.getCredentials failed", err)
 		return err
 	}
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
@@ -476,17 +477,17 @@ func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInsta
 	// create snapshot repo
 	resp, err := esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
 	if err != nil {
-		fmt.Printf("createsnapshotrepo returns error: %v", err)
+		d.logger.Error("createsnapshotrepo returns error", err)
 		return err
 	}
-	fmt.Printf("createSnapshotRepo returns response: %v", resp)
+	d.logger.Debug(fmt.Sprintf("createSnapshotRepo returns response:\n %v\n", resp))
 	return nil
 }
 
 // utility to create roles and policies to enable snapshots in an s3 bucket
 // we pass bucket-name separately to enable reuse for client and broker buckets
 func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
-	fmt.Printf("createUpdateBucketRolesAndPolcies -- bucket: %s path: %s\n", bucket, path)
+	d.logger.Debug(fmt.Sprintf("createUpdateBucketRolesAndPolcies -- bucket: %s path: %s\n", bucket, path))
 	ip := iampolicy.NewIamPolicyHandler(d.settings.Region)
 	var snapshotRole *iam.Role
 
@@ -496,7 +497,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := ip.CreateAssumeRole(policy, rolename)
 		if err != nil {
-			fmt.Printf("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error: %v\n", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
 			return err
 		}
 		i.SnapshotARN = *arole.Arn
@@ -511,7 +512,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		username := i.Domain
 		policyarn, err := ip.CreateUserPolicy(policy, policyname, username)
 		if err != nil {
-			fmt.Printf("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error: %v\n", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", err)
 			return err
 		}
 		i.IamPassRolePolicyARN = policyarn
@@ -546,12 +547,12 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		policyname := i.Domain + "-to-S3-RolePolicy"
 		policy, err := policyDoc.ToString()
 		if err != nil {
-			fmt.Printf("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error: %v\n", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", err)
 			return err
 		}
 		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole)
 		if err != nil {
-			fmt.Printf("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error: %v\n", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", err)
 			return err
 		}
 		i.SnapshotPolicyARN = policyarn
@@ -561,7 +562,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		//to the existing policy version.
 		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
-			fmt.Printf("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error: %v\n", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
 			return err
 		}
 
@@ -571,7 +572,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 
 // state is persisted in the taskqueue for LastOperations polling.
 func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan taskqueue.AsyncJobMsg) {
-	fmt.Printf("\nAsyncDeleteESDomain -- Started\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- Started\n")
 	defer close(jobstate)
 
 	msg := taskqueue.AsyncJobMsg{
@@ -584,7 +585,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	msg.JobState.State = base.InstanceInProgress
 	jobstate <- msg
 
-	fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Started\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Started\n")
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
 		desc := fmt.Sprintf("asyncDelete - \n\t takeLastSnapshot returned error: %v\n", err)
@@ -595,8 +596,8 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		return
 	}
 
-	fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Completed\n")
-	fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Started\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Completed\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Started\n")
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
 		desc := fmt.Sprintf("asyncDelete - \n\t cleanupRolesAndPolicies returned error: %v\n", err)
@@ -606,9 +607,8 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		jobstate <- msg
 		return
 	}
-	fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Completed\n")
-
-	fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Started\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Completed\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Started\n")
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
 		desc := fmt.Sprintf("asyncDelete - \n\t cleanupElasticSearchDomain returned error: %v\n", err)
@@ -622,7 +622,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Completed for Service Instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceGone
 	jobstate <- msg
-	fmt.Printf("\nAsyncDeleteESDomain -- Completed\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- Completed\n")
 }
 
 // in which we make the ES API call to take a snapshot
@@ -631,18 +631,18 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 	var sleep = 10 * time.Second
 	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
-	fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
+	//fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
 	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 		fmt.Println("TakeLastSnapshot - Creating Policies and Repo ")
 
 		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
-			fmt.Printf("TakeLastSnapshot - Error in createUpdateRolesAndPolicies:\n %v\n", err)
+			d.logger.Error("TakeLastSnapshot - Error in createUpdateRolesAndPolicies", err)
 			return err
 		}
 		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
 		if err != nil {
-			fmt.Printf("TakeLastSnapshot - Error in createSnapshotRepo:\n %v\n", err)
+			d.logger.Error("TakeLastSnapshot - Error in createSnapshotRepo", err)
 			return err
 		}
 		i.BrokerSnapshotsEnabled = true
@@ -656,30 +656,30 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi := &EsApiHandler{}
 	esApi.Init(creds, d.settings.Region)
-	fmt.Println("TakeLastSnapshot - Creating Snapshot")
+	//fmt.Println("TakeLastSnapshot - Creating Snapshot")
 	// create snapshot
 	res, err := esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
 	if err != nil {
-		fmt.Printf("CreateSnapshot returns error: %v\n", err)
+		d.logger.Error("CreateSnapshot returns error", err)
 		return err
 	}
-	fmt.Printf("TakeLastSnapshot - \n\tSnapshot Response: %v\n", res)
+	d.logger.Debug(fmt.Sprintf("TakeLastSnapshot - \n\tSnapshot Response: %v\n", res))
 	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
 	for {
-		fmt.Println("TakeLastSnapshot - Polling for Snapshot Completion")
+		//fmt.Println("TakeLastSnapshot - Polling for Snapshot Completion")
 		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
 		if err != nil {
-			fmt.Println(err)
+			d.logger.Error("GetSnapShotStatus failed", err)
 			return err
 		}
 		if res != "IN_PROGRESS" {
-			fmt.Printf("TakeLastSnapshot - \nSnapshot finished, response %v\n", res)
+			//fmt.Printf("TakeLastSnapshot - \nSnapshot finished, response %v\n", res)
 			break
 		}
-		fmt.Printf("Snapshot in progress, waiting for %s\n", sleep)
+		//fmt.Printf("Snapshot in progress, waiting for %s\n", sleep)
 		time.Sleep(sleep)
 	}
-	fmt.Println("TakeLastSnapshot - Completed")
+	//fmt.Println("TakeLastSnapshot - Completed")
 	return nil
 }
 
@@ -758,7 +758,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 	resp, err := svc.DeleteElasticsearchDomain(params)
 
 	// Pretty-print the response data.
-	fmt.Printf("CleanupESDomain: \n\t%s\n", awsutil.StringValue(resp))
+	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
 
 	// Decide if AWS service call was successful
 	if success := d.didAwsCallSucceed(err); !success {
@@ -777,11 +777,12 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Instance no longer exists, this is success
 				if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
-					fmt.Println("cleanupElasticSearchDomain - No ES Domain resource found, Deletion is a success")
+					d.logger.Debug("cleanupElasticSearchDomain - No ES Domain resource found, Deletion is a success")
 					return nil
 				}
 				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				d.logger.Error("CleanUpESDomain - svc.DescribeElasticSearchDomain Failed", awsErr)
+				//fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
 				if reqErr, ok := err.(awserr.RequestFailure); ok {
 					// A service error occurred
 					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())

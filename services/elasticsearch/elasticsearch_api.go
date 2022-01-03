@@ -77,40 +77,6 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 	return repo, nil
 }
 
-/* type SnapshotPolicy struct {
-	Schedule   string               `json:"schedule"`
-	Name       string               `json:"name"`
-	Repository string               `json:"repository"`
-	Config     SnapshotPolicyConfig `json:"config"`
-}
-
-type SnapshotPolicyConfig struct {
-	Indices []string `json:"indices"`
-}
-
-func NewSnapshotPolicy(reponame string, policyname string, cron string) *SnapshotPolicy {
-	defcron := "0 0 3 * * *" // nightly at 3am every dow
-	if cron != "" {
-		defcron = cron
-	}
-	sp := &SnapshotPolicy{}
-	sp.Schedule = defcron
-	sp.Name = "<" + policyname + "{now/d}>"
-	sp.Repository = reponame
-	sp.Config.Indices = []string{"*"}
-	return sp
-}
-
-func (sp *SnapshotPolicy) ToString() (string, error) {
-	bytestr, err := json.Marshal(sp)
-	if err != nil {
-		fmt.Print(err)
-		return "", err
-	}
-	policy := string(bytestr)
-	return policy, nil
-} */
-
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
 func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
@@ -141,15 +107,15 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	// Sign the request, send it, and print the response
 	_, err = es.signer.Sign(req, body, es.service, es.region, time.Now())
 	if err != nil {
-		fmt.Println("ESAPI -- Send -- Signing Error:")
-		fmt.Print(err)
+		//fmt.Println("ESAPI -- Send -- Signing Error:")
+		//fmt.Print(err)
 		return result, err
 	}
 	resp, err := es.client.Do(req)
 
 	if err != nil {
-		fmt.Println("ESAPI -- Send -- Do Error:")
-		fmt.Print(err)
+		//fmt.Println("ESAPI -- Send -- Do Error:")
+		//fmt.Print(err)
 		return result, err
 	}
 	defer resp.Body.Close()
@@ -157,7 +123,7 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	if err != nil {
 		fmt.Print(err)
 	}
-	fmt.Printf("ESAPI -- Send -- Result: %v", string(result))
+	//fmt.Printf("ESAPI -- Send -- Result: %v", string(result))
 	return result, err
 }
 
@@ -177,7 +143,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 		fmt.Print(err)
 		return "", err
 	}
-	fmt.Printf("CreateSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
+	//fmt.Printf("CreateSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -188,7 +154,7 @@ func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (st
 	if err != nil {
 		fmt.Printf("es_api createsnapshot error:%v", err)
 	}
-	fmt.Printf("CreateSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
+	//fmt.Printf("CreateSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -198,7 +164,7 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 	if err != nil {
 		fmt.Print(err)
 	}
-	fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
+	//fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -220,6 +186,6 @@ func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) 
 		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v", snapshots)
 		return "FAILED", errors.New("SnapshotStatus returned empty")
 	}
-	fmt.Printf("GetSnapshotSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
+	//fmt.Printf("GetSnapshotSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return snapshots.Snapshots[0].State, nil
 }

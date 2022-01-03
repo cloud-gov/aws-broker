@@ -36,15 +36,18 @@ type elasticsearchBroker struct {
 	brokerDB  *gorm.DB
 	settings  *config.Settings
 	taskqueue *taskqueue.QueueManager
+	logger    lager.Logger
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) base.Broker {
-	return &elasticsearchBroker{brokerDB, settings, taskqueue}
+	logger := lager.NewLogger("aws-es-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	return &elasticsearchBroker{brokerDB, settings, taskqueue, logger}
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, c *catalog.Catalog) (ElasticsearchAdapter, response.Response) {
+func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, c *catalog.Catalog, logger lager.Logger) (ElasticsearchAdapter, response.Response) {
 
 	var elasticsearchAdapter ElasticsearchAdapter
 	if s.Environment == "test" {
@@ -55,6 +58,7 @@ func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, c *ca
 	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
 		Plan:     plan,
 		settings: *s,
+		logger:   logger,
 	}
 	return elasticsearchAdapter, nil
 }
@@ -114,7 +118,7 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -138,8 +142,8 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 }
 
 func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
-	logger := lager.NewLogger("aws-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	// logger := lager.NewLogger("aws-broker")
+	// logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 	esInstance := ElasticsearchInstance{}
 	options := ElasticsearchOptions{}
 	if len(updateRequest.RawParameters) > 0 {
@@ -157,7 +161,7 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	if planErr != nil {
 		return planErr
 	}
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -172,18 +176,18 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	}
 	err := esInstance.update(options)
 	if err != nil {
-		logger.Error("Updating instance failed", err)
+		broker.logger.Error("Updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
-		logger.Error("Saving instance failed", err)
+		broker.logger.Error("Saving instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 
 	_, err = adapter.modifyElasticsearch(&esInstance, esInstance.ClearPassword)
 	if err != nil {
-		logger.Error("AWS call updating instance failed", err)
+		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 	return response.NewAsyncOperationResponse(base.ModifyOp.String())
@@ -203,7 +207,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -218,9 +222,9 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 			jobstate.State = base.InstanceNotGone //indicate a failure
 		}
 		status = jobstate.State
-		fmt.Printf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message)
+		broker.logger.Debug(fmt.Sprintf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message))
 
-	default: //all other ops use synchronous checking
+	default: //all other ops use synchronous checking of aws api
 		status, _ = adapter.checkElasticsearchStatus(&existingInstance)
 		broker.brokerDB.Save(&existingInstance)
 
@@ -243,7 +247,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		state = "in progress"
 	}
 
-	fmt.Printf("LastOperation - Final\n\tstate: %s\n", state)
+	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
@@ -279,7 +283,7 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -324,7 +328,7 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
