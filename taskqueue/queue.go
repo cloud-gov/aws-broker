@@ -28,7 +28,7 @@ type AsyncJobQueueKey struct {
 // QueueManager maintains:
 //	 	A set of channels for active jobs
 // 		A list of job states
-
+// TODO implement jobstates cleanup task
 type QueueManager struct {
 	JobStates    map[AsyncJobQueueKey]AsyncJobState
 	brokerQueues map[AsyncJobQueueKey]chan AsyncJobMsg
@@ -65,7 +65,7 @@ func (q *QueueManager) MsgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueue
 
 // a broker or adapter can request a channel to communicate state of async processes.
 // the queue manager will launch a channel monitor to recieve messages and update the state of that async operation.
-// will return an error if a channel has already been launched.
+// will return an error if a channel has already been launched. Channels must be closed by the recipient after use. 
 func (q *QueueManager) RequestQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   brokerid,
