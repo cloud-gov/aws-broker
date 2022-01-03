@@ -11,6 +11,13 @@ import (
 var mockPolDoc string = `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": ["some:action"],"Resource": ["some:resource"]}]}`
 
 var bucketArn string = "arn:aws-us-gov:s3:::test"
+
+var existStatement PolicyStatementEntry = PolicyStatementEntry{
+	Action:   []string{"some:action"},
+	Effect:   "Allow",
+	Resource: []string{"some:resource"},
+}
+
 var listStatement PolicyStatementEntry = PolicyStatementEntry{
 	Action:   []string{"s3:ListBucket"},
 	Effect:   "Allow",
@@ -152,7 +159,7 @@ func TestUpdateExistingPolicy(t *testing.T) {
 	ip := &IamPolicyHandler{
 		iamsvc: &mockIamClient{},
 	}
-	ps := []PolicyStatementEntry{listStatement, objectStatement}
+	ps := []PolicyStatementEntry{listStatement, existStatement, objectStatement}
 	arn := "arn:aws:iam::123456789012:policy/test-pol"
 	pd, err := ip.UpdateExistingPolicy(arn, ps)
 

@@ -24,6 +24,12 @@ type PolicyStatementEntry struct {
 	Resource []string
 }
 
+func (ps *PolicyStatementEntry) ToString() (string, error) {
+	retbytes, err := json.Marshal(ps)
+	rval := string(retbytes)
+	return rval, err
+}
+
 type IamPolicyHandler struct {
 	iamsvc iamiface.IAMAPI // *iam.IAM interface, doing this allows for test mocking
 }
@@ -42,6 +48,22 @@ func (pd *PolicyDocument) FromString(docstring string) error {
 	}
 	err = json.Unmarshal([]byte(decodedstr), &pd)
 	return err
+}
+
+// adds any policystatemententries that dont already exist in the policydoc
+// uses string comparison
+func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry) {
+	searchkeys := map[string]string{}
+	for _, v := range pd.Statement {
+		key, _ := v.ToString()
+		searchkeys[key] = ""
+	}
+	for _, newpol := range newStatements {
+		key, _ := newpol.ToString()
+		if _, ok := searchkeys[key]; !ok {
+			pd.Statement = append(pd.Statement, newpol)
+		}
+	}
 }
 
 func NewIamPolicyHandler(region string) *IamPolicyHandler {
@@ -247,8 +269,11 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 			}
 		}
 	}
+
 	// now add new statement entries to PolicyDoc
-	policyDoc.Statement = append(policyDoc.Statement, policyStatements...)
+	// policyDoc.Statement = append(policyDoc.Statement, policyStatements...)
+	policyDoc.AddNewStatements(policyStatements)
+
 	// convert PolicyDoc to string and create new policyversion to update policy
 	docstring, err := policyDoc.ToString()
 	if err != nil {
