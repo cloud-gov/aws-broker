@@ -31,7 +31,8 @@ func main() {
 		return
 	}
 
-	Queue := taskqueue.Init()
+	Queue := taskqueue.NewQueueManager()
+	Queue.Init()
 
 	// Try to connect and create the app.
 	if m := App(&settings, DB, Queue); m != nil {

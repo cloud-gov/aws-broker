@@ -177,7 +177,8 @@ func setup() *martini.ClassicMartini {
 	s.Environment = "test"
 	s.MaxAllocatedStorage = 1024
 	brokerDB, _ = db.InternalDBInit(&dbConfig)
-	tq := taskqueue.Init()
+	tq := taskqueue.NewQueueManager()
+	tq.Init()
 
 	m := App(&s, brokerDB, tq)
 

@@ -57,6 +57,9 @@ github.com/codegangsta/inject
 ## explicit
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
+# github.com/go-co-op/gocron v1.11.0
+## explicit
+github.com/go-co-op/gocron
 # github.com/go-martini/martini v0.0.0-20141022080512-c8425257dee9
 ## explicit
 github.com/go-martini/martini
@@ -130,10 +133,15 @@ github.com/onsi/gomega/types
 # github.com/oxtoacart/bpool v0.0.0-20140610012239-0f78ff9152c0
 ## explicit
 github.com/oxtoacart/bpool
+# github.com/robfig/cron/v3 v3.0.1
+github.com/robfig/cron/v3
 # golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
+# golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+golang.org/x/sync/semaphore
+golang.org/x/sync/singleflight
 # golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.0
