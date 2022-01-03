@@ -94,6 +94,9 @@ func TestCleanUpJobState(t *testing.T) {
 		t.Error("BrokerQueue has more than one channel registered!")
 	}
 	close(jobchan)
+	if len(quemgr.jobStates) != 1 {
+		t.Error("Jobstates failed to initialize")
+	}
 	time.Sleep(100 * time.Millisecond)
 	quemgr.cleanupJobStates()
 	if len(quemgr.jobStates) > 0 {
