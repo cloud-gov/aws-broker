@@ -255,7 +255,8 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
 	svc := elasticache.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	params := &elasticache.DeleteReplicationGroupInput{
-		ReplicationGroupId: aws.String(i.ClusterID), // Required
+		ReplicationGroupId:      aws.String(i.ClusterID), // Required
+		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
 	}
 	resp, err := svc.DeleteReplicationGroup(params)
 	// Pretty-print the response data.
@@ -287,3 +288,5 @@ func (d *dedicatedRedisAdapter) didAwsCallSucceed(err error) bool {
 	}
 	return true
 }
+
+func (d *dedicatedRedisAdapter) asyncDeleteRedis()
