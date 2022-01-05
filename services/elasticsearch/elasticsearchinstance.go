@@ -168,7 +168,7 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.SubnetIDAZ2 = plan.SubnetIDAZ2
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
-	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.Uuid
+	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	i.BrokerSnapshotsEnabled = false
 
 	// Tag instance with broker details
