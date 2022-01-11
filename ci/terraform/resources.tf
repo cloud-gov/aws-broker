@@ -10,3 +10,10 @@ data "terraform_remote_state" "vpc" {
     key    = "${var.base_stack}/terraform.tfstate"
   }
 }
+
+provider "aws" {
+  region = var.aws_deploy_region
+  assume_role {
+    role_arn = var.aws_deploy_role_arn
+  }
+}
