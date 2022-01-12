@@ -98,7 +98,7 @@ jobs:
         DB_SHORTHAND_PREFIX: dev
         AUTH_PASS: ((development-auth-pass))
         AUTH_USER: ((development-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((development-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((development-rds-internal-username))
         DB_PASS: ((development-rds-internal-password))
@@ -435,7 +435,7 @@ jobs:
         DB_SHORTHAND_PREFIX: stg
         AUTH_PASS: ((staging-auth-pass))
         AUTH_USER: ((staging-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((staging-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((staging-rds-internal-username))
         DB_PASS: ((staging-rds-internal-password))
@@ -798,7 +798,7 @@ jobs:
         DB_SHORTHAND_PREFIX: prd
         AUTH_PASS: ((prod-auth-pass))
         AUTH_USER: ((prod-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((prod-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((prod-rds-internal-username))
         DB_PASS: ((prod-rds-internal-password))
@@ -1161,7 +1161,7 @@ jobs:
         DB_SHORTHAND_PREFIX: prd
         AUTH_PASS: ((prod-wb-auth-pass))
         AUTH_USER: ((prod-wb-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((prod-wb-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((prod-rds-internal-username))
         DB_PASS: ((prod-rds-internal-password))
@@ -1514,7 +1514,7 @@ jobs:
         DB_SHORTHAND_PREFIX: prd
         AUTH_PASS: ((prod-ea-auth-pass))
         AUTH_USER: ((prod-ea-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((prod-ea-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((prod-rds-internal-username))
         DB_PASS: ((prod-rds-internal-password))
@@ -1864,7 +1864,7 @@ jobs:
         DB_SHORTHAND_PREFIX: prd
         AUTH_PASS: ((prod-wc-auth-pass))
         AUTH_USER: ((prod-wc-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((prod-wc-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((prod-rds-internal-username))
         DB_PASS: ((prod-rds-internal-password))
@@ -2216,7 +2216,7 @@ jobs:
         DB_SHORTHAND_PREFIX: prd
         AUTH_PASS: ((prod-eb-auth-pass))
         AUTH_USER: ((prod-eb-auth-user))
-        AWS_DEFAULT_REGION: us-gov-west-1
+        AWS_DEFAULT_REGION: ((prod-eb-aws-default-region))
         DB_SSLMODE: require
         DB_USER: ((prod-rds-internal-username))
         DB_PASS: ((prod-rds-internal-password))
