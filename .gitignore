@@ -6,5 +6,6 @@ catalog.yml
 ci/credentials.yml
 .DS_Store
 *.swp
-
 .vscode
+
+pipeline-*.yml
