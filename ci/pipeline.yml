@@ -379,7 +379,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m6g.large #db.t2.small staging should be same as all prods
+      TF_VAR_rds_shared_mysql_instance_type: db.m5.large #db.t2.small staging should be same as all prods
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -1432,7 +1432,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m6g.large #db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.m5.large #db.m4.large
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -1782,7 +1782,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m6g.large #db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.m5.large #db.m4.large
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -2122,7 +2122,7 @@ jobs:
       TF_VAR_aws_deploy_region: ((prod-eb-aws-default-region))
       TF_VAR_aws_deploy_role_arn: ((prod-eb-aws-deploy-role-arn))
 
-      TF_VAR_rds_internal_instance_type: db.m6g.large #db.m3.medium
+      TF_VAR_rds_internal_instance_type: db.m5.large #db.m3.medium
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
