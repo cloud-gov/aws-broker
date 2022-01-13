@@ -130,6 +130,16 @@ parser.add_argument(
     required=True,
 )
 
+# we dont need this but have to accept it
+parser.add_argument(
+    "-r", 
+    "--region_name",
+    dest="region_name",
+    type=str,
+    help="The name of the region",
+    default=''
+)
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
