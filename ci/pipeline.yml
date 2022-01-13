@@ -1363,6 +1363,7 @@ jobs:
           CF_SPACE: ((prod-wb-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((prod-wb-aws-default-region))
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
@@ -1374,6 +1375,7 @@ jobs:
           CF_SPACE: ((prod-wb-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((prod-wb-aws-default-region))
 
   on_success:
     put: slack
