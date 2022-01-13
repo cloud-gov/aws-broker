@@ -297,6 +297,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((development-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -636,6 +637,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((staging-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -1000,6 +1002,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -1352,6 +1355,7 @@ jobs:
           CF_SPACE: ((prod-wb-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-wb-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -1707,6 +1711,7 @@ jobs:
           CF_SPACE: ((prod-ea-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-ea-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -2059,6 +2064,7 @@ jobs:
           CF_SPACE: ((prod-wc-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-wc-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -2102,8 +2108,6 @@ jobs:
       channel: ((slack-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
-
-
 
 - name: terraform-plan-aws-broker-eastb
   plan:
@@ -2413,6 +2417,7 @@ jobs:
           CF_SPACE: ((prod-eb-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-eb-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
