@@ -314,7 +314,7 @@ rds:
         displayName: "Dedicated higher workload large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
@@ -347,7 +347,7 @@ rds:
         displayName: "Dedicated redundant higher workload large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
@@ -381,7 +381,7 @@ rds:
         displayName: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
@@ -414,7 +414,7 @@ rds:
         displayName: "Dedicated redundant x-large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
@@ -660,7 +660,7 @@ rds:
         displayName: "Dedicated higher workload large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -692,7 +692,7 @@ rds:
         displayName: "Dedicated redundant higher workload large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -724,7 +724,7 @@ rds:
         displayName: "Dedicated higher workload x-large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -756,7 +756,7 @@ rds:
         displayName: "Dedicated redundant higher workload x-large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
