@@ -13,6 +13,7 @@ rds:
     providerDisplayName: RDS
     documentationUrl: "https://cloud.gov/docs/services/relational-database/"
     supportUrl:
+    shareable: true
   plans:
     - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
       name: "shared-psql"
@@ -848,6 +849,7 @@ redis:
     providerDisplayName: AWS Elasticache Redis
     documentationUrl: "https://cloud.gov/docs/services/aws-elasticache/"
     supportUrl:
+    shareable: true
   plans:
     - id: "475e36bf-387f-44c1-9b81-575fec2ee443"
       name: "redis-dev"
@@ -1015,6 +1017,7 @@ elasticsearch:
     providerDisplayName: aws-elasticsearch
     documentationUrl: "https://cloud.gov/docs/services/aws-elasticsearch/"
     supportUrl:
+    shareable: true
   plans:
   - id: "20567994-6028-4629-9761-92ebd3fc330f"
     name: "es-dev-6.8-migration"
