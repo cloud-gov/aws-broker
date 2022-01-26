@@ -249,7 +249,7 @@ rds:
         displayName: "Dedicated higher workload medium RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
@@ -282,7 +282,7 @@ rds:
         displayName: "Dedicated redundant higher workload medium RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
@@ -597,7 +597,7 @@ rds:
         displayName: "Dedicated higher workload medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -629,7 +629,7 @@ rds:
         displayName: "Dedicated redundant higher workload medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
