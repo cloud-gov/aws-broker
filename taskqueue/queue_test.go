@@ -103,3 +103,50 @@ func TestCleanUpJobState(t *testing.T) {
 		t.Error("Jobstates failed to cleanup")
 	}
 }
+
+func TestScheduleTask(t *testing.T) {
+	quemgr := NewQueueManager()
+	quemgr.scheduler.StartAsync()
+	_, err := quemgr.ScheduleTask("*/1 * * * *", "test", quemgr.cleanupJobStates)
+	if err != nil {
+		t.Error("Test Task could not be schedule", err)
+	}
+	if quemgr.scheduler.Len() != 1 {
+		t.Error("Jobs are not = 1")
+	}
+	quemgr.scheduler.Stop()
+}
+
+func TestUnScheduleTask(t *testing.T) {
+	quemgr := NewQueueManager()
+	quemgr.scheduler.StartAsync()
+	_, err := quemgr.ScheduleTask("*/1 * * * *", "test", quemgr.cleanupJobStates)
+	if err != nil {
+		t.Error("Test Task could not be schedule", err)
+	}
+	if quemgr.scheduler.Len() != 1 {
+		t.Error("Jobs are not = 1")
+	}
+	quemgr.UnScheduleTask("test")
+	if quemgr.scheduler.Len() != 0 {
+		t.Error("Jobs are not = 0")
+	}
+	quemgr.scheduler.Stop()
+}
+
+func TestIsTaskScheduled(t *testing.T) {
+	quemgr := NewQueueManager()
+	quemgr.scheduler.StartAsync()
+	_, err := quemgr.ScheduleTask("*/1 * * * *", "test", quemgr.cleanupJobStates)
+	if err != nil {
+		t.Error("Test Task could not be schedule", err)
+	}
+	if quemgr.scheduler.Len() != 1 {
+		t.Error("Jobs are not = 1")
+	}
+	if !quemgr.IsTaskScheduled("test") {
+		t.Error("could not fine test job")
+	}
+	quemgr.scheduler.Stop()
+
+}
