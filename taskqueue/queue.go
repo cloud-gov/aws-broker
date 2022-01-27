@@ -133,7 +133,7 @@ func (q *QueueManager) cleanupJobStates() {
 // the queue manager will launch a channel monitor to recieve messages and update the state of that async operation.
 // will return an error if a channel has already been launched. Channels must be closed by the recipient after use.
 // job state will be persisted and retained for a period of time before being cleaned up.
-func (q *QueueManager) RequestQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
+func (q *QueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
@@ -151,7 +151,7 @@ func (q *QueueManager) RequestQueue(brokerid string, instanceid string, operatio
 // a broker or adapter can query the state of a job, will return an error if there is no known state.
 // jobstates get cleaned-up automatically after a period of time after the chan is closed
 // we cant do clean up here because state means different things to different brokers
-func (q *QueueManager) GetJobState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error) {
+func (q *QueueManager) GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,

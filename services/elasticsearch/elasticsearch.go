@@ -386,7 +386,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 		return base.InstanceNotGone, err
 	}
 	// perform async deletion and return in progress
-	jobchan, err := queue.RequestQueue(i.ServiceID, i.Uuid, base.DeleteOp)
+	jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.DeleteOp)
 	if err == nil {
 		go d.asyncDeleteElasticSearchDomain(i, password, jobchan)
 	}

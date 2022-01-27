@@ -22,7 +22,7 @@ var testAsyncJobKey AsyncJobQueueKey = AsyncJobQueueKey{
 func TestRequestJobQueue(t *testing.T) {
 	quemgr := NewQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
-	jobchan, err := quemgr.RequestQueue(brokerid, instanceid, jobop)
+	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
@@ -48,7 +48,7 @@ func TestRequestJobQueue(t *testing.T) {
 func TestGetJobState(t *testing.T) {
 	quemgr := NewQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
-	jobchan, err := quemgr.RequestQueue(brokerid, instanceid, jobop)
+	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
@@ -65,7 +65,7 @@ func TestGetJobState(t *testing.T) {
 		t.Error("BrokerQueue has more than one channel registered!")
 	}
 	close(jobchan)
-	state, err := quemgr.GetJobState(brokerid, instanceid, jobop)
+	state, err := quemgr.GetTaskState(brokerid, instanceid, jobop)
 	if err != nil {
 		t.Errorf("RequestJobState failed! %v", err)
 	}
@@ -77,7 +77,7 @@ func TestGetJobState(t *testing.T) {
 func TestCleanUpJobState(t *testing.T) {
 	quemgr := NewQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
-	jobchan, err := quemgr.RequestQueue(brokerid, instanceid, jobop)
+	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
