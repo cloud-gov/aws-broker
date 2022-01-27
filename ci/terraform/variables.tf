@@ -7,6 +7,14 @@ variable "stack_description" {
 variable "remote_state_bucket" {
 }
 
+variable "aws_deploy_region"{
+
+}
+
+variable "aws_deploy_role_arn"{
+    
+}
+
 variable "rds_internal_instance_type" {
 }
 

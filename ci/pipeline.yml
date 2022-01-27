@@ -21,11 +21,14 @@ jobs:
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((development-stack-name))
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
-      AWS_DEFAULT_REGION: ((development-aws-default-region))
-
+      AWS_DEFAULT_REGION: us-gov-west-1
+      
       TF_VAR_base_stack: ((development-stack-base))
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
+
+      TF_VAR_aws_deploy_region: ((development-aws-default-region))
+      TF_VAR_aws_deploy_role_arn: ((development-aws-deploy-role-arn))
 
       TF_VAR_rds_internal_instance_type: db.t3.micro
       TF_VAR_rds_internal_db_size: 10
@@ -39,7 +42,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.t2.small
+      TF_VAR_rds_shared_mysql_instance_type: db.t3.small
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -77,7 +80,7 @@ jobs:
     params:
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
       BASE_STACK_NAME: ((development-stack-base))
-      AWS_DEFAULT_REGION: ((development-aws-default-region))
+      AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((development-environment))
       RDS_SHARED_MYSQL_NAME: ((development-rds-shared-mysql-db-name))
@@ -296,6 +299,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((development-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -307,6 +311,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
@@ -318,6 +323,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
   on_success:
     put: slack
     params:
@@ -357,13 +363,16 @@ jobs:
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((staging-stack-name))
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
-      AWS_DEFAULT_REGION: ((staging-aws-default-region))
-
+      AWS_DEFAULT_REGION: us-gov-west-1
+      
       TF_VAR_base_stack: ((staging-stack-base))
       TF_VAR_stack_description: ((staging-stack-name))
       TF_VAR_remote_state_bucket: ((staging-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: db.t3.micro
+      TF_VAR_aws_deploy_region: ((staging-aws-default-region))
+      TF_VAR_aws_deploy_role_arn: ((staging-aws-deploy-role-arn))
+
+      TF_VAR_rds_internal_instance_type: ((prod-pgsql-instance-class))
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
@@ -375,7 +384,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.t2.small
+      TF_VAR_rds_shared_mysql_instance_type: ((prod-mysql-instance-class))
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -387,7 +396,7 @@ jobs:
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
       TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
+      TF_VAR_rds_shared_postgres_instance_type: ((prod-pgsql-instance-class))
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((staging-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
@@ -411,7 +420,7 @@ jobs:
     params:
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
       BASE_STACK_NAME: ((staging-stack-base))
-      AWS_DEFAULT_REGION: ((staging-aws-default-region))
+      AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((staging-environment))
       RDS_SHARED_MYSQL_NAME: ((staging-rds-shared-mysql-db-name))
@@ -630,6 +639,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((staging-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -641,6 +651,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((staging-aws-default-region))
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
@@ -652,6 +663,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((staging-aws-default-region))
   on_success:
     put: slack
     params:
@@ -691,17 +703,20 @@ jobs:
       TEMPLATE_SUBDIR: ci/terraform
       STACK_NAME: ((prod-stack-name))
       S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
-      AWS_DEFAULT_REGION: ((prod-aws-default-region))
+      AWS_DEFAULT_REGION: us-gov-west-1
 
       TF_VAR_base_stack: ((prod-stack-base))
       TF_VAR_stack_description: ((prod-stack-name))
       TF_VAR_remote_state_bucket: ((prod-s3-tfstate-bucket))
 
-      TF_VAR_rds_internal_instance_type: db.m3.medium
+      TF_VAR_aws_deploy_region: ((prod-aws-default-region))
+      TF_VAR_aws_deploy_role_arn: ((prod-aws-deploy-role-arn))
+
+      TF_VAR_rds_internal_instance_type: db.m3.medium #needs upgrade to new instance type 
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.5
+      TF_VAR_rds_internal_db_engine_version: 9.5 # needs upgrade by feb 16, 2022
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
       TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
@@ -709,7 +724,7 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.m4.large
+      TF_VAR_rds_shared_mysql_instance_type: db.m4.large #needs upgrade to new instance type 
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
@@ -721,17 +736,25 @@ jobs:
       TF_VAR_rds_shared_mysql_apply_immediately: "true"
       TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large
+      TF_VAR_rds_shared_postgres_instance_type: db.m4.large #needs upgrade to new instance type 
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5
+      TF_VAR_rds_shared_postgres_db_engine_version: 9.5 # needs upgrade by feb 16, 2022
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
       TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
+  - put: slack
+    params:
+      text:  |
+        :terraform: $BUILD_JOB_NAME needs review
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: ((slack-channel))
+      username: ((slack-username))
+      icon_url: ((slack-icon-url))
 
 - name: deploy-aws-broker-prod
   plan:
@@ -763,7 +786,7 @@ jobs:
     params:
       S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
       BASE_STACK_NAME: ((prod-stack-base))
-      AWS_DEFAULT_REGION: ((prod-aws-default-region))
+      AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((prod-environment))
       RDS_SHARED_MYSQL_NAME: ((prod-rds-shared-mysql-db-name))
@@ -981,6 +1004,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-aws-default-region))
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
@@ -992,6 +1016,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((prod-aws-default-region))
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
@@ -1003,6 +1028,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticsearch
           SERVICE_PLAN: es-dev
+          REGION: ((prod-aws-default-region))
 
   on_success:
     put: slack
@@ -1022,7 +1048,7 @@ jobs:
       channel: ((slack-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
-
+      
 resources:
 - name: pipeline-tasks
   type: git

@@ -13,6 +13,7 @@ rds:
     providerDisplayName: RDS
     documentationUrl: "https://cloud.gov/docs/services/relational-database/"
     supportUrl:
+    shareable: true
   plans:
     - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
       name: "shared-psql"
@@ -52,8 +53,11 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 10
-      minVersion: "10"
-      maxVersion: "12"
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -86,6 +90,7 @@ rds:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -118,6 +123,7 @@ rds:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -150,6 +156,7 @@ rds:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -182,6 +189,7 @@ rds:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -214,6 +222,7 @@ rds:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -240,12 +249,13 @@ rds:
         displayName: "Dedicated higher workload medium RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -272,12 +282,13 @@ rds:
         displayName: "Dedicated redundant higher workload medium RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -304,12 +315,13 @@ rds:
         displayName: "Dedicated higher workload large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -336,12 +348,13 @@ rds:
         displayName: "Dedicated redundant higher workload large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -369,12 +382,13 @@ rds:
         displayName: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -401,12 +415,13 @@ rds:
         displayName: "Dedicated redundant x-large RDS PostgreSQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
         - "11"
         - "12"
+      dbVersion: "12"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -460,6 +475,7 @@ rds:
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -522,6 +538,7 @@ rds:
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -553,6 +570,7 @@ rds:
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -579,11 +597,12 @@ rds:
         displayName: "Dedicated higher workload medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -610,11 +629,12 @@ rds:
         displayName: "Dedicated redundant higher workload medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -641,11 +661,12 @@ rds:
         displayName: "Dedicated higher workload large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -672,11 +693,12 @@ rds:
         displayName: "Dedicated redundant higher workload large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.large
+      instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -703,11 +725,12 @@ rds:
         displayName: "Dedicated higher workload x-large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -734,11 +757,12 @@ rds:
         displayName: "Dedicated redundant higher workload x-large RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.m4.xlarge
+      instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
         - "8.0"
+      dbVersion: "8.0"
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -825,6 +849,7 @@ redis:
     providerDisplayName: AWS Elasticache Redis
     documentationUrl: "https://cloud.gov/docs/services/aws-elasticache/"
     supportUrl:
+    shareable: true
   plans:
     - id: "475e36bf-387f-44c1-9b81-575fec2ee443"
       name: "redis-dev"
@@ -992,6 +1017,7 @@ elasticsearch:
     providerDisplayName: aws-elasticsearch
     documentationUrl: "https://cloud.gov/docs/services/aws-elasticsearch/"
     supportUrl:
+    shareable: true
   plans:
   - id: "20567994-6028-4629-9761-92ebd3fc330f"
     name: "es-dev-6.8-migration"
@@ -1010,7 +1036,7 @@ elasticsearch:
     free: false
     elasticsearchVersion: 6.8
     dataCount: 1
-    instanceType: t2.small.elasticsearch
+    instanceType: t3.small.elasticsearch
     volumeSize: 15
     volumeType: gp2
     encryptAtRest: false
