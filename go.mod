@@ -22,5 +22,5 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20140610012239-0f78ff9152c0 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v8 v8.8.2-0.20151128010209-43f534e6552e
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.2.8
 )
