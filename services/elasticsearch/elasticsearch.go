@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/taskqueue"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -16,10 +17,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cloudfoundry-community/s3-broker/awsiam"
-	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/iampolicy"
 
 	"fmt"
 )
@@ -29,7 +30,7 @@ type ElasticsearchAdapter interface {
 	modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *taskqueue.QueueManager) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -55,12 +56,12 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials(password)
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
 
-type sharedElasticsearchAdapter struct {
+/* type sharedElasticsearchAdapter struct {
 	SharedElasticsearchConn *gorm.DB
 }
 
@@ -74,11 +75,12 @@ func (d *sharedElasticsearchAdapter) bindDBToApp(i *ElasticsearchInstance, passw
 
 func (d *sharedElasticsearchAdapter) deleteRedis(i *ElasticsearchInstance) (base.InstanceState, error) {
 	return base.InstanceGone, nil
-}
+} */
 
 type dedicatedElasticsearchAdapter struct {
 	Plan     catalog.ElasticsearchPlan
 	settings config.Settings
+	logger   lager.Logger
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -255,6 +257,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		if !d.didAwsCallSucceed(err) {
 			return base.InstanceNotCreated, nil
 		}
+		// try setup of roles and policies on create
+		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		if err != nil {
+			return base.InstanceNotCreated, nil
+		}
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
@@ -333,211 +340,60 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	}
 
-	if len(i.Bucket) > 0 {
-		iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	// add broker snapshot bucket and create roles and policies if it hasnt been done.
+	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 
-		assumeRolePolicy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		roleInput := &iam.CreateRoleInput{
-			AssumeRolePolicyDocument: aws.String(assumeRolePolicy),
-			RoleName:                 aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
-		resp, err := iamsvc.CreateRole(roleInput)
+		err := d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
 			return nil, err
 		}
-		if resp.Role.Arn != nil {
-			i.SnapshotARN = *(resp.Role.Arn)
-			fmt.Println(i.getCredentials(password))
-		}
-		// Policy to for ES to passRole
-		s3Policy := `{"Version": "2012-10-17","Statement": [{"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]},{"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}]}`
-		rolePolicyInput := &iam.CreatePolicyInput{
-			PolicyName:     aws.String(i.Domain + "-to-S3-RolePolicy"),
-			PolicyDocument: aws.String(s3Policy),
-		}
+		i.BrokerSnapshotsEnabled = true
+	}
 
-		respPolicy, err := iamsvc.CreatePolicy(rolePolicyInput)
+	// add client bucket and adjust policies and roles if present
+	if i.Bucket != "" {
+		err := d.createUpdateBucketRolesAndPolicies(i, i.Bucket, "")
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
 			return nil, err
-		}
-		if respPolicy.Policy.Arn != nil && resp.Role.RoleName != nil {
-			i.SnapshotPolicyARN = *(respPolicy.Policy.Arn)
-			roleAttachPolicyInput := &iam.AttachRolePolicyInput{
-				PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
-				RoleName:  aws.String(*(resp.Role.RoleName)),
-			}
-
-			respAttachPolicy, err := iamsvc.AttachRolePolicy(roleAttachPolicyInput)
-			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					// Generic AWS error with Code, Message, and original error (if any)
-					fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-					if reqErr, ok := err.(awserr.RequestFailure); ok {
-						// A service error occurred
-						fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-					}
-				} else {
-					// This case should never be hit, the SDK should always return an
-					// error which satisfies the awserr.Error interface.
-					fmt.Println(err.Error())
-				}
-				return nil, err
-			}
-			fmt.Println(awsutil.StringValue(respAttachPolicy))
-		}
-
-		esPermissionPolicy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
-
-		rolePolicyInput = &iam.CreatePolicyInput{
-			PolicyName:     aws.String(i.Domain + "-to-S3-ESRolePolicy"),
-			PolicyDocument: aws.String(esPermissionPolicy),
-		}
-
-		respPolicy, err = iamsvc.CreatePolicy(rolePolicyInput)
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
-			return nil, err
-		}
-		fmt.Println(awsutil.StringValue(respPolicy))
-		if respPolicy.Policy.Arn != nil {
-			i.IamPassRolePolicyARN = *(respPolicy.Policy.Arn)
-			userAttachPolicyInput := &iam.AttachUserPolicyInput{
-				PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
-				UserName:  aws.String(i.Domain),
-			}
-			_, err := iamsvc.AttachUserPolicy(userAttachPolicyInput)
-			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					// Generic AWS error with Code, Message, and original error (if any)
-					fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-					if reqErr, ok := err.(awserr.RequestFailure); ok {
-						// A service error occurred
-						fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-					}
-				} else {
-					// This case should never be hit, the SDK should always return an
-					// error which satisfies the awserr.Error interface.
-					fmt.Println(err.Error())
-				}
-				return nil, err
-			}
 		}
 	}
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
+// we make the deletion async, set status to in-progress and rollup to return a 202
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
+	//check for backing resource and do async otherwise remove from db
 	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-	logger := lager.NewLogger("aws-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
-	user := awsiam.NewIAMUser(iamsvc, logger)
-
-	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
-		return base.InstanceNotGone, err
-	}
-
-	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
-		return base.InstanceNotGone, err
-	}
-
-	if len(i.Bucket) > 0 {
-		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		roleDetachPolicyInput := &iam.DetachRolePolicyInput{
-			PolicyArn: aws.String(i.SnapshotPolicyARN),
-			RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
-
-		if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		rolePolicyDeleteInput := &iam.DeleteRoleInput{
-			RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
-
-		if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-
-		if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return base.InstanceNotGone, err
-		}
-	}
-
-	if err := user.Delete(i.Domain); err != nil {
-		fmt.Println(err.Error())
-		return base.InstanceNotGone, err
-	}
-
-	if err := user.DeletePolicy(i.IamPolicyARN); err != nil {
-		fmt.Println(err.Error())
-		return base.InstanceNotGone, err
-	}
-
-	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
+	params := &elasticsearchservice.DescribeElasticsearchDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	resp, err := svc.DeleteElasticsearchDomain(params)
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
-
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		return base.InstanceGone, nil
+	_, err := svc.DescribeElasticsearchDomain(params)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			// Generic AWS error with Code, Message, and original error (if any)
+			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+			if reqErr, ok := err.(awserr.RequestFailure); ok {
+				// A service error occurred
+				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+			}
+			// Instance no longer exists, force a removal from brokerdb
+			if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+				d.logger.Debug("DeleteES - No backing resource found, returning InstanceGone")
+				return base.InstanceGone, err
+			}
+		}
+		return base.InstanceNotGone, err
 	}
-	return base.InstanceNotGone, nil
+	// perform async deletion and return in progress
+	jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.DeleteOp)
+	if err == nil {
+		go d.asyncDeleteElasticSearchDomain(i, password, jobchan)
+	}
+	return base.InstanceInProgress, nil
 }
 
+// this should only be called in relation to async create, modify or delete operations polling for completion
 func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
 	// First, we need to check if the instance state
 	// Only search for details if the instance was not indicated as ready.
@@ -583,6 +439,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	}
 
 	return base.InstanceNotCreated, nil
+
 }
 
 func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
@@ -603,4 +460,335 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 		return false
 	}
 	return true
+}
+
+// utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
+func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
+
+	creds, err := i.getCredentials(password)
+	if err != nil {
+		d.logger.Error("createSnapshotRepo.getCredentials failed", err)
+		return err
+	}
+	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
+	esApi := &EsApiHandler{}
+	esApi.Init(creds, region)
+
+	// create snapshot repo
+	resp, err := esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
+	if err != nil {
+		d.logger.Error("createsnapshotrepo returns error", err)
+		return err
+	}
+	d.logger.Debug(fmt.Sprintf("createSnapshotRepo returns response:\n %v\n", resp))
+	return nil
+}
+
+// utility to create roles and policies to enable snapshots in an s3 bucket
+// we pass bucket-name separately to enable reuse for client and broker buckets
+func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
+	d.logger.Debug(fmt.Sprintf("createUpdateBucketRolesAndPolcies -- bucket: %s path: %s\n", bucket, path))
+	ip := iampolicy.NewIamPolicyHandler(d.settings.Region)
+	var snapshotRole *iam.Role
+
+	// create snapshotrole if not done yet
+	if i.SnapshotARN == "" {
+		rolename := i.Domain + "-to-s3-SnapshotRole"
+		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
+		arole, err := ip.CreateAssumeRole(policy, rolename)
+		if err != nil {
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
+			return err
+		}
+		i.SnapshotARN = *arole.Arn
+		snapshotRole = arole
+
+	}
+
+	// create PassRolePolicy if DNE
+	if i.IamPassRolePolicyARN == "" {
+		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
+		policyname := i.Domain + "-to-S3-ESRolePolicy"
+		username := i.Domain
+		policyarn, err := ip.CreateUserPolicy(policy, policyname, username)
+		if err != nil {
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", err)
+			return err
+		}
+		i.IamPassRolePolicyARN = policyarn
+	}
+
+	// Create PolicyDoc Statements
+	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
+	bucketArn := "arn:aws-us-gov:s3:::" + bucket
+	listStatement := iampolicy.PolicyStatementEntry{
+		Action:   []string{"s3:ListBucket"},
+		Effect:   "Allow",
+		Resource: []string{bucketArn},
+	}
+	// add wildcard for any path including empty one
+	// using path will now limit access to the specific path provided
+	path += "/*"
+	// Looks like: {"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}
+	objectStatement := iampolicy.PolicyStatementEntry{
+		Action:   []string{"s3:GetObject", "s3:PutObject", "s3:DeleteObject"},
+		Effect:   "Allow",
+		Resource: []string{bucketArn + path},
+	}
+
+	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
+	if i.SnapshotPolicyARN == "" {
+
+		policyDoc := iampolicy.PolicyDocument{
+			Version:   "2012-10-17",
+			Statement: []iampolicy.PolicyStatementEntry{listStatement, objectStatement},
+		}
+
+		policyname := i.Domain + "-to-S3-RolePolicy"
+		policy, err := policyDoc.ToString()
+		if err != nil {
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", err)
+			return err
+		}
+		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole)
+		if err != nil {
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", err)
+			return err
+		}
+		i.SnapshotPolicyARN = policyarn
+
+	} else {
+		//snaphostpolicy has already be created so we need to add the new statements for this new bucket
+		//to the existing policy version.
+		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
+		if err != nil {
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
+			return err
+		}
+
+	}
+	return nil
+}
+
+// state is persisted in the taskqueue for LastOperations polling.
+func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan taskqueue.AsyncJobMsg) {
+	//fmt.Printf("\nAsyncDeleteESDomain -- Started\n")
+	defer close(jobstate)
+
+	msg := taskqueue.AsyncJobMsg{
+		BrokerId:   i.ServiceID,
+		InstanceId: i.Uuid,
+		JobType:    base.DeleteOp,
+		JobState:   taskqueue.AsyncJobState{},
+	}
+	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Started for Service Instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceInProgress
+	jobstate <- msg
+
+	//fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Started\n")
+	err := d.takeLastSnapshot(i, password)
+	if err != nil {
+		desc := fmt.Sprintf("asyncDelete - \n\t takeLastSnapshot returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
+		return
+	}
+
+	//fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Completed\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Started\n")
+	err = d.cleanupRolesAndPolicies(i)
+	if err != nil {
+		desc := fmt.Sprintf("asyncDelete - \n\t cleanupRolesAndPolicies returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
+		return
+	}
+	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Completed\n")
+	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupElasticSearchDomain Started\n")
+	err = d.cleanupElasticSearchDomain(i)
+	if err != nil {
+		desc := fmt.Sprintf("asyncDelete - \n\t cleanupElasticSearchDomain returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
+		return
+	}
+
+	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Completed for Service Instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceGone
+	jobstate <- msg
+	//fmt.Printf("\nAsyncDeleteESDomain -- Completed\n")
+}
+
+// in which we make the ES API call to take a snapshot
+// then poll for snapshot completetion, may block for a considerable time
+func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
+
+	var sleep = 10 * time.Second
+	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
+	//fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
+	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
+		fmt.Println("TakeLastSnapshot - Creating Policies and Repo ")
+
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		if err != nil {
+			d.logger.Error("TakeLastSnapshot - Error in createUpdateRolesAndPolicies", err)
+			return err
+		}
+		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
+		if err != nil {
+			d.logger.Error("TakeLastSnapshot - Error in createSnapshotRepo", err)
+			return err
+		}
+		i.BrokerSnapshotsEnabled = true
+	}
+	// exec snapshot request
+	creds, err := i.getCredentials(password)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
+	esApi := &EsApiHandler{}
+	esApi.Init(creds, d.settings.Region)
+	//fmt.Println("TakeLastSnapshot - Creating Snapshot")
+	// create snapshot
+	res, err := esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
+	if err != nil {
+		d.logger.Error("CreateSnapshot returns error", err)
+		return err
+	}
+	d.logger.Debug(fmt.Sprintf("TakeLastSnapshot - \n\tSnapshot Response: %v\n", res))
+	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
+	for {
+		//fmt.Println("TakeLastSnapshot - Polling for Snapshot Completion")
+		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
+		if err != nil {
+			d.logger.Error("GetSnapShotStatus failed", err)
+			return err
+		}
+		if res != "IN_PROGRESS" {
+			//fmt.Printf("TakeLastSnapshot - \nSnapshot finished, response %v\n", res)
+			break
+		}
+		//fmt.Printf("Snapshot in progress, waiting for %s\n", sleep)
+		time.Sleep(sleep)
+	}
+	//fmt.Println("TakeLastSnapshot - Completed")
+	return nil
+}
+
+//in which we clean up all the roles and policies for the ES domain
+func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
+	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	logger := lager.NewLogger("aws-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	user := awsiam.NewIAMUser(iamsvc, logger)
+
+	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if i.BrokerSnapshotsEnabled || i.Bucket != "" {
+		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		roleDetachPolicyInput := &iam.DetachRolePolicyInput{
+			PolicyArn: aws.String(i.SnapshotPolicyARN),
+			RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+
+		if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		rolePolicyDeleteInput := &iam.DeleteRoleInput{
+			RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
+		}
+
+		if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+	}
+
+	if err := user.Delete(i.Domain); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if err := user.DeletePolicy(i.IamPolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	return nil
+}
+
+// in which we finally delete the ES Domain and wait for it to complete
+func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *ElasticsearchInstance) error {
+	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
+		DomainName: aws.String(i.Domain), // Required
+	}
+	resp, err := svc.DeleteElasticsearchDomain(params)
+
+	// Pretty-print the response data.
+	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
+
+	// Decide if AWS service call was successful
+	if success := d.didAwsCallSucceed(err); !success {
+		return err
+	}
+	// now we poll for completion
+	for {
+		time.Sleep(time.Minute)
+		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+			DomainName: aws.String(i.Domain), // Required
+		}
+
+		_, err := svc.DescribeElasticsearchDomain(params)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Instance no longer exists, this is success
+				if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+					d.logger.Debug("cleanupElasticSearchDomain - No ES Domain resource found, Deletion is a success")
+					return nil
+				}
+				// Generic AWS error with Code, Message, and original error (if any)
+				d.logger.Error("CleanUpESDomain - svc.DescribeElasticSearchDomain Failed", awsErr)
+				//fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			}
+			return err
+		}
+	}
 }

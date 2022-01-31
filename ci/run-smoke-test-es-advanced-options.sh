@@ -11,6 +11,7 @@ set -euxo pipefail
 # $CF_SPACE
 # $SERVICE_NAME - ie. aws-rds, aws-elasticache-redis
 # $SERVICE_PLAN - ie. micro-psql, small-mysql, redis-dev
+# $REGION -- which region service is running in (for ES)
 
 # Computed vars
 TEST_APP="smoke-test-adv-$SERVICE_PLAN-app"
@@ -82,7 +83,7 @@ done
 cf restage $TEST_APP
 
 # Run task
-cf run-task $TEST_APP "python run.py -s $TEST_SERVICE"
+cf run-task $TEST_APP "python run.py -s $TEST_SERVICE -r $REGION"
 
 # Get finished task state with app guid
 test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
@@ -110,7 +111,7 @@ done
 cf restage $TEST_APP
 
 # Run task
-cf run-task $TEST_APP "python run.py -s $TEST_SERVICE"
+cf run-task $TEST_APP "python run.py -s $TEST_SERVICE -r $REGION"
 
 # Get finished task state with app guid
 test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")

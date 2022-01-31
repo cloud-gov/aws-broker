@@ -8,7 +8,7 @@ from requests_aws4auth import AWS4Auth
 
 # Service constants
 SERVICE = "es"
-REGION = "us-gov-west-1"
+#REGION = "us-gov-west-1"
 
 # Small example document to load
 INDEX = "movies"
@@ -43,7 +43,7 @@ def get_es_credentials(service_name):
     return service.credentials
 
 
-def create_client(service_name):
+def create_client(service_name, region_name) :
     """
     Create an elasticsearch client from the service name
     """
@@ -53,7 +53,7 @@ def create_client(service_name):
     access_key = credentials["access_key"]
     secret_key = credentials["secret_key"]
 
-    aws_auth = AWS4Auth(access_key, secret_key, REGION, SERVICE)
+    aws_auth = AWS4Auth(access_key, secret_key, region_name, SERVICE)
 
     client = Elasticsearch(
         hosts=[{"host": host, "port": 443}],
@@ -67,8 +67,8 @@ def create_client(service_name):
 
 
 class ESSmokeTester:
-    def __init__(self, service_name):
-        self.client = create_client(service_name)
+    def __init__(self, service_name, region_name):
+        self.client = create_client(service_name, region_name)
         self.sample_index_options = {
             "index": INDEX,
             "doc_type": DOC_TYPE,
@@ -130,11 +130,21 @@ parser.add_argument(
     required=True,
 )
 
+parser.add_argument(
+    "-r", 
+    "--region_name",
+    dest="region_name",
+    type=str,
+    help="The name of the region",
+    default='us-gov-west-1'
+)
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
     service_name = args.service_name
-    tester = ESSmokeTester(service_name)
+    region_name = args.region_name
+    tester = ESSmokeTester(service_name, region_name)
     results = tester.run()
     isExpected = tester.test_expected(results)
 

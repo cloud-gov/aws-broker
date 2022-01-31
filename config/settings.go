@@ -3,10 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/18F/aws-broker/common"
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/18F/aws-broker/common"
 )
 
 // Settings stores settings used to run the application
@@ -20,6 +21,9 @@ type Settings struct {
 	Region                    string
 	PubliclyAccessibleFeature bool
 	EnableFunctionsFeature    bool
+	SnapshotsBucketName       string
+	SnapshotsRepoName         string
+	LastSnapshotName          string
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -103,5 +107,19 @@ func (s *Settings) LoadFromEnv() error {
 		s.EnableFunctionsFeature = false
 	}
 
+	// set the bucketname created by TF, empty string is ok.
+	// broker will check for nil and skip snaphot config
+	s.SnapshotsBucketName = os.Getenv("S3_SNAPSHOT_BUCKET")
+
+	// look for snapshot repository name
+	s.SnapshotsRepoName = os.Getenv("SNAPSHOTS_REPO_NAME")
+	if s.SnapshotsRepoName == "" {
+		s.SnapshotsRepoName = "cg-archive"
+	}
+
+	s.LastSnapshotName = os.Getenv("LAST_SNAPSHOT_NAME")
+	if s.LastSnapshotName == "" {
+		s.LastSnapshotName = "cg-last-snapshot"
+	}
 	return nil
 }

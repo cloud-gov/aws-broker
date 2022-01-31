@@ -81,6 +81,22 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 	return &rdsBroker{brokerDB, settings}
 }
 
+// this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
+func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
+	switch o {
+	case base.DeleteOp:
+		return false
+	case base.CreateOp:
+		return true
+	case base.ModifyOp:
+		return true
+	case base.BindOp:
+		return false
+	default:
+		return false
+	}
+}
+
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := RDSInstance{}
 
@@ -273,7 +289,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
 	existingInstance := RDSInstance{}
 
 	var count int64
