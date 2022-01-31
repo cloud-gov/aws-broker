@@ -113,3 +113,6 @@ variable "rds_shared_postgres_apply_immediately" {
 
 variable "rds_shared_postgres_allow_major_version_upgrade" {
 }
+
+variable "s3_snapshots_bucket_name_prefix" {
+}

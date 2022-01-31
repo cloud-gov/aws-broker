@@ -66,6 +66,8 @@ jobs:
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
+      TF_VAR_s3_snapshots_bucket_name_prefix: ((development-s3-snapshots-bucket-prefix))
+
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
@@ -406,6 +408,8 @@ jobs:
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
+      TF_VAR_s3_snapshots_bucket_name_prefix: ((staging-s3-snapshots-bucket-prefix))
+      
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
     params:
@@ -745,6 +749,9 @@ jobs:
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
+
+      TF_VAR_s3_snapshots_bucket_name_prefix: ((prod-s3-snapshots-bucket-prefix)) 
+
   - put: slack
     params:
       text:  |

@@ -31,6 +31,22 @@ func InitRedisBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
 	return &redisBroker{brokerDB, settings}
 }
 
+// this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
+func (broker *redisBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
+	switch o {
+	case base.DeleteOp:
+		return false
+	case base.CreateOp:
+		return true
+	case base.ModifyOp:
+		return false
+	case base.BindOp:
+		return false
+	default:
+		return false
+	}
+}
+
 // initializeAdapter is the main function to create database instances
 func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Catalog) (redisAdapter, response.Response) {
 
@@ -115,7 +131,7 @@ func (broker *redisBroker) ModifyInstance(c *catalog.Catalog, id string, updateR
 	return response.NewErrorResponse(http.StatusBadRequest, "Updating Redis service instances is not supported at this time.")
 }
 
-func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
 	existingInstance := RedisInstance{}
 
 	var count int64

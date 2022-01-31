@@ -12,6 +12,7 @@ import (
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/db"
+	"github.com/18F/aws-broker/taskqueue"
 )
 
 func main() {
@@ -30,8 +31,11 @@ func main() {
 		return
 	}
 
+	Queue := taskqueue.NewQueueManager()
+	Queue.Init()
+
 	// Try to connect and create the app.
-	if m := App(&settings, DB); m != nil {
+	if m := App(&settings, DB, Queue); m != nil {
 		log.Println("Starting app...")
 		m.Run()
 	} else {
@@ -40,7 +44,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
+func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.QueueManager) *martini.ClassicMartini {
 
 	m := martini.Classic()
 
@@ -52,6 +56,7 @@ func App(settings *config.Settings, DB *gorm.DB) *martini.ClassicMartini {
 
 	m.Map(DB)
 	m.Map(settings)
+	m.Map(TaskQueue)
 
 	path, _ := os.Getwd()
 	m.Map(catalog.InitCatalog(path))

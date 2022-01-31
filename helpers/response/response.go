@@ -26,6 +26,11 @@ type genericResponse struct {
 	Description string `json:"description"`
 }
 
+type asyncOperationResponse struct {
+	baseResponse
+	Operation string `json:"operation"`
+}
+
 type lastOperationResponse struct {
 	baseResponse
 	State       string `json:"state"`
@@ -56,7 +61,7 @@ func NewErrorResponse(statusCode int, description string) Response {
 	return &genericResponse{baseResponse: baseResponse{StatusCode: statusCode, StatusType: ErrorResponseType}, Description: description}
 }
 
-// NewSuccessResponse is the constructor for an errorResponse.
+// NewSuccessResponse is the constructor for an SuccessResponse.
 func newSuccessResponse(statusCode int, responseType Type, description string) Response {
 	return &genericResponse{baseResponse: baseResponse{StatusCode: statusCode, StatusType: responseType}, Description: description}
 }
@@ -88,7 +93,13 @@ var (
 	// SuccessCreateResponse represents the response that all successful instance creations should return.
 	SuccessCreateResponse = newSuccessResponse(http.StatusCreated, SuccessCreateResponseType, "The instance was created")
 	// SuccessAcceptedResponse represents the response that all successful instance acceptions should return.
-	SuccessAcceptedResponse = newSuccessResponse(http.StatusAccepted, SuccessAcceptedResponseType, "The instance was accepted")
+	SuccessAcceptedResponse = newSuccessResponse(http.StatusAccepted, SuccessAcceptedResponseType, "The operation was accepted")
 	// SuccessDeleteResponse represents the response that all successful instance deletions should return.
 	SuccessDeleteResponse = newSuccessResponse(http.StatusOK, SuccessDeleteResponseType, "The instance was deleted")
 )
+
+// If a broker has an async operation ( create, modify, delete, bind) and wants to return an "operation" they should use this
+// Otherwise they can return SuccessAcceptedResponse
+func NewAsyncOperationResponse(operation string) Response {
+	return &asyncOperationResponse{baseResponse: baseResponse{StatusCode: http.StatusAccepted, StatusType: SuccessAcceptedResponseType}, Operation: operation}
+}

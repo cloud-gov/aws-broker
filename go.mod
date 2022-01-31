@@ -8,6 +8,7 @@ require (
 	github.com/cloudfoundry-community/s3-broker v0.0.0-20190927200449-d04d3419c943
 	github.com/codegangsta/inject v0.0.0-20140630231407-4b8172520a03 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e // indirect
+	github.com/go-co-op/gocron v1.11.0
 	github.com/go-martini/martini v0.0.0-20141022080512-c8425257dee9
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/jinzhu/gorm v1.9.16
