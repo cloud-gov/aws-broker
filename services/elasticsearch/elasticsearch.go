@@ -1,6 +1,8 @@
 package elasticsearch
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"log"
 	"os"
@@ -15,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticsearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cloudfoundry-community/s3-broker/awsiam"
 
@@ -596,6 +599,16 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		return
 	}
 
+	err = d.writeManifestToS3(i)
+	if err != nil {
+		desc := fmt.Sprintf("asyncDelete - \n\t writeManifestToS3 returned error: %v\n", err)
+		fmt.Println(desc)
+		msg.JobState.State = base.InstanceNotGone
+		msg.JobState.Message = desc
+		jobstate <- msg
+		return
+	}
+
 	//fmt.Printf("\nAsyncDeleteESDomain -- TakeLastSnapShot Completed\n")
 	//fmt.Printf("\nAsyncDeleteESDomain -- cleanupRolesAndPolicies Started\n")
 	err = d.cleanupRolesAndPolicies(i)
@@ -791,4 +804,31 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 			return err
 		}
 	}
+}
+
+// in which we Marshall the instance into Json and dump to a manifest file in the snapshot bucket
+// so to provide machine readable information for restoration.
+func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstance) error {
+	//  marshall instance to bytes.
+	data, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(data)
+	// put json blob into object in s3
+	svc := s3.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	input := s3.PutObjectInput{
+		Body:                 body,
+		Bucket:               aws.String(d.settings.SnapshotsBucketName),
+		Key:                  aws.String(i.SnapshotPath + "/instance_manifest.json"),
+		ServerSideEncryption: aws.String("AES256"),
+	}
+	d.logger.Debug(input.GoString())
+	resp, err := svc.PutObject(&input)
+	// Decide if AWS service call was successful
+	d.logger.Debug(resp.GoString())
+	if success := d.didAwsCallSucceed(err); !success {
+		return err
+	}
+	return nil
 }
