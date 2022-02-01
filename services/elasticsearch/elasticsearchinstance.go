@@ -19,8 +19,8 @@ import (
 type ElasticsearchInstance struct {
 	base.Instance
 
-	Description string `sql:"size(255)"`
-
+	Description                    string `sql:"size(255)"`
+	Name                           string `sql:"-"` // we wont store this only set and use at delete
 	Password                       string `sql:"size(255)"`
 	Salt                           string `sql:"size(255)"`
 	AccessKey                      string `sql:"size(255)"`

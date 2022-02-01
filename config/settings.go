@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -24,6 +25,13 @@ type Settings struct {
 	SnapshotsBucketName       string
 	SnapshotsRepoName         string
 	LastSnapshotName          string
+	CfUser                    string
+	CfPass                    string
+	CfApiUrl                  string
+}
+
+type vcap struct {
+	CfApiUrl string `json:"cf_api"`
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -121,5 +129,14 @@ func (s *Settings) LoadFromEnv() error {
 	if s.LastSnapshotName == "" {
 		s.LastSnapshotName = "cg-last-snapshot"
 	}
+
+	// variables for connecting to cf api
+	s.CfUser = os.Getenv("AUTH_USER")
+	s.CfPass = os.Getenv("AUTH_PASS")
+
+	v := vcap{}
+	json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &v)
+	s.CfApiUrl = v.CfApiUrl
+
 	return nil
 }

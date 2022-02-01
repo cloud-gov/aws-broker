@@ -15,6 +15,8 @@ import (
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
 	"github.com/18F/aws-broker/taskqueue"
+
+	"github.com/cloudfoundry-community/go-cfclient"
 )
 
 type ElasticsearchAdvancedOptions struct {
@@ -332,6 +334,22 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 	if adapterErr != nil {
 		return adapterErr
 	}
+
+	// all this to retrieve the service instance name before delete
+	cfConfig := &cfclient.Config{
+		ApiAddress: broker.settings.CfApiUrl,
+		Username:   broker.settings.CfUser,
+		Password:   broker.settings.CfPass,
+	}
+	cfClient, cfErr := cfclient.NewClient(cfConfig)
+	if cfErr != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf api client.")
+	}
+	cfServiceInstance, cfErr := cfClient.GetServiceInstanceByGuid(existingInstance.Uuid)
+	if cfErr != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf service instance by guid.")
+	}
+	existingInstance.Name = cfServiceInstance.Name
 
 	// send async deletion request.
 	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.taskqueue)

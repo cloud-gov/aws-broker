@@ -1,11 +1,16 @@
+# code.cloudfoundry.org/gofileutils v0.0.0-20170111115228-4d0c80011a0f
+code.cloudfoundry.org/gofileutils/fileutils
 # code.cloudfoundry.org/lager v2.0.0+incompatible
 ## explicit
 code.cloudfoundry.org/lager
 code.cloudfoundry.org/lager/lagerctx
 code.cloudfoundry.org/lager/lagertest
-# github.com/aws/aws-sdk-go v1.30.4
+# github.com/Masterminds/semver v1.4.2
+github.com/Masterminds/semver
+# github.com/aws/aws-sdk-go v1.42.44
 ## explicit
 github.com/aws/aws-sdk-go/aws
+github.com/aws/aws-sdk-go/aws/arn
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
 github.com/aws/aws-sdk-go/aws/client
@@ -15,6 +20,7 @@ github.com/aws/aws-sdk-go/aws/credentials
 github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
 github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
 github.com/aws/aws-sdk-go/aws/credentials/processcreds
+github.com/aws/aws-sdk-go/aws/credentials/ssocreds
 github.com/aws/aws-sdk-go/aws/credentials/stscreds
 github.com/aws/aws-sdk-go/aws/csm
 github.com/aws/aws-sdk-go/aws/defaults
@@ -25,6 +31,9 @@ github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/aws/signer/v4
 github.com/aws/aws-sdk-go/internal/context
 github.com/aws/aws-sdk-go/internal/ini
+github.com/aws/aws-sdk-go/internal/s3shared
+github.com/aws/aws-sdk-go/internal/s3shared/arn
+github.com/aws/aws-sdk-go/internal/s3shared/s3err
 github.com/aws/aws-sdk-go/internal/sdkio
 github.com/aws/aws-sdk-go/internal/sdkmath
 github.com/aws/aws-sdk-go/internal/sdkrand
@@ -32,26 +41,35 @@ github.com/aws/aws-sdk-go/internal/sdkuri
 github.com/aws/aws-sdk-go/internal/shareddefaults
 github.com/aws/aws-sdk-go/internal/strings
 github.com/aws/aws-sdk-go/internal/sync/singleflight
+github.com/aws/aws-sdk-go/private/checksum
 github.com/aws/aws-sdk-go/private/protocol
+github.com/aws/aws-sdk-go/private/protocol/eventstream
+github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
 github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
 github.com/aws/aws-sdk-go/private/protocol/jsonrpc
 github.com/aws/aws-sdk-go/private/protocol/query
 github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/restjson
+github.com/aws/aws-sdk-go/private/protocol/restxml
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/service/elasticache
 github.com/aws/aws-sdk-go/service/elasticsearchservice
 github.com/aws/aws-sdk-go/service/iam
 github.com/aws/aws-sdk-go/service/iam/iamiface
 github.com/aws/aws-sdk-go/service/rds
+github.com/aws/aws-sdk-go/service/s3
+github.com/aws/aws-sdk-go/service/sso
+github.com/aws/aws-sdk-go/service/sso/ssoiface
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
+# github.com/cloudfoundry-community/go-cfclient v0.0.0-20220111154238-f50d0fa052b3
+## explicit
+github.com/cloudfoundry-community/go-cfclient
 # github.com/cloudfoundry-community/s3-broker v0.0.0-20190927200449-d04d3419c943
 ## explicit
 github.com/cloudfoundry-community/s3-broker/awsiam
-# github.com/codegangsta/inject v0.0.0-20140630231407-4b8172520a03
-## explicit
+# github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0
 github.com/codegangsta/inject
 # github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e
 ## explicit
@@ -60,12 +78,14 @@ github.com/fsnotify/fsnotify
 # github.com/go-co-op/gocron v1.11.0
 ## explicit
 github.com/go-co-op/gocron
-# github.com/go-martini/martini v0.0.0-20141022080512-c8425257dee9
+# github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 ## explicit
 github.com/go-martini/martini
 # github.com/go-sql-driver/mysql v1.5.0
 ## explicit
 github.com/go-sql-driver/mysql
+# github.com/golang/protobuf v1.2.0
+github.com/golang/protobuf/proto
 # github.com/jinzhu/gorm v1.9.16
 ## explicit
 github.com/jinzhu/gorm
@@ -73,7 +93,7 @@ github.com/jinzhu/gorm
 github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.1
 ## explicit
-# github.com/jmespath/go-jmespath v0.3.0
+# github.com/jmespath/go-jmespath v0.4.0
 github.com/jmespath/go-jmespath
 # github.com/lib/pq v1.1.1
 ## explicit
@@ -83,7 +103,7 @@ github.com/lib/pq/scram
 # github.com/martini-contrib/auth v0.0.0-20150219114609-fa62c19b7ae8
 ## explicit
 github.com/martini-contrib/auth
-# github.com/martini-contrib/render v0.0.0-20140708150504-b65063311fac
+# github.com/martini-contrib/render v0.0.0-20150707142108-ec18f8345a11
 ## explicit
 github.com/martini-contrib/render
 # github.com/mattn/go-sqlite3 v1.14.0
@@ -130,21 +150,29 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/oxtoacart/bpool v0.0.0-20140610012239-0f78ff9152c0
-## explicit
+# github.com/oxtoacart/bpool v0.0.0-20150712133111-4e1c5567d7c2
 github.com/oxtoacart/bpool
+# github.com/pkg/errors v0.9.1
+github.com/pkg/errors
 # github.com/robfig/cron/v3 v3.0.1
 github.com/robfig/cron/v3
-# golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+# golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
+golang.org/x/net/context
+golang.org/x/net/context/ctxhttp
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
+# golang.org/x/oauth2 v0.0.0-20190130055435-99b60b757ec1
+golang.org/x/oauth2
+golang.org/x/oauth2/clientcredentials
+golang.org/x/oauth2/internal
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
+# golang.org/x/sys v0.0.0-20210423082822-04245dca01da
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.0
+# golang.org/x/text v0.3.6
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
@@ -155,6 +183,8 @@ golang.org/x/text/encoding/korean
 golang.org/x/text/encoding/simplifiedchinese
 golang.org/x/text/encoding/traditionalchinese
 golang.org/x/text/encoding/unicode
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
 golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
@@ -163,6 +193,14 @@ golang.org/x/text/transform
 # golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
+# google.golang.org/appengine v1.4.0
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/remote_api
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/urlfetch
 # gopkg.in/go-playground/assert.v1 v1.2.1
 ## explicit
 # gopkg.in/go-playground/validator.v8 v8.8.2-0.20151128010209-43f534e6552e
@@ -170,6 +208,6 @@ golang.org/x/xerrors/internal
 gopkg.in/go-playground/validator.v8
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.2.4
+# gopkg.in/yaml.v2 v2.2.8
 ## explicit
 gopkg.in/yaml.v2
