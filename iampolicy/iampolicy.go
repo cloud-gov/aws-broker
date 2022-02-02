@@ -134,7 +134,7 @@ func (ip *IamPolicyHandler) CreateUserPolicy(policy string, policyname string, u
 		return IamRolePolicyARN, err
 	}
 
-	fmt.Println(awsutil.StringValue(respPolicy))
+	fmt.Println(awsutil.Prettify(respPolicy))
 
 	if respPolicy.Policy.Arn != nil {
 		IamRolePolicyARN = *(respPolicy.Policy.Arn)
@@ -209,7 +209,7 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 			}
 			return policyarn, err
 		}
-		fmt.Println(awsutil.StringValue(respAttachPolicy))
+		fmt.Println(awsutil.Prettify(respAttachPolicy))
 	}
 	return policyarn, nil
 }

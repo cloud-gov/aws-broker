@@ -212,6 +212,7 @@ func (i *IAMUser) DeletePolicy(policyARN string) error {
 	listPolicyVersionsOutput, err := i.iamsvc.ListPolicyVersions(&iam.ListPolicyVersionsInput{
 		PolicyArn: aws.String(policyARN),
 	})
+	i.logger.Debug("delete-policy", lager.Data{"listVersions": listPolicyVersionsOutput})
 	if err != nil {
 		i.logger.Error("aws-iam-error", err)
 		if awsErr, ok := err.(awserr.Error); ok {
@@ -221,6 +222,7 @@ func (i *IAMUser) DeletePolicy(policyARN string) error {
 	}
 	for _, version := range listPolicyVersionsOutput.Versions {
 		if !(*version.IsDefaultVersion) {
+			i.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
 			_, err := i.iamsvc.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
 				VersionId: version.VersionId,
 				PolicyArn: aws.String(policyARN),
