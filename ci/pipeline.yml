@@ -96,6 +96,9 @@ jobs:
       path: built
       current_app_name: aws-broker
       environment_variables:
+        CF_API_URL: ((development-cf-api-url))
+        CF_USERNAME: ((development-cf-deploy-username))
+        CF_PASSWORD: ((development-cf-deploy-password))
         DB_PREFIX: ((development-db-name-prefix))
         DB_SHORTHAND_PREFIX: dev
         AUTH_PASS: ((development-auth-pass))
