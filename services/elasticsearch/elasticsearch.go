@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticsearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -841,20 +840,14 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 	body := bytes.NewReader(data)
 
 	// assumerole to write to s3
-	instanceCreds, err := i.getCredentials(password)
-	if err != nil {
-		d.logger.Error("writeManifesttoS3.getCredentials failed", err)
-		return err
-	}
+	// instanceCreds, err := i.getCredentials(password)
+	// if err != nil {
+	// 	d.logger.Error("writeManifesttoS3.getCredentials failed", err)
+	// 	return err
+	// }
 	session, err := session.NewSession(&aws.Config{
 		Region: aws.String(d.settings.Region),
-		Credentials: credentials.NewStaticCredentials(
-			instanceCreds["access_key"],
-			instanceCreds["scret_key"],
-			"",
-		),
 	})
-
 	if err != nil {
 		d.logger.Error("writeManifesttoS3.NewSession failed", err)
 		return err
