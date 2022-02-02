@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -335,22 +334,22 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 	}
 
 	//all this to retrieve the service instance name before delete
-	cfConfig := &cfclient.Config{
-		ApiAddress: broker.settings.CfApiUrl,
-		Username:   broker.settings.CfUser,
-		Password:   broker.settings.CfPass,
-	}
-	broker.logger.Debug(fmt.Sprintf("%#v", cfConfig))
-	cfClient, cfErr := cfclient.NewClient(cfConfig)
-	if cfErr != nil {
-		broker.logger.Error(cfErr.Error(), err)
-		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf api client.")
-	}
-	cfServiceInstance, cfErr := cfClient.GetServiceInstanceByGuid(existingInstance.Uuid)
-	if cfErr != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf service instance by guid.")
-	}
-	existingInstance.Name = cfServiceInstance.Name
+	// cfConfig := &cfclient.Config{
+	// 	ApiAddress: broker.settings.CfApiUrl,
+	// 	Username:   broker.settings.CfUser,
+	// 	Password:   broker.settings.CfPass,
+	// }
+	// broker.logger.Debug(fmt.Sprintf("%#v", cfConfig))
+	// cfClient, cfErr := cfclient.NewClient(cfConfig)
+	// if cfErr != nil {
+	// 	broker.logger.Error(cfErr.Error(), err)
+	// 	return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf api client.")
+	// }
+	// cfServiceInstance, cfErr := cfClient.GetServiceInstanceByGuid(existingInstance.Uuid)
+	// if cfErr != nil {
+	// 	return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf service instance by guid.")
+	// }
+	// existingInstance.Name = cfServiceInstance.Name
 
 	// send async deletion request.
 	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.taskqueue)

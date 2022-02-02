@@ -126,9 +126,9 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	// variables for connecting to cf api
-	s.CfUser = os.Getenv("CF_USERNAME")
-	s.CfPass = os.Getenv("CF_PASSWORD")
-	s.CfApiUrl = os.Getenv("CF_API_URL")
+	// s.CfUser = os.Getenv("CF_USERNAME")
+	// s.CfPass = os.Getenv("CF_PASSWORD")
+	// s.CfApiUrl = os.Getenv("CF_API_URL")
 
 	return nil
 }
