@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -52,7 +53,8 @@ func (pd *PolicyDocument) FromString(docstring string) error {
 
 // adds any policystatemententries that dont already exist in the policydoc
 // uses string comparison
-func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry) {
+func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry) bool {
+	var modified bool = false
 	searchkeys := map[string]string{}
 	for _, v := range pd.Statement {
 		key, _ := v.ToString()
@@ -62,8 +64,10 @@ func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry)
 		key, _ := newpol.ToString()
 		if _, ok := searchkeys[key]; !ok {
 			pd.Statement = append(pd.Statement, newpol)
+			modified = true
 		}
 	}
+	return modified
 }
 
 func NewIamPolicyHandler(region string) *IamPolicyHandler {
@@ -270,40 +274,81 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 		}
 	}
 
-	// now add new statement entries to PolicyDoc
-	// policyDoc.Statement = append(policyDoc.Statement, policyStatements...)
-	policyDoc.AddNewStatements(policyStatements)
+	// now try to add any new statements entries to PolicyDoc
+	// if we succeed then create new policy version
+	if policyDoc.AddNewStatements(policyStatements) {
 
-	// convert PolicyDoc to string and create new policyversion to update policy
-	docstring, err := policyDoc.ToString()
-	if err != nil {
-		return respPolVer, err
-	}
-	policyUpdatedVersion := &iam.CreatePolicyVersionInput{
-		PolicyArn:      aws.String(policyARN),
-		PolicyDocument: aws.String(docstring),
-		SetAsDefault:   aws.Bool(true),
-	}
-	resp, err := ip.iamsvc.CreatePolicyVersion(policyUpdatedVersion)
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
-		} else {
-			// This case should never be hit, the SDK should always return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
+		// convert PolicyDoc to string and create new policyversion to update policy
+		docstring, err := policyDoc.ToString()
+		if err != nil {
+			return respPolVer, err
 		}
-		fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v", policyUpdatedVersion)
-		return respPolVer, err
+		policyUpdatedVersion := &iam.CreatePolicyVersionInput{
+			PolicyArn:      aws.String(policyARN),
+			PolicyDocument: aws.String(docstring),
+			SetAsDefault:   aws.Bool(true),
+		}
+
+		err = ip.trimPolicyVersions(policyARN, 5)
+		if err != nil {
+			return respPolVer, err
+		}
+
+		resp, err := ip.iamsvc.CreatePolicyVersion(policyUpdatedVersion)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				// Generic AWS error with Code, Message, and original error (if any)
+				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+				if reqErr, ok := err.(awserr.RequestFailure); ok {
+					// A service error occurred
+					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+				}
+			} else {
+				// This case should never be hit, the SDK should always return an
+				// error which satisfies the awserr.Error interface.
+				fmt.Println(err.Error())
+			}
+			fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v", policyUpdatedVersion)
+			return respPolVer, err
+		}
+		if resp.PolicyVersion != nil {
+			respPolVer = resp.PolicyVersion
+		}
+		fmt.Printf("UpdateExistingPolicy Success with: %v", respPolVer)
 	}
-	if resp.PolicyVersion != nil {
-		respPolVer = resp.PolicyVersion
-	}
-	fmt.Printf("UpdateExistingPolicy Success with: %v", respPolVer)
+
 	return respPolVer, nil
+}
+
+// we make sure we have space to create a new version by deleting the oldest.
+func (ip IamPolicyHandler) trimPolicyVersions(policyARN string, maxVersions int) error {
+	input := &iam.ListPolicyVersionsInput{
+		PolicyArn: &policyARN,
+	}
+
+	resPolVers, err := ip.iamsvc.ListPolicyVersions(input)
+	if err != nil {
+		return err
+	}
+
+	// check if we have the max versions allowed then remove the earliest
+	if len(resPolVers.Versions) >= maxVersions {
+		sort.Slice(resPolVers.Versions, func(i, j int) bool {
+			return *(resPolVers.Versions[i].VersionId) < *(resPolVers.Versions[j].VersionId)
+		})
+		for i := 0; i <= len(resPolVers.Versions)-maxVersions+1; i++ {
+			version := resPolVers.Versions[i]
+			if !*(version.IsDefaultVersion) {
+				input := &iam.DeletePolicyVersionInput{
+					PolicyArn: &policyARN,
+					VersionId: version.VersionId,
+				}
+				_, err := ip.iamsvc.DeletePolicyVersion(input)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
