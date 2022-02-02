@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticsearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -449,7 +450,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	}
 
 	return base.InstanceNotCreated, nil
-
 }
 
 func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
@@ -606,7 +606,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		return
 	}
 
-	err = d.writeManifestToS3(i)
+	err = d.writeManifestToS3(i, password)
 	if err != nil {
 		desc := fmt.Sprintf("asyncDelete - \n\t writeManifestToS3 returned error: %v\n", err)
 		fmt.Println(desc)
@@ -832,15 +832,36 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 
 // in which we Marshall the instance into Json and dump to a manifest file in the snapshot bucket
 // so to provide machine readable information for restoration.
-func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstance) error {
+func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstance, password string) error {
 	//  marshall instance to bytes.
 	data, err := json.Marshal(i)
 	if err != nil {
 		return err
 	}
 	body := bytes.NewReader(data)
+
+	// assumerole to write to s3
+	instanceCreds, err := i.getCredentials(password)
+	if err != nil {
+		d.logger.Error("writeManifesttoS3.getCredentials failed", err)
+		return err
+	}
+	session, err := session.NewSession(&aws.Config{
+		Region: aws.String(d.settings.Region),
+		Credentials: credentials.NewStaticCredentials(
+			instanceCreds["access_key"],
+			instanceCreds["scret_key"],
+			"",
+		),
+	})
+
+	if err != nil {
+		d.logger.Error("writeManifesttoS3.NewSession failed", err)
+		return err
+	}
+
 	// put json blob into object in s3
-	svc := s3.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	svc := s3.New(session)
 	input := s3.PutObjectInput{
 		Body:                 body,
 		Bucket:               aws.String(d.settings.SnapshotsBucketName),
@@ -852,6 +873,7 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 	// Decide if AWS service call was successful
 	d.logger.Debug(resp.GoString())
 	if success := d.didAwsCallSucceed(err); !success {
+		d.logger.Error("writeManifesttoS3.PutObject Failed", err)
 		return err
 	}
 	return nil
