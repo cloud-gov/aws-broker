@@ -301,6 +301,18 @@ jobs:
           SERVICE_PLAN: redis-dev
           REGION: ((development-aws-default-region))
 
+      - task: smoke-tests-unbound-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
         params:
