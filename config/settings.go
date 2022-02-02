@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -28,10 +27,6 @@ type Settings struct {
 	CfUser                    string
 	CfPass                    string
 	CfApiUrl                  string
-}
-
-type vcap struct {
-	CfApiUrl string `json:"cf_api"`
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -131,12 +126,9 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	// variables for connecting to cf api
-	s.CfUser = os.Getenv("AUTH_USER")
-	s.CfPass = os.Getenv("AUTH_PASS")
-
-	v := vcap{}
-	json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &v)
-	s.CfApiUrl = v.CfApiUrl
+	s.CfUser = os.Getenv("CF_USERNAME")
+	s.CfPass = os.Getenv("CF_PASSWORD")
+	s.CfApiUrl = os.Getenv("CF_API_URL")
 
 	return nil
 }
