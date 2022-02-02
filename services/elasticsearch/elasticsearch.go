@@ -346,8 +346,15 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	// add broker snapshot bucket and create roles and policies if it hasnt been done.
 	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 
-		err := d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
+			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+			return nil, err
+		}
+
+		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
+		if err != nil {
+			d.logger.Error("bindElasticsearchToApp - Error in createSnapshotRepo", err)
 			return nil, err
 		}
 		i.BrokerSnapshotsEnabled = true
@@ -643,29 +650,46 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
 
 	var sleep = 10 * time.Second
-	// catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
-	//fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
-	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
-		fmt.Println("TakeLastSnapshot - Creating Policies and Repo ")
+	var creds map[string]string
+	var err error
+	// check if instance was never bound and thus never set host...
+	if i.Host == "" {
+		creds, err = d.bindElasticsearchToApp(i, password)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	} else {
+		creds, err = i.getCredentials(password)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+	// // catch legacy domains that dont have snapshotbucket configured yet and create the iam policies and repo
+	// //fmt.Printf("TakeLastSnapshot - \n\tbucketname: %s\n\tbrokersnapshot enabled: %v\n", d.settings.SnapshotsBucketName, i.BrokerSnapshotsEnabled)
+	// if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
+	// 	fmt.Println("TakeLastSnapshot - Creating Policies and Repo ")
 
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
-		if err != nil {
-			d.logger.Error("TakeLastSnapshot - Error in createUpdateRolesAndPolicies", err)
-			return err
-		}
-		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
-		if err != nil {
-			d.logger.Error("TakeLastSnapshot - Error in createSnapshotRepo", err)
-			return err
-		}
-		i.BrokerSnapshotsEnabled = true
-	}
+	// 	err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+	// 	if err != nil {
+	// 		d.logger.Error("TakeLastSnapshot - Error in createUpdateRolesAndPolicies", err)
+	// 		return err
+	// 	}
+	// 	err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
+	// 	if err != nil {
+	// 		d.logger.Error("TakeLastSnapshot - Error in createSnapshotRepo", err)
+	// 		return err
+	// 	}
+	// 	i.BrokerSnapshotsEnabled = true
+	// }
 	// exec snapshot request
-	creds, err := i.getCredentials(password)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
+	// creds, err := i.getCredentials(password)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return err
+	// }
+
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi := &EsApiHandler{}
 	esApi.Init(creds, d.settings.Region)
