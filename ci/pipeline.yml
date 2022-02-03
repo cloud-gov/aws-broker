@@ -27,7 +27,7 @@ jobs:
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
 
-      TF_VAR_aws_deploy_region: ((development-aws-default-region))
+      TF_VAR_aws_deploy_region: ((development-aws-default-region)) 
       TF_VAR_aws_deploy_role_arn: ((development-aws-deploy-role-arn))
 
       TF_VAR_rds_internal_instance_type: db.t3.micro
@@ -66,7 +66,7 @@ jobs:
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
-      TF_VAR_s3_snapshots_bucket_name_prefix: ((development-s3-snapshots-bucket-prefix))
+      TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
 
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
