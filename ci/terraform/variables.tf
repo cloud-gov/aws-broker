@@ -15,6 +15,10 @@ variable "aws_deploy_role_arn"{
     
 }
 
+variable "platform_access_role_arn"{
+    
+}
+
 variable "rds_internal_instance_type" {
 }
 

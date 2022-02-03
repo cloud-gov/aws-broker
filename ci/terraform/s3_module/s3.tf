@@ -1,7 +1,39 @@
+
+resource "random_string" "suffix"{
+  length = 8
+  special = false
+  number = true
+  lower = true
+}
+
+locals{
+  bucket_name = "${var.base_stack}-${var.s3_bucket-suffix}-${random_string.suffix}"
+}
+
+data "aws_iam_policy_document" "bucket_policy" {
+  statement {
+    principals {
+      type        = "AWS"
+      identifiers = [var.access_role_arn]
+    }
+
+    actions = [
+      "s3:ListBucket",
+      "s3:PubObject",
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${local.bucket_name}",
+      "arn:aws:s3:::${local.bucket_name}/*",
+    ]
+  }
+}
+
 module "aws_s3_bucket"{
   source = "terraform-aws-modules/s3-bucket/aws"
   version = "2.8.0"
-  bucket_prefix = var.s3_bucket_prefix
+  bucket = locals.bucket_name
   acl    = var.s3_acl
   
   versioning = {
@@ -37,6 +69,9 @@ module "aws_s3_bucket"{
   tags= {
     Name = var.stack_description
   }
+
+  attach_policy = true
+  policy = data.aws_iam_policy_document.bucket_policy.json
 
 }
 

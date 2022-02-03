@@ -1,7 +1,11 @@
 variable "stack_description"{
 }
 
-variable "s3_bucket_prefix"{
+variable "s3_bucket_suffix"{
+}
+
+variable "access_role_arn"{
+
 }
 
 variable "s3_acl" {
