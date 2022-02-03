@@ -16,7 +16,7 @@ variable "aws_deploy_role_arn"{
 }
 
 variable "platform_access_role_arn"{
-    
+
 }
 
 variable "rds_internal_instance_type" {
@@ -116,7 +116,4 @@ variable "rds_shared_postgres_apply_immediately" {
 }
 
 variable "rds_shared_postgres_allow_major_version_upgrade" {
-}
-
-variable "s3_snapshots_bucket_name_prefix" {
 }
