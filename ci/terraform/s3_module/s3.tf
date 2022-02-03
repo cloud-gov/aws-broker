@@ -6,8 +6,8 @@ resource "random_string" "suffix"{
   lower = true
 }
 
-locals{
-  bucket_name = "${var.base_stack}-${var.s3_bucket-suffix}-${random_string.suffix}"
+locals {
+  bucket_name = "${var.base_stack}-${var.s3_bucket_suffix}-${random_string.suffix}"
 }
 
 data "aws_iam_policy_document" "bucket_policy" {
@@ -33,7 +33,7 @@ data "aws_iam_policy_document" "bucket_policy" {
 module "aws_s3_bucket"{
   source = "terraform-aws-modules/s3-bucket/aws"
   version = "2.8.0"
-  bucket = locals.bucket_name
+  bucket = local.bucket_name
   acl    = var.s3_acl
   
   versioning = {
