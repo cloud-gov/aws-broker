@@ -4,6 +4,7 @@ resource "random_string" "suffix"{
   special = false
   number = true
   lower = true
+  upper = false
 }
 
 locals {
