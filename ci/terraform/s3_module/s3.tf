@@ -7,7 +7,7 @@ resource "random_string" "suffix"{
 }
 
 locals {
-  bucket_name = "${var.base_stack}-${var.s3_bucket_suffix}-${random_string.suffix}"
+  bucket_name = "${var.base_stack}-${var.s3_bucket_suffix}-${random_string.suffix.id}"
 }
 
 data "aws_iam_policy_document" "bucket_policy" {
