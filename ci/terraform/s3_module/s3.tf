@@ -20,13 +20,13 @@ data "aws_iam_policy_document" "bucket_policy" {
 
     actions = [
       "s3:ListBucket",
-      "s3:PubObject",
+      "s3:PutObject",
       "s3:GetObject"
     ]
 
     resources = [
       "arn:aws:s3:::${local.bucket_name}",
-      "arn:aws:s3:::${local.bucket_name}/*",
+      "arn:aws:s3:::${local.bucket_name}/*"
     ]
   }
 }
