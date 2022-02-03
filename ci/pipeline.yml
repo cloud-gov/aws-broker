@@ -420,7 +420,7 @@ jobs:
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
-      TF_VAR_s3_snapshots_bucket_name_prefix: ((staging-s3-snapshots-bucket-prefix))
+      TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
       
   - task: init-shared-db
     file: aws-broker-app/ci/init-shared-db.yml
@@ -655,6 +655,18 @@ jobs:
           SERVICE_PLAN: redis-dev
           REGION: ((staging-aws-default-region))
 
+      - task: smoke-tests-unbound-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((staging-aws-default-region))
+
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
         params:
@@ -762,7 +774,7 @@ jobs:
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
-      TF_VAR_s3_snapshots_bucket_name_prefix: ((prod-s3-snapshots-bucket-prefix)) 
+      TF_VAR_platform_access_role_arn: ((prod-platform-role-arn))
 
   - put: slack
     params:
@@ -1021,6 +1033,18 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_NAME: aws-elasticache-redis
           SERVICE_PLAN: redis-dev
+          REGION: ((prod-aws-default-region))
+
+      - task: smoke-tests-unbound-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
           REGION: ((prod-aws-default-region))
 
       - task: smoke-tests-elasticsearch
