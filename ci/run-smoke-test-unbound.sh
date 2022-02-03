@@ -29,31 +29,15 @@ wait_for_service_instance() {
   done
 }
 
-# Function for getting task state
-get_task_state() {
-  local app_guid=$1
-  local task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
-
-  while [ "$task_state" != "FAILED" ] && [ "$task_state" != "SUCCEEDED" ]; do
-    sleep 15
-    task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
-  done
-
-  # If task FAILED exit with error
-  if [[ "$task_state" == "FAILED" ]]; then
-    echo "Smoke test failed."
-    echo "Check '$> cf logs $TEST_APP --recent' for more info."
-    exit 1
-  fi
-
-  echo "$task_state"
-}
 
 # Log into CF
 cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORGANIZATION" -s "$CF_SPACE"
 
 # Clean up existing app and service if present
 cf delete-service -f $TEST_SERVICE
+
+# Wait for service to be created
+wait_for_service_instance $TEST_SERVICE
 
 # Create service
 cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE
