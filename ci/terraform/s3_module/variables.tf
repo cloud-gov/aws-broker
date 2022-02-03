@@ -8,6 +8,10 @@ variable "access_role_arn"{
 
 }
 
+variable "base_stack"{
+
+}
+
 variable "s3_acl" {
   default = "private"
 }
