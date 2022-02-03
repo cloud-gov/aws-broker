@@ -27,7 +27,7 @@ jobs:
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
 
-      TF_VAR_aws_deploy_region: ((development-aws-default-region)) 
+      TF_VAR_aws_deploy_region: ((development-aws-default-region))
       TF_VAR_aws_deploy_role_arn: ((development-aws-deploy-role-arn))
 
       TF_VAR_rds_internal_instance_type: db.t3.micro
