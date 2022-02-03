@@ -333,24 +333,6 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		return adapterErr
 	}
 
-	//all this to retrieve the service instance name before delete
-	// cfConfig := &cfclient.Config{
-	// 	ApiAddress: broker.settings.CfApiUrl,
-	// 	Username:   broker.settings.CfUser,
-	// 	Password:   broker.settings.CfPass,
-	// }
-	// broker.logger.Debug(fmt.Sprintf("%#v", cfConfig))
-	// cfClient, cfErr := cfclient.NewClient(cfConfig)
-	// if cfErr != nil {
-	// 	broker.logger.Error(cfErr.Error(), err)
-	// 	return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf api client.")
-	// }
-	// cfServiceInstance, cfErr := cfClient.GetServiceInstanceByGuid(existingInstance.Uuid)
-	// if cfErr != nil {
-	// 	return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get cf service instance by guid.")
-	// }
-	// existingInstance.Name = cfServiceInstance.Name
-
 	// send async deletion request.
 	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.taskqueue)
 	switch status {
@@ -370,17 +352,5 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		broker.brokerDB.Save(&existingInstance)
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-	// if status != base.InstanceInProgress {
-	// 	desc := "There was an error deleting the instance."
-	// 	if err != nil {
-	// 		desc = desc + " Error: " + err.Error()
-	// 	}
-	// 	return response.NewErrorResponse(http.StatusBadRequest, desc)
-	// }
-	// // save the state for polling
-	// broker.brokerDB.Save(&existingInstance)
-	// return response.NewAsyncOperationResponse(base.DeleteOp.String())
-	// // we need make this an async cleanup when base.InstanceGone state is set.
-	// //broker.brokerDB.Unscoped().Delete(&existingInstance)
 
 }
