@@ -21,7 +21,10 @@ data "aws_iam_policy_document" "bucket_policy" {
     actions = [
       "s3:ListBucket",
       "s3:PutObject",
-      "s3:GetObject"
+      "s3:GetObject",
+      "s3:GetBucketAcl",
+      "s3:ListMultipartUploadParts",
+      "s3:ListBucketMultipartUploads"
     ]
 
     resources = [
@@ -78,6 +81,11 @@ module "aws_s3_bucket"{
   // grant for redis elasticache service to export backups to this bucket
   // https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/backups-exporting.html#backups-exporting-grant-access
   grant = [
+    {
+      type = "CanonicalUser",
+      id = "40fa568277ad703bd160f66ae4f83fc9dfdfd06c2f1b5060ca22442ac3ef8be6",
+      permissions = ["FULL_CONTROL"],
+    },
     {
       type = "CanonicalUser",
       id = "540804c33a284a299d2547575ce1010f2312ef3da9b3a053c8bc45bf233e4353",
