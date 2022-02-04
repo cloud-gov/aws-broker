@@ -3,6 +3,7 @@ package redis
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/18F/aws-broker/base"
@@ -305,6 +306,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	ec_svc := elasticache.New(aws_session)
 	s3_svc := s3.New(aws_session)
 	snapshot_name := i.ClusterID + "-final"
+	sleep := 30 * time.Second
 
 	// poll for snapshot being available
 	check_input := &elasticache.DescribeSnapshotsInput{
@@ -319,6 +321,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
 			break
 		}
+		time.Sleep(sleep)
 	}
 	// export to s3 bucket
 	copy_input := &elasticache.CopySnapshotInput{
