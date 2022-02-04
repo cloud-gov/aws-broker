@@ -81,7 +81,7 @@ module "aws_s3_bucket"{
     {
       type = "CanonicalUser",
       id = "540804c33a284a299d2547575ce1010f2312ef3da9b3a053c8bc45bf233e4353",
-      permissions = ["READ","WRITE"],
+      permissions = ["FULL_CONTROL"],
     },
     {
       type = "CanonicalUser",
