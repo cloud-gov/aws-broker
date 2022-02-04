@@ -3,7 +3,9 @@ package redis
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -24,11 +26,14 @@ func (r RedisOptions) Validate(settings *config.Settings) error {
 type redisBroker struct {
 	brokerDB *gorm.DB
 	settings *config.Settings
+	logger   lager.Logger
 }
 
 // InitRedisBroker is the constructor for the redisBroker.
 func InitRedisBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &redisBroker{brokerDB, settings}
+	logger := lager.NewLogger("aws-redis-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	return &redisBroker{brokerDB, settings, logger}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -48,7 +53,7 @@ func (broker *redisBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Ins
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Catalog) (redisAdapter, response.Response) {
+func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Catalog, logger lager.Logger) (redisAdapter, response.Response) {
 
 	var redisAdapter redisAdapter
 
@@ -60,6 +65,7 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 	redisAdapter = &dedicatedRedisAdapter{
 		Plan:     plan,
 		settings: *s,
+		logger:   logger,
 	}
 	return redisAdapter, nil
 }
@@ -103,7 +109,7 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -145,7 +151,7 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -188,7 +194,7 @@ func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindReque
 	}
 
 	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -225,7 +231,7 @@ func (broker *redisBroker) DeleteInstance(c *catalog.Catalog, id string, baseIns
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}

@@ -10,7 +10,7 @@ resource "random_string" "suffix"{
 locals {
   bucket_name = "${var.base_stack}-${var.s3_bucket_suffix}-${random_string.suffix.id}"
 }
-
+// allow the aws broker to put objects into the bucket
 data "aws_iam_policy_document" "bucket_policy" {
   statement {
     principals {
@@ -35,8 +35,7 @@ module "aws_s3_bucket"{
   source = "terraform-aws-modules/s3-bucket/aws"
   version = "2.8.0"
   bucket = local.bucket_name
-  acl    = var.s3_acl
-  
+    
   versioning = {
     enabled = var.s3_versioning_enabled
   }
@@ -73,6 +72,16 @@ module "aws_s3_bucket"{
 
   attach_policy = true
   policy = data.aws_iam_policy_document.bucket_policy.json
+  
+  // grant for redis elasticache service to export backups to this bucket
+  // https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/backups-exporting.html#backups-exporting-grant-access
+  grant = [
+    {
+    type = "CanonicalUser",
+    id = "540804c33a284a299d2547575ce1010f2312ef3da9b3a053c8bc45bf233e4353",
+    permissions = ["READ","WRITE"],
+   },
+  ]
 
 }
 

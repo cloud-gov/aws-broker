@@ -1,19 +1,22 @@
 package redis
 
 import (
+	"encoding/json"
 	"errors"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticache"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jinzhu/gorm"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-
+	"bytes"
 	"fmt"
 	"log"
 )
@@ -81,6 +84,7 @@ func (d *sharedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, 
 type dedicatedRedisAdapter struct {
 	Plan     catalog.RedisPlan
 	settings config.Settings
+	logger   lager.Logger
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -264,6 +268,7 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
+		go d.exportRedisSnapshot(i)
 		return base.InstanceGone, nil
 	}
 	return base.InstanceNotGone, nil
@@ -289,4 +294,61 @@ func (d *dedicatedRedisAdapter) didAwsCallSucceed(err error) bool {
 	return true
 }
 
-func (d *dedicatedRedisAdapter) asyncDeleteRedis()
+func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
+	aws_session, err := session.NewSession(aws.NewConfig().WithRegion(d.settings.Region))
+	if success := d.didAwsCallSucceed(err); !success {
+		d.logger.Error("aws.NewSession Failed", err)
+		return
+	}
+	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
+	bucket := d.settings.SnapshotsBucketName
+	ec_svc := elasticache.New(aws_session)
+	s3_svc := s3.New(aws_session)
+	snapshot_name := i.ClusterID + "-final"
+
+	// poll for snapshot being available
+	check_input := &elasticache.DescribeSnapshotsInput{
+		SnapshotName: &snapshot_name,
+	}
+	for {
+		resp, err := ec_svc.DescribeSnapshots(check_input)
+		if success := d.didAwsCallSucceed(err); !success {
+			d.logger.Error("Redis.DescribeSnapshots Failed", err)
+			return
+		}
+		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
+			break
+		}
+	}
+	// export to s3 bucket
+	copy_input := &elasticache.CopySnapshotInput{
+		TargetBucket:       aws.String(bucket),
+		TargetSnapshotName: aws.String(path + "/" + snapshot_name),
+		SourceSnapshotName: aws.String(snapshot_name),
+	}
+	_, err = ec_svc.CopySnapshot(copy_input)
+	if success := d.didAwsCallSucceed(err); !success {
+		d.logger.Error("Redis.CopySnapshot Failed", err)
+		return
+	}
+	// write instance to manifest
+	// marshall instance to bytes.
+	data, err := json.Marshal(i)
+	if err != nil {
+		return
+	}
+	body := bytes.NewReader(data)
+	input := s3.PutObjectInput{
+		Body:                 body,
+		Bucket:               aws.String(bucket),
+		Key:                  aws.String(path + "/instance_manifest.json"),
+		ServerSideEncryption: aws.String("AES256"),
+	}
+	// drop info to s3
+	_, err = s3_svc.PutObject(&input)
+	// Decide if AWS service call was successful
+	if success := d.didAwsCallSucceed(err); !success {
+		d.logger.Error("S3.PutObject Failed", err)
+		return
+	}
+}
