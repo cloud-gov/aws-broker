@@ -31,11 +31,13 @@ data "aws_iam_policy_document" "bucket_policy" {
   }
 }
 
+data "aws_canonical_user_id" "current" {}
+
 module "aws_s3_bucket"{
   source = "terraform-aws-modules/s3-bucket/aws"
   version = "2.8.0"
   bucket = local.bucket_name
-    
+  acl = null
   versioning = {
     enabled = var.s3_versioning_enabled
   }
@@ -77,10 +79,15 @@ module "aws_s3_bucket"{
   // https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/backups-exporting.html#backups-exporting-grant-access
   grant = [
     {
-    type = "CanonicalUser",
-    id = "540804c33a284a299d2547575ce1010f2312ef3da9b3a053c8bc45bf233e4353",
-    permissions = ["READ","WRITE"],
-   },
+      type = "CanonicalUser",
+      id = "540804c33a284a299d2547575ce1010f2312ef3da9b3a053c8bc45bf233e4353",
+      permissions = ["READ","WRITE"],
+    },
+    {
+      type = "CanonicalUser",
+      id = data.aws_canonical_user_id.current.id
+      permissions = ["FULL_CONTROL"],
+    },
   ]
 
 }
