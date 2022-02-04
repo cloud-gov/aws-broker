@@ -24,6 +24,9 @@ type Settings struct {
 	SnapshotsBucketName       string
 	SnapshotsRepoName         string
 	LastSnapshotName          string
+	CfUser                    string
+	CfPass                    string
+	CfApiUrl                  string
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -121,5 +124,11 @@ func (s *Settings) LoadFromEnv() error {
 	if s.LastSnapshotName == "" {
 		s.LastSnapshotName = "cg-last-snapshot"
 	}
+
+	// variables for connecting to cf api
+	// s.CfUser = os.Getenv("CF_USERNAME")
+	// s.CfPass = os.Getenv("CF_PASSWORD")
+	// s.CfApiUrl = os.Getenv("CF_API_URL")
+
 	return nil
 }

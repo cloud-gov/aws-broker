@@ -58,6 +58,9 @@ cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORGANIZATI
 cf delete -f $TEST_APP
 cf delete-service -f $TEST_SERVICE
 
+# Wait for service to be deleted
+wait_for_service_instance $TEST_SERVICE
+
 # change into the directory and push the app without starting it.
 pushd $TASK_DIRECTORY
 cf push $TEST_APP -f manifest.yml
@@ -93,3 +96,6 @@ get_task_state $test_app_guid
 # Clean up app and service
 cf delete -f $TEST_APP
 cf delete-service -f $TEST_SERVICE
+
+# Wait for service to be deleted
+wait_for_service_instance $TEST_SERVICE

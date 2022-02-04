@@ -352,17 +352,5 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		broker.brokerDB.Save(&existingInstance)
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-	// if status != base.InstanceInProgress {
-	// 	desc := "There was an error deleting the instance."
-	// 	if err != nil {
-	// 		desc = desc + " Error: " + err.Error()
-	// 	}
-	// 	return response.NewErrorResponse(http.StatusBadRequest, desc)
-	// }
-	// // save the state for polling
-	// broker.brokerDB.Save(&existingInstance)
-	// return response.NewAsyncOperationResponse(base.DeleteOp.String())
-	// // we need make this an async cleanup when base.InstanceGone state is set.
-	// //broker.brokerDB.Unscoped().Delete(&existingInstance)
 
 }
