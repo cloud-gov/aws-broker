@@ -24,7 +24,9 @@ data "aws_iam_policy_document" "bucket_policy" {
       "s3:GetObject",
       "s3:GetBucketAcl",
       "s3:ListMultipartUploadParts",
-      "s3:ListBucketMultipartUploads"
+      "s3:ListBucketMultipartUploads",
+      "s3:GetBucketLocation",
+      "s3:DeleteObject"
     ]
 
     resources = [
