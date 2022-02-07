@@ -323,7 +323,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		}
 		time.Sleep(sleep)
 	}
-	// export to s3 bucket
+	// export to s3 bucket so copy will autoexpire after 14 days
 	copy_input := &elasticache.CopySnapshotInput{
 		TargetBucket:       aws.String(bucket),
 		TargetSnapshotName: aws.String(path + "/" + snapshot_name),
@@ -354,4 +354,15 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		d.logger.Error("S3.PutObject Failed", err)
 		return
 	}
+
+	// now cleanup snapshot from ElastiCache
+	delete_input := &elasticache.DeleteSnapshotInput{
+		SnapshotName: aws.String(snapshot_name),
+	}
+	_, err = ec_svc.DeleteSnapshot(delete_input)
+	if success := d.didAwsCallSucceed(err); !success {
+		d.logger.Error("Redis.DeleteSnapshot Failed", err)
+		return
+	}
+	d.logger.Info("Snapshot and Manifest Copy to s3 Complete.", lager.Data{})
 }
