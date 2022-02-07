@@ -66,6 +66,7 @@ jobs:
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
 
+      TF_VAR_snapshot_expiration: 1
       TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
 
   - task: init-shared-db
@@ -419,7 +420,8 @@ jobs:
       TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
-
+      
+      TF_VAR_snapshot_expiration: 7
       TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
       
   - task: init-shared-db
@@ -773,7 +775,8 @@ jobs:
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
       TF_VAR_rds_shared_postgres_apply_immediately: "true"
       TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
-
+      
+      TF_VAR_snapshot_expiration: 14
       TF_VAR_platform_access_role_arn: ((prod-platform-role-arn))
 
   - put: slack
