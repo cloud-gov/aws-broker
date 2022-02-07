@@ -307,7 +307,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	s3_svc := s3.New(aws_session)
 	snapshot_name := i.ClusterID + "-final"
 	sleep := 30 * time.Second
-
+	d.logger.Info("Waiting for Instance Snapshot to Complete", lager.Data{"uuid": i.Uuid})
 	// poll for snapshot being available
 	check_input := &elasticache.DescribeSnapshotsInput{
 		SnapshotName: &snapshot_name,
@@ -315,7 +315,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	for {
 		resp, err := ec_svc.DescribeSnapshots(check_input)
 		if success := d.didAwsCallSucceed(err); !success {
-			d.logger.Error("Redis.DescribeSnapshots Failed", err)
+			d.logger.Error("Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
 		}
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
@@ -323,6 +323,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		}
 		time.Sleep(sleep)
 	}
+	d.logger.Info("Exporting Instance Snapshot to s3", lager.Data{"uuid": i.Uuid})
 	// export to s3 bucket so copy will autoexpire after 14 days
 	copy_input := &elasticache.CopySnapshotInput{
 		TargetBucket:       aws.String(bucket),
@@ -331,9 +332,10 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	}
 	_, err = ec_svc.CopySnapshot(copy_input)
 	if success := d.didAwsCallSucceed(err); !success {
-		d.logger.Error("Redis.CopySnapshot Failed", err)
+		d.logger.Error("Redis.CopySnapshot Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
+	d.logger.Info("Writing Instance manisfest to s3", lager.Data{"uuid": i.Uuid})
 	// write instance to manifest
 	// marshall instance to bytes.
 	data, err := json.Marshal(i)
@@ -351,18 +353,18 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	_, err = s3_svc.PutObject(&input)
 	// Decide if AWS service call was successful
 	if success := d.didAwsCallSucceed(err); !success {
-		d.logger.Error("S3.PutObject Failed", err)
+		d.logger.Error("S3.PutObject Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
-
+	d.logger.Info("Deleting ElatiCache Service Snapshot", lager.Data{"uuid": i.Uuid})
 	// now cleanup snapshot from ElastiCache
 	delete_input := &elasticache.DeleteSnapshotInput{
 		SnapshotName: aws.String(snapshot_name),
 	}
 	_, err = ec_svc.DeleteSnapshot(delete_input)
 	if success := d.didAwsCallSucceed(err); !success {
-		d.logger.Error("Redis.DeleteSnapshot Failed", err)
+		d.logger.Error("Redis.DeleteSnapshot Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
-	d.logger.Info("Snapshot and Manifest Copy to s3 Complete.", lager.Data{})
+	d.logger.Info("Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
 }
