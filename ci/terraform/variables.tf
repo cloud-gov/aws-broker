@@ -19,6 +19,10 @@ variable "platform_access_role_arn"{
 
 }
 
+variable "snapshot_expiration"{
+    default = 14
+}
+
 variable "rds_internal_instance_type" {
 }
 
