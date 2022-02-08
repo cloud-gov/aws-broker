@@ -740,11 +740,11 @@ jobs:
       TF_VAR_aws_deploy_region: ((prod-aws-default-region))
       TF_VAR_aws_deploy_role_arn: ((prod-aws-deploy-role-arn))
 
-      TF_VAR_rds_internal_instance_type: db.m3.medium #needs upgrade to new instance type 
+      TF_VAR_rds_internal_instance_type: ((prod-pgsql-instance-class))
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 9.5 # needs upgrade by feb 16, 2022
+      TF_VAR_rds_internal_db_engine_version: 12.4 
       TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
       TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
