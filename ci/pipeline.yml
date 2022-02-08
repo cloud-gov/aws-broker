@@ -768,8 +768,8 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 9.5 # needs upgrade by feb 16, 2022
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.4 # needs upgrade by feb 16, 2022
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
       TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
       TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
