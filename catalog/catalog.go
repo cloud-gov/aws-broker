@@ -23,6 +23,7 @@ type ServiceMetadata struct {
 	ProviderDisplayName string `yaml:"providerDisplayName" json:"providerDisplayName"`
 	DocumentationURL    string `yaml:"documentationUrl" json:"documentationUrl"`
 	SupportURL          string `yaml:"supportUrl" json:"supportUrl"`
+	Shareable           bool   `yaml:"shareable" json:"shareable"`
 }
 
 // PlanCost contains an array-of-objects that describes the costs of a service,
