@@ -744,8 +744,8 @@ jobs:
       TF_VAR_rds_internal_db_size: 10
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 12.4 
-      TF_VAR_rds_internal_db_parameter_group_family: postgres9.5
+      TF_VAR_rds_internal_db_engine_version: 12.7 
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
       TF_VAR_rds_internal_multi_az: true
       TF_VAR_rds_internal_username: ((prod-rds-internal-username))
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
