@@ -91,6 +91,20 @@ func (m *mockIamClient) CreatePolicyVersion(input *iam.CreatePolicyVersionInput)
 	}, nil
 }
 
+func (m *mockIamClient) ListPolicyVersions(*iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
+	return &iam.ListPolicyVersionsOutput{
+		IsTruncated: aws.Bool(false),
+		Marker:      aws.String("foobar"),
+		Versions: []*iam.PolicyVersion{
+			{
+				VersionId:        aws.String("old"),
+				Document:         aws.String(mockPolDoc),
+				IsDefaultVersion: aws.Bool(true),
+			},
+		},
+	}, nil
+}
+
 func TestCreateAssumeRole(t *testing.T) {
 	policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 	rolename := "test-role"
