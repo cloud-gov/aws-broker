@@ -27,7 +27,7 @@ type RDSInstance struct {
 	ClearPassword string `sql:"-"`
 
 	Tags                  map[string]string `sql:"-"`
-	BackupRetentionPeriod int64             `sql:"-"`
+	BackupRetentionPeriod int64             `sql:"size(255)"`
 	DbSubnetGroup         string            `sql:"-"`
 	AllocatedStorage      int64             `sql:"size(255)"`
 	SecGroup              string            `sql:"-"`
@@ -143,7 +143,11 @@ func (i *RDSInstance) init(uuid string,
 		i.DbVersion = plan.DbVersion
 	}
 
-	i.BackupRetentionPeriod = plan.BackupRetentionPeriod
+	i.BackupRetentionPeriod = options.BackupRetentionPeriod
+	if options.BackupRetentionPeriod == 0 {
+		i.BackupRetentionPeriod = plan.BackupRetentionPeriod
+	}
+
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
 	i.LicenseModel = plan.LicenseModel

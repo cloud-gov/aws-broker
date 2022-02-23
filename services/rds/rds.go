@@ -317,6 +317,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		MultiAZ:                  &d.Plan.Redundant,
 		DBInstanceIdentifier:     &i.Database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
+		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
 	}
 
 	resp, err := svc.ModifyDBInstance(params)

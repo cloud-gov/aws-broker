@@ -19,10 +19,11 @@ import (
 // the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
-	AllocatedStorage   int64  `json:"storage"`
-	EnableFunctions    bool   `json:"enable_functions"`
-	PubliclyAccessible bool   `json:"publicly_accessible"`
-	Version            string `json:"version"`
+	AllocatedStorage      int64  `json:"storage"`
+	EnableFunctions       bool   `json:"enable_functions"`
+	PubliclyAccessible    bool   `json:"publicly_accessible"`
+	Version               string `json:"version"`
+	BackupRetentionPeriod int64  `json:"backup_retention_period"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -32,6 +33,10 @@ func (o Options) Validate(settings *config.Settings) error {
 	// allowed.  If allocated storage is passed in, the value defaults to 0.
 	if o.AllocatedStorage > settings.MaxAllocatedStorage {
 		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
+	}
+
+	if o.BackupRetentionPeriod > settings.MaxBackupRetention {
+		o.BackupRetentionPeriod = settings.MaxBackupRetention
 	}
 
 	return nil
@@ -100,6 +105,11 @@ func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Insta
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := RDSInstance{}
 
+	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
 	options := Options{}
 	if len(createRequest.RawParameters) > 0 {
 		err := json.Unmarshal(createRequest.RawParameters, &options)
@@ -116,11 +126,6 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
 	if count != 0 {
 		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
-	}
-
-	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
-	if planErr != nil {
-		return planErr
 	}
 
 	// Check to see if there is a major version specified and if so, check to
@@ -215,6 +220,11 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 		// Update the existing instance with the new allocated storage.
 		existingInstance.AllocatedStorage = options.AllocatedStorage
+	}
+
+	// Check if there is a backup retention change:
+	if options.BackupRetentionPeriod > 0 {
+		existingInstance.BackupRetentionPeriod = options.BackupRetentionPeriod
 	}
 
 	// Fetch the new plan that has been requested.
