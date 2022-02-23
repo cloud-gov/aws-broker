@@ -36,7 +36,11 @@ func (o Options) Validate(settings *config.Settings) error {
 	}
 
 	if o.BackupRetentionPeriod > settings.MaxBackupRetention {
-		o.BackupRetentionPeriod = settings.MaxBackupRetention
+		return fmt.Errorf("Invalid Retention Period %d; must be <= %d", o.BackupRetentionPeriod, settings.MaxBackupRetention)
+	}
+
+	if o.BackupRetentionPeriod < settings.MinBackupRetention {
+		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
 	}
 
 	return nil

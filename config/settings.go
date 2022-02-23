@@ -28,6 +28,7 @@ type Settings struct {
 	CfPass                    string
 	CfApiUrl                  string
 	MaxBackupRetention        int64
+	MinBackupRetention        int64
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -127,8 +128,11 @@ func (s *Settings) LoadFromEnv() error {
 	}
 	s.MaxBackupRetention, _ = strconv.ParseInt(os.Getenv("MAX_BACKUP_RETENTION"), 10, 64)
 	if s.MaxBackupRetention == 0 {
-		s.MaxBackupRetention = 90
+		s.MaxBackupRetention = 35
 	}
-
+	s.MinBackupRetention, _ = strconv.ParseInt(os.Getenv("MIN_BACKUP_RETENTION"), 10, 64)
+	if s.MinBackupRetention == 0 {
+		s.MinBackupRetention = 1
+	}
 	return nil
 }
