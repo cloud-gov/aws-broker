@@ -109,11 +109,6 @@ func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Insta
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
 	newInstance := RDSInstance{}
 
-	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
 	options := Options{}
 	if len(createRequest.RawParameters) > 0 {
 		err := json.Unmarshal(createRequest.RawParameters, &options)
@@ -130,6 +125,11 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
 	if count != 0 {
 		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
+	}
+
+	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
+	if planErr != nil {
+		return planErr
 	}
 
 	// Check to see if there is a major version specified and if so, check to
