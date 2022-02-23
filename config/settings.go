@@ -132,7 +132,7 @@ func (s *Settings) LoadFromEnv() error {
 	}
 	s.MinBackupRetention, _ = strconv.ParseInt(os.Getenv("MIN_BACKUP_RETENTION"), 10, 64)
 	if s.MinBackupRetention == 0 {
-		s.MinBackupRetention = 1
+		s.MinBackupRetention = 14
 	}
 	return nil
 }
