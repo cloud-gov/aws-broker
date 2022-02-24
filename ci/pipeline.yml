@@ -768,7 +768,7 @@ jobs:
       TF_VAR_rds_shared_postgres_db_size: 100
       TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 12.4 
+      TF_VAR_rds_shared_postgres_db_engine_version: 12.7
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
       TF_VAR_rds_shared_postgres_multi_az: true
       TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
