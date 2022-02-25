@@ -265,6 +265,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		if err != nil {
 			return base.InstanceNotCreated, nil
 		}
+		i.BrokerSnapshotsEnabled = true
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
@@ -343,22 +344,18 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	}
 
-	// // add broker snapshot bucket and create roles and policies if it hasnt been done.
-	// if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
-
-	// 	err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
-	// 	if err != nil {
-	// 		d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
-	// 		return nil, err
-	// 	}
-
-	// 	err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
-	// 	if err != nil {
-	// 		d.logger.Error("bindElasticsearchToApp - Error in createSnapshotRepo", err)
-	// 		return nil, err
-	// 	}
-	// 	i.BrokerSnapshotsEnabled = true
-	// }
+	// add broker snapshot bucket and create roles and policies if it hasnt been done.
+	if !i.BrokerSnapshotsEnabled {
+		if i.SnapshotPath == "" {
+			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
+		}
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		if err != nil {
+			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+			return nil, err
+		}
+		i.BrokerSnapshotsEnabled = true
+	}
 
 	// add client bucket and adjust policies and roles if present
 	if i.Bucket != "" {
@@ -658,15 +655,17 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		}
 	}
 
-	//try setup of roles and policies if this has never happened
-	if i.SnapshotARN == "" {
+	// add broker snapshot bucket and create roles and policies if it hasnt been done.
+	if !i.BrokerSnapshotsEnabled {
 		if i.SnapshotPath == "" {
 			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 		}
-		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
+			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
 			return err
 		}
+		i.BrokerSnapshotsEnabled = true
 	}
 
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
