@@ -261,10 +261,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 			return base.InstanceNotCreated, nil
 		}
 		// try setup of roles and policies on create
-		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
-		if err != nil {
-			return base.InstanceNotCreated, nil
-		}
+		// err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		// if err != nil {
+		// 	return base.InstanceNotCreated, nil
+		// }
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
@@ -343,22 +343,22 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	}
 
-	// add broker snapshot bucket and create roles and policies if it hasnt been done.
-	if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
+	// // add broker snapshot bucket and create roles and policies if it hasnt been done.
+	// if d.settings.SnapshotsBucketName != "" && !i.BrokerSnapshotsEnabled {
 
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
-		if err != nil {
-			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
-			return nil, err
-		}
+	// 	err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+	// 	if err != nil {
+	// 		d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+	// 		return nil, err
+	// 	}
 
-		err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
-		if err != nil {
-			d.logger.Error("bindElasticsearchToApp - Error in createSnapshotRepo", err)
-			return nil, err
-		}
-		i.BrokerSnapshotsEnabled = true
-	}
+	// 	err = d.createSnapshotRepo(i, password, d.settings.SnapshotsBucketName, i.SnapshotPath, d.settings.Region)
+	// 	if err != nil {
+	// 		d.logger.Error("bindElasticsearchToApp - Error in createSnapshotRepo", err)
+	// 		return nil, err
+	// 	}
+	// 	i.BrokerSnapshotsEnabled = true
+	// }
 
 	// add client bucket and adjust policies and roles if present
 	if i.Bucket != "" {
@@ -470,26 +470,26 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 	return true
 }
 
-// utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
-func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
+// // utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
+// func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
 
-	creds, err := i.getCredentials(password)
-	if err != nil {
-		d.logger.Error("createSnapshotRepo.getCredentials failed", err)
-		return err
-	}
-	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
-	esApi := &EsApiHandler{}
-	esApi.Init(creds, region)
+// 	creds, err := i.getCredentials(password)
+// 	if err != nil {
+// 		d.logger.Error("createSnapshotRepo.getCredentials failed", err)
+// 		return err
+// 	}
+// 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
+// 	esApi := &EsApiHandler{}
+// 	esApi.Init(creds, region)
 
-	// create snapshot repo
-	_, err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
-	if err != nil {
-		d.logger.Error("createsnapshotrepo returns error", err)
-		return err
-	}
-	return nil
-}
+// 	// create snapshot repo
+// 	_, err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
+// 	if err != nil {
+// 		d.logger.Error("createsnapshotrepo returns error", err)
+// 		return err
+// 	}
+// 	return nil
+// }
 
 // utility to create roles and policies to enable snapshots in an s3 bucket
 // we pass bucket-name separately to enable reuse for client and broker buckets
@@ -642,6 +642,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	var sleep = 10 * time.Second
 	var creds map[string]string
 	var err error
+
 	// check if instance was never bound and thus never set host...
 	if i.Host == "" {
 		creds, err = d.bindElasticsearchToApp(i, password)
@@ -660,6 +661,25 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi := &EsApiHandler{}
 	esApi.Init(creds, d.settings.Region)
+
+	// add broker snapshot bucket and create roles and policies .
+	err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+	if err != nil {
+		d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+		return err
+	}
+	// create snapshot repo
+	_, err = esApi.CreateSnapshotRepo(
+		d.settings.SnapshotsRepoName,
+		d.settings.SnapshotsBucketName,
+		i.SnapshotPath,
+		d.settings.Region,
+		i.SnapshotARN,
+	)
+	if err != nil {
+		d.logger.Error("createsnapshotrepo returns error", err)
+		return err
+	}
 
 	// create snapshot
 	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
@@ -700,40 +720,38 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
-	if i.BrokerSnapshotsEnabled || i.Bucket != "" {
-		if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+	if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 
-		roleDetachPolicyInput := &iam.DetachRolePolicyInput{
-			PolicyArn: aws.String(i.SnapshotPolicyARN),
-			RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
+	roleDetachPolicyInput := &iam.DetachRolePolicyInput{
+		PolicyArn: aws.String(i.SnapshotPolicyARN),
+		RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
+	}
 
-		if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+	if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 
-		if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+	if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 
-		rolePolicyDeleteInput := &iam.DeleteRoleInput{
-			RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
-		}
+	rolePolicyDeleteInput := &iam.DeleteRoleInput{
+		RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
+	}
 
-		if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+	if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 
-		if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+	if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
+		fmt.Println(err.Error())
+		return err
 	}
 
 	if err := user.Delete(i.Domain); err != nil {
