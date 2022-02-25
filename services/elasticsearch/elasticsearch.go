@@ -260,11 +260,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		if !d.didAwsCallSucceed(err) {
 			return base.InstanceNotCreated, nil
 		}
-		// try setup of roles and policies on create
-		// err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
-		// if err != nil {
-		// 	return base.InstanceNotCreated, nil
-		// }
+		//try setup of roles and policies on create
+		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		if err != nil {
+			return base.InstanceNotCreated, nil
+		}
 		return base.InstanceInProgress, nil
 	}
 	return base.InstanceNotCreated, nil
@@ -658,16 +658,21 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		}
 	}
 
+	//try setup of roles and policies if this has never happened
+	if i.SnapshotARN == "" {
+		if i.SnapshotPath == "" {
+			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
+		}
+		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		if err != nil {
+			return err
+		}
+	}
+
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi := &EsApiHandler{}
 	esApi.Init(creds, d.settings.Region)
 
-	// add broker snapshot bucket and create roles and policies .
-	err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
-	if err != nil {
-		d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
-		return err
-	}
 	// create snapshot repo
 	_, err = esApi.CreateSnapshotRepo(
 		d.settings.SnapshotsRepoName,
