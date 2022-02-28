@@ -467,27 +467,6 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 	return true
 }
 
-// // utility to run native api calls on ES instance to create a snapshot repository using the bucket name provided
-// func (d *dedicatedElasticsearchAdapter) createSnapshotRepo(i *ElasticsearchInstance, password string, bucket string, path string, region string) error {
-
-// 	creds, err := i.getCredentials(password)
-// 	if err != nil {
-// 		d.logger.Error("createSnapshotRepo.getCredentials failed", err)
-// 		return err
-// 	}
-// 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
-// 	esApi := &EsApiHandler{}
-// 	esApi.Init(creds, region)
-
-// 	// create snapshot repo
-// 	_, err = esApi.CreateSnapshotRepo(d.settings.SnapshotsRepoName, bucket, path, region, i.SnapshotARN)
-// 	if err != nil {
-// 		d.logger.Error("createsnapshotrepo returns error", err)
-// 		return err
-// 	}
-// 	return nil
-// }
-
 // utility to create roles and policies to enable snapshots in an s3 bucket
 // we pass bucket-name separately to enable reuse for client and broker buckets
 func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
