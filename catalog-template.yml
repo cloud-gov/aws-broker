@@ -456,6 +456,70 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+    - id: "ffb5c458-2156-4130-97ff-17327a844f78"
+      name: "micro-mysql"
+      description: "Dedicated recommended micro RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated recommended micro RDS instance"
+          - "MySQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated recommended micro RDS MySQL DB instance"
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
+      dbVersion: "8.0"
+      dbType: mysql
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "d7184d3c-1dfa-4d95-9830-b7a19b2c795f"
+      name: "micro-mysql-redundant"
+      description: "Dedicated redundant recommended micro RDS MySQL DB instance"
+      metadata:
+        bullets:
+          - "Dedicated redundant recommended micro RDS instance"
+          - "MySQL DB instance"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated redundant recommended micro RDS MySQL DB instance"
+      free: false
+      adapter: dedicated
+      instanceClass: db.t3.micro
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "5.7"
+        - "8.0"
+      dbVersion: "8.0"
+      dbType: mysql
+      plan_updateable: true
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
     - id: "0af67edb-30d8-4bb3-81c7-324c18d3efb2"
       name: "small-mysql"
       description: "Dedicated recommended small RDS MySQL DB instance"
@@ -470,7 +534,7 @@ rds:
         displayName: "Dedicated recommended small RDS MySQL DB instance"
       free: true
       adapter: dedicated
-      instanceClass: db.t2.small
+      instanceClass: db.t3.small
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -502,7 +566,7 @@ rds:
         displayName: "Dedicated redundant recommended small RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.small
+      instanceClass: db.t3.small
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -533,7 +597,7 @@ rds:
         displayName: "Dedicated recommended medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.medium
+      instanceClass: db.t3.medium
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -565,7 +629,7 @@ rds:
         displayName: "Dedicated redundant recommended medium RDS MySQL DB instance"
       free: false
       adapter: dedicated
-      instanceClass: db.t2.medium
+      instanceClass: db.t3.medium
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
