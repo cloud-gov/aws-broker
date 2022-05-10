@@ -939,8 +939,6 @@ func (c *RDS) CopyDBClusterSnapshotRequest(input *CopyDBClusterSnapshotInput) (r
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -1266,98 +1264,6 @@ func (c *RDS) CopyOptionGroupWithContext(ctx aws.Context, input *CopyOptionGroup
 	return out, req.Send()
 }
 
-const opCreateCustomAvailabilityZone = "CreateCustomAvailabilityZone"
-
-// CreateCustomAvailabilityZoneRequest generates a "aws/request.Request" representing the
-// client's request for the CreateCustomAvailabilityZone operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See CreateCustomAvailabilityZone for more information on using the CreateCustomAvailabilityZone
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the CreateCustomAvailabilityZoneRequest method.
-//    req, resp := client.CreateCustomAvailabilityZoneRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/CreateCustomAvailabilityZone
-func (c *RDS) CreateCustomAvailabilityZoneRequest(input *CreateCustomAvailabilityZoneInput) (req *request.Request, output *CreateCustomAvailabilityZoneOutput) {
-	op := &request.Operation{
-		Name:       opCreateCustomAvailabilityZone,
-		HTTPMethod: "POST",
-		HTTPPath:   "/",
-	}
-
-	if input == nil {
-		input = &CreateCustomAvailabilityZoneInput{}
-	}
-
-	output = &CreateCustomAvailabilityZoneOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// CreateCustomAvailabilityZone API operation for Amazon Relational Database Service.
-//
-// Creates a custom Availability Zone (AZ).
-//
-// A custom AZ is an on-premises AZ that is integrated with a VMware vSphere
-// cluster.
-//
-// For more information about RDS on VMware, see the RDS on VMware User Guide.
-// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Amazon Relational Database Service's
-// API operation CreateCustomAvailabilityZone for usage and error information.
-//
-// Returned Error Codes:
-//   * ErrCodeCustomAvailabilityZoneAlreadyExistsFault "CustomAvailabilityZoneAlreadyExists"
-//   CustomAvailabilityZoneName is already used by an existing custom Availability
-//   Zone.
-//
-//   * ErrCodeCustomAvailabilityZoneQuotaExceededFault "CustomAvailabilityZoneQuotaExceeded"
-//   You have exceeded the maximum number of custom Availability Zones.
-//
-//   * ErrCodeKMSKeyNotAccessibleFault "KMSKeyNotAccessibleFault"
-//   An error occurred accessing an Amazon Web Services KMS key.
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/CreateCustomAvailabilityZone
-func (c *RDS) CreateCustomAvailabilityZone(input *CreateCustomAvailabilityZoneInput) (*CreateCustomAvailabilityZoneOutput, error) {
-	req, out := c.CreateCustomAvailabilityZoneRequest(input)
-	return out, req.Send()
-}
-
-// CreateCustomAvailabilityZoneWithContext is the same as CreateCustomAvailabilityZone with the addition of
-// the ability to pass a context and additional request options.
-//
-// See CreateCustomAvailabilityZone for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) CreateCustomAvailabilityZoneWithContext(ctx aws.Context, input *CreateCustomAvailabilityZoneInput, opts ...request.Option) (*CreateCustomAvailabilityZoneOutput, error) {
-	req, out := c.CreateCustomAvailabilityZoneRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
 const opCreateCustomDBEngineVersion = "CreateCustomDBEngineVersion"
 
 // CreateCustomDBEngineVersionRequest generates a "aws/request.Request" representing the
@@ -1403,8 +1309,13 @@ func (c *RDS) CreateCustomDBEngineVersionRequest(input *CreateCustomDBEngineVers
 // CreateCustomDBEngineVersion API operation for Amazon Relational Database Service.
 //
 // Creates a custom DB engine version (CEV). A CEV is a binary volume snapshot
-// of a database engine and specific AMI. The only supported engine is Oracle
-// Database 19c Enterprise Edition with the January 2021 or later RU/RUR.
+// of a database engine and specific AMI. The supported engines are the following:
+//
+//    * Oracle Database 12.1 Enterprise Edition with the January 2021 or later
+//    RU/RUR
+//
+//    * Oracle Database 19c Enterprise Edition with the January 2021 or later
+//    RU/RUR
 //
 // Amazon RDS, which is a fully managed service, supplies the Amazon Machine
 // Image (AMI) and database software. The Amazon RDS database software is preinstalled,
@@ -1534,8 +1445,6 @@ func (c *RDS) CreateDBClusterRequest(input *CreateDBClusterInput) (req *request.
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1810,8 +1719,6 @@ func (c *RDS) CreateDBClusterParameterGroupRequest(input *CreateDBClusterParamet
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -1901,8 +1808,6 @@ func (c *RDS) CreateDBClusterSnapshotRequest(input *CreateDBClusterSnapshotInput
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2068,6 +1973,10 @@ func (c *RDS) CreateDBInstanceRequest(input *CreateDBInstanceInput) (req *reques
 //
 //   * ErrCodeBackupPolicyNotFoundFault "BackupPolicyNotFoundFault"
 //
+//   * ErrCodeNetworkTypeNotSupported "NetworkTypeNotSupported"
+//   The network type is invalid for the DB instance. Valid nework type values
+//   are IPV4 and DUAL.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/CreateDBInstance
 func (c *RDS) CreateDBInstance(input *CreateDBInstanceInput) (*CreateDBInstanceOutput, error) {
 	req, out := c.CreateDBInstanceRequest(input)
@@ -2220,6 +2129,10 @@ func (c *RDS) CreateDBInstanceReadReplicaRequest(input *CreateDBInstanceReadRepl
 //
 //   * ErrCodeDomainNotFoundFault "DomainNotFoundFault"
 //   Domain doesn't refer to an existing Active Directory domain.
+//
+//   * ErrCodeNetworkTypeNotSupported "NetworkTypeNotSupported"
+//   The network type is invalid for the DB instance. Valid nework type values
+//   are IPV4 and DUAL.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/CreateDBInstanceReadReplica
 func (c *RDS) CreateDBInstanceReadReplica(input *CreateDBInstanceReadReplicaInput) (*CreateDBInstanceReadReplicaOutput, error) {
@@ -2892,7 +2805,7 @@ func (c *RDS) CreateEventSubscriptionRequest(input *CreateEventSubscriptionInput
 //   The supplied subscription name already exists.
 //
 //   * ErrCodeSNSInvalidTopicFault "SNSInvalidTopic"
-//   SNS has responded that there is a problem with the SND topic specified.
+//   SNS has responded that there is a problem with the SNS topic specified.
 //
 //   * ErrCodeSNSNoAuthorizationFault "SNSNoAuthorization"
 //   You do not have permission to publish to the SNS topic ARN.
@@ -3113,95 +3026,6 @@ func (c *RDS) CreateOptionGroupWithContext(ctx aws.Context, input *CreateOptionG
 	return out, req.Send()
 }
 
-const opDeleteCustomAvailabilityZone = "DeleteCustomAvailabilityZone"
-
-// DeleteCustomAvailabilityZoneRequest generates a "aws/request.Request" representing the
-// client's request for the DeleteCustomAvailabilityZone operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See DeleteCustomAvailabilityZone for more information on using the DeleteCustomAvailabilityZone
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the DeleteCustomAvailabilityZoneRequest method.
-//    req, resp := client.DeleteCustomAvailabilityZoneRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DeleteCustomAvailabilityZone
-func (c *RDS) DeleteCustomAvailabilityZoneRequest(input *DeleteCustomAvailabilityZoneInput) (req *request.Request, output *DeleteCustomAvailabilityZoneOutput) {
-	op := &request.Operation{
-		Name:       opDeleteCustomAvailabilityZone,
-		HTTPMethod: "POST",
-		HTTPPath:   "/",
-	}
-
-	if input == nil {
-		input = &DeleteCustomAvailabilityZoneInput{}
-	}
-
-	output = &DeleteCustomAvailabilityZoneOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// DeleteCustomAvailabilityZone API operation for Amazon Relational Database Service.
-//
-// Deletes a custom Availability Zone (AZ).
-//
-// A custom AZ is an on-premises AZ that is integrated with a VMware vSphere
-// cluster.
-//
-// For more information about RDS on VMware, see the RDS on VMware User Guide.
-// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Amazon Relational Database Service's
-// API operation DeleteCustomAvailabilityZone for usage and error information.
-//
-// Returned Error Codes:
-//   * ErrCodeCustomAvailabilityZoneNotFoundFault "CustomAvailabilityZoneNotFound"
-//   CustomAvailabilityZoneId doesn't refer to an existing custom Availability
-//   Zone identifier.
-//
-//   * ErrCodeKMSKeyNotAccessibleFault "KMSKeyNotAccessibleFault"
-//   An error occurred accessing an Amazon Web Services KMS key.
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DeleteCustomAvailabilityZone
-func (c *RDS) DeleteCustomAvailabilityZone(input *DeleteCustomAvailabilityZoneInput) (*DeleteCustomAvailabilityZoneOutput, error) {
-	req, out := c.DeleteCustomAvailabilityZoneRequest(input)
-	return out, req.Send()
-}
-
-// DeleteCustomAvailabilityZoneWithContext is the same as DeleteCustomAvailabilityZone with the addition of
-// the ability to pass a context and additional request options.
-//
-// See DeleteCustomAvailabilityZone for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) DeleteCustomAvailabilityZoneWithContext(ctx aws.Context, input *DeleteCustomAvailabilityZoneInput, opts ...request.Option) (*DeleteCustomAvailabilityZoneOutput, error) {
-	req, out := c.DeleteCustomAvailabilityZoneRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
 const opDeleteCustomDBEngineVersion = "DeleteCustomDBEngineVersion"
 
 // DeleteCustomDBEngineVersionRequest generates a "aws/request.Request" representing the
@@ -3358,8 +3182,6 @@ func (c *RDS) DeleteDBClusterRequest(input *DeleteDBClusterInput) (req *request.
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -3549,8 +3371,6 @@ func (c *RDS) DeleteDBClusterParameterGroupRequest(input *DeleteDBClusterParamet
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -3644,8 +3464,6 @@ func (c *RDS) DeleteDBClusterSnapshotRequest(input *DeleteDBClusterSnapshotInput
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4570,86 +4388,6 @@ func (c *RDS) DeleteGlobalClusterWithContext(ctx aws.Context, input *DeleteGloba
 	return out, req.Send()
 }
 
-const opDeleteInstallationMedia = "DeleteInstallationMedia"
-
-// DeleteInstallationMediaRequest generates a "aws/request.Request" representing the
-// client's request for the DeleteInstallationMedia operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See DeleteInstallationMedia for more information on using the DeleteInstallationMedia
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the DeleteInstallationMediaRequest method.
-//    req, resp := client.DeleteInstallationMediaRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DeleteInstallationMedia
-func (c *RDS) DeleteInstallationMediaRequest(input *DeleteInstallationMediaInput) (req *request.Request, output *DeleteInstallationMediaOutput) {
-	op := &request.Operation{
-		Name:       opDeleteInstallationMedia,
-		HTTPMethod: "POST",
-		HTTPPath:   "/",
-	}
-
-	if input == nil {
-		input = &DeleteInstallationMediaInput{}
-	}
-
-	output = &DeleteInstallationMediaOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// DeleteInstallationMedia API operation for Amazon Relational Database Service.
-//
-// Deletes the installation medium for a DB engine that requires an on-premises
-// customer provided license, such as Microsoft SQL Server.
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Amazon Relational Database Service's
-// API operation DeleteInstallationMedia for usage and error information.
-//
-// Returned Error Codes:
-//   * ErrCodeInstallationMediaNotFoundFault "InstallationMediaNotFound"
-//   InstallationMediaID doesn't refer to an existing installation medium.
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DeleteInstallationMedia
-func (c *RDS) DeleteInstallationMedia(input *DeleteInstallationMediaInput) (*DeleteInstallationMediaOutput, error) {
-	req, out := c.DeleteInstallationMediaRequest(input)
-	return out, req.Send()
-}
-
-// DeleteInstallationMediaWithContext is the same as DeleteInstallationMedia with the addition of
-// the ability to pass a context and additional request options.
-//
-// See DeleteInstallationMedia for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) DeleteInstallationMediaWithContext(ctx aws.Context, input *DeleteInstallationMediaInput, opts ...request.Option) (*DeleteInstallationMediaOutput, error) {
-	req, out := c.DeleteInstallationMediaRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
 const opDeleteOptionGroup = "DeleteOptionGroup"
 
 // DeleteOptionGroupRequest generates a "aws/request.Request" representing the
@@ -5044,150 +4782,6 @@ func (c *RDS) DescribeCertificatesPagesWithContext(ctx aws.Context, input *Descr
 	return p.Err()
 }
 
-const opDescribeCustomAvailabilityZones = "DescribeCustomAvailabilityZones"
-
-// DescribeCustomAvailabilityZonesRequest generates a "aws/request.Request" representing the
-// client's request for the DescribeCustomAvailabilityZones operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See DescribeCustomAvailabilityZones for more information on using the DescribeCustomAvailabilityZones
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the DescribeCustomAvailabilityZonesRequest method.
-//    req, resp := client.DescribeCustomAvailabilityZonesRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DescribeCustomAvailabilityZones
-func (c *RDS) DescribeCustomAvailabilityZonesRequest(input *DescribeCustomAvailabilityZonesInput) (req *request.Request, output *DescribeCustomAvailabilityZonesOutput) {
-	op := &request.Operation{
-		Name:       opDescribeCustomAvailabilityZones,
-		HTTPMethod: "POST",
-		HTTPPath:   "/",
-		Paginator: &request.Paginator{
-			InputTokens:     []string{"Marker"},
-			OutputTokens:    []string{"Marker"},
-			LimitToken:      "MaxRecords",
-			TruncationToken: "",
-		},
-	}
-
-	if input == nil {
-		input = &DescribeCustomAvailabilityZonesInput{}
-	}
-
-	output = &DescribeCustomAvailabilityZonesOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// DescribeCustomAvailabilityZones API operation for Amazon Relational Database Service.
-//
-// Returns information about custom Availability Zones (AZs).
-//
-// A custom AZ is an on-premises AZ that is integrated with a VMware vSphere
-// cluster.
-//
-// For more information about RDS on VMware, see the RDS on VMware User Guide.
-// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Amazon Relational Database Service's
-// API operation DescribeCustomAvailabilityZones for usage and error information.
-//
-// Returned Error Codes:
-//   * ErrCodeCustomAvailabilityZoneNotFoundFault "CustomAvailabilityZoneNotFound"
-//   CustomAvailabilityZoneId doesn't refer to an existing custom Availability
-//   Zone identifier.
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DescribeCustomAvailabilityZones
-func (c *RDS) DescribeCustomAvailabilityZones(input *DescribeCustomAvailabilityZonesInput) (*DescribeCustomAvailabilityZonesOutput, error) {
-	req, out := c.DescribeCustomAvailabilityZonesRequest(input)
-	return out, req.Send()
-}
-
-// DescribeCustomAvailabilityZonesWithContext is the same as DescribeCustomAvailabilityZones with the addition of
-// the ability to pass a context and additional request options.
-//
-// See DescribeCustomAvailabilityZones for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) DescribeCustomAvailabilityZonesWithContext(ctx aws.Context, input *DescribeCustomAvailabilityZonesInput, opts ...request.Option) (*DescribeCustomAvailabilityZonesOutput, error) {
-	req, out := c.DescribeCustomAvailabilityZonesRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
-// DescribeCustomAvailabilityZonesPages iterates over the pages of a DescribeCustomAvailabilityZones operation,
-// calling the "fn" function with the response data for each page. To stop
-// iterating, return false from the fn function.
-//
-// See DescribeCustomAvailabilityZones method for more information on how to use this operation.
-//
-// Note: This operation can generate multiple requests to a service.
-//
-//    // Example iterating over at most 3 pages of a DescribeCustomAvailabilityZones operation.
-//    pageNum := 0
-//    err := client.DescribeCustomAvailabilityZonesPages(params,
-//        func(page *rds.DescribeCustomAvailabilityZonesOutput, lastPage bool) bool {
-//            pageNum++
-//            fmt.Println(page)
-//            return pageNum <= 3
-//        })
-//
-func (c *RDS) DescribeCustomAvailabilityZonesPages(input *DescribeCustomAvailabilityZonesInput, fn func(*DescribeCustomAvailabilityZonesOutput, bool) bool) error {
-	return c.DescribeCustomAvailabilityZonesPagesWithContext(aws.BackgroundContext(), input, fn)
-}
-
-// DescribeCustomAvailabilityZonesPagesWithContext same as DescribeCustomAvailabilityZonesPages except
-// it takes a Context and allows setting request options on the pages.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) DescribeCustomAvailabilityZonesPagesWithContext(ctx aws.Context, input *DescribeCustomAvailabilityZonesInput, fn func(*DescribeCustomAvailabilityZonesOutput, bool) bool, opts ...request.Option) error {
-	p := request.Pagination{
-		NewRequest: func() (*request.Request, error) {
-			var inCpy *DescribeCustomAvailabilityZonesInput
-			if input != nil {
-				tmp := *input
-				inCpy = &tmp
-			}
-			req, _ := c.DescribeCustomAvailabilityZonesRequest(inCpy)
-			req.SetContext(ctx)
-			req.ApplyOptions(opts...)
-			return req, nil
-		},
-	}
-
-	for p.Next() {
-		if !fn(p.Page().(*DescribeCustomAvailabilityZonesOutput), !p.HasNextPage()) {
-			break
-		}
-	}
-
-	return p.Err()
-}
-
 const opDescribeDBClusterBacktracks = "DescribeDBClusterBacktracks"
 
 // DescribeDBClusterBacktracksRequest generates a "aws/request.Request" representing the
@@ -5533,8 +5127,6 @@ func (c *RDS) DescribeDBClusterParameterGroupsRequest(input *DescribeDBClusterPa
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -5679,8 +5271,6 @@ func (c *RDS) DescribeDBClusterParametersRequest(input *DescribeDBClusterParamet
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5919,8 +5509,6 @@ func (c *RDS) DescribeDBClusterSnapshotsRequest(input *DescribeDBClusterSnapshot
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -6066,8 +5654,6 @@ func (c *RDS) DescribeDBClustersRequest(input *DescribeDBClustersInput) (req *re
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // This operation can also return information for Amazon Neptune DB instances
 // and Amazon DocumentDB instances.
@@ -8919,144 +8505,6 @@ func (c *RDS) DescribeGlobalClustersPagesWithContext(ctx aws.Context, input *Des
 	return p.Err()
 }
 
-const opDescribeInstallationMedia = "DescribeInstallationMedia"
-
-// DescribeInstallationMediaRequest generates a "aws/request.Request" representing the
-// client's request for the DescribeInstallationMedia operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See DescribeInstallationMedia for more information on using the DescribeInstallationMedia
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the DescribeInstallationMediaRequest method.
-//    req, resp := client.DescribeInstallationMediaRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DescribeInstallationMedia
-func (c *RDS) DescribeInstallationMediaRequest(input *DescribeInstallationMediaInput) (req *request.Request, output *DescribeInstallationMediaOutput) {
-	op := &request.Operation{
-		Name:       opDescribeInstallationMedia,
-		HTTPMethod: "POST",
-		HTTPPath:   "/",
-		Paginator: &request.Paginator{
-			InputTokens:     []string{"Marker"},
-			OutputTokens:    []string{"Marker"},
-			LimitToken:      "MaxRecords",
-			TruncationToken: "",
-		},
-	}
-
-	if input == nil {
-		input = &DescribeInstallationMediaInput{}
-	}
-
-	output = &DescribeInstallationMediaOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// DescribeInstallationMedia API operation for Amazon Relational Database Service.
-//
-// Describes the available installation media for a DB engine that requires
-// an on-premises customer provided license, such as Microsoft SQL Server.
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Amazon Relational Database Service's
-// API operation DescribeInstallationMedia for usage and error information.
-//
-// Returned Error Codes:
-//   * ErrCodeInstallationMediaNotFoundFault "InstallationMediaNotFound"
-//   InstallationMediaID doesn't refer to an existing installation medium.
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/DescribeInstallationMedia
-func (c *RDS) DescribeInstallationMedia(input *DescribeInstallationMediaInput) (*DescribeInstallationMediaOutput, error) {
-	req, out := c.DescribeInstallationMediaRequest(input)
-	return out, req.Send()
-}
-
-// DescribeInstallationMediaWithContext is the same as DescribeInstallationMedia with the addition of
-// the ability to pass a context and additional request options.
-//
-// See DescribeInstallationMedia for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) DescribeInstallationMediaWithContext(ctx aws.Context, input *DescribeInstallationMediaInput, opts ...request.Option) (*DescribeInstallationMediaOutput, error) {
-	req, out := c.DescribeInstallationMediaRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
-// DescribeInstallationMediaPages iterates over the pages of a DescribeInstallationMedia operation,
-// calling the "fn" function with the response data for each page. To stop
-// iterating, return false from the fn function.
-//
-// See DescribeInstallationMedia method for more information on how to use this operation.
-//
-// Note: This operation can generate multiple requests to a service.
-//
-//    // Example iterating over at most 3 pages of a DescribeInstallationMedia operation.
-//    pageNum := 0
-//    err := client.DescribeInstallationMediaPages(params,
-//        func(page *rds.DescribeInstallationMediaOutput, lastPage bool) bool {
-//            pageNum++
-//            fmt.Println(page)
-//            return pageNum <= 3
-//        })
-//
-func (c *RDS) DescribeInstallationMediaPages(input *DescribeInstallationMediaInput, fn func(*DescribeInstallationMediaOutput, bool) bool) error {
-	return c.DescribeInstallationMediaPagesWithContext(aws.BackgroundContext(), input, fn)
-}
-
-// DescribeInstallationMediaPagesWithContext same as DescribeInstallationMediaPages except
-// it takes a Context and allows setting request options on the pages.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) DescribeInstallationMediaPagesWithContext(ctx aws.Context, input *DescribeInstallationMediaInput, fn func(*DescribeInstallationMediaOutput, bool) bool, opts ...request.Option) error {
-	p := request.Pagination{
-		NewRequest: func() (*request.Request, error) {
-			var inCpy *DescribeInstallationMediaInput
-			if input != nil {
-				tmp := *input
-				inCpy = &tmp
-			}
-			req, _ := c.DescribeInstallationMediaRequest(inCpy)
-			req.SetContext(ctx)
-			req.ApplyOptions(opts...)
-			return req, nil
-		},
-	}
-
-	for p.Next() {
-		if !fn(p.Page().(*DescribeInstallationMediaOutput), !p.HasNextPage()) {
-			break
-		}
-	}
-
-	return p.Err()
-}
-
 const opDescribeOptionGroupOptions = "DescribeOptionGroupOptions"
 
 // DescribeOptionGroupOptionsRequest generates a "aws/request.Request" representing the
@@ -10306,8 +9754,6 @@ func (c *RDS) FailoverDBClusterRequest(input *FailoverDBClusterInput) (req *requ
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -10448,90 +9894,6 @@ func (c *RDS) FailoverGlobalCluster(input *FailoverGlobalClusterInput) (*Failove
 // for more information on using Contexts.
 func (c *RDS) FailoverGlobalClusterWithContext(ctx aws.Context, input *FailoverGlobalClusterInput, opts ...request.Option) (*FailoverGlobalClusterOutput, error) {
 	req, out := c.FailoverGlobalClusterRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
-const opImportInstallationMedia = "ImportInstallationMedia"
-
-// ImportInstallationMediaRequest generates a "aws/request.Request" representing the
-// client's request for the ImportInstallationMedia operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See ImportInstallationMedia for more information on using the ImportInstallationMedia
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the ImportInstallationMediaRequest method.
-//    req, resp := client.ImportInstallationMediaRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/ImportInstallationMedia
-func (c *RDS) ImportInstallationMediaRequest(input *ImportInstallationMediaInput) (req *request.Request, output *ImportInstallationMediaOutput) {
-	op := &request.Operation{
-		Name:       opImportInstallationMedia,
-		HTTPMethod: "POST",
-		HTTPPath:   "/",
-	}
-
-	if input == nil {
-		input = &ImportInstallationMediaInput{}
-	}
-
-	output = &ImportInstallationMediaOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// ImportInstallationMedia API operation for Amazon Relational Database Service.
-//
-// Imports the installation media for a DB engine that requires an on-premises
-// customer provided license, such as SQL Server.
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Amazon Relational Database Service's
-// API operation ImportInstallationMedia for usage and error information.
-//
-// Returned Error Codes:
-//   * ErrCodeCustomAvailabilityZoneNotFoundFault "CustomAvailabilityZoneNotFound"
-//   CustomAvailabilityZoneId doesn't refer to an existing custom Availability
-//   Zone identifier.
-//
-//   * ErrCodeInstallationMediaAlreadyExistsFault "InstallationMediaAlreadyExists"
-//   The specified installation medium has already been imported.
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/ImportInstallationMedia
-func (c *RDS) ImportInstallationMedia(input *ImportInstallationMediaInput) (*ImportInstallationMediaOutput, error) {
-	req, out := c.ImportInstallationMediaRequest(input)
-	return out, req.Send()
-}
-
-// ImportInstallationMediaWithContext is the same as ImportInstallationMedia with the addition of
-// the ability to pass a context and additional request options.
-//
-// See ImportInstallationMedia for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *RDS) ImportInstallationMediaWithContext(ctx aws.Context, input *ImportInstallationMediaInput, opts ...request.Option) (*ImportInstallationMediaOutput, error) {
-	req, out := c.ImportInstallationMediaRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -10679,8 +10041,8 @@ func (c *RDS) ModifyCertificatesRequest(input *ModifyCertificatesInput) (req *re
 // ModifyCertificates API operation for Amazon Relational Database Service.
 //
 // Override the system-default Secure Sockets Layer/Transport Layer Security
-// (SSL/TLS) certificate for Amazon RDS for new DB instances temporarily, or
-// remove the override.
+// (SSL/TLS) certificate for Amazon RDS for new DB instances, or remove the
+// override.
 //
 // By using this operation, you can specify an RDS-approved SSL/TLS certificate
 // for new DB instances that is different from the default certificate provided
@@ -10783,28 +10145,28 @@ func (c *RDS) ModifyCurrentDBClusterCapacityRequest(input *ModifyCurrentDBCluste
 
 // ModifyCurrentDBClusterCapacity API operation for Amazon Relational Database Service.
 //
-// Set the capacity of an Aurora Serverless DB cluster to a specific value.
+// Set the capacity of an Aurora Serverless v1 DB cluster to a specific value.
 //
-// Aurora Serverless scales seamlessly based on the workload on the DB cluster.
+// Aurora Serverless v1 scales seamlessly based on the workload on the DB cluster.
 // In some cases, the capacity might not scale fast enough to meet a sudden
 // change in workload, such as a large number of new transactions. Call ModifyCurrentDBClusterCapacity
 // to set the capacity explicitly.
 //
-// After this call sets the DB cluster capacity, Aurora Serverless can automatically
+// After this call sets the DB cluster capacity, Aurora Serverless v1 can automatically
 // scale the DB cluster based on the cooldown period for scaling up and the
 // cooldown period for scaling down.
 //
-// For more information about Aurora Serverless, see Using Amazon Aurora Serverless
-// (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
+// For more information about Aurora Serverless v1, see Using Amazon Aurora
+// Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
 // in the Amazon Aurora User Guide.
 //
 // If you call ModifyCurrentDBClusterCapacity with the default TimeoutAction,
-// connections that prevent Aurora Serverless from finding a scaling point might
-// be dropped. For more information about scaling points, see Autoscaling for
-// Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.auto-scaling)
+// connections that prevent Aurora Serverless v1 from finding a scaling point
+// might be dropped. For more information about scaling points, see Autoscaling
+// for Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.auto-scaling)
 // in the Amazon Aurora User Guide.
 //
-// This action only applies to Aurora Serverless DB clusters.
+// This action only applies to Aurora Serverless v1 DB clusters.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -10994,8 +10356,6 @@ func (c *RDS) ModifyDBClusterRequest(input *ModifyDBClusterInput) (req *request.
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -11221,7 +10581,7 @@ func (c *RDS) ModifyDBClusterParameterGroupRequest(input *ModifyDBClusterParamet
 // parameter group has been created or modified.
 //
 // If the modified DB cluster parameter group is used by an Aurora Serverless
-// cluster, Aurora applies the update immediately. The cluster restart might
+// v1 cluster, Aurora applies the update immediately. The cluster restart might
 // interrupt your workload. In that case, your application must reopen any connections
 // and retry any transactions that were active when the parameter changes took
 // effect.
@@ -11233,8 +10593,6 @@ func (c *RDS) ModifyDBClusterParameterGroupRequest(input *ModifyDBClusterParamet
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -11501,6 +10859,10 @@ func (c *RDS) ModifyDBInstanceRequest(input *ModifyDBInstanceInput) (req *reques
 //
 //   * ErrCodeInvalidDBClusterStateFault "InvalidDBClusterStateFault"
 //   The requested operation can't be performed while the cluster is in this state.
+//
+//   * ErrCodeNetworkTypeNotSupported "NetworkTypeNotSupported"
+//   The network type is invalid for the DB instance. Valid nework type values
+//   are IPV4 and DUAL.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/ModifyDBInstance
 func (c *RDS) ModifyDBInstance(input *ModifyDBInstanceInput) (*ModifyDBInstanceOutput, error) {
@@ -12238,7 +11600,7 @@ func (c *RDS) ModifyEventSubscriptionRequest(input *ModifyEventSubscriptionInput
 //   The subscription name does not exist.
 //
 //   * ErrCodeSNSInvalidTopicFault "SNSInvalidTopic"
-//   SNS has responded that there is a problem with the SND topic specified.
+//   SNS has responded that there is a problem with the SNS topic specified.
 //
 //   * ErrCodeSNSNoAuthorizationFault "SNSNoAuthorization"
 //   You do not have permission to publish to the SNS topic ARN.
@@ -12763,8 +12125,7 @@ func (c *RDS) RebootDBClusterRequest(input *RebootDBClusterInput) (req *request.
 // DB cluster results in a momentary outage, during which the DB cluster status
 // is set to rebooting.
 //
-// Use this operation only for a non-Aurora Multi-AZ DB cluster. The Multi-AZ
-// DB clusters feature is in preview and is subject to change.
+// Use this operation only for a non-Aurora Multi-AZ DB cluster.
 //
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
@@ -13159,8 +12520,6 @@ func (c *RDS) RemoveRoleFromDBClusterRequest(input *RemoveRoleFromDBClusterInput
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -13532,8 +12891,6 @@ func (c *RDS) ResetDBClusterParameterGroupRequest(input *ResetDBClusterParameter
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -13869,8 +13226,6 @@ func (c *RDS) RestoreDBClusterFromSnapshotRequest(input *RestoreDBClusterFromSna
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
 //
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -14030,8 +13385,6 @@ func (c *RDS) RestoreDBClusterToPointInTimeRequest(input *RestoreDBClusterToPoin
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -14267,6 +13620,10 @@ func (c *RDS) RestoreDBInstanceFromDBSnapshotRequest(input *RestoreDBInstanceFro
 //
 //   * ErrCodeBackupPolicyNotFoundFault "BackupPolicyNotFoundFault"
 //
+//   * ErrCodeNetworkTypeNotSupported "NetworkTypeNotSupported"
+//   The network type is invalid for the DB instance. Valid nework type values
+//   are IPV4 and DUAL.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/RestoreDBInstanceFromDBSnapshot
 func (c *RDS) RestoreDBInstanceFromDBSnapshot(input *RestoreDBInstanceFromDBSnapshotInput) (*RestoreDBInstanceFromDBSnapshotOutput, error) {
 	req, out := c.RestoreDBInstanceFromDBSnapshotRequest(input)
@@ -14411,6 +13768,10 @@ func (c *RDS) RestoreDBInstanceFromS3Request(input *RestoreDBInstanceFromS3Input
 //   An error occurred accessing an Amazon Web Services KMS key.
 //
 //   * ErrCodeBackupPolicyNotFoundFault "BackupPolicyNotFoundFault"
+//
+//   * ErrCodeNetworkTypeNotSupported "NetworkTypeNotSupported"
+//   The network type is invalid for the DB instance. Valid nework type values
+//   are IPV4 and DUAL.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/RestoreDBInstanceFromS3
 func (c *RDS) RestoreDBInstanceFromS3(input *RestoreDBInstanceFromS3Input) (*RestoreDBInstanceFromS3Output, error) {
@@ -14576,6 +13937,10 @@ func (c *RDS) RestoreDBInstanceToPointInTimeRequest(input *RestoreDBInstanceToPo
 //
 //   * ErrCodeDBInstanceAutomatedBackupNotFoundFault "DBInstanceAutomatedBackupNotFound"
 //   No automated backup for this DB instance was found.
+//
+//   * ErrCodeNetworkTypeNotSupported "NetworkTypeNotSupported"
+//   The network type is invalid for the DB instance. Valid nework type values
+//   are IPV4 and DUAL.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/rds-2014-10-31/RestoreDBInstanceToPointInTime
 func (c *RDS) RestoreDBInstanceToPointInTime(input *RestoreDBInstanceToPointInTimeInput) (*RestoreDBInstanceToPointInTimeOutput, error) {
@@ -18237,121 +17602,6 @@ func (s *CopyOptionGroupOutput) SetOptionGroup(v *OptionGroup) *CopyOptionGroupO
 	return s
 }
 
-type CreateCustomAvailabilityZoneInput struct {
-	_ struct{} `type:"structure"`
-
-	// The name of the custom Availability Zone (AZ).
-	//
-	// CustomAvailabilityZoneName is a required field
-	CustomAvailabilityZoneName *string `type:"string" required:"true"`
-
-	// The ID of an existing virtual private network (VPN) between the Amazon RDS
-	// website and the VMware vSphere cluster.
-	ExistingVpnId *string `type:"string"`
-
-	// The name of a new VPN tunnel between the Amazon RDS website and the VMware
-	// vSphere cluster.
-	//
-	// Specify this parameter only if ExistingVpnId isn't specified.
-	NewVpnTunnelName *string `type:"string"`
-
-	// The IP address of network traffic from your on-premises data center. A custom
-	// AZ receives the network traffic.
-	//
-	// Specify this parameter only if ExistingVpnId isn't specified.
-	VpnTunnelOriginatorIP *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s CreateCustomAvailabilityZoneInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s CreateCustomAvailabilityZoneInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *CreateCustomAvailabilityZoneInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "CreateCustomAvailabilityZoneInput"}
-	if s.CustomAvailabilityZoneName == nil {
-		invalidParams.Add(request.NewErrParamRequired("CustomAvailabilityZoneName"))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetCustomAvailabilityZoneName sets the CustomAvailabilityZoneName field's value.
-func (s *CreateCustomAvailabilityZoneInput) SetCustomAvailabilityZoneName(v string) *CreateCustomAvailabilityZoneInput {
-	s.CustomAvailabilityZoneName = &v
-	return s
-}
-
-// SetExistingVpnId sets the ExistingVpnId field's value.
-func (s *CreateCustomAvailabilityZoneInput) SetExistingVpnId(v string) *CreateCustomAvailabilityZoneInput {
-	s.ExistingVpnId = &v
-	return s
-}
-
-// SetNewVpnTunnelName sets the NewVpnTunnelName field's value.
-func (s *CreateCustomAvailabilityZoneInput) SetNewVpnTunnelName(v string) *CreateCustomAvailabilityZoneInput {
-	s.NewVpnTunnelName = &v
-	return s
-}
-
-// SetVpnTunnelOriginatorIP sets the VpnTunnelOriginatorIP field's value.
-func (s *CreateCustomAvailabilityZoneInput) SetVpnTunnelOriginatorIP(v string) *CreateCustomAvailabilityZoneInput {
-	s.VpnTunnelOriginatorIP = &v
-	return s
-}
-
-type CreateCustomAvailabilityZoneOutput struct {
-	_ struct{} `type:"structure"`
-
-	// A custom Availability Zone (AZ) is an on-premises AZ that is integrated with
-	// a VMware vSphere cluster.
-	//
-	// For more information about RDS on VMware, see the RDS on VMware User Guide.
-	// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-	CustomAvailabilityZone *CustomAvailabilityZone `type:"structure"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s CreateCustomAvailabilityZoneOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s CreateCustomAvailabilityZoneOutput) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZone sets the CustomAvailabilityZone field's value.
-func (s *CreateCustomAvailabilityZoneOutput) SetCustomAvailabilityZone(v *CustomAvailabilityZone) *CreateCustomAvailabilityZoneOutput {
-	s.CustomAvailabilityZone = v
-	return s
-}
-
 type CreateCustomDBEngineVersionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -18633,6 +17883,10 @@ type CreateCustomDBEngineVersionOutput struct {
 	// of the CreateDBInstance action.
 	SupportedTimezones []*Timezone `locationNameList:"Timezone" type:"list"`
 
+	// A value that indicates whether the engine version supports Babelfish for
+	// Aurora PostgreSQL.
+	SupportsBabelfish *bool `type:"boolean"`
+
 	// A value that indicates whether you can use Aurora global databases with a
 	// specific DB engine version.
 	SupportsGlobalDatabases *bool `type:"boolean"`
@@ -18786,6 +18040,12 @@ func (s *CreateCustomDBEngineVersionOutput) SetSupportedNcharCharacterSets(v []*
 // SetSupportedTimezones sets the SupportedTimezones field's value.
 func (s *CreateCustomDBEngineVersionOutput) SetSupportedTimezones(v []*Timezone) *CreateCustomDBEngineVersionOutput {
 	s.SupportedTimezones = v
+	return s
+}
+
+// SetSupportsBabelfish sets the SupportsBabelfish field's value.
+func (s *CreateCustomDBEngineVersionOutput) SetSupportsBabelfish(v bool) *CreateCustomDBEngineVersionOutput {
+	s.SupportsBabelfish = &v
 	return s
 }
 
@@ -19125,7 +18385,7 @@ type CreateDBClusterInput struct {
 	// A value that indicates whether to copy all tags from the DB cluster to snapshots
 	// of the DB cluster. The default is not to copy them.
 	//
-	// Valid for: Aurora DB clusters only
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The DB cluster identifier. This parameter is stored as a lowercase string.
@@ -19177,7 +18437,7 @@ type CreateDBClusterInput struct {
 	// Constraints: Must match the name of an existing DBSubnetGroup. Must not be
 	// default.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	//
 	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	DBSubnetGroupName *string `type:"string"`
@@ -19217,9 +18477,15 @@ type CreateDBClusterInput struct {
 	DomainIAMRoleName *string `type:"string"`
 
 	// The list of log types that need to be enabled for exporting to CloudWatch
-	// Logs. The values in the list depend on the DB engine being used. For more
-	// information, see Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
-	// in the Amazon Aurora User Guide.
+	// Logs. The values in the list depend on the DB engine being used.
+	//
+	// RDS for MySQL
+	//
+	// Possible values are error, general, and slowquery.
+	//
+	// RDS for PostgreSQL
+	//
+	// Possible values are postgresql and upgrade.
 	//
 	// Aurora MySQL
 	//
@@ -19229,7 +18495,15 @@ type CreateDBClusterInput struct {
 	//
 	// Possible value is postgresql.
 	//
-	// Valid for: Aurora DB clusters only
+	// For more information about exporting CloudWatch Logs for Amazon RDS, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// in the Amazon RDS User Guide.
+	//
+	// For more information about exporting CloudWatch Logs for Amazon Aurora, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// in the Amazon Aurora User Guide.
+	//
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
 	// A value that indicates whether to enable this DB cluster to forward write
@@ -19248,13 +18522,13 @@ type CreateDBClusterInput struct {
 	EnableGlobalWriteForwarding *bool `type:"boolean"`
 
 	// A value that indicates whether to enable the HTTP endpoint for an Aurora
-	// Serverless DB cluster. By default, the HTTP endpoint is disabled.
+	// Serverless v1 DB cluster. By default, the HTTP endpoint is disabled.
 	//
 	// When enabled, the HTTP endpoint provides a connectionless web service API
-	// for running SQL queries on the Aurora Serverless DB cluster. You can also
+	// for running SQL queries on the Aurora Serverless v1 DB cluster. You can also
 	// query your database from inside the RDS console with the query editor.
 	//
-	// For more information, see Using the Data API for Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
+	// For more information, see Using the Data API for Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
 	// in the Amazon Aurora User Guide.
 	//
 	// Valid for: Aurora DB clusters only
@@ -19265,7 +18539,7 @@ type CreateDBClusterInput struct {
 	// isn't enabled.
 	//
 	// For more information, see IAM Database Authentication (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/UsingWithRDS.IAMDBAuth.html)
-	// in the Amazon Aurora User Guide.
+	// in the Amazon Aurora User Guide..
 	//
 	// Valid for: Aurora DB clusters only
 	EnableIAMDatabaseAuthentication *bool `type:"boolean"`
@@ -19316,7 +18590,7 @@ type CreateDBClusterInput struct {
 	// Limitations and requirements apply to some DB engine modes. For more information,
 	// see the following sections in the Amazon Aurora User Guide:
 	//
-	//    * Limitations of Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html#aurora-serverless.limitations)
+	//    * Limitations of Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html#aurora-serverless.limitations)
 	//
 	//    * Limitations of Parallel Query (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-mysql-parallel-query.html#aurora-mysql-parallel-query-limitations)
 	//
@@ -19642,6 +18916,12 @@ type CreateDBClusterInput struct {
 	// Valid for: Aurora DB clusters only
 	ScalingConfiguration *ScalingConfiguration `type:"structure"`
 
+	// Contains the scaling configuration of an Aurora Serverless v2 DB cluster.
+	//
+	// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+	// in the Amazon Aurora User Guide.
+	ServerlessV2ScalingConfiguration *ServerlessV2ScalingConfiguration `type:"structure"`
+
 	// SourceRegion is the source region where the resource exists. This is not
 	// sent over the wire and is only used for presigning. This value should always
 	// have the same region as the source ARN.
@@ -19956,6 +19236,12 @@ func (s *CreateDBClusterInput) SetScalingConfiguration(v *ScalingConfiguration) 
 	return s
 }
 
+// SetServerlessV2ScalingConfiguration sets the ServerlessV2ScalingConfiguration field's value.
+func (s *CreateDBClusterInput) SetServerlessV2ScalingConfiguration(v *ServerlessV2ScalingConfiguration) *CreateDBClusterInput {
+	s.ServerlessV2ScalingConfiguration = v
+	return s
+}
+
 // SetSourceRegion sets the SourceRegion field's value.
 func (s *CreateDBClusterInput) SetSourceRegion(v string) *CreateDBClusterInput {
 	s.SourceRegion = &v
@@ -20007,8 +19293,6 @@ type CreateDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -20419,7 +19703,9 @@ type CreateDBInstanceInput struct {
 	//
 	// Amazon Aurora
 	//
-	// Not applicable. Availability Zones are managed by the DB cluster.
+	// Each Aurora DB cluster hosts copies of its storage in three separate Availability
+	// Zones. Specify one of these Availability Zones. Aurora automatically chooses
+	// an appropriate Availability Zone if you don't specify one.
 	//
 	// Default: A random, system-chosen Availability Zone in the endpoint's Amazon
 	// Web Services Region.
@@ -20429,13 +19715,6 @@ type CreateDBInstanceInput struct {
 	// Constraint: The AvailabilityZone parameter can't be specified if the DB instance
 	// is a Multi-AZ deployment. The specified Availability Zone must be in the
 	// same Amazon Web Services Region as the current endpoint.
-	//
-	// If you're creating a DB instance in an RDS on VMware environment, specify
-	// the identifier of the custom Availability Zone to create the DB instance
-	// in.
-	//
-	// For more information about RDS on VMware, see the RDS on VMware User Guide.
-	// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
 	AvailabilityZone *string `type:"string"`
 
 	// The number of days for which automated backups are retained. Setting this
@@ -20502,7 +19781,7 @@ type CreateDBInstanceInput struct {
 	//
 	// For the list of permissions required for the IAM role, see Configure IAM
 	// and your VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-setup-orcl.html#custom-setup-orcl.iam-vpc)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	//
 	// This setting is required for RDS Custom.
 	CustomIamInstanceProfile *string `type:"string"`
@@ -20668,7 +19947,10 @@ type CreateDBInstanceInput struct {
 
 	// A DB subnet group to associate with this DB instance.
 	//
-	// If there is no DB subnet group, then it is a non-VPC DB instance.
+	// Constraints: Must match the name of an existing DBSubnetGroup. Must not be
+	// default.
+	//
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// A value that indicates whether the DB instance has deletion protection enabled.
@@ -20703,7 +19985,7 @@ type CreateDBInstanceInput struct {
 	// The list of log types that need to be enabled for exporting to CloudWatch
 	// Logs. The values in the list depend on the DB engine. For more information,
 	// see Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	//
 	// Amazon Aurora
 	//
@@ -20765,7 +20047,7 @@ type CreateDBInstanceInput struct {
 
 	// A value that indicates whether to enable Performance Insights for the DB
 	// instance. For more information, see Using Amazon Performance Insights (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.html)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	//
 	// This setting doesn't apply to RDS Custom.
 	EnablePerformanceInsights *bool `type:"boolean"`
@@ -20834,11 +20116,11 @@ type CreateDBInstanceInput struct {
 	// is required for RDS Custom for Oracle. The CEV name has the following format:
 	// 19.customized_string . An example identifier is 19.my_cev1. For more information,
 	// see Creating an RDS Custom for Oracle DB instance (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-creating.html#custom-creating.create)
-	// in the Amazon RDS User Guide..
+	// in the Amazon RDS User Guide.
 	//
 	// Amazon RDS Custom for SQL Server
 	//
-	// See RDS Custom for SQL Server general requirements (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-reqs-limits.html#custom-reqs-limits.reqsMS)
+	// See RDS Custom for SQL Server general requirements (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-reqs-limits-MS.html)
 	// in the Amazon RDS User Guide.
 	//
 	// MariaDB
@@ -21002,6 +20284,22 @@ type CreateDBInstanceInput struct {
 	//
 	// This parameter doesn't apply to RDS Custom.
 	NcharCharacterSetName *string `type:"string"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for the DB
+	// instance. A DBSubnetGroup can support only the IPv4 protocol or the IPv4
+	// and the IPv6 protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	NetworkType *string `type:"string"`
 
 	// A value that indicates that the DB instance should be associated with the
 	// specified option group.
@@ -21461,6 +20759,12 @@ func (s *CreateDBInstanceInput) SetNcharCharacterSetName(v string) *CreateDBInst
 	return s
 }
 
+// SetNetworkType sets the NetworkType field's value.
+func (s *CreateDBInstanceInput) SetNetworkType(v string) *CreateDBInstanceInput {
+	s.NetworkType = &v
+	return s
+}
+
 // SetOptionGroupName sets the OptionGroupName field's value.
 func (s *CreateDBInstanceInput) SetOptionGroupName(v string) *CreateDBInstanceInput {
 	s.OptionGroupName = &v
@@ -21629,7 +20933,7 @@ type CreateDBInstanceReadReplicaInput struct {
 	//
 	// For the list of permissions required for the IAM role, see Configure IAM
 	// and your VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-setup-orcl.html#custom-setup-orcl.iam-vpc)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	//
 	// This setting is required for RDS Custom.
 	CustomIamInstanceProfile *string `type:"string"`
@@ -21689,7 +20993,7 @@ type CreateDBInstanceReadReplicaInput struct {
 	//    Not specify a DB subnet group. All these read replicas are created outside
 	//    of any VPC.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// A value that indicates whether the DB instance has deletion protection enabled.
@@ -21813,6 +21117,22 @@ type CreateDBInstanceReadReplicaInput struct {
 	//
 	// This setting doesn't apply to RDS Custom.
 	MultiAZ *bool `type:"boolean"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for read replica.
+	// A DBSubnetGroup can support only the IPv4 protocol or the IPv4 and the IPv6
+	// protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	NetworkType *string `type:"string"`
 
 	// The option group the DB instance is associated with. If omitted, the option
 	// group associated with the source instance is used.
@@ -22173,6 +21493,12 @@ func (s *CreateDBInstanceReadReplicaInput) SetMonitoringRoleArn(v string) *Creat
 // SetMultiAZ sets the MultiAZ field's value.
 func (s *CreateDBInstanceReadReplicaInput) SetMultiAZ(v bool) *CreateDBInstanceReadReplicaInput {
 	s.MultiAZ = &v
+	return s
+}
+
+// SetNetworkType sets the NetworkType field's value.
+func (s *CreateDBInstanceReadReplicaInput) SetNetworkType(v string) *CreateDBInstanceReadReplicaInput {
+	s.NetworkType = &v
 	return s
 }
 
@@ -23056,10 +22382,16 @@ type CreateDBSubnetGroupInput struct {
 
 	// The name for the DB subnet group. This value is stored as a lowercase string.
 	//
-	// Constraints: Must contain no more than 255 letters, numbers, periods, underscores,
-	// spaces, or hyphens. Must not be default.
+	// Constraints:
 	//
-	// Example: mySubnetgroup
+	//    * Must contain no more than 255 letters, numbers, periods, underscores,
+	//    spaces, or hyphens.
+	//
+	//    * Must not be default.
+	//
+	//    * First character must be a letter.
+	//
+	// Example: mydbsubnetgroup
 	//
 	// DBSubnetGroupName is a required field
 	DBSubnetGroupName *string `type:"string" required:"true"`
@@ -23633,72 +22965,6 @@ func (s *CreateOptionGroupOutput) SetOptionGroup(v *OptionGroup) *CreateOptionGr
 	return s
 }
 
-// A custom Availability Zone (AZ) is an on-premises AZ that is integrated with
-// a VMware vSphere cluster.
-//
-// For more information about RDS on VMware, see the RDS on VMware User Guide.
-// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-type CustomAvailabilityZone struct {
-	_ struct{} `type:"structure"`
-
-	// The identifier of the custom AZ.
-	//
-	// Amazon RDS generates a unique identifier when a custom AZ is created.
-	CustomAvailabilityZoneId *string `type:"string"`
-
-	// The name of the custom AZ.
-	CustomAvailabilityZoneName *string `type:"string"`
-
-	// The status of the custom AZ.
-	CustomAvailabilityZoneStatus *string `type:"string"`
-
-	// Information about the virtual private network (VPN) between the VMware vSphere
-	// cluster and the Amazon Web Services website.
-	VpnDetails *VpnDetails `type:"structure"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s CustomAvailabilityZone) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s CustomAvailabilityZone) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *CustomAvailabilityZone) SetCustomAvailabilityZoneId(v string) *CustomAvailabilityZone {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-// SetCustomAvailabilityZoneName sets the CustomAvailabilityZoneName field's value.
-func (s *CustomAvailabilityZone) SetCustomAvailabilityZoneName(v string) *CustomAvailabilityZone {
-	s.CustomAvailabilityZoneName = &v
-	return s
-}
-
-// SetCustomAvailabilityZoneStatus sets the CustomAvailabilityZoneStatus field's value.
-func (s *CustomAvailabilityZone) SetCustomAvailabilityZoneStatus(v string) *CustomAvailabilityZone {
-	s.CustomAvailabilityZoneStatus = &v
-	return s
-}
-
-// SetVpnDetails sets the VpnDetails field's value.
-func (s *CustomAvailabilityZone) SetVpnDetails(v *VpnDetails) *CustomAvailabilityZone {
-	s.VpnDetails = v
-	return s
-}
-
 // Contains the details of an Amazon Aurora DB cluster or Multi-AZ DB cluster.
 //
 // For an Amazon Aurora DB cluster, this data type is used as a response element
@@ -23717,8 +22983,6 @@ func (s *CustomAvailabilityZone) SetVpnDetails(v *VpnDetails) *CustomAvailabilit
 // For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 // two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 // in the Amazon RDS User Guide.
-//
-// The Multi-AZ DB clusters feature is in preview and is subject to change.
 type DBCluster struct {
 	_ struct{} `type:"structure"`
 
@@ -23775,11 +23039,11 @@ type DBCluster struct {
 	// Specifies the number of days for which automatic DB snapshots are retained.
 	BackupRetentionPeriod *int64 `type:"integer"`
 
-	// The current capacity of an Aurora Serverless DB cluster. The capacity is
-	// 0 (zero) when the cluster is paused.
+	// The current capacity of an Aurora Serverless v1 DB cluster. The capacity
+	// is 0 (zero) when the cluster is paused.
 	//
-	// For more information about Aurora Serverless, see Using Amazon Aurora Serverless
-	// (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
+	// For more information about Aurora Serverless v1, see Using Amazon Aurora
+	// Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
 	// in the Amazon Aurora User Guide.
 	Capacity *int64 `type:"integer"`
 
@@ -23892,13 +23156,13 @@ type DBCluster struct {
 	HostedZoneId *string `type:"string"`
 
 	// A value that indicates whether the HTTP endpoint for an Aurora Serverless
-	// DB cluster is enabled.
+	// v1 DB cluster is enabled.
 	//
 	// When enabled, the HTTP endpoint provides a connectionless web service API
-	// for running SQL queries on the Aurora Serverless DB cluster. You can also
+	// for running SQL queries on the Aurora Serverless v1 DB cluster. You can also
 	// query your database from inside the RDS console with the query editor.
 	//
-	// For more information, see Using the Data API for Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
+	// For more information, see Using the Data API for Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
 	// in the Amazon Aurora User Guide.
 	HttpEndpointEnabled *bool `type:"boolean"`
 
@@ -24021,9 +23285,15 @@ type DBCluster struct {
 	// Shows the scaling configuration for an Aurora DB cluster in serverless DB
 	// engine mode.
 	//
-	// For more information, see Using Amazon Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
+	// For more information, see Using Amazon Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
 	// in the Amazon Aurora User Guide.
 	ScalingConfigurationInfo *ScalingConfigurationInfo `type:"structure"`
+
+	// Shows the scaling configuration for an Aurora Serverless v2 DB cluster.
+	//
+	// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+	// in the Amazon Aurora User Guide.
+	ServerlessV2ScalingConfiguration *ServerlessV2ScalingConfigurationInfo `type:"structure"`
 
 	// Specifies the current state of this DB cluster.
 	Status *string `type:"string"`
@@ -24431,6 +23701,12 @@ func (s *DBCluster) SetReplicationSourceIdentifier(v string) *DBCluster {
 // SetScalingConfigurationInfo sets the ScalingConfigurationInfo field's value.
 func (s *DBCluster) SetScalingConfigurationInfo(v *ScalingConfigurationInfo) *DBCluster {
 	s.ScalingConfigurationInfo = v
+	return s
+}
+
+// SetServerlessV2ScalingConfiguration sets the ServerlessV2ScalingConfiguration field's value.
+func (s *DBCluster) SetServerlessV2ScalingConfiguration(v *ServerlessV2ScalingConfigurationInfo) *DBCluster {
+	s.ServerlessV2ScalingConfiguration = v
 	return s
 }
 
@@ -25302,6 +24578,10 @@ type DBEngineVersion struct {
 	// of the CreateDBInstance action.
 	SupportedTimezones []*Timezone `locationNameList:"Timezone" type:"list"`
 
+	// A value that indicates whether the engine version supports Babelfish for
+	// Aurora PostgreSQL.
+	SupportsBabelfish *bool `type:"boolean"`
+
 	// A value that indicates whether you can use Aurora global databases with a
 	// specific DB engine version.
 	SupportsGlobalDatabases *bool `type:"boolean"`
@@ -25458,6 +24738,12 @@ func (s *DBEngineVersion) SetSupportedTimezones(v []*Timezone) *DBEngineVersion 
 	return s
 }
 
+// SetSupportsBabelfish sets the SupportsBabelfish field's value.
+func (s *DBEngineVersion) SetSupportsBabelfish(v bool) *DBEngineVersion {
+	s.SupportsBabelfish = &v
+	return s
+}
+
 // SetSupportsGlobalDatabases sets the SupportsGlobalDatabases field's value.
 func (s *DBEngineVersion) SetSupportsGlobalDatabases(v bool) *DBEngineVersion {
 	s.SupportsGlobalDatabases = &v
@@ -25586,7 +24872,7 @@ type DBInstance struct {
 	//
 	// For the list of permissions required for the IAM role, see Configure IAM
 	// and your VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-setup-orcl.html#custom-setup-orcl.iam-vpc)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	CustomIamInstanceProfile *string `type:"string"`
 
 	// Specifies whether a customer-owned IP address (CoIP) is enabled for an RDS
@@ -25757,6 +25043,23 @@ type DBInstance struct {
 	// set specifies the Unicode encoding for data stored in table columns of type
 	// NCHAR, NCLOB, or NVARCHAR2.
 	NcharCharacterSetName *string `type:"string"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for the DB
+	// instance. A DBSubnetGroup can support only the IPv4 protocol or the IPv4
+	// and the IPv6 protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide and Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon Aurora User Guide.
+	NetworkType *string `type:"string"`
 
 	// Provides the list of option group memberships for this DB instance.
 	OptionGroupMemberships []*OptionGroupMembership `locationNameList:"OptionGroupMembership" type:"list"`
@@ -26196,6 +25499,12 @@ func (s *DBInstance) SetMultiAZ(v bool) *DBInstance {
 // SetNcharCharacterSetName sets the NcharCharacterSetName field's value.
 func (s *DBInstance) SetNcharCharacterSetName(v string) *DBInstance {
 	s.NcharCharacterSetName = &v
+	return s
+}
+
+// SetNetworkType sets the NetworkType field's value.
+func (s *DBInstance) SetNetworkType(v string) *DBInstance {
+	s.NetworkType = &v
 	return s
 }
 
@@ -28063,6 +27372,21 @@ type DBSubnetGroup struct {
 	// Contains a list of Subnet elements.
 	Subnets []*Subnet `locationNameList:"Subnet" type:"list"`
 
+	// The network type of the DB subnet group.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// A DBSubnetGroup can support only the IPv4 protocol or the IPv4 and the IPv6
+	// protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	SupportedNetworkTypes []*string `type:"list"`
+
 	// Provides the VpcId of the DB subnet group.
 	VpcId *string `type:"string"`
 }
@@ -28115,90 +27439,15 @@ func (s *DBSubnetGroup) SetSubnets(v []*Subnet) *DBSubnetGroup {
 	return s
 }
 
+// SetSupportedNetworkTypes sets the SupportedNetworkTypes field's value.
+func (s *DBSubnetGroup) SetSupportedNetworkTypes(v []*string) *DBSubnetGroup {
+	s.SupportedNetworkTypes = v
+	return s
+}
+
 // SetVpcId sets the VpcId field's value.
 func (s *DBSubnetGroup) SetVpcId(v string) *DBSubnetGroup {
 	s.VpcId = &v
-	return s
-}
-
-type DeleteCustomAvailabilityZoneInput struct {
-	_ struct{} `type:"structure"`
-
-	// The custom AZ identifier.
-	//
-	// CustomAvailabilityZoneId is a required field
-	CustomAvailabilityZoneId *string `type:"string" required:"true"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteCustomAvailabilityZoneInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteCustomAvailabilityZoneInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *DeleteCustomAvailabilityZoneInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "DeleteCustomAvailabilityZoneInput"}
-	if s.CustomAvailabilityZoneId == nil {
-		invalidParams.Add(request.NewErrParamRequired("CustomAvailabilityZoneId"))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *DeleteCustomAvailabilityZoneInput) SetCustomAvailabilityZoneId(v string) *DeleteCustomAvailabilityZoneInput {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-type DeleteCustomAvailabilityZoneOutput struct {
-	_ struct{} `type:"structure"`
-
-	// A custom Availability Zone (AZ) is an on-premises AZ that is integrated with
-	// a VMware vSphere cluster.
-	//
-	// For more information about RDS on VMware, see the RDS on VMware User Guide.
-	// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-	CustomAvailabilityZone *CustomAvailabilityZone `type:"structure"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteCustomAvailabilityZoneOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteCustomAvailabilityZoneOutput) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZone sets the CustomAvailabilityZone field's value.
-func (s *DeleteCustomAvailabilityZoneOutput) SetCustomAvailabilityZone(v *CustomAvailabilityZone) *DeleteCustomAvailabilityZoneOutput {
-	s.CustomAvailabilityZone = v
 	return s
 }
 
@@ -28354,6 +27603,10 @@ type DeleteCustomDBEngineVersionOutput struct {
 	// of the CreateDBInstance action.
 	SupportedTimezones []*Timezone `locationNameList:"Timezone" type:"list"`
 
+	// A value that indicates whether the engine version supports Babelfish for
+	// Aurora PostgreSQL.
+	SupportsBabelfish *bool `type:"boolean"`
+
 	// A value that indicates whether you can use Aurora global databases with a
 	// specific DB engine version.
 	SupportsGlobalDatabases *bool `type:"boolean"`
@@ -28507,6 +27760,12 @@ func (s *DeleteCustomDBEngineVersionOutput) SetSupportedNcharCharacterSets(v []*
 // SetSupportedTimezones sets the SupportedTimezones field's value.
 func (s *DeleteCustomDBEngineVersionOutput) SetSupportedTimezones(v []*Timezone) *DeleteCustomDBEngineVersionOutput {
 	s.SupportedTimezones = v
+	return s
+}
+
+// SetSupportsBabelfish sets the SupportsBabelfish field's value.
+func (s *DeleteCustomDBEngineVersionOutput) SetSupportsBabelfish(v bool) *DeleteCustomDBEngineVersionOutput {
+	s.SupportsBabelfish = &v
 	return s
 }
 
@@ -28836,8 +28095,6 @@ type DeleteDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -29653,12 +28910,10 @@ type DeleteDBSubnetGroupInput struct {
 	//
 	// You can't delete the default subnet group.
 	//
-	// Constraints:
-	//
 	// Constraints: Must match the name of an existing DBSubnetGroup. Must not be
 	// default.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	//
 	// DBSubnetGroupName is a required field
 	DBSubnetGroupName *string `type:"string" required:"true"`
@@ -29875,149 +29130,6 @@ func (s DeleteGlobalClusterOutput) GoString() string {
 // SetGlobalCluster sets the GlobalCluster field's value.
 func (s *DeleteGlobalClusterOutput) SetGlobalCluster(v *GlobalCluster) *DeleteGlobalClusterOutput {
 	s.GlobalCluster = v
-	return s
-}
-
-type DeleteInstallationMediaInput struct {
-	_ struct{} `type:"structure"`
-
-	// The installation medium ID.
-	//
-	// InstallationMediaId is a required field
-	InstallationMediaId *string `type:"string" required:"true"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteInstallationMediaInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteInstallationMediaInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *DeleteInstallationMediaInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "DeleteInstallationMediaInput"}
-	if s.InstallationMediaId == nil {
-		invalidParams.Add(request.NewErrParamRequired("InstallationMediaId"))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetInstallationMediaId sets the InstallationMediaId field's value.
-func (s *DeleteInstallationMediaInput) SetInstallationMediaId(v string) *DeleteInstallationMediaInput {
-	s.InstallationMediaId = &v
-	return s
-}
-
-// Contains the installation media for a DB engine that requires an on-premises
-// customer provided license, such as Microsoft SQL Server.
-type DeleteInstallationMediaOutput struct {
-	_ struct{} `type:"structure"`
-
-	// The custom Availability Zone (AZ) that contains the installation media.
-	CustomAvailabilityZoneId *string `type:"string"`
-
-	// The DB engine.
-	Engine *string `type:"string"`
-
-	// The path to the installation medium for the DB engine.
-	EngineInstallationMediaPath *string `type:"string"`
-
-	// The engine version of the DB engine.
-	EngineVersion *string `type:"string"`
-
-	// If an installation media failure occurred, the cause of the failure.
-	FailureCause *InstallationMediaFailureCause `type:"structure"`
-
-	// The installation medium ID.
-	InstallationMediaId *string `type:"string"`
-
-	// The path to the installation medium for the operating system associated with
-	// the DB engine.
-	OSInstallationMediaPath *string `type:"string"`
-
-	// The status of the installation medium.
-	Status *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteInstallationMediaOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DeleteInstallationMediaOutput) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *DeleteInstallationMediaOutput) SetCustomAvailabilityZoneId(v string) *DeleteInstallationMediaOutput {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-// SetEngine sets the Engine field's value.
-func (s *DeleteInstallationMediaOutput) SetEngine(v string) *DeleteInstallationMediaOutput {
-	s.Engine = &v
-	return s
-}
-
-// SetEngineInstallationMediaPath sets the EngineInstallationMediaPath field's value.
-func (s *DeleteInstallationMediaOutput) SetEngineInstallationMediaPath(v string) *DeleteInstallationMediaOutput {
-	s.EngineInstallationMediaPath = &v
-	return s
-}
-
-// SetEngineVersion sets the EngineVersion field's value.
-func (s *DeleteInstallationMediaOutput) SetEngineVersion(v string) *DeleteInstallationMediaOutput {
-	s.EngineVersion = &v
-	return s
-}
-
-// SetFailureCause sets the FailureCause field's value.
-func (s *DeleteInstallationMediaOutput) SetFailureCause(v *InstallationMediaFailureCause) *DeleteInstallationMediaOutput {
-	s.FailureCause = v
-	return s
-}
-
-// SetInstallationMediaId sets the InstallationMediaId field's value.
-func (s *DeleteInstallationMediaOutput) SetInstallationMediaId(v string) *DeleteInstallationMediaOutput {
-	s.InstallationMediaId = &v
-	return s
-}
-
-// SetOSInstallationMediaPath sets the OSInstallationMediaPath field's value.
-func (s *DeleteInstallationMediaOutput) SetOSInstallationMediaPath(v string) *DeleteInstallationMediaOutput {
-	s.OSInstallationMediaPath = &v
-	return s
-}
-
-// SetStatus sets the Status field's value.
-func (s *DeleteInstallationMediaOutput) SetStatus(v string) *DeleteInstallationMediaOutput {
-	s.Status = &v
 	return s
 }
 
@@ -30372,135 +29484,6 @@ func (s *DescribeCertificatesOutput) SetCertificates(v []*Certificate) *Describe
 
 // SetMarker sets the Marker field's value.
 func (s *DescribeCertificatesOutput) SetMarker(v string) *DescribeCertificatesOutput {
-	s.Marker = &v
-	return s
-}
-
-type DescribeCustomAvailabilityZonesInput struct {
-	_ struct{} `type:"structure"`
-
-	// The custom AZ identifier. If this parameter is specified, information from
-	// only the specific custom AZ is returned.
-	CustomAvailabilityZoneId *string `type:"string"`
-
-	// A filter that specifies one or more custom AZs to describe.
-	Filters []*Filter `locationNameList:"Filter" type:"list"`
-
-	// An optional pagination token provided by a previous DescribeCustomAvailabilityZones
-	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords.
-	Marker *string `type:"string"`
-
-	// The maximum number of records to include in the response. If more records
-	// exist than the specified MaxRecords value, a pagination token called a marker
-	// is included in the response so you can retrieve the remaining results.
-	//
-	// Default: 100
-	//
-	// Constraints: Minimum 20, maximum 100.
-	MaxRecords *int64 `type:"integer"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeCustomAvailabilityZonesInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeCustomAvailabilityZonesInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *DescribeCustomAvailabilityZonesInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "DescribeCustomAvailabilityZonesInput"}
-	if s.Filters != nil {
-		for i, v := range s.Filters {
-			if v == nil {
-				continue
-			}
-			if err := v.Validate(); err != nil {
-				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
-			}
-		}
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *DescribeCustomAvailabilityZonesInput) SetCustomAvailabilityZoneId(v string) *DescribeCustomAvailabilityZonesInput {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-// SetFilters sets the Filters field's value.
-func (s *DescribeCustomAvailabilityZonesInput) SetFilters(v []*Filter) *DescribeCustomAvailabilityZonesInput {
-	s.Filters = v
-	return s
-}
-
-// SetMarker sets the Marker field's value.
-func (s *DescribeCustomAvailabilityZonesInput) SetMarker(v string) *DescribeCustomAvailabilityZonesInput {
-	s.Marker = &v
-	return s
-}
-
-// SetMaxRecords sets the MaxRecords field's value.
-func (s *DescribeCustomAvailabilityZonesInput) SetMaxRecords(v int64) *DescribeCustomAvailabilityZonesInput {
-	s.MaxRecords = &v
-	return s
-}
-
-type DescribeCustomAvailabilityZonesOutput struct {
-	_ struct{} `type:"structure"`
-
-	// The list of CustomAvailabilityZone objects for the Amazon Web Services account.
-	CustomAvailabilityZones []*CustomAvailabilityZone `locationNameList:"CustomAvailabilityZone" type:"list"`
-
-	// An optional pagination token provided by a previous DescribeCustomAvailabilityZones
-	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords.
-	Marker *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeCustomAvailabilityZonesOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeCustomAvailabilityZonesOutput) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZones sets the CustomAvailabilityZones field's value.
-func (s *DescribeCustomAvailabilityZonesOutput) SetCustomAvailabilityZones(v []*CustomAvailabilityZone) *DescribeCustomAvailabilityZonesOutput {
-	s.CustomAvailabilityZones = v
-	return s
-}
-
-// SetMarker sets the Marker field's value.
-func (s *DescribeCustomAvailabilityZonesOutput) SetMarker(v string) *DescribeCustomAvailabilityZonesOutput {
 	s.Marker = &v
 	return s
 }
@@ -31068,7 +30051,7 @@ type DescribeDBClusterParametersOutput struct {
 
 	// An optional pagination token provided by a previous DescribeDBClusterParameters
 	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords .
+	// beyond the marker, up to the value specified by MaxRecords.
 	Marker *string `type:"string"`
 
 	// Provides a list of parameters for the DB cluster parameter group.
@@ -31430,18 +30413,18 @@ type DescribeDBClustersInput struct {
 	//
 	// Supported filters:
 	//
-	//    * clone-group-id - Accepts clone group identifiers. The results list will
-	//    only include information about the DB clusters associated with these clone
+	//    * clone-group-id - Accepts clone group identifiers. The results list only
+	//    includes information about the DB clusters associated with these clone
 	//    groups.
 	//
 	//    * db-cluster-id - Accepts DB cluster identifiers and DB cluster Amazon
-	//    Resource Names (ARNs). The results list will only include information
-	//    about the DB clusters identified by these ARNs.
+	//    Resource Names (ARNs). The results list only includes information about
+	//    the DB clusters identified by these ARNs.
 	//
-	//    * domain - Accepts Active Directory directory IDs. The results list will
-	//    only include information about the DB clusters associated with these domains.
+	//    * domain - Accepts Active Directory directory IDs. The results list only
+	//    includes information about the DB clusters associated with these domains.
 	//
-	//    * engine - Accepts engine names. The results list will only include information
+	//    * engine - Accepts engine names. The results list only includes information
 	//    about the DB clusters for these engines.
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
@@ -31626,7 +30609,28 @@ type DescribeDBEngineVersionsInput struct {
 	// Example: 5.1.49
 	EngineVersion *string `type:"string"`
 
-	// This parameter isn't currently supported.
+	// A filter that specifies one or more DB engine versions to describe.
+	//
+	// Supported filters:
+	//
+	//    * db-parameter-group-family - Accepts parameter groups family names. The
+	//    results list only includes information about the DB engine versions for
+	//    these parameter group families.
+	//
+	//    * engine - Accepts engine names. The results list only includes information
+	//    about the DB engine versions for these engines.
+	//
+	//    * engine-mode - Accepts DB engine modes. The results list only includes
+	//    information about the DB engine versions for these engine modes. Valid
+	//    DB engine modes are the following: global multimaster parallelquery provisioned
+	//    serverless
+	//
+	//    * engine-version - Accepts engine versions. The results list only includes
+	//    information about the DB engine versions for these engine versions.
+	//
+	//    * status - Accepts engine version statuses. The results list only includes
+	//    information about the DB engine versions for these statuses. Valid statuses
+	//    are the following: available deprecated
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
 	// A value that indicates whether to include engine versions that aren't available
@@ -31947,7 +30951,7 @@ type DescribeDBInstanceAutomatedBackupsOutput struct {
 
 	// An optional pagination token provided by a previous request. If this parameter
 	// is specified, the response includes only records beyond the marker, up to
-	// the value specified by MaxRecords .
+	// the value specified by MaxRecords.
 	Marker *string `type:"string"`
 }
 
@@ -31997,23 +31001,21 @@ type DescribeDBInstancesInput struct {
 	// Supported filters:
 	//
 	//    * db-cluster-id - Accepts DB cluster identifiers and DB cluster Amazon
-	//    Resource Names (ARNs). The results list will only include information
-	//    about the DB instances associated with the DB clusters identified by these
-	//    ARNs.
+	//    Resource Names (ARNs). The results list only includes information about
+	//    the DB instances associated with the DB clusters identified by these ARNs.
 	//
 	//    * db-instance-id - Accepts DB instance identifiers and DB instance Amazon
-	//    Resource Names (ARNs). The results list will only include information
-	//    about the DB instances identified by these ARNs.
+	//    Resource Names (ARNs). The results list only includes information about
+	//    the DB instances identified by these ARNs.
 	//
 	//    * dbi-resource-id - Accepts DB instance resource identifiers. The results
 	//    list will only include information about the DB instances identified by
 	//    these DB instance resource identifiers.
 	//
-	//    * domain - Accepts Active Directory directory IDs. The results list will
-	//    only include information about the DB instances associated with these
-	//    domains.
+	//    * domain - Accepts Active Directory directory IDs. The results list only
+	//    includes information about the DB instances associated with these domains.
 	//
-	//    * engine - Accepts engine names. The results list will only include information
+	//    * engine - Accepts engine names. The results list only includes information
 	//    about the DB instances for these engines.
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
@@ -33929,6 +32931,86 @@ type DescribeEngineDefaultParametersInput struct {
 
 	// The name of the DB parameter group family.
 	//
+	// Valid Values:
+	//
+	//    * aurora5.6
+	//
+	//    * aurora-mysql5.7
+	//
+	//    * aurora-mysql8.0
+	//
+	//    * aurora-postgresql10
+	//
+	//    * aurora-postgresql11
+	//
+	//    * aurora-postgresql12
+	//
+	//    * aurora-postgresql13
+	//
+	//    * mariadb10.2
+	//
+	//    * mariadb10.3
+	//
+	//    * mariadb10.4
+	//
+	//    * mariadb10.5
+	//
+	//    * mariadb10.6
+	//
+	//    * mysql5.7
+	//
+	//    * mysql8.0
+	//
+	//    * postgres10
+	//
+	//    * postgres11
+	//
+	//    * postgres12
+	//
+	//    * postgres13
+	//
+	//    * postgres14
+	//
+	//    * sqlserver-ee-11.0
+	//
+	//    * sqlserver-ee-12.0
+	//
+	//    * sqlserver-ee-13.0
+	//
+	//    * sqlserver-ee-14.0
+	//
+	//    * sqlserver-ee-15.0
+	//
+	//    * sqlserver-ex-11.0
+	//
+	//    * sqlserver-ex-12.0
+	//
+	//    * sqlserver-ex-13.0
+	//
+	//    * sqlserver-ex-14.0
+	//
+	//    * sqlserver-ex-15.0
+	//
+	//    * sqlserver-se-11.0
+	//
+	//    * sqlserver-se-12.0
+	//
+	//    * sqlserver-se-13.0
+	//
+	//    * sqlserver-se-14.0
+	//
+	//    * sqlserver-se-15.0
+	//
+	//    * sqlserver-web-11.0
+	//
+	//    * sqlserver-web-12.0
+	//
+	//    * sqlserver-web-13.0
+	//
+	//    * sqlserver-web-14.0
+	//
+	//    * sqlserver-web-15.0
+	//
 	// DBParameterGroupFamily is a required field
 	DBParameterGroupFamily *string `type:"string" required:"true"`
 
@@ -34451,7 +33533,7 @@ type DescribeEventsOutput struct {
 
 	// An optional pagination token provided by a previous Events request. If this
 	// parameter is specified, the response includes only records beyond the marker,
-	// up to the value specified by MaxRecords .
+	// up to the value specified by MaxRecords.
 	Marker *string `type:"string"`
 }
 
@@ -34770,139 +33852,6 @@ func (s *DescribeGlobalClustersOutput) SetGlobalClusters(v []*GlobalCluster) *De
 
 // SetMarker sets the Marker field's value.
 func (s *DescribeGlobalClustersOutput) SetMarker(v string) *DescribeGlobalClustersOutput {
-	s.Marker = &v
-	return s
-}
-
-type DescribeInstallationMediaInput struct {
-	_ struct{} `type:"structure"`
-
-	// A filter that specifies one or more installation media to describe. Supported
-	// filters include the following:
-	//
-	//    * custom-availability-zone-id - Accepts custom Availability Zone (AZ)
-	//    identifiers. The results list includes information about only the custom
-	//    AZs identified by these identifiers.
-	//
-	//    * engine - Accepts database engines. The results list includes information
-	//    about only the database engines identified by these identifiers. For more
-	//    information about the valid engines for installation media, see ImportInstallationMedia.
-	Filters []*Filter `locationNameList:"Filter" type:"list"`
-
-	// The installation medium ID.
-	InstallationMediaId *string `type:"string"`
-
-	// An optional pagination token provided by a previous request. If this parameter
-	// is specified, the response includes only records beyond the marker, up to
-	// the value specified by MaxRecords.
-	Marker *string `type:"string"`
-
-	// An optional pagination token provided by a previous DescribeInstallationMedia
-	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords.
-	MaxRecords *int64 `type:"integer"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeInstallationMediaInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeInstallationMediaInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *DescribeInstallationMediaInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "DescribeInstallationMediaInput"}
-	if s.Filters != nil {
-		for i, v := range s.Filters {
-			if v == nil {
-				continue
-			}
-			if err := v.Validate(); err != nil {
-				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
-			}
-		}
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetFilters sets the Filters field's value.
-func (s *DescribeInstallationMediaInput) SetFilters(v []*Filter) *DescribeInstallationMediaInput {
-	s.Filters = v
-	return s
-}
-
-// SetInstallationMediaId sets the InstallationMediaId field's value.
-func (s *DescribeInstallationMediaInput) SetInstallationMediaId(v string) *DescribeInstallationMediaInput {
-	s.InstallationMediaId = &v
-	return s
-}
-
-// SetMarker sets the Marker field's value.
-func (s *DescribeInstallationMediaInput) SetMarker(v string) *DescribeInstallationMediaInput {
-	s.Marker = &v
-	return s
-}
-
-// SetMaxRecords sets the MaxRecords field's value.
-func (s *DescribeInstallationMediaInput) SetMaxRecords(v int64) *DescribeInstallationMediaInput {
-	s.MaxRecords = &v
-	return s
-}
-
-type DescribeInstallationMediaOutput struct {
-	_ struct{} `type:"structure"`
-
-	// The list of InstallationMedia objects for the Amazon Web Services account.
-	InstallationMedia []*InstallationMedia `locationNameList:"InstallationMedia" type:"list"`
-
-	// An optional pagination token provided by a previous DescribeInstallationMedia
-	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords.
-	Marker *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeInstallationMediaOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s DescribeInstallationMediaOutput) GoString() string {
-	return s.String()
-}
-
-// SetInstallationMedia sets the InstallationMedia field's value.
-func (s *DescribeInstallationMediaOutput) SetInstallationMedia(v []*InstallationMedia) *DescribeInstallationMediaOutput {
-	s.InstallationMedia = v
-	return s
-}
-
-// SetMarker sets the Marker field's value.
-func (s *DescribeInstallationMediaOutput) SetMarker(v string) *DescribeInstallationMediaOutput {
 	s.Marker = &v
 	return s
 }
@@ -35315,7 +34264,7 @@ type DescribeOrderableDBInstanceOptionsInput struct {
 
 	// An optional pagination token provided by a previous DescribeOrderableDBInstanceOptions
 	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords .
+	// beyond the marker, up to the value specified by MaxRecords.
 	Marker *string `type:"string"`
 
 	// The maximum number of records to include in the response. If more records
@@ -35437,7 +34386,7 @@ type DescribeOrderableDBInstanceOptionsOutput struct {
 
 	// An optional pagination token provided by a previous OrderableDBInstanceOptions
 	// request. If this parameter is specified, the response includes only records
-	// beyond the marker, up to the value specified by MaxRecords .
+	// beyond the marker, up to the value specified by MaxRecords.
 	Marker *string `type:"string"`
 
 	// An OrderableDBInstanceOption structure containing information about orderable
@@ -35484,12 +34433,12 @@ type DescribePendingMaintenanceActionsInput struct {
 	// Supported filters:
 	//
 	//    * db-cluster-id - Accepts DB cluster identifiers and DB cluster Amazon
-	//    Resource Names (ARNs). The results list will only include pending maintenance
+	//    Resource Names (ARNs). The results list only includes pending maintenance
 	//    actions for the DB clusters identified by these ARNs.
 	//
 	//    * db-instance-id - Accepts DB instance identifiers and DB instance ARNs.
-	//    The results list will only include pending maintenance actions for the
-	//    DB instances identified by these ARNs.
+	//    The results list only includes pending maintenance actions for the DB
+	//    instances identified by these ARNs.
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
 	// An optional pagination token provided by a previous DescribePendingMaintenanceActions
@@ -37174,8 +36123,6 @@ type FailoverDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -37694,366 +36641,6 @@ func (s *IPRange) SetStatus(v string) *IPRange {
 	return s
 }
 
-type ImportInstallationMediaInput struct {
-	_ struct{} `type:"structure"`
-
-	// The identifier of the custom Availability Zone (AZ) to import the installation
-	// media to.
-	//
-	// CustomAvailabilityZoneId is a required field
-	CustomAvailabilityZoneId *string `type:"string" required:"true"`
-
-	// The name of the database engine to be used for this instance.
-	//
-	// The list only includes supported DB engines that require an on-premises customer
-	// provided license.
-	//
-	// Valid Values:
-	//
-	//    * sqlserver-ee
-	//
-	//    * sqlserver-se
-	//
-	//    * sqlserver-ex
-	//
-	//    * sqlserver-web
-	//
-	// Engine is a required field
-	Engine *string `type:"string" required:"true"`
-
-	// The path to the installation medium for the specified DB engine.
-	//
-	// Example: SQLServerISO/en_sql_server_2016_enterprise_x64_dvd_8701793.iso
-	//
-	// EngineInstallationMediaPath is a required field
-	EngineInstallationMediaPath *string `type:"string" required:"true"`
-
-	// The version number of the database engine to use.
-	//
-	// For a list of valid engine versions, call DescribeDBEngineVersions.
-	//
-	// The following are the database engines and links to information about the
-	// major and minor versions. The list only includes DB engines that require
-	// an on-premises customer provided license.
-	//
-	// Microsoft SQL Server
-	//
-	// See Microsoft SQL Server Versions on Amazon RDS (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_SQLServer.html#SQLServer.Concepts.General.VersionSupport)
-	// in the Amazon RDS User Guide.
-	//
-	// EngineVersion is a required field
-	EngineVersion *string `type:"string" required:"true"`
-
-	// The path to the installation medium for the operating system associated with
-	// the specified DB engine.
-	//
-	// Example: WindowsISO/en_windows_server_2016_x64_dvd_9327751.iso
-	//
-	// OSInstallationMediaPath is a required field
-	OSInstallationMediaPath *string `type:"string" required:"true"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s ImportInstallationMediaInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s ImportInstallationMediaInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *ImportInstallationMediaInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "ImportInstallationMediaInput"}
-	if s.CustomAvailabilityZoneId == nil {
-		invalidParams.Add(request.NewErrParamRequired("CustomAvailabilityZoneId"))
-	}
-	if s.Engine == nil {
-		invalidParams.Add(request.NewErrParamRequired("Engine"))
-	}
-	if s.EngineInstallationMediaPath == nil {
-		invalidParams.Add(request.NewErrParamRequired("EngineInstallationMediaPath"))
-	}
-	if s.EngineVersion == nil {
-		invalidParams.Add(request.NewErrParamRequired("EngineVersion"))
-	}
-	if s.OSInstallationMediaPath == nil {
-		invalidParams.Add(request.NewErrParamRequired("OSInstallationMediaPath"))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *ImportInstallationMediaInput) SetCustomAvailabilityZoneId(v string) *ImportInstallationMediaInput {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-// SetEngine sets the Engine field's value.
-func (s *ImportInstallationMediaInput) SetEngine(v string) *ImportInstallationMediaInput {
-	s.Engine = &v
-	return s
-}
-
-// SetEngineInstallationMediaPath sets the EngineInstallationMediaPath field's value.
-func (s *ImportInstallationMediaInput) SetEngineInstallationMediaPath(v string) *ImportInstallationMediaInput {
-	s.EngineInstallationMediaPath = &v
-	return s
-}
-
-// SetEngineVersion sets the EngineVersion field's value.
-func (s *ImportInstallationMediaInput) SetEngineVersion(v string) *ImportInstallationMediaInput {
-	s.EngineVersion = &v
-	return s
-}
-
-// SetOSInstallationMediaPath sets the OSInstallationMediaPath field's value.
-func (s *ImportInstallationMediaInput) SetOSInstallationMediaPath(v string) *ImportInstallationMediaInput {
-	s.OSInstallationMediaPath = &v
-	return s
-}
-
-// Contains the installation media for a DB engine that requires an on-premises
-// customer provided license, such as Microsoft SQL Server.
-type ImportInstallationMediaOutput struct {
-	_ struct{} `type:"structure"`
-
-	// The custom Availability Zone (AZ) that contains the installation media.
-	CustomAvailabilityZoneId *string `type:"string"`
-
-	// The DB engine.
-	Engine *string `type:"string"`
-
-	// The path to the installation medium for the DB engine.
-	EngineInstallationMediaPath *string `type:"string"`
-
-	// The engine version of the DB engine.
-	EngineVersion *string `type:"string"`
-
-	// If an installation media failure occurred, the cause of the failure.
-	FailureCause *InstallationMediaFailureCause `type:"structure"`
-
-	// The installation medium ID.
-	InstallationMediaId *string `type:"string"`
-
-	// The path to the installation medium for the operating system associated with
-	// the DB engine.
-	OSInstallationMediaPath *string `type:"string"`
-
-	// The status of the installation medium.
-	Status *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s ImportInstallationMediaOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s ImportInstallationMediaOutput) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *ImportInstallationMediaOutput) SetCustomAvailabilityZoneId(v string) *ImportInstallationMediaOutput {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-// SetEngine sets the Engine field's value.
-func (s *ImportInstallationMediaOutput) SetEngine(v string) *ImportInstallationMediaOutput {
-	s.Engine = &v
-	return s
-}
-
-// SetEngineInstallationMediaPath sets the EngineInstallationMediaPath field's value.
-func (s *ImportInstallationMediaOutput) SetEngineInstallationMediaPath(v string) *ImportInstallationMediaOutput {
-	s.EngineInstallationMediaPath = &v
-	return s
-}
-
-// SetEngineVersion sets the EngineVersion field's value.
-func (s *ImportInstallationMediaOutput) SetEngineVersion(v string) *ImportInstallationMediaOutput {
-	s.EngineVersion = &v
-	return s
-}
-
-// SetFailureCause sets the FailureCause field's value.
-func (s *ImportInstallationMediaOutput) SetFailureCause(v *InstallationMediaFailureCause) *ImportInstallationMediaOutput {
-	s.FailureCause = v
-	return s
-}
-
-// SetInstallationMediaId sets the InstallationMediaId field's value.
-func (s *ImportInstallationMediaOutput) SetInstallationMediaId(v string) *ImportInstallationMediaOutput {
-	s.InstallationMediaId = &v
-	return s
-}
-
-// SetOSInstallationMediaPath sets the OSInstallationMediaPath field's value.
-func (s *ImportInstallationMediaOutput) SetOSInstallationMediaPath(v string) *ImportInstallationMediaOutput {
-	s.OSInstallationMediaPath = &v
-	return s
-}
-
-// SetStatus sets the Status field's value.
-func (s *ImportInstallationMediaOutput) SetStatus(v string) *ImportInstallationMediaOutput {
-	s.Status = &v
-	return s
-}
-
-// Contains the installation media for a DB engine that requires an on-premises
-// customer provided license, such as Microsoft SQL Server.
-type InstallationMedia struct {
-	_ struct{} `type:"structure"`
-
-	// The custom Availability Zone (AZ) that contains the installation media.
-	CustomAvailabilityZoneId *string `type:"string"`
-
-	// The DB engine.
-	Engine *string `type:"string"`
-
-	// The path to the installation medium for the DB engine.
-	EngineInstallationMediaPath *string `type:"string"`
-
-	// The engine version of the DB engine.
-	EngineVersion *string `type:"string"`
-
-	// If an installation media failure occurred, the cause of the failure.
-	FailureCause *InstallationMediaFailureCause `type:"structure"`
-
-	// The installation medium ID.
-	InstallationMediaId *string `type:"string"`
-
-	// The path to the installation medium for the operating system associated with
-	// the DB engine.
-	OSInstallationMediaPath *string `type:"string"`
-
-	// The status of the installation medium.
-	Status *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s InstallationMedia) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s InstallationMedia) GoString() string {
-	return s.String()
-}
-
-// SetCustomAvailabilityZoneId sets the CustomAvailabilityZoneId field's value.
-func (s *InstallationMedia) SetCustomAvailabilityZoneId(v string) *InstallationMedia {
-	s.CustomAvailabilityZoneId = &v
-	return s
-}
-
-// SetEngine sets the Engine field's value.
-func (s *InstallationMedia) SetEngine(v string) *InstallationMedia {
-	s.Engine = &v
-	return s
-}
-
-// SetEngineInstallationMediaPath sets the EngineInstallationMediaPath field's value.
-func (s *InstallationMedia) SetEngineInstallationMediaPath(v string) *InstallationMedia {
-	s.EngineInstallationMediaPath = &v
-	return s
-}
-
-// SetEngineVersion sets the EngineVersion field's value.
-func (s *InstallationMedia) SetEngineVersion(v string) *InstallationMedia {
-	s.EngineVersion = &v
-	return s
-}
-
-// SetFailureCause sets the FailureCause field's value.
-func (s *InstallationMedia) SetFailureCause(v *InstallationMediaFailureCause) *InstallationMedia {
-	s.FailureCause = v
-	return s
-}
-
-// SetInstallationMediaId sets the InstallationMediaId field's value.
-func (s *InstallationMedia) SetInstallationMediaId(v string) *InstallationMedia {
-	s.InstallationMediaId = &v
-	return s
-}
-
-// SetOSInstallationMediaPath sets the OSInstallationMediaPath field's value.
-func (s *InstallationMedia) SetOSInstallationMediaPath(v string) *InstallationMedia {
-	s.OSInstallationMediaPath = &v
-	return s
-}
-
-// SetStatus sets the Status field's value.
-func (s *InstallationMedia) SetStatus(v string) *InstallationMedia {
-	s.Status = &v
-	return s
-}
-
-// Contains the cause of an installation media failure. Installation media is
-// used for a DB engine that requires an on-premises customer provided license,
-// such as Microsoft SQL Server.
-type InstallationMediaFailureCause struct {
-	_ struct{} `type:"structure"`
-
-	// The reason that an installation media import failed.
-	Message *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s InstallationMediaFailureCause) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s InstallationMediaFailureCause) GoString() string {
-	return s.String()
-}
-
-// SetMessage sets the Message field's value.
-func (s *InstallationMediaFailureCause) SetMessage(v string) *InstallationMediaFailureCause {
-	s.Message = &v
-	return s
-}
-
 type ListTagsForResourceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38275,8 +36862,8 @@ type ModifyCurrentDBClusterCapacityInput struct {
 
 	// The DB cluster capacity.
 	//
-	// When you change the capacity of a paused Aurora Serverless DB cluster, it
-	// automatically resumes.
+	// When you change the capacity of a paused Aurora Serverless v1 DB cluster,
+	// it automatically resumes.
 	//
 	// Constraints:
 	//
@@ -38297,9 +36884,9 @@ type ModifyCurrentDBClusterCapacityInput struct {
 	// DBClusterIdentifier is a required field
 	DBClusterIdentifier *string `type:"string" required:"true"`
 
-	// The amount of time, in seconds, that Aurora Serverless tries to find a scaling
-	// point to perform seamless scaling before enforcing the timeout action. The
-	// default is 300.
+	// The amount of time, in seconds, that Aurora Serverless v1 tries to find a
+	// scaling point to perform seamless scaling before enforcing the timeout action.
+	// The default is 300.
 	//
 	// Specify a value between 10 and 600 seconds.
 	SecondsBeforeTimeout *int64 `type:"integer"`
@@ -38629,6 +37216,10 @@ type ModifyCustomDBEngineVersionOutput struct {
 	// of the CreateDBInstance action.
 	SupportedTimezones []*Timezone `locationNameList:"Timezone" type:"list"`
 
+	// A value that indicates whether the engine version supports Babelfish for
+	// Aurora PostgreSQL.
+	SupportsBabelfish *bool `type:"boolean"`
+
 	// A value that indicates whether you can use Aurora global databases with a
 	// specific DB engine version.
 	SupportsGlobalDatabases *bool `type:"boolean"`
@@ -38782,6 +37373,12 @@ func (s *ModifyCustomDBEngineVersionOutput) SetSupportedNcharCharacterSets(v []*
 // SetSupportedTimezones sets the SupportedTimezones field's value.
 func (s *ModifyCustomDBEngineVersionOutput) SetSupportedTimezones(v []*Timezone) *ModifyCustomDBEngineVersionOutput {
 	s.SupportedTimezones = v
+	return s
+}
+
+// SetSupportsBabelfish sets the SupportsBabelfish field's value.
+func (s *ModifyCustomDBEngineVersionOutput) SetSupportsBabelfish(v bool) *ModifyCustomDBEngineVersionOutput {
+	s.SupportsBabelfish = &v
 	return s
 }
 
@@ -39102,15 +37699,40 @@ type ModifyDBClusterInput struct {
 	BackupRetentionPeriod *int64 `type:"integer"`
 
 	// The configuration setting for the log types to be enabled for export to CloudWatch
-	// Logs for a specific DB cluster.
+	// Logs for a specific DB cluster. The values in the list depend on the DB engine
+	// being used.
 	//
-	// Valid for: Aurora DB clusters only
+	// RDS for MySQL
+	//
+	// Possible values are error, general, and slowquery.
+	//
+	// RDS for PostgreSQL
+	//
+	// Possible values are postgresql and upgrade.
+	//
+	// Aurora MySQL
+	//
+	// Possible values are audit, error, general, and slowquery.
+	//
+	// Aurora PostgreSQL
+	//
+	// Possible value is postgresql.
+	//
+	// For more information about exporting CloudWatch Logs for Amazon RDS, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// in the Amazon RDS User Guide.
+	//
+	// For more information about exporting CloudWatch Logs for Amazon Aurora, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// in the Amazon Aurora User Guide.
+	//
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	CloudwatchLogsExportConfiguration *CloudwatchLogsExportConfiguration `type:"structure"`
 
 	// A value that indicates whether to copy all tags from the DB cluster to snapshots
 	// of the DB cluster. The default is not to copy them.
 	//
-	// Valid for: Aurora DB clusters only
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The DB cluster identifier for the cluster being modified. This parameter
@@ -39143,8 +37765,8 @@ type ModifyDBClusterInput struct {
 	// The name of the DB parameter group to apply to all instances of the DB cluster.
 	//
 	// When you apply a parameter group using the DBInstanceParameterGroupName parameter,
-	// the DB cluster isn't rebooted automatically. Also, parameter changes aren't
-	// applied during the next maintenance window but instead are applied immediately.
+	// the DB cluster isn't rebooted automatically. Also, parameter changes are
+	// applied immediately rather than during the next maintenance window.
 	//
 	// Default: The existing name setting
 	//
@@ -39153,8 +37775,8 @@ type ModifyDBClusterInput struct {
 	//    * The DB parameter group must be in the same DB parameter group family
 	//    as this DB cluster.
 	//
-	//    * The DBInstanceParameterGroupName parameter is only valid in combination
-	//    with the AllowMajorVersionUpgrade parameter.
+	//    * The DBInstanceParameterGroupName parameter is valid in combination with
+	//    the AllowMajorVersionUpgrade parameter for a major version upgrade only.
 	//
 	// Valid for: Aurora DB clusters only
 	DBInstanceParameterGroupName *string `type:"string"`
@@ -39198,13 +37820,13 @@ type ModifyDBClusterInput struct {
 	EnableGlobalWriteForwarding *bool `type:"boolean"`
 
 	// A value that indicates whether to enable the HTTP endpoint for an Aurora
-	// Serverless DB cluster. By default, the HTTP endpoint is disabled.
+	// Serverless v1 DB cluster. By default, the HTTP endpoint is disabled.
 	//
 	// When enabled, the HTTP endpoint provides a connectionless web service API
-	// for running SQL queries on the Aurora Serverless DB cluster. You can also
+	// for running SQL queries on the Aurora Serverless v1 DB cluster. You can also
 	// query your database from inside the RDS console with the query editor.
 	//
-	// For more information, see Using the Data API for Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
+	// For more information, see Using the Data API for Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
 	// in the Amazon Aurora User Guide.
 	//
 	// Valid for: Aurora DB clusters only
@@ -39401,6 +38023,12 @@ type ModifyDBClusterInput struct {
 	//
 	// Valid for: Aurora DB clusters only
 	ScalingConfiguration *ScalingConfiguration `type:"structure"`
+
+	// Contains the scaling configuration of an Aurora Serverless v2 DB cluster.
+	//
+	// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+	// in the Amazon Aurora User Guide.
+	ServerlessV2ScalingConfiguration *ServerlessV2ScalingConfiguration `type:"structure"`
 
 	// Specifies the storage type to be associated with the DB cluster.
 	//
@@ -39642,6 +38270,12 @@ func (s *ModifyDBClusterInput) SetScalingConfiguration(v *ScalingConfiguration) 
 	return s
 }
 
+// SetServerlessV2ScalingConfiguration sets the ServerlessV2ScalingConfiguration field's value.
+func (s *ModifyDBClusterInput) SetServerlessV2ScalingConfiguration(v *ServerlessV2ScalingConfiguration) *ModifyDBClusterInput {
+	s.ServerlessV2ScalingConfiguration = v
+	return s
+}
+
 // SetStorageType sets the StorageType field's value.
 func (s *ModifyDBClusterInput) SetStorageType(v string) *ModifyDBClusterInput {
 	s.StorageType = &v
@@ -39675,8 +38309,6 @@ type ModifyDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -40174,7 +38806,7 @@ type ModifyDBInstanceInput struct {
 	//
 	// Constraints: If supplied, must match the name of an existing DBSubnetGroup.
 	//
-	// Example: mySubnetGroup
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// A value that indicates whether the DB instance has deletion protection enabled.
@@ -40233,7 +38865,7 @@ type ModifyDBInstanceInput struct {
 	// instance.
 	//
 	// For more information, see Using Amazon Performance Insights (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.html)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide..
 	//
 	// This setting doesn't apply to RDS Custom.
 	EnablePerformanceInsights *bool `type:"boolean"`
@@ -40375,6 +39007,22 @@ type ModifyDBInstanceInput struct {
 	//
 	// This setting doesn't apply to RDS Custom.
 	MultiAZ *bool `type:"boolean"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for the DB
+	// instance. A DBSubnetGroup can support only the IPv4 protocol or the IPv4
+	// and the IPv6 protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	NetworkType *string `type:"string"`
 
 	// The new DB instance identifier for the DB instance when renaming a DB instance.
 	// When you change the DB instance identifier, an instance reboot occurs immediately
@@ -40810,6 +39458,12 @@ func (s *ModifyDBInstanceInput) SetMonitoringRoleArn(v string) *ModifyDBInstance
 // SetMultiAZ sets the MultiAZ field's value.
 func (s *ModifyDBInstanceInput) SetMultiAZ(v bool) *ModifyDBInstanceInput {
 	s.MultiAZ = &v
+	return s
+}
+
+// SetNetworkType sets the NetworkType field's value.
+func (s *ModifyDBInstanceInput) SetNetworkType(v string) *ModifyDBInstanceInput {
+	s.NetworkType = &v
 	return s
 }
 
@@ -41673,7 +40327,7 @@ type ModifyDBSubnetGroupInput struct {
 	// Constraints: Must match the name of an existing DBSubnetGroup. Must not be
 	// default.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	//
 	// DBSubnetGroupName is a required field
 	DBSubnetGroupName *string `type:"string" required:"true"`
@@ -42998,9 +41652,16 @@ type OrderableDBInstanceOption struct {
 	// A list of the supported DB engine modes.
 	SupportedEngineModes []*string `type:"list"`
 
-	// Whether DB instances can be configured as a Multi-AZ DB cluster.
+	// The network types supported by the DB instance (IPV4 or DUAL).
 	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
+	// A DB instance can support only the IPv4 protocol or the IPv4 and the IPv6
+	// protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	SupportedNetworkTypes []*string `type:"list"`
+
+	// Whether DB instances can be configured as a Multi-AZ DB cluster.
 	//
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
@@ -43167,6 +41828,12 @@ func (s *OrderableDBInstanceOption) SetSupportedActivityStreamModes(v []*string)
 // SetSupportedEngineModes sets the SupportedEngineModes field's value.
 func (s *OrderableDBInstanceOption) SetSupportedEngineModes(v []*string) *OrderableDBInstanceOption {
 	s.SupportedEngineModes = v
+	return s
+}
+
+// SetSupportedNetworkTypes sets the SupportedNetworkTypes field's value.
+func (s *OrderableDBInstanceOption) SetSupportedNetworkTypes(v []*string) *OrderableDBInstanceOption {
+	s.SupportedNetworkTypes = v
 	return s
 }
 
@@ -43882,8 +42549,6 @@ type PromoteReadReplicaDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -44279,8 +42944,6 @@ type RebootDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -45550,7 +44213,7 @@ type RestoreDBClusterFromS3Input struct {
 	//
 	// Constraints: If supplied, must match the name of an existing DBSubnetGroup.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// The database name for the restored DB cluster.
@@ -45575,8 +44238,18 @@ type RestoreDBClusterFromS3Input struct {
 	DomainIAMRoleName *string `type:"string"`
 
 	// The list of logs that the restored DB cluster is to export to CloudWatch
-	// Logs. The values in the list depend on the DB engine being used. For more
-	// information, see Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// Logs. The values in the list depend on the DB engine being used.
+	//
+	// Aurora MySQL
+	//
+	// Possible values are audit, error, general, and slowquery.
+	//
+	// Aurora PostgreSQL
+	//
+	// Possible value is postgresql.
+	//
+	// For more information about exporting CloudWatch Logs for Amazon Aurora, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
 	// in the Amazon Aurora User Guide.
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
@@ -45723,6 +44396,12 @@ type RestoreDBClusterFromS3Input struct {
 	// then the Amazon Aurora DB cluster is created by using all of the files in
 	// the Amazon S3 bucket.
 	S3Prefix *string `type:"string"`
+
+	// Contains the scaling configuration of an Aurora Serverless v2 DB cluster.
+	//
+	// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+	// in the Amazon Aurora User Guide.
+	ServerlessV2ScalingConfiguration *ServerlessV2ScalingConfiguration `type:"structure"`
 
 	// The identifier for the database engine that was backed up to create the files
 	// stored in the Amazon S3 bucket.
@@ -45960,6 +44639,12 @@ func (s *RestoreDBClusterFromS3Input) SetS3Prefix(v string) *RestoreDBClusterFro
 	return s
 }
 
+// SetServerlessV2ScalingConfiguration sets the ServerlessV2ScalingConfiguration field's value.
+func (s *RestoreDBClusterFromS3Input) SetServerlessV2ScalingConfiguration(v *ServerlessV2ScalingConfiguration) *RestoreDBClusterFromS3Input {
+	s.ServerlessV2ScalingConfiguration = v
+	return s
+}
+
 // SetSourceEngine sets the SourceEngine field's value.
 func (s *RestoreDBClusterFromS3Input) SetSourceEngine(v string) *RestoreDBClusterFromS3Input {
 	s.SourceEngine = &v
@@ -46011,8 +44696,6 @@ type RestoreDBClusterFromS3Output struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -46067,7 +44750,7 @@ type RestoreDBClusterFromSnapshotInput struct {
 	// A value that indicates whether to copy all tags from the restored DB cluster
 	// to snapshots of the restored DB cluster. The default is not to copy them.
 	//
-	// Valid for: Aurora DB clusters only
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The name of the DB cluster to create from the DB snapshot or DB cluster snapshot.
@@ -46096,7 +44779,7 @@ type RestoreDBClusterFromSnapshotInput struct {
 	// see DB Instance Class (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html)
 	// in the Amazon RDS User Guide.
 	//
-	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
+	// Valid for: Multi-AZ DB clusters only
 	DBClusterInstanceClass *string `type:"string"`
 
 	// The name of the DB cluster parameter group to associate with this DB cluster.
@@ -46121,7 +44804,7 @@ type RestoreDBClusterFromSnapshotInput struct {
 	//
 	// Constraints: If supplied, must match the name of an existing DB subnet group.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	//
 	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	DBSubnetGroupName *string `type:"string"`
@@ -46158,11 +44841,31 @@ type RestoreDBClusterFromSnapshotInput struct {
 	// The list of logs that the restored DB cluster is to export to Amazon CloudWatch
 	// Logs. The values in the list depend on the DB engine being used.
 	//
-	// For more information, see Publishing Database Logs to Amazon CloudWatch Logs
-	// (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// RDS for MySQL
+	//
+	// Possible values are error, general, and slowquery.
+	//
+	// RDS for PostgreSQL
+	//
+	// Possible values are postgresql and upgrade.
+	//
+	// Aurora MySQL
+	//
+	// Possible values are audit, error, general, and slowquery.
+	//
+	// Aurora PostgreSQL
+	//
+	// Possible value is postgresql.
+	//
+	// For more information about exporting CloudWatch Logs for Amazon RDS, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// in the Amazon RDS User Guide..
+	//
+	// For more information about exporting CloudWatch Logs for Amazon Aurora, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
 	// in the Amazon Aurora User Guide.
 	//
-	// Valid for: Aurora DB clusters only
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
 	// A value that indicates whether to enable mapping of Amazon Web Services Identity
@@ -46332,6 +45035,12 @@ type RestoreDBClusterFromSnapshotInput struct {
 	//
 	// Valid for: Aurora DB clusters only
 	ScalingConfiguration *ScalingConfiguration `type:"structure"`
+
+	// Contains the scaling configuration of an Aurora Serverless v2 DB cluster.
+	//
+	// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+	// in the Amazon Aurora User Guide.
+	ServerlessV2ScalingConfiguration *ServerlessV2ScalingConfiguration `type:"structure"`
 
 	// The identifier for the DB snapshot or DB cluster snapshot to restore from.
 	//
@@ -46540,6 +45249,12 @@ func (s *RestoreDBClusterFromSnapshotInput) SetScalingConfiguration(v *ScalingCo
 	return s
 }
 
+// SetServerlessV2ScalingConfiguration sets the ServerlessV2ScalingConfiguration field's value.
+func (s *RestoreDBClusterFromSnapshotInput) SetServerlessV2ScalingConfiguration(v *ServerlessV2ScalingConfiguration) *RestoreDBClusterFromSnapshotInput {
+	s.ServerlessV2ScalingConfiguration = v
+	return s
+}
+
 // SetSnapshotIdentifier sets the SnapshotIdentifier field's value.
 func (s *RestoreDBClusterFromSnapshotInput) SetSnapshotIdentifier(v string) *RestoreDBClusterFromSnapshotInput {
 	s.SnapshotIdentifier = &v
@@ -46585,8 +45300,6 @@ type RestoreDBClusterFromSnapshotOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -46633,7 +45346,7 @@ type RestoreDBClusterToPointInTimeInput struct {
 	// A value that indicates whether to copy all tags from the restored DB cluster
 	// to snapshots of the restored DB cluster. The default is not to copy them.
 	//
-	// Valid for: Aurora DB clusters only
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The name of the new DB cluster to be created.
@@ -46684,7 +45397,7 @@ type RestoreDBClusterToPointInTimeInput struct {
 	//
 	// Constraints: If supplied, must match the name of an existing DBSubnetGroup.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	//
 	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	DBSubnetGroupName *string `type:"string"`
@@ -46716,11 +45429,31 @@ type RestoreDBClusterToPointInTimeInput struct {
 	// The list of logs that the restored DB cluster is to export to CloudWatch
 	// Logs. The values in the list depend on the DB engine being used.
 	//
-	// For more information, see Publishing Database Logs to Amazon CloudWatch Logs
-	// (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// RDS for MySQL
+	//
+	// Possible values are error, general, and slowquery.
+	//
+	// RDS for PostgreSQL
+	//
+	// Possible values are postgresql and upgrade.
+	//
+	// Aurora MySQL
+	//
+	// Possible values are audit, error, general, and slowquery.
+	//
+	// Aurora PostgreSQL
+	//
+	// Possible value is postgresql.
+	//
+	// For more information about exporting CloudWatch Logs for Amazon RDS, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
+	// in the Amazon RDS User Guide..
+	//
+	// For more information about exporting CloudWatch Logs for Amazon Aurora, see
+	// Publishing Database Logs to Amazon CloudWatch Logs (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html#USER_LogAccess.Procedural.UploadtoCloudWatch)
 	// in the Amazon Aurora User Guide.
 	//
-	// Valid for: Aurora DB clusters only
+	// Valid for: Aurora DB clusters and Multi-AZ DB clusters
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
 	// A value that indicates whether to enable mapping of Amazon Web Services Identity
@@ -46735,10 +45468,10 @@ type RestoreDBClusterToPointInTimeInput struct {
 
 	// The engine mode of the new cluster. Specify provisioned or serverless, depending
 	// on the type of the cluster you are creating. You can create an Aurora Serverless
-	// clone from a provisioned cluster, or a provisioned clone from an Aurora Serverless
-	// cluster. To create a clone that is an Aurora Serverless cluster, the original
-	// cluster must be an Aurora Serverless cluster or an encrypted provisioned
-	// cluster.
+	// v1 clone from a provisioned cluster, or a provisioned clone from an Aurora
+	// Serverless v1 cluster. To create a clone that is an Aurora Serverless v1
+	// cluster, the original cluster must be an Aurora Serverless v1 cluster or
+	// an encrypted provisioned cluster.
 	//
 	// Valid for: Aurora DB clusters only
 	EngineMode *string `type:"string"`
@@ -46875,6 +45608,12 @@ type RestoreDBClusterToPointInTimeInput struct {
 	//
 	// Valid for: Aurora DB clusters only
 	ScalingConfiguration *ScalingConfiguration `type:"structure"`
+
+	// Contains the scaling configuration of an Aurora Serverless v2 DB cluster.
+	//
+	// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+	// in the Amazon Aurora User Guide.
+	ServerlessV2ScalingConfiguration *ServerlessV2ScalingConfiguration `type:"structure"`
 
 	// The identifier of the source DB cluster from which to restore.
 	//
@@ -47072,6 +45811,12 @@ func (s *RestoreDBClusterToPointInTimeInput) SetScalingConfiguration(v *ScalingC
 	return s
 }
 
+// SetServerlessV2ScalingConfiguration sets the ServerlessV2ScalingConfiguration field's value.
+func (s *RestoreDBClusterToPointInTimeInput) SetServerlessV2ScalingConfiguration(v *ServerlessV2ScalingConfiguration) *RestoreDBClusterToPointInTimeInput {
+	s.ServerlessV2ScalingConfiguration = v
+	return s
+}
+
 // SetSourceDBClusterIdentifier sets the SourceDBClusterIdentifier field's value.
 func (s *RestoreDBClusterToPointInTimeInput) SetSourceDBClusterIdentifier(v string) *RestoreDBClusterToPointInTimeInput {
 	s.SourceDBClusterIdentifier = &v
@@ -47123,8 +45868,6 @@ type RestoreDBClusterToPointInTimeOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -47183,7 +45926,16 @@ type RestoreDBInstanceFromDBSnapshotInput struct {
 	BackupTarget *string `type:"string"`
 
 	// A value that indicates whether to copy all tags from the restored DB instance
-	// to snapshots of the DB instance. By default, tags are not copied.
+	// to snapshots of the DB instance.
+	//
+	// In most cases, tags aren't copied by default. However, when you restore a
+	// DB instance from a DB snapshot, RDS checks whether you specify new tags.
+	// If yes, the new tags are added to the restored DB instance. If there are
+	// no new tags, RDS looks for the tags from the source DB instance for the DB
+	// snapshot, and then adds those tags to the restored DB instance.
+	//
+	// For more information, see Copying tags to DB instance snapshots (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Tagging.html#USER_Tagging.CopyTags)
+	// in the Amazon RDS User Guide.
 	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The instance profile associated with the underlying Amazon EC2 instance of
@@ -47199,7 +45951,7 @@ type RestoreDBInstanceFromDBSnapshotInput struct {
 	//
 	// For the list of permissions required for the IAM role, see Configure IAM
 	// and your VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-setup-orcl.html#custom-setup-orcl.iam-vpc)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	//
 	// This setting is required for RDS Custom.
 	CustomIamInstanceProfile *string `type:"string"`
@@ -47269,7 +46021,7 @@ type RestoreDBInstanceFromDBSnapshotInput struct {
 	//
 	// Constraints: If supplied, must match the name of an existing DBSubnetGroup.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// A value that indicates whether the DB instance has deletion protection enabled.
@@ -47397,6 +46149,22 @@ type RestoreDBInstanceFromDBSnapshotInput struct {
 	// Constraint: You can't specify the AvailabilityZone parameter if the DB instance
 	// is a Multi-AZ deployment.
 	MultiAZ *bool `type:"boolean"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for the DB
+	// instance. A DBSubnetGroup can support only the IPv4 protocol or the IPv4
+	// and the IPv6 protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	NetworkType *string `type:"string"`
 
 	// The name of the option group to be used for the restored DB instance.
 	//
@@ -47631,6 +46399,12 @@ func (s *RestoreDBInstanceFromDBSnapshotInput) SetMultiAZ(v bool) *RestoreDBInst
 	return s
 }
 
+// SetNetworkType sets the NetworkType field's value.
+func (s *RestoreDBInstanceFromDBSnapshotInput) SetNetworkType(v string) *RestoreDBInstanceFromDBSnapshotInput {
+	s.NetworkType = &v
+	return s
+}
+
 // SetOptionGroupName sets the OptionGroupName field's value.
 func (s *RestoreDBInstanceFromDBSnapshotInput) SetOptionGroupName(v string) *RestoreDBInstanceFromDBSnapshotInput {
 	s.OptionGroupName = &v
@@ -47809,6 +46583,10 @@ type RestoreDBInstanceFromS3Input struct {
 	DBSecurityGroups []*string `locationNameList:"DBSecurityGroupName" type:"list"`
 
 	// A DB subnet group to associate with this DB instance.
+	//
+	// Constraints: If supplied, must match the name of an existing DBSubnetGroup.
+	//
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// A value that indicates whether the DB instance has deletion protection enabled.
@@ -47836,7 +46614,7 @@ type RestoreDBInstanceFromS3Input struct {
 	// instance.
 	//
 	// For more information, see Using Amazon Performance Insights (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.html)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide..
 	EnablePerformanceInsights *bool `type:"boolean"`
 
 	// The name of the database engine to be used for this instance.
@@ -47925,6 +46703,22 @@ type RestoreDBInstanceFromS3Input struct {
 	// If the DB instance is a Multi-AZ deployment, you can't set the AvailabilityZone
 	// parameter.
 	MultiAZ *bool `type:"boolean"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for the DB
+	// instance. A DBSubnetGroup can support only the IPv4 protocol or the IPv4
+	// and the IPv6 protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	NetworkType *string `type:"string"`
 
 	// The name of the option group to associate with this DB instance. If this
 	// argument is omitted, the default option group for the specified engine is
@@ -48268,6 +47062,12 @@ func (s *RestoreDBInstanceFromS3Input) SetMultiAZ(v bool) *RestoreDBInstanceFrom
 	return s
 }
 
+// SetNetworkType sets the NetworkType field's value.
+func (s *RestoreDBInstanceFromS3Input) SetNetworkType(v string) *RestoreDBInstanceFromS3Input {
+	s.NetworkType = &v
+	return s
+}
+
 // SetOptionGroupName sets the OptionGroupName field's value.
 func (s *RestoreDBInstanceFromS3Input) SetOptionGroupName(v string) *RestoreDBInstanceFromS3Input {
 	s.OptionGroupName = &v
@@ -48459,7 +47259,7 @@ type RestoreDBInstanceToPointInTimeInput struct {
 	//
 	// For the list of permissions required for the IAM role, see Configure IAM
 	// and your VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/custom-setup-orcl.html#custom-setup-orcl.iam-vpc)
-	// in the Amazon Relational Database Service User Guide.
+	// in the Amazon RDS User Guide.
 	//
 	// This setting is required for RDS Custom.
 	CustomIamInstanceProfile *string `type:"string"`
@@ -48501,7 +47301,7 @@ type RestoreDBInstanceToPointInTimeInput struct {
 	//
 	// Constraints: If supplied, must match the name of an existing DBSubnetGroup.
 	//
-	// Example: mySubnetgroup
+	// Example: mydbsubnetgroup
 	DBSubnetGroupName *string `type:"string"`
 
 	// A value that indicates whether the DB instance has deletion protection enabled.
@@ -48634,6 +47434,22 @@ type RestoreDBInstanceToPointInTimeInput struct {
 	// Constraint: You can't specify the AvailabilityZone parameter if the DB instance
 	// is a Multi-AZ deployment.
 	MultiAZ *bool `type:"boolean"`
+
+	// The network type of the DB instance.
+	//
+	// Valid values:
+	//
+	//    * IPV4
+	//
+	//    * DUAL
+	//
+	// The network type is determined by the DBSubnetGroup specified for the DB
+	// instance. A DBSubnetGroup can support only the IPv4 protocol or the IPv4
+	// and the IPv6 protocols (DUAL).
+	//
+	// For more information, see Working with a DB instance in a VPC (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html)
+	// in the Amazon RDS User Guide.
+	NetworkType *string `type:"string"`
 
 	// The name of the option group to be used for the restored DB instance.
 	//
@@ -48905,6 +47721,12 @@ func (s *RestoreDBInstanceToPointInTimeInput) SetMaxAllocatedStorage(v int64) *R
 // SetMultiAZ sets the MultiAZ field's value.
 func (s *RestoreDBInstanceToPointInTimeInput) SetMultiAZ(v bool) *RestoreDBInstanceToPointInTimeInput {
 	s.MultiAZ = &v
+	return s
+}
+
+// SetNetworkType sets the NetworkType field's value.
+func (s *RestoreDBInstanceToPointInTimeInput) SetNetworkType(v string) *RestoreDBInstanceToPointInTimeInput {
+	s.NetworkType = &v
 	return s
 }
 
@@ -49207,9 +48029,9 @@ func (s *RevokeDBSecurityGroupIngressOutput) SetDBSecurityGroup(v *DBSecurityGro
 	return s
 }
 
-// Contains the scaling configuration of an Aurora Serverless DB cluster.
+// Contains the scaling configuration of an Aurora Serverless v1 DB cluster.
 //
-// For more information, see Using Amazon Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
+// For more information, see Using Amazon Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
 // in the Amazon Aurora User Guide.
 type ScalingConfiguration struct {
 	_ struct{} `type:"structure"`
@@ -49245,9 +48067,9 @@ type ScalingConfiguration struct {
 	// The minimum capacity must be less than or equal to the maximum capacity.
 	MinCapacity *int64 `type:"integer"`
 
-	// The amount of time, in seconds, that Aurora Serverless tries to find a scaling
-	// point to perform seamless scaling before enforcing the timeout action. The
-	// default is 300.
+	// The amount of time, in seconds, that Aurora Serverless v1 tries to find a
+	// scaling point to perform seamless scaling before enforcing the timeout action.
+	// The default is 300.
 	//
 	// Specify a value between 60 and 600 seconds.
 	SecondsBeforeTimeout *int64 `type:"integer"`
@@ -49267,9 +48089,9 @@ type ScalingConfiguration struct {
 	// point isn't found in the timeout period.
 	//
 	// If you specify ForceApplyCapacityChange, connections that prevent Aurora
-	// Serverless from finding a scaling point might be dropped.
+	// Serverless v1 from finding a scaling point might be dropped.
 	//
-	// For more information, see Autoscaling for Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.auto-scaling)
+	// For more information, see Autoscaling for Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.auto-scaling)
 	// in the Amazon Aurora User Guide.
 	TimeoutAction *string `type:"string"`
 }
@@ -49331,7 +48153,7 @@ func (s *ScalingConfiguration) SetTimeoutAction(v string) *ScalingConfiguration 
 // Shows the scaling configuration for an Aurora DB cluster in serverless DB
 // engine mode.
 //
-// For more information, see Using Amazon Aurora Serverless (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
+// For more information, see Using Amazon Aurora Serverless v1 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html)
 // in the Amazon Aurora User Guide.
 type ScalingConfigurationInfo struct {
 	_ struct{} `type:"structure"`
@@ -49339,8 +48161,8 @@ type ScalingConfigurationInfo struct {
 	// A value that indicates whether automatic pause is allowed for the Aurora
 	// DB cluster in serverless DB engine mode.
 	//
-	// When the value is set to false for an Aurora Serverless DB cluster, the DB
-	// cluster automatically resumes.
+	// When the value is set to false for an Aurora Serverless v1 DB cluster, the
+	// DB cluster automatically resumes.
 	AutoPause *bool `type:"boolean"`
 
 	// The maximum capacity for an Aurora DB cluster in serverless DB engine mode.
@@ -49359,7 +48181,7 @@ type ScalingConfigurationInfo struct {
 	SecondsUntilAutoPause *int64 `type:"integer"`
 
 	// The action that occurs when Aurora times out while attempting to change the
-	// capacity of an Aurora Serverless cluster. The value is either ForceApplyCapacityChange
+	// capacity of an Aurora Serverless v1 cluster. The value is either ForceApplyCapacityChange
 	// or RollbackCapacityChange.
 	//
 	// ForceApplyCapacityChange, the default, sets the capacity to the specified
@@ -49421,6 +48243,102 @@ func (s *ScalingConfigurationInfo) SetSecondsUntilAutoPause(v int64) *ScalingCon
 // SetTimeoutAction sets the TimeoutAction field's value.
 func (s *ScalingConfigurationInfo) SetTimeoutAction(v string) *ScalingConfigurationInfo {
 	s.TimeoutAction = &v
+	return s
+}
+
+// Contains the scaling configuration of an Aurora Serverless v2 DB cluster.
+//
+// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+// in the Amazon Aurora User Guide.
+type ServerlessV2ScalingConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of Aurora capacity units (ACUs) for a DB instance in an
+	// Aurora Serverless v2 cluster. You can specify ACU values in half-step increments,
+	// such as 40, 40.5, 41, and so on. The largest value that you can use is 128.
+	MaxCapacity *float64 `type:"double"`
+
+	// The minimum number of Aurora capacity units (ACUs) for a DB instance in an
+	// Aurora Serverless v2 cluster. You can specify ACU values in half-step increments,
+	// such as 8, 8.5, 9, and so on. The smallest value that you can use is 0.5.
+	MinCapacity *float64 `type:"double"`
+}
+
+// String returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s ServerlessV2ScalingConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s ServerlessV2ScalingConfiguration) GoString() string {
+	return s.String()
+}
+
+// SetMaxCapacity sets the MaxCapacity field's value.
+func (s *ServerlessV2ScalingConfiguration) SetMaxCapacity(v float64) *ServerlessV2ScalingConfiguration {
+	s.MaxCapacity = &v
+	return s
+}
+
+// SetMinCapacity sets the MinCapacity field's value.
+func (s *ServerlessV2ScalingConfiguration) SetMinCapacity(v float64) *ServerlessV2ScalingConfiguration {
+	s.MinCapacity = &v
+	return s
+}
+
+// Shows the scaling configuration for an Aurora Serverless v2 DB cluster.
+//
+// For more information, see Using Amazon Aurora Serverless v2 (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+// in the Amazon Aurora User Guide.
+type ServerlessV2ScalingConfigurationInfo struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of Aurora capacity units (ACUs) for a DB instance in an
+	// Aurora Serverless v2 cluster. You can specify ACU values in half-step increments,
+	// such as 40, 40.5, 41, and so on. The largest value that you can use is 128.
+	MaxCapacity *float64 `type:"double"`
+
+	// The minimum number of Aurora capacity units (ACUs) for a DB instance in an
+	// Aurora Serverless v2 cluster. You can specify ACU values in half-step increments,
+	// such as 8, 8.5, 9, and so on. The smallest value that you can use is 0.5.
+	MinCapacity *float64 `type:"double"`
+}
+
+// String returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s ServerlessV2ScalingConfigurationInfo) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s ServerlessV2ScalingConfigurationInfo) GoString() string {
+	return s.String()
+}
+
+// SetMaxCapacity sets the MaxCapacity field's value.
+func (s *ServerlessV2ScalingConfigurationInfo) SetMaxCapacity(v float64) *ServerlessV2ScalingConfigurationInfo {
+	s.MaxCapacity = &v
+	return s
+}
+
+// SetMinCapacity sets the MinCapacity field's value.
+func (s *ServerlessV2ScalingConfigurationInfo) SetMinCapacity(v float64) *ServerlessV2ScalingConfigurationInfo {
+	s.MinCapacity = &v
 	return s
 }
 
@@ -49732,8 +48650,6 @@ type StartDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -50490,8 +49406,6 @@ type StopDBClusterOutput struct {
 	// For more information on Multi-AZ DB clusters, see Multi-AZ deployments with
 	// two readable standby DB instances (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)
 	// in the Amazon RDS User Guide.
-	//
-	// The Multi-AZ DB clusters feature is in preview and is subject to change.
 	DBCluster *DBCluster `type:"structure"`
 }
 
@@ -50918,6 +49832,10 @@ type UpgradeTarget struct {
 	// A list of the supported DB engine modes for the target engine version.
 	SupportedEngineModes []*string `type:"list"`
 
+	// A value that indicates whether you can use Babelfish for Aurora PostgreSQL
+	// with the target engine version.
+	SupportsBabelfish *bool `type:"boolean"`
+
 	// A value that indicates whether you can use Aurora global databases with the
 	// target engine version.
 	SupportsGlobalDatabases *bool `type:"boolean"`
@@ -50978,6 +49896,12 @@ func (s *UpgradeTarget) SetIsMajorVersionUpgrade(v bool) *UpgradeTarget {
 // SetSupportedEngineModes sets the SupportedEngineModes field's value.
 func (s *UpgradeTarget) SetSupportedEngineModes(v []*string) *UpgradeTarget {
 	s.SupportedEngineModes = v
+	return s
+}
+
+// SetSupportsBabelfish sets the SupportsBabelfish field's value.
+func (s *UpgradeTarget) SetSupportsBabelfish(v bool) *UpgradeTarget {
+	s.SupportsBabelfish = &v
 	return s
 }
 
@@ -51296,93 +50220,6 @@ func (s *VpcSecurityGroupMembership) SetStatus(v string) *VpcSecurityGroupMember
 // SetVpcSecurityGroupId sets the VpcSecurityGroupId field's value.
 func (s *VpcSecurityGroupMembership) SetVpcSecurityGroupId(v string) *VpcSecurityGroupMembership {
 	s.VpcSecurityGroupId = &v
-	return s
-}
-
-// Information about the virtual private network (VPN) between the VMware vSphere
-// cluster and the Amazon Web Services website.
-//
-// For more information about RDS on VMware, see the RDS on VMware User Guide.
-// (https://docs.aws.amazon.com/AmazonRDS/latest/RDSonVMwareUserGuide/rds-on-vmware.html)
-type VpnDetails struct {
-	_ struct{} `type:"structure"`
-
-	// The IP address of network traffic from Amazon Web Services to your on-premises
-	// data center.
-	VpnGatewayIp *string `type:"string"`
-
-	// The ID of the VPN.
-	VpnId *string `type:"string"`
-
-	// The name of the VPN.
-	VpnName *string `type:"string"`
-
-	// The preshared key (PSK) for the VPN.
-	//
-	// VpnPSK is a sensitive parameter and its value will be
-	// replaced with "sensitive" in string returned by VpnDetails's
-	// String and GoString methods.
-	VpnPSK *string `type:"string" sensitive:"true"`
-
-	// The state of the VPN.
-	VpnState *string `type:"string"`
-
-	// The IP address of network traffic from your on-premises data center. A custom
-	// AZ receives the network traffic.
-	VpnTunnelOriginatorIP *string `type:"string"`
-}
-
-// String returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s VpnDetails) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation.
-//
-// API parameter values that are decorated as "sensitive" in the API will not
-// be included in the string output. The member name will be present, but the
-// value will be replaced with "sensitive".
-func (s VpnDetails) GoString() string {
-	return s.String()
-}
-
-// SetVpnGatewayIp sets the VpnGatewayIp field's value.
-func (s *VpnDetails) SetVpnGatewayIp(v string) *VpnDetails {
-	s.VpnGatewayIp = &v
-	return s
-}
-
-// SetVpnId sets the VpnId field's value.
-func (s *VpnDetails) SetVpnId(v string) *VpnDetails {
-	s.VpnId = &v
-	return s
-}
-
-// SetVpnName sets the VpnName field's value.
-func (s *VpnDetails) SetVpnName(v string) *VpnDetails {
-	s.VpnName = &v
-	return s
-}
-
-// SetVpnPSK sets the VpnPSK field's value.
-func (s *VpnDetails) SetVpnPSK(v string) *VpnDetails {
-	s.VpnPSK = &v
-	return s
-}
-
-// SetVpnState sets the VpnState field's value.
-func (s *VpnDetails) SetVpnState(v string) *VpnDetails {
-	s.VpnState = &v
-	return s
-}
-
-// SetVpnTunnelOriginatorIP sets the VpnTunnelOriginatorIP field's value.
-func (s *VpnDetails) SetVpnTunnelOriginatorIP(v string) *VpnDetails {
-	s.VpnTunnelOriginatorIP = &v
 	return s
 }
 

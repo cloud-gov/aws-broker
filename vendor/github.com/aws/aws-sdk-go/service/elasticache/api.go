@@ -8036,16 +8036,18 @@ type CacheCluster struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and for Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and for Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -8060,9 +8062,10 @@ type CacheCluster struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -8402,7 +8405,7 @@ type CacheEngineVersion struct {
 	// The name of the cache parameter group family associated with this cache engine.
 	//
 	// Valid values are: memcached1.4 | memcached1.5 | memcached1.6 | redis2.6 |
-	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.0 | redis6.2
+	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.x
 	CacheParameterGroupFamily *string `type:"string"`
 
 	// The name of the cache engine.
@@ -8476,16 +8479,18 @@ func (s *CacheEngineVersion) SetEngineVersion(v string) *CacheEngineVersion {
 //    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 //    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 //    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-//    only for Redis engine version 6.0 onward and for Memcached engine version
+//    only for Redis engine version 5.0.6 onward and for Memcached engine version
 //    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 //    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 //    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+//    recommended. Existing clusters are still supported but creation of new
+//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 //
-//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-//    cache.c1.xlarge
+//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+//    are still supported but creation of new clusters is not supported for
+//    these types.) C1 node types: cache.c1.xlarge
 //
 //    * Memory optimized with data tiering: Current generation: R6gd node types
 //    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -8500,9 +8505,10 @@ func (s *CacheEngineVersion) SetEngineVersion(v string) *CacheEngineVersion {
 //    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 //    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 //    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+//    Previous generation: (not recommended. Existing clusters are still supported
+//    but creation of new clusters is not supported for these types.) M2 node
+//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 //
 // Additional node type info
 //
@@ -8871,7 +8877,7 @@ type CacheParameterGroup struct {
 	// is compatible with.
 	//
 	// Valid values are: memcached1.4 | memcached1.5 | memcached1.6 | redis2.6 |
-	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.0 |
+	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.x |
 	CacheParameterGroupFamily *string `type:"string"`
 
 	// The name of the cache parameter group.
@@ -9625,21 +9631,18 @@ type CreateCacheClusterInput struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
-	//
-	//    * Memory optimized with data tiering: Current generation: R6gd node types
-	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
-	//    cache.r6gd.2xlarge, cache.r6gd.4xlarge, cache.r6gd.8xlarge, cache.r6gd.12xlarge,
-	//    cache.r6gd.16xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized: Current generation: R6g node types (available only
 	//    for Redis engine version 5.0.6 onward and for Memcached engine version
@@ -9649,9 +9652,10 @@ type CreateCacheClusterInput struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -9757,8 +9761,7 @@ type CreateCacheClusterInput struct {
 
 	// Specifies the weekly time range during which maintenance on the cluster is
 	// performed. It is specified as a range in the format ddd:hh24:mi-ddd:hh24:mi
-	// (24H Clock UTC). The minimum maintenance window is a 60 minute period. Valid
-	// values for ddd are:
+	// (24H Clock UTC). The minimum maintenance window is a 60 minute period.
 	PreferredMaintenanceWindow *string `type:"string"`
 
 	// The outpost ARN in which the cache cluster is created.
@@ -10058,7 +10061,7 @@ type CreateCacheParameterGroupInput struct {
 	// can be used with.
 	//
 	// Valid values are: memcached1.4 | memcached1.5 | memcached1.6 | redis2.6 |
-	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.0 | redis6.2
+	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.x
 	//
 	// CacheParameterGroupFamily is a required field
 	CacheParameterGroupFamily *string `type:"string" required:"true"`
@@ -10590,16 +10593,18 @@ type CreateReplicationGroupInput struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -10614,9 +10619,10 @@ type CreateReplicationGroupInput struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -14051,16 +14057,18 @@ type DescribeReservedCacheNodesInput struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and for Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and for Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -14075,9 +14083,10 @@ type DescribeReservedCacheNodesInput struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -14216,16 +14225,18 @@ type DescribeReservedCacheNodesOfferingsInput struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and for Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and for Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -14240,9 +14251,10 @@ type DescribeReservedCacheNodesOfferingsInput struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -14453,7 +14465,7 @@ type DescribeServiceUpdatesInput struct {
 	ServiceUpdateName *string `type:"string"`
 
 	// The status of the service update
-	ServiceUpdateStatus []*string `type:"list"`
+	ServiceUpdateStatus []*string `type:"list" enum:"ServiceUpdateStatus"`
 }
 
 // String returns the string representation.
@@ -14709,7 +14721,7 @@ type DescribeUpdateActionsInput struct {
 	ServiceUpdateName *string `type:"string"`
 
 	// The status of the service update
-	ServiceUpdateStatus []*string `type:"list"`
+	ServiceUpdateStatus []*string `type:"list" enum:"ServiceUpdateStatus"`
 
 	// The range of time specified to search for service updates that are in available
 	// status
@@ -14719,7 +14731,7 @@ type DescribeUpdateActionsInput struct {
 	ShowNodeLevelUpdateStatus *bool `type:"boolean"`
 
 	// The status of the update action.
-	UpdateActionStatus []*string `type:"list"`
+	UpdateActionStatus []*string `type:"list" enum:"UpdateActionStatus"`
 }
 
 // String returns the string representation.
@@ -15335,7 +15347,7 @@ type EngineDefaults struct {
 	// default parameters apply.
 	//
 	// Valid values are: memcached1.4 | memcached1.5 | memcached1.6 | redis2.6 |
-	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.0 | redis6.2
+	// redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.0 | redis6.x
 	CacheParameterGroupFamily *string `type:"string"`
 
 	// Provides an identifier to allow retrieval of paginated results.
@@ -19994,16 +20006,18 @@ type ReservedCacheNode struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -20018,9 +20032,10 @@ type ReservedCacheNode struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -20184,16 +20199,18 @@ type ReservedCacheNodesOffering struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -20208,9 +20225,10 @@ type ReservedCacheNodesOffering struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
@@ -20832,16 +20850,18 @@ type Snapshot struct {
 	//    M5 node types: cache.m5.large, cache.m5.xlarge, cache.m5.2xlarge, cache.m5.4xlarge,
 	//    cache.m5.12xlarge, cache.m5.24xlarge M4 node types: cache.m4.large, cache.m4.xlarge,
 	//    cache.m4.2xlarge, cache.m4.4xlarge, cache.m4.10xlarge T4g node types (available
-	//    only for Redis engine version 6.0 onward and Memcached engine version
+	//    only for Redis engine version 5.0.6 onward and Memcached engine version
 	//    1.5.16 onward): cache.t4g.micro, cache.t4g.small, cache.t4g.medium T3
 	//    node types: cache.t3.micro, cache.t3.small, cache.t3.medium T2 node types:
 	//    cache.t2.micro, cache.t2.small, cache.t2.medium Previous generation: (not
-	//    recommended) T1 node types: cache.t1.micro M1 node types: cache.m1.small,
-	//    cache.m1.medium, cache.m1.large, cache.m1.xlarge M3 node types: cache.m3.medium,
-	//    cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
+	//    recommended. Existing clusters are still supported but creation of new
+	//    clusters is not supported for these types.) T1 node types: cache.t1.micro
+	//    M1 node types: cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge
+	//    M3 node types: cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge
 	//
-	//    * Compute optimized: Previous generation: (not recommended) C1 node types:
-	//    cache.c1.xlarge
+	//    * Compute optimized: Previous generation: (not recommended. Existing clusters
+	//    are still supported but creation of new clusters is not supported for
+	//    these types.) C1 node types: cache.c1.xlarge
 	//
 	//    * Memory optimized with data tiering: Current generation: R6gd node types
 	//    (available only for Redis engine version 6.2 onward). cache.r6gd.xlarge,
@@ -20857,9 +20877,10 @@ type Snapshot struct {
 	//    R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
 	//    cache.r5.12xlarge, cache.r5.24xlarge R4 node types: cache.r4.large, cache.r4.xlarge,
 	//    cache.r4.2xlarge, cache.r4.4xlarge, cache.r4.8xlarge, cache.r4.16xlarge
-	//    Previous generation: (not recommended) M2 node types: cache.m2.xlarge,
-	//    cache.m2.2xlarge, cache.m2.4xlarge R3 node types: cache.r3.large, cache.r3.xlarge,
-	//    cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
+	//    Previous generation: (not recommended. Existing clusters are still supported
+	//    but creation of new clusters is not supported for these types.) M2 node
+	//    types: cache.m2.xlarge, cache.m2.2xlarge, cache.m2.4xlarge R3 node types:
+	//    cache.r3.large, cache.r3.xlarge, cache.r3.2xlarge, cache.r3.4xlarge, cache.r3.8xlarge
 	//
 	// Additional node type info
 	//
