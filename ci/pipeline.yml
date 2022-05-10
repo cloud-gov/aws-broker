@@ -155,6 +155,326 @@ jobs:
       SERVICES: aws-rds:large-gp-sqlserver-se
       SERVICE_ORGANIZATION: cloud-gov
 
+- name: deploy-aws-broker-mboyd-dev
+  plan:
+  - in_parallel:
+    - get: aws-broker-app
+      resource: aws-broker-app-mboyd-dev
+      trigger: true
+    - get: pipeline-tasks
+  - task: run_tests
+    file: aws-broker-app/ci/run_tests.yml
+
+  - task: provision-rds
+    tags:
+    - iaas
+    file: pipeline-tasks/terraform-apply.yml
+    input_mapping:
+      terraform-templates: aws-broker-app
+    params:
+      TERRAFORM_ACTION: apply
+      TEMPLATE_SUBDIR: ci/terraform
+      STACK_NAME: ((mboyd-dev-stack-name))
+      S3_TFSTATE_BUCKET: ((mboyd-s3-tfstate-bucket))
+      AWS_DEFAULT_REGION: us-gov-west-1
+      
+      TF_VAR_base_stack: ((mboyd-development-stack-base))
+      TF_VAR_stack_description: ((mboyd-dev-stack-name))
+      TF_VAR_remote_state_bucket: ((mboyd-s3-tfstate-bucket))
+
+      TF_VAR_aws_deploy_region: ((development-aws-default-region))
+      TF_VAR_aws_deploy_role_arn: ((development-aws-deploy-role-arn))
+
+      TF_VAR_rds_internal_instance_type: db.t3.micro
+      TF_VAR_rds_internal_db_size: 10
+      TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
+      TF_VAR_rds_internal_db_engine: postgres
+      TF_VAR_rds_internal_db_engine_version: 12
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
+      TF_VAR_rds_internal_multi_az: false
+      TF_VAR_rds_internal_username: ((development-rds-internal-username))
+      TF_VAR_rds_internal_password: ((development-rds-internal-password))
+      TF_VAR_rds_internal_apply_immediately: "true"
+      TF_VAR_rds_internal_allow_major_version_upgrade: "true"
+
+      TF_VAR_rds_shared_mysql_instance_type: db.t3.small
+      TF_VAR_rds_shared_mysql_db_size: 100
+      TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
+      TF_VAR_rds_shared_mysql_db_engine: mysql
+      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.33
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_multi_az: false
+      TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
+      TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
+      TF_VAR_rds_shared_mysql_apply_immediately: "true"
+      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
+
+      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
+      TF_VAR_rds_shared_postgres_db_size: 100
+      TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
+      TF_VAR_rds_shared_postgres_db_engine: postgres
+      TF_VAR_rds_shared_postgres_db_engine_version: 12
+      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
+      TF_VAR_rds_shared_postgres_multi_az: false
+      TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
+      TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
+      TF_VAR_rds_shared_postgres_apply_immediately: "true"
+      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
+
+      TF_VAR_snapshot_expiration: 1
+      TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
+
+  - task: init-shared-db
+    file: aws-broker-app/ci/init-shared-db.yml
+    params:
+      STATE_FILE: terraform-state/terraform.tfstate
+      POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
+      POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
+
+  - task: build-manifest
+    file: aws-broker-app/ci/build-manifest.yml
+    params:
+      S3_TFSTATE_BUCKET: ((mboyd-s3-tfstate-bucket))
+      BASE_STACK_NAME: ((mboyd-development-stack-base))
+      AWS_DEFAULT_REGION: us-gov-west-1
+      STATE_FILE: terraform-state/terraform.tfstate
+      ENVIRONMENT: ((development-environment))
+      RDS_SHARED_MYSQL_NAME: ((development-rds-shared-mysql-db-name))
+      RDS_SHARED_MYSQL_USERNAME: ((development-rds-shared-mysql-username))
+      RDS_SHARED_MYSQL_PASSWORD: ((development-rds-shared-mysql-password))
+      RDS_SHARED_POSTGRES_NAME: ((development-rds-shared-postgres-db-name))
+      RDS_SHARED_POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
+      RDS_SHARED_POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
+
+  - put: deploy-aws-broker-mboyd-dev
+    params:
+      manifest: built/manifest.yml
+      path: built
+      current_app_name: ((mboyd-dev-broker-name))
+      environment_variables:
+        DB_PREFIX: ((mboyd-dev-db-name-prefix))
+        DB_SHORTHAND_PREFIX: dev
+        AUTH_PASS: ((development-auth-pass))
+        AUTH_USER: ((development-auth-user))
+        AWS_DEFAULT_REGION: ((development-aws-default-region))
+        DB_SSLMODE: require
+        DB_USER: ((development-rds-internal-username))
+        DB_PASS: ((development-rds-internal-password))
+        DB_TYPE: postgres
+        DB_NAME: ((development-rds-internal-db-name))
+        ENC_KEY: ((development-enc-key))
+
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy aws-broker on mboyd-dev
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+    on_success:
+      put: slack
+      params:
+        text: |
+          :white_check_mark: Successfully deployed aws-broker on mboyd-dev
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+
+  - task: update-broker
+    file: pipeline-tasks/register-service-broker.yml
+    params:
+      CF_API_URL: ((development-cf-api-url))
+      CF_USERNAME: ((development-cf-deploy-username))
+      CF_PASSWORD: ((development-cf-deploy-password))
+      CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+      CF_SPACE: ((mboyd-dev-cf-space))
+      BROKER_NAME: ((mboyd-dev-broker-name))
+      AUTH_USER: ((development-auth-user))
+      AUTH_PASS: ((development-auth-pass))
+      SERVICES: aws-rds:micro-psql aws-rds:medium-psql aws-rds:medium-psql-redundant aws-rds:large-gp-psql aws-rds:large-gp-psql-redundant aws-rds:xlarge-gp-psql aws-rds:xlarge-gp-psql-redundant aws-rds:small-mysql aws-rds:medium-mysql aws-rds:medium-gp-mysql-redundant aws-rds:large-gp-mysql aws-rds:large-gp-mysql-redundant aws-rds:xlarge-gp-mysql aws-rds:xlarge-gp-mysql-redundant aws-rds:medium-mysql-redundant aws-rds:micro-psql-redundant aws-rds:small-mysql-redundant aws-rds:small-psql aws-rds:small-psql-redundant aws-rds:medium-oracle-se2 aws-elasticache-redis:redis-dev aws-elasticache-redis:redis-3node aws-elasticache-redis:redis-5node aws-elasticache-redis:redis-3node-large aws-elasticache-redis:redis-5node-large aws-elasticsearch:es-dev aws-elasticsearch:es-medium aws-elasticsearch:es-medium-ha aws-elasticsearch:es-large aws-elasticsearch:es-large-ha aws-elasticsearch:es-xlarge aws-elasticsearch:es-xlarge-ha
+
+- name: acceptance-tests-mboyd-dev
+  plan:
+  - in_parallel:
+    - get: aws-broker-app
+      resource: aws-broker-app-mboyd-dev
+      passed: [deploy-aws-broker-mboyd-dev]
+      trigger: true
+    - get: aws-db-test
+  - in_parallel:
+      steps:
+      - task: smoke-tests-postgres
+        file: aws-broker-app/ci/run-smoke-tests.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-update-micro-to-small
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: small-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          DB_VERSION: 11
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-mysql
+        file: aws-broker-app/ci/run-smoke-tests.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-small-to-medium
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: small-mysql
+          NEW_SERVICE_PLAN: medium-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          DB_VERSION: 5.7
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-oracle
+        file: aws-broker-app/ci/run-smoke-tests.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_PLAN: medium-oracle-se2
+          DB_TYPE: oracle-se2
+
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: redis-dev
+          REGION: ((development-aws-default-region))
+
+      - task: smoke-tests-unbound-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((mboyd-dev-cf-organization))
+          CF_SPACE: ((mboyd-dev-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on mboyd-dev PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: ((slack-channel))
+      username: ((slack-username))
+      icon_url: ((slack-icon-url))
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: Acceptance Tests for aws-broker on mboyd-dev FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: ((slack-channel))
+      username: ((slack-username))
+      icon_url: ((slack-icon-url))  
+
 - name: acceptance-tests-development
   plan:
   - in_parallel:
@@ -1040,6 +1360,12 @@ resources:
     uri: ((aws-broker-url))
     branch: ((aws-broker-branch))
 
+- name: aws-broker-app-mboyd-dev
+  type: git
+  source:
+    uri: ((aws-broker-url-mboyd-dev))
+    branch: ((aws-broker-branch-mboyd-dev))    
+
 - name: aws-broker-app-development
   type: git
   source:
@@ -1061,6 +1387,16 @@ resources:
     organization: ((development-cf-organization))
     space: ((development-cf-space))
     skip_cert_check: false
+
+- name: deploy-aws-broker-mboyd-dev
+  type: cf
+  source:
+    api: ((development-cf-api-url))
+    username: ((development-cf-deploy-username))
+    password: ((development-cf-deploy-password))
+    organization: ((mboyd-dev-cf-organization))
+    space: ((mboyd-dev-cf-space))
+    skip_cert_check: false    
 
 - name: deploy-aws-broker-staging
   type: cf
