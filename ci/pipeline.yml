@@ -178,7 +178,7 @@ jobs:
       S3_TFSTATE_BUCKET: ((mboyd-s3-tfstate-bucket))
       AWS_DEFAULT_REGION: us-gov-west-1
       
-      TF_VAR_base_stack: ((mboyd-development-stack-base))
+      TF_VAR_base_stack: ((development-stack-base))
       TF_VAR_stack_description: ((mboyd-dev-stack-name))
       TF_VAR_remote_state_bucket: ((mboyd-s3-tfstate-bucket))
 
@@ -187,7 +187,7 @@ jobs:
 
       TF_VAR_rds_internal_instance_type: db.t3.micro
       TF_VAR_rds_internal_db_size: 10
-      TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
+      TF_VAR_rds_internal_db_name: ((mboyd-dev-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 12
       TF_VAR_rds_internal_db_parameter_group_family: postgres12
@@ -199,7 +199,7 @@ jobs:
 
       TF_VAR_rds_shared_mysql_instance_type: db.t3.small
       TF_VAR_rds_shared_mysql_db_size: 100
-      TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
+      TF_VAR_rds_shared_mysql_db_name: ((mboyd-dev-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
       TF_VAR_rds_shared_mysql_db_engine_version: 5.7.33
       TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
@@ -211,7 +211,7 @@ jobs:
 
       TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
       TF_VAR_rds_shared_postgres_db_size: 100
-      TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
+      TF_VAR_rds_shared_postgres_db_name: ((mboyd-dev-rds-shared-postgres-db-name))
       TF_VAR_rds_shared_postgres_db_engine: postgres
       TF_VAR_rds_shared_postgres_db_engine_version: 12
       TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
@@ -235,14 +235,14 @@ jobs:
     file: aws-broker-app/ci/build-manifest.yml
     params:
       S3_TFSTATE_BUCKET: ((mboyd-s3-tfstate-bucket))
-      BASE_STACK_NAME: ((mboyd-development-stack-base))
+      BASE_STACK_NAME: ((development-stack-base))
       AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((development-environment))
-      RDS_SHARED_MYSQL_NAME: ((development-rds-shared-mysql-db-name))
+      RDS_SHARED_MYSQL_NAME: ((mboyd-dev-rds-shared-mysql-db-name))
       RDS_SHARED_MYSQL_USERNAME: ((development-rds-shared-mysql-username))
       RDS_SHARED_MYSQL_PASSWORD: ((development-rds-shared-mysql-password))
-      RDS_SHARED_POSTGRES_NAME: ((development-rds-shared-postgres-db-name))
+      RDS_SHARED_POSTGRES_NAME: ((mboyd-dev-rds-shared-postgres-db-name))
       RDS_SHARED_POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
       RDS_SHARED_POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
 
@@ -261,7 +261,7 @@ jobs:
         DB_USER: ((development-rds-internal-username))
         DB_PASS: ((development-rds-internal-password))
         DB_TYPE: postgres
-        DB_NAME: ((development-rds-internal-db-name))
+        DB_NAME: ((mboyd-dev-rds-internal-db-name))
         ENC_KEY: ((development-enc-key))
 
     on_failure:
