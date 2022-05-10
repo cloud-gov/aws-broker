@@ -2,6 +2,11 @@ package awsiam
 
 import (
 	"errors"
+	"fmt"
+
+	"code.cloudfoundry.org/lager"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
 )
 
 type User interface {
@@ -27,3 +32,22 @@ type UserDetails struct {
 var (
 	ErrUserDoesNotExist = errors.New("iam user does not exist")
 )
+
+func NewUser(provider string, logger lager.Logger, awsSession *session.Session, endpoint string, insecureSkipVerify bool) (User, error) {
+	var user User
+	if provider == "minio" {
+		fmt.Printf("Setting up MinIO user provider...\n")
+		awscreds, err := awsSession.Config.Credentials.Get()
+		if err != nil {
+			return nil, fmt.Errorf("Failure to pull AWS credentials: %v", err)
+		}
+		user = NewMinioUser(logger, endpoint, awscreds.AccessKeyID, awscreds.SecretAccessKey, insecureSkipVerify, awsSession.Config.HTTPClient.Transport)
+	} else if provider == "" || provider == "aws" {
+		fmt.Printf("Setting up AWS IAM user provider...\n")
+		iamsvc := iam.New(awsSession)
+		user = NewIAMUser(iamsvc, logger)
+	} else {
+		return nil, fmt.Errorf("Unknown provider type: %s", provider)
+	}
+	return user, nil
+}
