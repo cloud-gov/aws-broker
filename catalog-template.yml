@@ -38,7 +38,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
-      name: "micro-psql"
+      name: "micro-psql-test"
       description: "Dedicated recommended micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
