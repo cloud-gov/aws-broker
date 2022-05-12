@@ -71,7 +71,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
-      name: "micro-psql-redundant"
+      name: "micro-psql-redundant-test"
       description: "Dedicated redundant recommended micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
