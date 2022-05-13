@@ -506,7 +506,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended small RDS MySQL DB instance"
+        displayName: *&small-mysql-name
       free: true
       adapter: dedicated
       instanceClass: db.t2.small
