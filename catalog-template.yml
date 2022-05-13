@@ -87,7 +87,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: *&micro-psql-redundant-name
+        displayName: *micro-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.micro
