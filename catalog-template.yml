@@ -851,7 +851,7 @@ rds:
           - *minimum-1-core
           - *minimum-4-gib-memory
           - *10-gb-storage
-          - &licensed-included "License Included"
+          - &license-included "License Included"
         costs:
         - amount:
             usd: 0
