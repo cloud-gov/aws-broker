@@ -702,17 +702,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "29cc73ed-f9c9-4901-b12b-bd4890aedf30"
-      name: "large-gp-mysql"
-      description: "Dedicated higher workload large RDS MySQL DB instance"
+      name: &large-gp-mysql-name "large-gp-mysql"
+      description: "Single-AZ RDS instance of MySQL v8, minimum 1 core, minimum 8 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated higher workload large RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - *mysql-v8
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload large RDS MySQL DB instance"
+        displayName: *large-gp-mysql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -734,17 +737,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "a0246f47-aeae-4c08-ba22-1d188bb51554"
-      name: "large-gp-mysql-redundant"
-      description: "Dedicated redundant higher workload large RDS MySQL DB instance"
+      name: &large-gp-mysql-redundant-name "large-gp-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL v8, minimum 1 core, minimum 8 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *mysql-v8
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload large RDS MySQL DB instance"
+        displayName: *large-gp-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -766,17 +772,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "9e056262-33fe-4236-a200-30e2d435d583"
-      name: "xlarge-gp-mysql"
-      description: "Dedicated higher workload x-large RDS MySQL DB instance"
+      name: &xlarge-gp-mysql-name "xlarge-gp-mysql"
+      description: "Single-AZ RDS instance of MySQL v8, minimum 2 cores, minimum 16 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated higher workload x-large RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - *mysql-v8
+          - *minimum-2-cores
+          - *minimum-16-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload x-large RDS MySQL DB instance"
+        displayName: *xlarge-gp-mysql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
@@ -798,17 +807,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e5da0850-0f48-4309-9b5f-dfe279fcd179"
-      name: "xlarge-gp-mysql-redundant"
-      description: "Dedicated redundant higher workload x-large RDS MySQL DB instance"
+      name: &xlarge-gp-mysql-redundant-name "xlarge-gp-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL v8, minimum 2 cores, minimum 16 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload x-large RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *mysql-v8
+          - *minimum-2-cores
+          - *minimum-16-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload x-large RDS MySQL DB instance"
+        displayName: *xlarge-gp-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
