@@ -38,7 +38,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
-      name: "micro-psql-test"
+      name: "micro-psql"
       description: "Dedicated recommended micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
@@ -71,7 +71,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
-      name: "micro-psql-redundant-test"
+      name: "micro-psql-redundant"
       description: "Dedicated redundant recommended micro RDS PostgreSQL DB instance"
       metadata:
         bullets:
@@ -104,7 +104,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e185e3be-07c7-48d6-9117-a85bc5ff1889"
-      name: "small-psql"
+      name: "small-psql-mboyd-test"
       description: "Dedicated recommended small RDS PostgreSQL DB instance"
       metadata:
         bullets:
