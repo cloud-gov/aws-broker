@@ -38,8 +38,8 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
-      name: "micro-psql"
-      description: &micro-psql-description "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
+      name: &micro-psql-name "micro-psql"
+      description: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
       metadata:
         bullets:
           - "Single-AZ RDS instance"
@@ -51,7 +51,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: *micro-psql-description
+        displayName: *micro-psql-name
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
