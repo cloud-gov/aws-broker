@@ -104,7 +104,7 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e185e3be-07c7-48d6-9117-a85bc5ff1889"
-      name: "small-psql-mboyd-test"
+      name: "small-psql"
       description: "Dedicated recommended small RDS PostgreSQL DB instance"
       metadata:
         bullets:
