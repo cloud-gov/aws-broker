@@ -39,7 +39,7 @@ rds:
         service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: "micro-psql"
-      description: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
+      description: &micro-psql-description "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
       metadata:
         bullets:
           - "Single-AZ RDS instance"
@@ -51,7 +51,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
+        displayName: *micro-psql-description
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
@@ -75,7 +75,7 @@ rds:
         service: "aws-broker"
     - id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
       name: "micro-psql-redundant"
-      description: "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
+      description: &micro-psql-redundant-description "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
       metadata:
         bullets:
           - "Multi-AZ RDS instance"
@@ -87,7 +87,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 1 GiB memory, 10 GB storage"
+        displayName: *micro-psql-redundant-description
       free: false
       adapter: dedicated
       instanceClass: db.t3.micro
@@ -111,7 +111,7 @@ rds:
         service: "aws-broker"
     - id: "e185e3be-07c7-48d6-9117-a85bc5ff1889"
       name: "small-psql"
-      description: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 2 GiB memory, 10 GB storage"
+      description: &small-psql-description "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 2 GiB memory, 10 GB storage"
       metadata:
         bullets:
           - "Single-AZ RDS instance"
@@ -123,7 +123,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 2 GiB memory, 10 GB storage"
+        displayName: *small-psql-description
       free: false
       adapter: dedicated
       instanceClass: db.t3.small
@@ -147,7 +147,7 @@ rds:
         service: "aws-broker"
     - id: "92c946bf-26d0-41d2-85a3-ea96f8f6da41"
       name: "small-psql-redundant"
-      description: "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 2 GiB memory, 10 GB storage"
+      description: &small-psql-redundant-description "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 2 GiB memory, 10 GB storage"
       metadata:
         bullets:
           - "Multi-AZ RDS instance"
@@ -159,7 +159,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 2 GiB memory, 10 GB storage"
+        displayName: *small-psql-redundant-description
       free: false
       adapter: dedicated
       instanceClass: db.t3.small
@@ -183,16 +183,19 @@ rds:
         service: "aws-broker"
     - id: "6b0c7dc6-5628-4447-9867-5574bc4def20"
       name: "medium-psql"
-      description: "Dedicated recommended medium RDS PostgreSQL DB instance"
+      description: &medium-psql-description "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 4 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated recommended medium RDS instance"
-          - "PostgreSQL DB instance"
+          - "Single-AZ RDS instance"
+          - "PostgreSQL v12"
+          - "minimum 1 core"
+          - "minimum 4 GiB memory"
+          - "10 GB storage"
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended medium RDS PostgreSQL DB instance"
+        displayName: *medium-psql-description
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
