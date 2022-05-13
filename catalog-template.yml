@@ -254,17 +254,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-      name: "medium-gp-psql"
-      description: "Dedicated higher workload medium RDS PostgreSQL DB instance"
+      name: &medium-gp-psql-name "medium-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 8 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated higher workload medium RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *postgresql-v12
+          - *minimum-1-core
+          - &minimum-8-gib-memory "minimum 8 GiB memory"
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload medium RDS PostgreSQL DB instance"
+        displayName: *medium-gp-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -287,17 +290,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
-      name: "medium-gp-psql-redundant"
-      description: "Dedicated redundant higher workload medium RDS PostgreSQL DB instance"
+      name: &medium-gp-psql-redundant "medium-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 8 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload medium RDS instance"
-          - "PostgreSQL DB instance"
+          - *multi-az-rds
+          - *postgresql-v12
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload medium RDS PostgreSQL DB instance"
+        displayName: *medium-gp-psql-redundant
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -320,17 +326,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "0201f24a-8e6d-4864-a597-f4752a2834f4"
-      name: "large-gp-psql"
-      description: "Dedicated higher workload large RDS PostgreSQL DB instance"
+      name: &large-gp-psql-name "large-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 8 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated higher workload large RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *postgresql-v12
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload large RDS PostgreSQL DB instance"
+        displayName: *large-gp-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -353,17 +362,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "d81ef27e-a49e-465e-b3bb-ea8a4a2f5571"
-      name: "large-gp-psql-redundant"
-      description: "Dedicated redundant higher workload large RDS PostgreSQL DB instance"
+      name: &large-gp-psql-redundant-name "large-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL v12, minimum 1 core, minimum 8 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload large RDS instance"
-          - "PostgreSQL DB instance"
+          - *multi-az-rds
+          - *postgresql-v12
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload large RDS PostgreSQL DB instance"
+        displayName: *large-gp-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -386,18 +398,21 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "520b2cbf-588f-4324-bb34-474ea57304bb"
-      name: "xlarge-gp-psql"
-      description: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
+      name: &xlarge-gp-psql-name "xlarge-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL v12, minimum 2 cores, minimum 16 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated higher workload x-large RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *postgresql-v12
+          - &minimum-2-cores "minimum 2 cores"
+          - &minimum-16-gib-memory "minimum 16 GiB memory"
+          - *10-gb-storage
         costs:
           -
             amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
+        displayName: *xlarge-gp-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
@@ -420,17 +435,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "3732a60e-f2a0-4112-9b64-87dd0cf10e78"
-      name: "xlarge-gp-psql-redundant"
-      description: "Dedicated redundant x-large RDS PostgreSQL DB instance"
+      name: &xlarge-gp-psql-redundant-name "xlarge-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL v12, minimum 2 cores, minimum 16 GiB memory, 10 GB storage"
       metadata:
         bullets:
-          - "Dedicated redundant x-large RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *postgresql-v12
+          - *minimum-2-cores
+          - *minimum-16-gib-memory
+          - *10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant x-large RDS PostgreSQL DB instance"
+        displayName: *xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
