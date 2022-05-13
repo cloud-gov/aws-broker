@@ -5,8 +5,7 @@ jobs:
   - in_parallel:
     - get: aws-broker-app
       resource: aws-broker-app-development
-      # trigger: true
-      trigger: false
+      trigger: true
     - get: pipeline-tasks
   - task: run_tests
     file: aws-broker-app/ci/run_tests.yml
@@ -512,8 +511,7 @@ jobs:
   plan:
   - in_parallel:
     - get: aws-broker-app
-      # trigger: true
-      trigger: false
+      trigger: true
     - get: pipeline-tasks
   - task: run_tests
     file: aws-broker-app/ci/run_tests.yml
