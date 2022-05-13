@@ -506,7 +506,7 @@ rds:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: *&small-mysql-name
+        displayName: *small-mysql-name
       free: true
       adapter: dedicated
       instanceClass: db.t2.small
