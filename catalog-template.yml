@@ -43,7 +43,7 @@ rds:
       metadata:
         bullets:
           - &single-az-rds "Single-AZ RDS instance"
-          - &postgresql "PostgreSQL"
+          - &default-postgresql-v12 "Default PostgreSQL v12"
           - &minimum-1-core "minimum 1 core"
           - &minimum-1-gib-memory "minimum 1 GiB memory"
           - &default-10-gb-storage "Default 10 GB storage"
@@ -79,7 +79,7 @@ rds:
       metadata:
         bullets:
           - &multi-az-rds "Multi-AZ RDS instance"
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
@@ -115,7 +115,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - &minimum-2-gib-memory "minimum 2 GiB memory"
           - *default-10-gb-storage
@@ -151,7 +151,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -187,7 +187,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - &minimum-4-gib-memory "minimum 4 GiB memory"
           - *default-10-gb-storage
@@ -223,7 +223,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - *minimum-4-gib-memory
           - *default-10-gb-storage
@@ -259,7 +259,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - &minimum-8-gib-memory "minimum 8 GiB memory"
           - *default-10-gb-storage
@@ -295,7 +295,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -331,7 +331,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -367,7 +367,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -403,7 +403,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - &minimum-2-cores "minimum 2 cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
           - *default-10-gb-storage
@@ -440,7 +440,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *postgresql
+          - *default-postgresql-v12
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
