@@ -498,7 +498,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - &default-default-mysql-v8 "Default MySQL v8"
+          - &default-mysql-v8 "Default MySQL v8"
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -533,7 +533,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-default-mysql-v8
+          - *default-mysql-v8
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -567,7 +567,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-default-mysql-v8
+          - *default-mysql-v8
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
