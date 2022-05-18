@@ -66,7 +66,7 @@ pushd $TASK_DIRECTORY
 cf push $TEST_APP -f manifest.yml
 
 # Create service
-cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE -c '{"advanced_options": {"indices.fielddata.cache.size": "21", "indices.query.bool.max_clause_count": "1025"}}'
+cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE -b "$BROKER_NAME" -c '{"advanced_options": {"indices.fielddata.cache.size": "21", "indices.query.bool.max_clause_count": "1025"}}'
 
 # Wait for service to be created
 wait_for_service_instance $TEST_SERVICE

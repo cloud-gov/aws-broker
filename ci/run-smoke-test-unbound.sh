@@ -40,7 +40,7 @@ cf delete-service -f $TEST_SERVICE
 wait_for_service_instance $TEST_SERVICE
 
 # Create service
-cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE
+cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE -b "$BROKER_NAME"
 
 # Wait for service to be created
 wait_for_service_instance $TEST_SERVICE
