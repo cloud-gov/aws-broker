@@ -550,6 +550,7 @@ rds:
         - "5.7"
         - "8.0"
       dbType: mysql
+      dbVersion: "8.0"
       plan_updateable: true
       redundant: true
       encrypted: true
