@@ -38,17 +38,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
-      name: "micro-psql"
-      description: "Dedicated recommended micro RDS PostgreSQL DB instance"
+      name: &micro-psql-name "micro-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 1 GiB memory"
       metadata:
         bullets:
-          - "Dedicated recommended micro RDS instance"
-          - "PostgreSQL DB instance"
+          - &single-az-rds "Single-AZ RDS instance"
+          - &default-postgresql-v12 "Default PostgreSQL v12"
+          - &minimum-1-core "minimum 1 core"
+          - &minimum-1-gib-memory "minimum 1 GiB memory"
+          - &default-10-gb-storage "Default 10 GB storage"
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended micro RDS PostgreSQL DB instance"
+        displayName: *micro-psql-name
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
@@ -71,17 +74,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ad7201d4-cfb1-4f19-a2ef-e7d88e331a76"
-      name: "micro-psql-redundant"
-      description: "Dedicated redundant recommended micro RDS PostgreSQL DB instance"
+      name: &micro-psql-redundant-name "micro-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 1 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant recommended micro RDS instance"
-          - "PostgreSQL DB instance"
+          - &multi-az-rds "Multi-AZ RDS instance"
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - *minimum-1-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant recommended micro RDS PostgreSQL DB instance"
+        displayName: *micro-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.micro
@@ -104,17 +110,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e185e3be-07c7-48d6-9117-a85bc5ff1889"
-      name: "small-psql"
-      description: "Dedicated recommended small RDS PostgreSQL DB instance"
+      name: &small-psql-name "small-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 2 GiB memory"
       metadata:
         bullets:
-          - "Dedicated recommended small RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - &minimum-2-gib-memory "minimum 2 GiB memory"
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended small RDS PostgreSQL DB instance"
+        displayName: *small-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.small
@@ -137,17 +146,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "92c946bf-26d0-41d2-85a3-ea96f8f6da41"
-      name: "small-psql-redundant"
-      description: "Dedicated redundant recommended small RDS PostgreSQL DB instance"
+      name: &small-psql-redundant-name "small-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 2 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant recommended small RDS instance"
-          - "PostgreSQL DB instance"
+          - *multi-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - *minimum-2-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant recommended small RDS PostgreSQL DB instance"
+        displayName: *small-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.small
@@ -170,17 +182,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "6b0c7dc6-5628-4447-9867-5574bc4def20"
-      name: "medium-psql"
-      description: "Dedicated recommended medium RDS PostgreSQL DB instance"
+      name: &medium-psql-name "medium-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 4 GiB memory"
       metadata:
         bullets:
-          - "Dedicated recommended medium RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - &minimum-4-gib-memory "minimum 4 GiB memory"
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended medium RDS PostgreSQL DB instance"
+        displayName: *medium-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
@@ -203,17 +218,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "6c750aec-3eb9-4b4d-b70c-5811777110af"
-      name: "medium-psql-redundant"
-      description: "Dedicated redundant recommended medium RDS PostgreSQL DB instance"
+      name: &medium-psql-redundant-name "medium-psql-redundant"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 4 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant recommended medium RDS instance"
-          - "PostgreSQL DB instance"
+          - *multi-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - *minimum-4-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant recommended medium RDS PostgreSQL DB instance"
+        displayName: *medium-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
@@ -236,17 +254,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-      name: "medium-gp-psql"
-      description: "Dedicated higher workload medium RDS PostgreSQL DB instance"
+      name: &medium-gp-psql-name "medium-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated higher workload medium RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - &minimum-8-gib-memory "minimum 8 GiB memory"
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload medium RDS PostgreSQL DB instance"
+        displayName: *medium-gp-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -269,17 +290,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ee75aef3-7697-4906-9330-fb1f83d719be"
-      name: "medium-gp-psql-redundant"
-      description: "Dedicated redundant higher workload medium RDS PostgreSQL DB instance"
+      name: &medium-gp-psql-redundant "medium-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload medium RDS instance"
-          - "PostgreSQL DB instance"
+          - *multi-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload medium RDS PostgreSQL DB instance"
+        displayName: *medium-gp-psql-redundant
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -302,17 +326,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "0201f24a-8e6d-4864-a597-f4752a2834f4"
-      name: "large-gp-psql"
-      description: "Dedicated higher workload large RDS PostgreSQL DB instance"
+      name: &large-gp-psql-name "large-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated higher workload large RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload large RDS PostgreSQL DB instance"
+        displayName: *large-gp-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -335,17 +362,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "d81ef27e-a49e-465e-b3bb-ea8a4a2f5571"
-      name: "large-gp-psql-redundant"
-      description: "Dedicated redundant higher workload large RDS PostgreSQL DB instance"
+      name: &large-gp-psql-redundant-name "large-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload large RDS instance"
-          - "PostgreSQL DB instance"
+          - *multi-az-rds
+          - *default-postgresql-v12
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload large RDS PostgreSQL DB instance"
+        displayName: *large-gp-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -368,18 +398,21 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "520b2cbf-588f-4324-bb34-474ea57304bb"
-      name: "xlarge-gp-psql"
-      description: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
+      name: &xlarge-gp-psql-name "xlarge-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 2 cores, minimum 16 GiB memory"
       metadata:
         bullets:
-          - "Dedicated higher workload x-large RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *default-postgresql-v12
+          - &minimum-2-cores "minimum 2 cores"
+          - &minimum-16-gib-memory "minimum 16 GiB memory"
+          - *default-10-gb-storage
         costs:
           -
             amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload x-large RDS PostgreSQL DB instance"
+        displayName: *xlarge-gp-psql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
@@ -402,17 +435,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "3732a60e-f2a0-4112-9b64-87dd0cf10e78"
-      name: "xlarge-gp-psql-redundant"
-      description: "Dedicated redundant x-large RDS PostgreSQL DB instance"
+      name: &xlarge-gp-psql-redundant-name "xlarge-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL, minimum 2 cores, minimum 16 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant x-large RDS instance"
-          - "PostgreSQL DB instance"
+          - *single-az-rds
+          - *default-postgresql-v12
+          - *minimum-2-cores
+          - *minimum-16-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant x-large RDS PostgreSQL DB instance"
+        displayName: *xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
@@ -457,17 +493,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "0af67edb-30d8-4bb3-81c7-324c18d3efb2"
-      name: "small-mysql"
-      description: "Dedicated recommended small RDS MySQL DB instance"
+      name: &small-mysql-name "small-mysql"
+      description: "Single-AZ RDS instance of MySQL, minimum 1 core, minimum 2 GiB memory"
       metadata:
         bullets:
-          - "Dedicated recommended small RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - &default-mysql-v8 "Default MySQL v8"
+          - *minimum-1-core
+          - *minimum-2-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended small RDS MySQL DB instance"
+        displayName: *small-mysql-name
       free: true
       adapter: dedicated
       instanceClass: db.t2.small
@@ -489,17 +528,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "ae0d673d-f213-4125-8ca7-e57968aa792d"
-      name: "small-mysql-redundant"
-      description: "Dedicated redundant recommended small RDS MySQL DB instance"
+      name: &small-mysql-redundant-name "small-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL, minimum 1 core, minimum 2 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant recommended small RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *default-mysql-v8
+          - *minimum-1-core
+          - *minimum-2-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant recommended small RDS MySQL DB instance"
+        displayName: *small-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.t2.small
@@ -508,6 +550,7 @@ rds:
         - "5.7"
         - "8.0"
       dbType: mysql
+      dbVersion: "8.0"
       plan_updateable: true
       redundant: true
       encrypted: true
@@ -520,17 +563,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "beec33b2-9033-4639-9a22-368fff996030"
-      name: "medium-mysql"
-      description: "Dedicated recommended medium RDS MySQL DB instance"
+      name: &medium-mysql-name "medium-mysql"
+      description: "Single-AZ RDS instance of MySQL, minimum 2 cores, minimum 4 GiB memory"
       metadata:
         bullets:
-          - "Dedicated recommended medium RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - *default-mysql-v8
+          - *minimum-2-cores
+          - *minimum-4-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated recommended medium RDS MySQL DB instance"
+        displayName: *medium-mysql-name
       free: false
       adapter: dedicated
       instanceClass: db.t2.medium
@@ -552,17 +598,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "434f504b-f65b-4694-aa25-ba300bb3e1ec"
-      name: "medium-mysql-redundant"
-      description: "Dedicated redundant recommended medium RDS MySQL DB instance"
+      name: &medium-mysql-redundant-name "medium-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL, minimum 2 cores, minimum 4 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant recommended medium RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *default-mysql-v8
+          - *minimum-2-cores
+          - *minimum-4-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant recommended medium RDS MySQL DB instance"
+        displayName: *medium-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.t2.medium
@@ -584,17 +633,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "2ba54329-8264-486f-85bf-50c9f24085a9"
-      name: "medium-gp-mysql"
-      description: "Dedicated higher workload medium RDS MySQL DB instance"
+      name: &medium-gp-mysql-name "medium-gp-mysql"
+      description: "Single-AZ RDS instance of MySQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated higher workload medium RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - *default-mysql-v8
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload medium RDS MySQL DB instance"
+        displayName: *medium-gp-mysql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -616,17 +668,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "30e19cab-8d4e-492a-ac2c-33dd59d436d8"
-      name: "medium-gp-mysql-redundant"
-      description: "Dedicated redundant higher workload medium RDS MySQL DB instance"
+      name: &medium-gp-mysql-redundant-name "medium-gp-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload medium RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *default-mysql-v8
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload medium RDS MySQL DB instance"
+        displayName: *medium-gp-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -648,17 +703,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "29cc73ed-f9c9-4901-b12b-bd4890aedf30"
-      name: "large-gp-mysql"
-      description: "Dedicated higher workload large RDS MySQL DB instance"
+      name: &large-gp-mysql-name "large-gp-mysql"
+      description: "Single-AZ RDS instance of MySQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated higher workload large RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - *default-mysql-v8
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload large RDS MySQL DB instance"
+        displayName: *large-gp-mysql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -680,17 +738,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "a0246f47-aeae-4c08-ba22-1d188bb51554"
-      name: "large-gp-mysql-redundant"
-      description: "Dedicated redundant higher workload large RDS MySQL DB instance"
+      name: &large-gp-mysql-redundant-name "large-gp-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *default-mysql-v8
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload large RDS MySQL DB instance"
+        displayName: *large-gp-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
@@ -712,17 +773,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "9e056262-33fe-4236-a200-30e2d435d583"
-      name: "xlarge-gp-mysql"
-      description: "Dedicated higher workload x-large RDS MySQL DB instance"
+      name: &xlarge-gp-mysql-name "xlarge-gp-mysql"
+      description: "Single-AZ RDS instance of MySQL, minimum 2 cores, minimum 16 GiB memory"
       metadata:
         bullets:
-          - "Dedicated higher workload x-large RDS instance"
-          - "MySQL DB instance"
+          - *single-az-rds
+          - *default-mysql-v8
+          - *minimum-2-cores
+          - *minimum-16-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated higher workload x-large RDS MySQL DB instance"
+        displayName: *xlarge-gp-mysql-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
@@ -744,17 +808,20 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e5da0850-0f48-4309-9b5f-dfe279fcd179"
-      name: "xlarge-gp-mysql-redundant"
-      description: "Dedicated redundant higher workload x-large RDS MySQL DB instance"
+      name: &xlarge-gp-mysql-redundant-name "xlarge-gp-mysql-redundant"
+      description: "Multi-AZ RDS instance of MySQL, minimum 2 cores, minimum 16 GiB memory"
       metadata:
         bullets:
-          - "Dedicated redundant higher workload x-large RDS instance"
-          - "MySQL DB instance"
+          - *multi-az-rds
+          - *default-mysql-v8
+          - *minimum-2-cores
+          - *minimum-16-gib-memory
+          - *default-10-gb-storage
         costs:
           - amount:
               usd: 0
             unit: "HOURLY"
-        displayName: "Dedicated redundant higher workload x-large RDS MySQL DB instance"
+        displayName: *xlarge-gp-mysql-redundant-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
@@ -776,18 +843,21 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "e7d65895-4fc3-4a66-8c61-68da4944c69b"
-      name: "medium-oracle-se2"
-      description: "Dedicated recommended medium RDS Oracle SE2 DB instance"
+      name: &medium-oracle-se2-name "medium-oracle-se2"
+      description: "Single-AZ RDS instance of Oracle SE2, minimum 1 core, minimum 4 GiB memory"
       metadata:
         bullets:
-        - "Dedicated recommended medium RDS instance"
-        - "Oracle Standard Edition 2 DB instance"
-        - "License Included"
+          - *single-az-rds
+          - &oracle-se2 "Oracle Standard Edition 2"
+          - *minimum-1-core
+          - *minimum-4-gib-memory
+          - *default-10-gb-storage
+          - &license-included "License Included"
         costs:
         - amount:
             usd: 0
           unit: "HOURLY"
-        displayName: "Dedicated recommended medium RDS Oracle SE2 DB instance"
+        displayName: *medium-oracle-se2-name
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
@@ -805,18 +875,21 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
     - id: "43b6954b-46c3-4a45-9ca3-995e552ef558"
-      name: "large-gp-sqlserver-se"
-      description: "Dedicated higher workload large RDS SQL Server SE DB instance"
+      name: &large-gp-sqlserver-se-name "large-gp-sqlserver-se"
+      description: "Single-AZ RDS instance of SQL Server SE, minimum 1 core, minimum 8 GiB memory"
       metadata:
         bullets:
-        - "Dedicated higher workload large RDS instance"
-        - "SQL Server Standard Edition DB instance"
-        - "License Included"
+          - *single-az-rds
+          - &sql-server-se "SQL Server Standard Edition"
+          - *minimum-1-core
+          - *minimum-8-gib-memory
+          - *default-10-gb-storage
+          - *license-included
         costs:
         - amount:
             usd: 0
         unit: "HOURLY"
-        displayName: "Dedicated higher workload large RDS SQL Server SE DB instance"
+        displayName: *large-gp-sqlserver-se-name
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
