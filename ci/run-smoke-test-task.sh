@@ -66,7 +66,7 @@ pushd $TASK_DIRECTORY
 cf push $TEST_APP -f manifest.yml
 
 # Create service
-cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE
+cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE -b "$BROKER_NAME"
 
 # Wait for service to be created
 wait_for_service_instance $TEST_SERVICE
