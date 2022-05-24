@@ -950,6 +950,7 @@ jobs:
       - task: smoke-tests-postgres
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -961,6 +962,7 @@ jobs:
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -972,6 +974,7 @@ jobs:
       - task: smoke-tests-postgres-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -984,6 +987,7 @@ jobs:
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -996,6 +1000,7 @@ jobs:
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1007,6 +1012,7 @@ jobs:
       - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1018,6 +1024,7 @@ jobs:
       - task: smoke-tests-mysql-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1030,6 +1037,7 @@ jobs:
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1042,6 +1050,7 @@ jobs:
       - task: smoke-tests-oracle
         file: aws-broker-app/ci/run-smoke-tests.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1053,6 +1062,7 @@ jobs:
       - task: smoke-tests-redis
         file: aws-broker-app/ci/run-smoke-test-task.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1065,6 +1075,7 @@ jobs:
       - task: smoke-tests-unbound-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-unbound.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1077,6 +1088,7 @@ jobs:
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
@@ -1089,6 +1101,7 @@ jobs:
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
         params:
+          BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
           CF_USERNAME: ((prod-cf-deploy-username))
           CF_PASSWORD: ((prod-cf-deploy-password))
