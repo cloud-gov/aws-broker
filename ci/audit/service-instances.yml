@@ -8,9 +8,10 @@ image_resource:
 
 inputs:
 - name: cg-scripts
+- name: config-source
 
 outputs:
 - name: email-out
 
 run:
-  path: cg-scripts/ci/audit/service-instances.sh
+  path: config-source/ci/audit/service-instances.sh
