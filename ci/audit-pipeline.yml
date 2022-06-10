@@ -64,8 +64,8 @@ resources:
       username: ((smtp-cloudgovbilling.username))
       password: ((smtp-cloudgovbilling.password))
       ca_cert: ((smtp-cert))
-    from: ((email-from))
-    to: [((email-to))]
+    from: ((smtp-email-from))
+    to: [((smtp-email-to))]
 
 
 resource_types:
