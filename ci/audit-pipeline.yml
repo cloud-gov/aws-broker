@@ -17,6 +17,8 @@ jobs:
   - in_parallel:
     - get: config-source
       trigger: true
+    - get: cg-scripts
+      trigger: true
   - task: prep-email
     file: config-source/ci/audit/service-instances.yml
     params:
