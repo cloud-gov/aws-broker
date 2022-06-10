@@ -16,8 +16,10 @@ jobs:
   plan:
   - in_parallel:
     - get: config-source
-      trigger: true
+      trigger: false
     - get: cg-scripts
+      trigger: false
+    - get: monthly
       trigger: true
   - task: prep-email
     file: config-source/ci/audit/service-instances.yml
@@ -26,15 +28,20 @@ jobs:
       CF_USERNAME: ((prod-cf-broker-user.username))
       CF_PASSWORD: ((prod-cf-broker-user.password))
       CF_SERVICE: aws-elasticsearch
-  - put: send-an-email
+  on_success:
+    put: send-an-email
     params:
-      subject_text: "AWS Elasticsearch Service Instances"
-      body_text: "This is the output for AWS"
-      attachment_globs: ["email-out/*.txt"]
+      subject_text: "AWS Elasticsearch Monthly Audit"
+      body_text: "Here is the monthly report of AWS Elasticsearch Instances"
+      attachment_globs: ["email-out/*.csv"]
+  on_success:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticsearch Monthly Audit - Failure"
+      body_text: "The pipeline to audit AWS Elasticsearch has failed! Please check me out *wink*"
 
 
 resources:
-
 - name: pipeline-source
   type: git
   source:
@@ -66,6 +73,12 @@ resources:
     from: ((smtp-email-from))
     to: [((smtp-email-to))]
 
+  - name: monthly
+    type: cron-resource
+    source:
+      expression: "0 6 1 * *"
+      location: "America/New_York"
+      fire_immediately: true
 
 resource_types:
 - name: email-resource
@@ -73,3 +86,8 @@ resource_types:
   source:
     repository: pcfseceng/email-resource
     tag: latest
+
+- name: cron-resource
+  type: docker-image
+  source:
+    repository: cftoolsmiths/cron-resource
