@@ -56,7 +56,7 @@ resources:
     branch: master
 
 - name: send-an-email
-  type: email
+  type: email-resource
   source:
     smtp:
       host: ((smtp-host))
