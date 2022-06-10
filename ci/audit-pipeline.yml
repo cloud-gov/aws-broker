@@ -53,7 +53,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloud-gov/aws-broker
-    branch: main
+    branch: master
 
 - name: send-an-email
   type: email
