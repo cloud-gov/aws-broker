@@ -40,6 +40,35 @@ jobs:
       subject_text: "AWS Elasticsearch Monthly Audit - Failure"
       body_text: "The pipeline to audit AWS Elasticsearch has failed! Please check me out *wink*"
 
+- name: monthly-elasticache-redis-audit
+  serial_groups: [production]
+  plan:
+  - in_parallel:
+    - get: config-source
+      trigger: false
+    - get: cg-scripts
+      trigger: false
+    - get: monthly
+      trigger: true
+  - task: prep-email
+    file: config-source/ci/audit/service-instances.yml
+    params:
+      CF_API_URL: ((prod-cf-api-url))
+      CF_USERNAME: ((prod-cf-broker-user.username))
+      CF_PASSWORD: ((prod-cf-broker-user.password))
+      CF_SERVICE: aws-elasticache-redis
+  on_success:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticache Redis Monthly Audit"
+      body_text: "Here is the monthly report of AWS Elasticache Redis Instances"
+      attachment_globs: ["email-out/*.csv"]
+  on_failure:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticache Redis Monthly Audit - Failure"
+      body_text: "The pipeline to audit AWS Elasticache Redis has failed! Please check me out *wink*"
+
 
 resources:
 - name: pipeline-source
