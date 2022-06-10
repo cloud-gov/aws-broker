@@ -72,7 +72,6 @@ resources:
       ca_cert: ((smtp-cert.certificate))
     from: ((smtp-email-from))
     to: [((smtp-email-to))]
-
   - name: monthly
     type: cron-resource
     source:
