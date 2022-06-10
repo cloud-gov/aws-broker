@@ -34,7 +34,7 @@ jobs:
       subject_text: "AWS Elasticsearch Monthly Audit"
       body_text: "Here is the monthly report of AWS Elasticsearch Instances"
       attachment_globs: ["email-out/*.csv"]
-  on_success:
+  on_failure:
     put: send-an-email
     params:
       subject_text: "AWS Elasticsearch Monthly Audit - Failure"
