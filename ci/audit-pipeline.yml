@@ -72,12 +72,12 @@ resources:
       ca_cert: ((smtp-cert.certificate))
     from: ((smtp-email-from))
     to: [((smtp-email-to))]
-  - name: monthly
-    type: cron-resource
-    source:
-      expression: "0 6 1 * *"
-      location: "America/New_York"
-      fire_immediately: true
+- name: monthly
+  type: cron-resource
+  source:
+    expression: "0 6 1 * *"
+    location: "America/New_York"
+    fire_immediately: true
 
 resource_types:
 - name: email-resource
