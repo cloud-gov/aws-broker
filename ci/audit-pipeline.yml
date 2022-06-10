@@ -1,0 +1,76 @@
+---
+jobs:
+
+- name: configure-pipeline
+  serial_groups: [development,staging, production]
+  plan:
+  - in_parallel:
+    - get: pipeline-source
+      trigger: true
+      params: {depth: 1}
+  - set_pipeline: self
+    file: pipeline-source/ci/audit-pipeline.yml
+
+- name: monthly-elasticsearch-audit
+  serial_groups: [development]
+  plan:
+  - in_parallel:
+    - get: config-source
+      trigger: true
+  - task: prep-email
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: concourse/buildroot
+          tag: git
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo -e "Cheers!\n\n" > email-out/build.log
+      outputs:
+      - name: email-out
+  - put: send-an-email
+    params:
+      subject_text: "Testing Attachments"
+      body_text: "See Build Log"
+      attachment_globs: ["email-out/*.log"]
+
+
+resources:
+
+- name: pipeline-source
+  type: git
+  source:
+    uri: https://github.com/cloud-gov/aws-broker
+    branch: audit
+    paths: [ci/audit-pipeline.yml]
+
+- name: config-source
+  type: git
+  source:
+    uri: https://github.com/cloud-gov/aws-broker
+    branch: main
+
+- name: send-an-email
+  type: email
+  source:
+    smtp:
+      host: ((smtp-host))
+      port: ((smtp-port))
+      username: ((smtp-cloudgovbilling.username))
+      password: ((smtp-cloudgovbilling.password))
+      ca_cert: ((smtp-cert))
+    from: ((email-from))
+    to: [((email-to))]
+
+
+resource_types:
+- name: email-resource
+  type: docker-image
+  source:
+    repository: pcfseceng/email-resource
+    tag: latest
