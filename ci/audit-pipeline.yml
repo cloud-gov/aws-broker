@@ -12,32 +12,23 @@ jobs:
     file: pipeline-source/ci/audit-pipeline.yml
 
 - name: monthly-elasticsearch-audit
-  serial_groups: [development]
+  serial_groups: [production]
   plan:
   - in_parallel:
     - get: config-source
       trigger: true
   - task: prep-email
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: concourse/buildroot
-          tag: git
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          echo -e "Cheers!\n\n" > email-out/build.log
-      outputs:
-      - name: email-out
+    file: config-source/ci/audit/service-instances.yml
+    params:
+      CF_API_URL: ((prod-cf-api-url))
+      CF_USERNAME: ((prod-cf-broker-user.username))
+      CF_PASSWORD: ((prod-cf-broker-user.password))
+      CF_SERVICE: aws-elasticsearch
   - put: send-an-email
     params:
-      subject_text: "Testing Attachments"
-      body_text: "See Build Log"
-      attachment_globs: ["email-out/*.log"]
+      subject_text: "AWS Elasticsearch Service Instances"
+      body_text: "This is the output for AWS"
+      attachment_globs: ["email-out/*.txt"]
 
 
 resources:
@@ -53,6 +44,12 @@ resources:
   type: git
   source:
     uri: https://github.com/cloud-gov/aws-broker
+    branch: audit
+
+- name: cg-scripts
+  type: git
+  source:
+    uri: https://github.com/cloud-gov/cg-scripts
     branch: master
 
 - name: send-an-email
