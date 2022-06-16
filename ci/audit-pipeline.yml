@@ -1,0 +1,121 @@
+---
+jobs:
+
+- name: configure-pipeline
+  serial_groups: [development,staging, production]
+  plan:
+  - in_parallel:
+    - get: pipeline-source
+      trigger: true
+      params: {depth: 1}
+  - set_pipeline: self
+    file: pipeline-source/ci/audit-pipeline.yml
+
+- name: monthly-elasticsearch-audit
+  serial_groups: [production]
+  plan:
+  - in_parallel:
+    - get: config-source
+      trigger: false
+    - get: cg-scripts
+      trigger: false
+    - get: monthly
+      trigger: true
+  - task: prep-email
+    file: config-source/ci/audit/service-instances.yml
+    params:
+      CF_API_URL: ((prod-cf-api-url))
+      CF_USERNAME: ((prod-cf-broker-user.username))
+      CF_PASSWORD: ((prod-cf-broker-user.password))
+      CF_SERVICE: aws-elasticsearch
+  on_success:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticsearch Monthly Audit"
+      body_text: "Here is the monthly report of AWS Elasticsearch Instances"
+      attachment_globs: ["email-out/*.csv"]
+  on_failure:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticsearch Monthly Audit - Failure"
+      body_text: "The pipeline to audit AWS Elasticsearch has failed! Please check me out *wink*"
+
+- name: monthly-elasticache-redis-audit
+  serial_groups: [production]
+  plan:
+  - in_parallel:
+    - get: config-source
+      trigger: false
+    - get: cg-scripts
+      trigger: false
+    - get: monthly
+      trigger: true
+  - task: prep-email
+    file: config-source/ci/audit/service-instances.yml
+    params:
+      CF_API_URL: ((prod-cf-api-url))
+      CF_USERNAME: ((prod-cf-broker-user.username))
+      CF_PASSWORD: ((prod-cf-broker-user.password))
+      CF_SERVICE: aws-elasticache-redis
+  on_success:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticache Redis Monthly Audit"
+      body_text: "Here is the monthly report of AWS Elasticache Redis Instances"
+      attachment_globs: ["email-out/*.csv"]
+  on_failure:
+    put: send-an-email
+    params:
+      subject_text: "AWS Elasticache Redis Monthly Audit - Failure"
+      body_text: "The pipeline to audit AWS Elasticache Redis has failed! Please check me out *wink*"
+
+
+resources:
+- name: pipeline-source
+  type: git
+  source:
+    uri: https://github.com/cloud-gov/aws-broker
+    branch: audit
+    paths: [ci/audit-pipeline.yml]
+
+- name: config-source
+  type: git
+  source:
+    uri: https://github.com/cloud-gov/aws-broker
+    branch: audit
+
+- name: cg-scripts
+  type: git
+  source:
+    uri: https://github.com/cloud-gov/cg-scripts
+    branch: master
+
+- name: send-an-email
+  type: email-resource
+  source:
+    smtp:
+      host: ((smtp-host))
+      port: ((smtp-port))
+      username: ((smtp-cloudgovbilling.username))
+      password: ((smtp-cloudgovbilling.password))
+      ca_cert: ((smtp-cert.certificate))
+    from: ((smtp-email-from))
+    to: [((smtp-email-to))]
+- name: monthly
+  type: cron-resource
+  source:
+    expression: "0 6 1 * *"
+    location: "America/New_York"
+    fire_immediately: true
+
+resource_types:
+- name: email-resource
+  type: docker-image
+  source:
+    repository: pcfseceng/email-resource
+    tag: latest
+
+- name: cron-resource
+  type: docker-image
+  source:
+    repository: cftoolsmiths/cron-resource
