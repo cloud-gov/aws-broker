@@ -77,18 +77,21 @@ resources:
     uri: https://github.com/cloud-gov/aws-broker
     branch: audit
     paths: [ci/audit-pipeline.yml]
+    commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: config-source
   type: git
   source:
     uri: https://github.com/cloud-gov/aws-broker
     branch: audit
+    commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: cg-scripts
   type: git
   source:
     uri: https://github.com/cloud-gov/cg-scripts
     branch: master
+    commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: send-an-email
   type: email-resource
