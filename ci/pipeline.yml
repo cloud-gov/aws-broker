@@ -115,7 +115,7 @@ jobs:
         text: |
           :x: FAILED to deploy aws-broker on development
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-channel))
+        channel: '#cg-platform-news'
         username: ((slack-username))
         icon_url: ((slack-icon-url))
     on_success:
@@ -124,7 +124,7 @@ jobs:
         text: |
           :white_check_mark: Successfully deployed aws-broker on development
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-channel))
+        channel: '#cg-platform-news'
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
@@ -334,7 +334,7 @@ jobs:
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on development PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform-news'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
   on_failure:
@@ -343,7 +343,7 @@ jobs:
       text: |
         :x: Acceptance Tests for aws-broker on development FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform-news'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
@@ -461,7 +461,7 @@ jobs:
         text: |
           :x: FAILED to deploy aws-broker on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-channel))
+        channel: '#cg-platform-news'
         username: ((slack-username))
         icon_url: ((slack-icon-url))
     on_success:
@@ -470,7 +470,7 @@ jobs:
         text: |
           :white_check_mark: Successfully deployed aws-broker on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-channel))
+        channel: '#cg-platform-news'
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
@@ -712,7 +712,7 @@ jobs:
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform-news'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
   on_failure:
@@ -721,7 +721,7 @@ jobs:
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform-news'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
@@ -798,7 +798,7 @@ jobs:
       text:  |
         :terraform: $BUILD_JOB_NAME needs review
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
@@ -866,7 +866,7 @@ jobs:
         text: |
           :x: FAILED to deploy aws-broker on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-channel))
+        channel: '#cg-platform'
         username: ((slack-username))
         icon_url: ((slack-icon-url))
     on_success:
@@ -875,7 +875,7 @@ jobs:
         text: |
           :white_check_mark: Successfully deployed aws-broker on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-channel))
+        channel: '#cg-platform-news'
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
@@ -1117,7 +1117,7 @@ jobs:
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on production PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform-news'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
   on_failure:
@@ -1126,7 +1126,7 @@ jobs:
       text: |
         :x: Acceptance Tests for aws-broker on production FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-channel))
+      channel: '#cg-platform'
       username: ((slack-username))
       icon_url: ((slack-icon-url))
       
@@ -1134,18 +1134,21 @@ resources:
 - name: pipeline-tasks
   type: git
   source:
+    commit_verification_keys: ((cloud-gov-pgp-keys))
     uri: ((pipeline-tasks-git-url))
     branch: ((pipeline-tasks-git-branch))
 
 - name: aws-broker-app
   type: git
   source:
+    commit_verification_keys: ((cloud-gov-pgp-keys))
     uri: ((aws-broker-url))
     branch: ((aws-broker-branch))
 
 - name: aws-broker-app-development
   type: git
   source:
+    commit_verification_keys: ((cloud-gov-pgp-keys))
     uri: ((aws-broker-url-development))
     branch: ((aws-broker-branch-development))
 
