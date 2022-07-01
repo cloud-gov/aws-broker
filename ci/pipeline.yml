@@ -1157,6 +1157,7 @@ resources:
   source:
     uri: ((aws-db-test-git-url))
     branch: ((aws-db-test-git-branch))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: deploy-aws-broker-development
   type: cf
