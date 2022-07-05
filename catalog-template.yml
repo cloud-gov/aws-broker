@@ -476,7 +476,7 @@ rds:
       description: "Multi-AZ RDS instance of PostgreSQL, minimum 2 cores, minimum 16 GiB memory"
       metadata:
         bullets:
-          - *single-az-rds
+          - *multi-az-rds
           - *default-postgresql-v12
           - *minimum-2-cores
           - *minimum-16-gib-memory
