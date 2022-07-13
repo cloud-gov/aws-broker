@@ -152,7 +152,7 @@ jobs:
       BROKER_NAME: ((development-broker-name))
       AUTH_USER: ((development-auth-user))
       AUTH_PASS: ((development-auth-pass))
-      SERVICES: aws-rds:large-gp-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-development
@@ -530,7 +530,7 @@ jobs:
       BROKER_NAME: ((staging-broker-name))
       AUTH_USER: ((staging-auth-user))
       AUTH_PASS: ((staging-auth-pass))
-      SERVICES: aws-rds:large-gp-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
       SERVICE_ORGANIZATION: cloud-gov
 
 - name: acceptance-tests-staging
@@ -935,8 +935,22 @@ jobs:
       BROKER_NAME: ((prod-broker-name))
       AUTH_USER: ((prod-auth-user))
       AUTH_PASS: ((prod-auth-pass))
-      SERVICES: aws-rds:large-gp-sqlserver-se
+      SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
       SERVICE_ORGANIZATION: cloud-gov
+
+  - task: update-broker-datagov
+    file: pipeline-tasks/register-service-broker.yml
+    params:
+      CF_API_URL: ((prod-cf-api-url))
+      CF_USERNAME: ((prod-cf-deploy-username))
+      CF_PASSWORD: ((prod-cf-deploy-password))
+      CF_ORGANIZATION: ((prod-cf-organization))
+      CF_SPACE: ((prod-cf-space))
+      BROKER_NAME: ((prod-broker-name))
+      AUTH_USER: ((prod-auth-user))
+      AUTH_PASS: ((prod-auth-pass))
+      SERVICES: aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+      SERVICE_ORGANIZATION: gsa-datagov
 
 - name: acceptance-tests-prod
   plan:
