@@ -439,7 +439,7 @@ rds:
       description: "Multi-AZ RDS instance of PostgreSQL, minimum 2 cores, minimum 16 GiB memory"
       metadata:
         bullets:
-          - *single-az-rds
+          - *multi-az-rds
           - *default-postgresql-v12
           - *minimum-2-cores
           - *minimum-16-gib-memory
@@ -452,6 +452,79 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
+      dbVersion: "12"
+      dbType: postgres
+      plan_updateable: true
+      redundant: true
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "10d0f179-b121-4f2e-bda7-847f433ad9bd"
+      name: &2xlarge-gp-psql-name "2xlarge-gp-psql"
+      description: "Single-AZ RDS instance of PostgreSQL, minimum 4 cores, minimum 32 GiB memory"
+      metadata:
+        bullets:
+          - *single-az-rds
+          - *default-postgresql-v12
+          - &minimum-4-cores "minimum 4 cores"
+          - &minimum-32-gib-memory "minimum 32 GiB memory"
+          - *default-10-gb-storage
+        costs:
+          -
+            amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: *2xlarge-gp-psql-name
+      free: false
+      adapter: dedicated
+      instanceClass: db.m5.2xlarge
+      allocatedStorage: 10
+      approvedMajorVersions:
+        - "10"
+        - "11"
+        - "12"
+      dbVersion: "12"
+      dbType: postgres
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp2
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
+    - id: "57d75b9e-f422-4d7f-beda-7ea54cbdab0a"
+      name: &2xlarge-gp-psql-redundant-name "2xlarge-gp-psql-redundant"
+      description: "Multi-AZ RDS instance of PostgreSQL, minimum 4 cores, minimum 32 GiB memory"
+      metadata:
+        bullets:
+          - *multi-az-rds
+          - *default-postgresql-v12
+          - *minimum-4-cores
+          - *minimum-32-gib-memory
+          - *default-10-gb-storage
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: *2xlarge-gp-psql-redundant-name
+      free: false
+      adapter: dedicated
+      instanceClass: db.m5.2xlarge
       allocatedStorage: 10
       approvedMajorVersions:
         - "10"
