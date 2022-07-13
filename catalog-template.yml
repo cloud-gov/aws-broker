@@ -470,7 +470,6 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-# Testing 2xl plans for pgsql
     - id: "10d0f179-b121-4f2e-bda7-847f433ad9bd"
       name: &2xlarge-gp-psql-name "2xlarge-gp-psql"
       description: "Single-AZ RDS instance of PostgreSQL, minimum 4 cores, minimum 32 GiB memory"
@@ -544,77 +543,6 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
-# Testing m6g instance classes for pgsql
-    - id: "b1bdfc4d-1122-424b-9c37-a90ea00e6547"
-      name: &xlarge-gp-psql-m6-name "xlarge-gp-psql-m6"
-      description: "Single-AZ RDS instance of PostgreSQL, minimum 4 graviton cores, minimum 16 GiB memory"
-      metadata:
-        bullets:
-          - *single-az-rds
-          - *default-postgresql-v12
-          - &minimum-4-cores "minimum 4 graviton cores"
-          - &minimum-16-gib-memory "minimum 16 GiB memory"
-          - *default-10-gb-storage
-        costs:
-          -
-            amount:
-              usd: 0
-            unit: "HOURLY"
-        displayName: *xlarge-gp-psql-m6-name
-      free: false
-      adapter: dedicated
-      instanceClass: &m6-xlarge db.m6g.xlarge
-      allocatedStorage: 10
-      approvedMajorVersions:
-        - "12"
-      dbVersion: "12"
-      dbType: postgres
-      plan_updateable: true
-      redundant: false
-      encrypted: true
-      storage_type: gp2
-      backup_retention_period: 14
-      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
-      subnetGroup: (( grab meta.aws_broker.subnet_group ))
-      tags:
-        environment: (( grab meta.environment ))
-        client: "paas-cf"
-        service: "aws-broker"
-    - id: "75c1413f-40f2-4a11-ae5e-ddf016950f4b"
-      name: &xlarge-gp-psql-m6-redundant-name "xlarge-gp-psql-m6-redundant"
-      description: "Multi-AZ RDS instance of PostgreSQL, minimum 4 graviton , minimum 16 GiB memory"
-      metadata:
-        bullets:
-          - *multi-az-rds
-          - *default-postgresql-v12
-          - *minimum-4-cores
-          - *minimum-16-gib-memory
-          - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
-        displayName: *xlarge-gp-psql-m6-redundant-name
-      free: false
-      adapter: dedicated
-      instanceClass: *m6-xlarge
-      allocatedStorage: 10
-      approvedMajorVersions:
-        - "12"
-      dbVersion: "12"
-      dbType: postgres
-      plan_updateable: true
-      redundant: true
-      encrypted: true
-      storage_type: gp2
-      backup_retention_period: 14
-      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
-      subnetGroup: (( grab meta.aws_broker.subnet_group ))
-      tags:
-        environment: (( grab meta.environment ))
-        client: "paas-cf"
-        service: "aws-broker"
-# Mysql plans
     - id: "57dd4bf0-465b-4e11-838d-2142caa6d763"
       name: "shared-mysql"
       description: "Shared MySQL database for prototyping (no sensitive or production data)"
