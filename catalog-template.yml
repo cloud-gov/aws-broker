@@ -579,7 +579,7 @@ rds:
         displayName: *small-mysql-name
       free: true
       adapter: dedicated
-      instanceClass: db.t3.small
+      instanceClass: db.t2.small
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -614,7 +614,7 @@ rds:
         displayName: *small-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.t3.small
+      instanceClass: db.t2.small
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -649,7 +649,7 @@ rds:
         displayName: *medium-mysql-name
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.t2.medium
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
@@ -684,7 +684,7 @@ rds:
         displayName: *medium-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.t2.medium
       allocatedStorage: 10
       approvedMajorVersions:
         - "5.7"
