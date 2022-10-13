@@ -533,14 +533,13 @@ jobs:
         aws-rds:small-mysql
         aws-rds:small-mysql-redundant
         aws-rds:medium-mysql
+        aws-rds:medium-mysql-redundant
         aws-rds:medium-gp-mysql-redundant
         aws-rds:large-gp-mysql
         aws-rds:large-gp-mysql-redundant
         aws-rds:xlarge-gp-mysql
         aws-rds:xlarge-gp-mysql-redundant
-        aws-rds:medium-mysql-redundant
         aws-rds:micro-psql-redundant
-        aws-rds:small-mysql-redundant
         aws-rds:small-psql
         aws-rds:small-psql-redundant
         aws-rds:medium-oracle-se2
@@ -941,14 +940,13 @@ jobs:
         aws-rds:small-mysql
         aws-rds:small-mysql-redundant
         aws-rds:medium-mysql
+        aws-rds:medium-mysql-redundant
         aws-rds:medium-gp-mysql-redundant
         aws-rds:large-gp-mysql
         aws-rds:large-gp-mysql-redundant
         aws-rds:xlarge-gp-mysql
         aws-rds:xlarge-gp-mysql-redundant
-        aws-rds:medium-mysql-redundant
         aws-rds:micro-psql-redundant
-        aws-rds:small-mysql-redundant
         aws-rds:small-psql
         aws-rds:small-psql-redundant
         aws-rds:medium-oracle-se2
