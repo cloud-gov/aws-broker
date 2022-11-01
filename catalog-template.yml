@@ -1157,7 +1157,7 @@ redis:
         displayName: "non-prod single Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2.0
       numberCluster: 1
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1187,7 +1187,7 @@ redis:
         displayName: "3 node Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2.0
       numberCluster: 3
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1217,7 +1217,7 @@ redis:
         displayName: "5 node Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2.0
       numberCluster: 5
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1247,7 +1247,7 @@ redis:
         displayName: "3 node Elasticache redis5.0.6, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2.0
       numberCluster: 3
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1277,7 +1277,7 @@ redis:
         displayName: "5 node Elasticache redis5.0.6, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2.0
       numberCluster: 5
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))

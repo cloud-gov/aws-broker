@@ -1203,7 +1203,7 @@ resources:
   source:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     uri: ((aws-broker-url-development))
-    branch: ((aws-broker-branch-development))
+    branch: redis-version-upgrade
 
 - name: aws-db-test
   type: git
