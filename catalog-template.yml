@@ -1154,7 +1154,7 @@ redis:
             amount:
               usd: 20.0
             unit: "MONTHLY"
-        displayName: "non-prod single Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
+        displayName: "non-prod single Elasticache redis 6.2.0, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
       engineVersion: 6.2.0
