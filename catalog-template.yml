@@ -1161,7 +1161,7 @@ redis:
       numberCluster: 1
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
+      parameterGroup: default.redis6.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 1
@@ -1191,7 +1191,7 @@ redis:
       numberCluster: 3
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
+      parameterGroup: default.redis6.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
@@ -1221,7 +1221,7 @@ redis:
       numberCluster: 5
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
+      parameterGroup: default.redis6.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
@@ -1244,14 +1244,14 @@ redis:
             amount:
               usd: 120.0
             unit: "MONTHLY"
-        displayName: "3 node Elasticache redis5.0.6, persistent storage, 1.37GiB memory limit"
+        displayName: "3 node Elasticache redis6.2, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
       engineVersion: 6.2
       numberCluster: 3
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
+      parameterGroup: default.redis6.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
@@ -1281,7 +1281,7 @@ redis:
       numberCluster: 5
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
+      parameterGroup: default.redis6.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
