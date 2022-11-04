@@ -140,7 +140,7 @@ type RedisPlan struct {
 	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
 	CacheNodeType              string            `yaml:"nodeType" json:"-" validate:"required"`
 	NumCacheClusters           int               `yaml:"numberCluster" json:"-" validate:"required"`
-	ParameterGroup             string            `yaml:"parameterGroup" json:"-" validate:"required"`
+	//ParameterGroup             string            `yaml:"parameterGroup" json:"-" validate:"required"`
 	PreferredMaintenanceWindow string            `yaml:"preferredMaintenanceWindow" json:"-" validate:"required"`
 	SnapshotWindow             string            `yaml:"snapshotWindow" json:"-" validate:"required"`
 	SnapshotRetentionLimit     int               `yaml:"snapshotRetentionLimit" json:"-"`
