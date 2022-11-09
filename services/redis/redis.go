@@ -123,14 +123,15 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 		CacheSubnetGroupName:        aws.String(i.DbSubnetGroup),
 		SecurityGroupIds:            securityGroups,
 		Engine:                      aws.String("redis"),
-		EngineVersion:               aws.String(i.EngineVersion),
 		NumCacheClusters:            aws.Int64(int64(i.NumCacheClusters)),
 		Port:                        aws.Int64(6379),
-		CacheParameterGroupName:     aws.String(i.ParameterGroup),
 		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      aws.Int64(int64(i.SnapshotRetentionLimit)),
 	}
+        if i.EngineVersion != ""{
+          params.EngineVersion = aws.String(i.EngineVersion)
+         }
 
 	resp, err := svc.CreateReplicationGroup(params)
 	// Pretty-print the response data.

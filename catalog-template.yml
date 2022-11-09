@@ -1141,12 +1141,12 @@ redis:
   plans:
     - id: "475e36bf-387f-44c1-9b81-575fec2ee443"
       name: "redis-dev"
-      description: "AWS Elasticache Redis 5.0.6 Single node non-prod use only"
+      description: "AWS Elasticache Redis Single node non-prod use only"
       metadata:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis506"
+          - "redis62"
           - "single node"
           - "non-prod"
         costs:
@@ -1154,14 +1154,18 @@ redis:
             amount:
               usd: 20.0
             unit: "MONTHLY"
-        displayName: "non-prod single Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
+        displayName: "non-prod single Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2
+      approvedMajorVersions:
+        - "7.0"
+        - "6.2"
+        - "6.0"
+        - "5.0.6"
       numberCluster: 1
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 1
@@ -1172,26 +1176,30 @@ redis:
         service: "aws-broker"
     - id: "3nd336bf-387f-44c1-9b81-575fel966443"
       name: "redis-3node"
-      description: "AWS Elasticache Redis 5.0.6 Three node"
+      description: "AWS Elasticache Redis Three node"
       metadata:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis506"
+          - "redis62"
           - "3node"
         costs:
           -
             amount:
               usd: 60.0
             unit: "MONTHLY"
-        displayName: "3 node Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
+        displayName: "3 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2
+      approvedMajorVersions:
+        - "7.0"
+        - "6.2"
+        - "6.0"
+        - "5.0.6"
       numberCluster: 3
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
@@ -1202,26 +1210,31 @@ redis:
         service: "aws-broker"
     - id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
       name: "redis-5node"
-      description: "AWS Elasticache Redis 5.0.6 Five node"
+      description: "AWS Elasticache Redis Five node"
+      description: "AWS Elasticache Redis 6.2 Five node"
       metadata:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis506"
+          - "redis62"
           - "5node"
         costs:
           -
             amount:
               usd: 100.0
             unit: "MONTHLY"
-        displayName: "5 node Elasticache redis5.0.6, persistent storage, 512Mb memory limit"
+        displayName: "5 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2
+      approvedMajorVersions:
+        - "7.0"
+        - "6.2"
+        - "6.0"
+        - "5.0.6"
       numberCluster: 5
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
@@ -1232,26 +1245,30 @@ redis:
         service: "aws-broker"
     - id: "3nd227bf-sm4c-44c1-0b81-575fel666443"
       name: "redis-3node-large"
-      description: "AWS Elasticache Redis 5.0.6 Three node"
+      description: "AWS Elasticache Redis Three node"
       metadata:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis506"
+          - "redis62"
           - "3node"
         costs:
           -
             amount:
               usd: 120.0
             unit: "MONTHLY"
-        displayName: "3 node Elasticache redis5.0.6, persistent storage, 1.37GiB memory limit"
+        displayName: "3 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2
+      approvedMajorVersions:
+        - "7.0"
+        - "6.2"
+        - "6.0"
+        - "5.0.6"
       numberCluster: 3
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
@@ -1262,26 +1279,30 @@ redis:
         service: "aws-broker"
     - id: "5nd227bf-0k7f-44c1-90e1-575fp3k903r6"
       name: "redis-5node-large"
-      description: "AWS Elasticache Redis 5.0.6 Five node"
+      description: "AWS Elasticache Redis Five node"
       metadata:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis506"
+          - "redis62"
           - "5node"
         costs:
           -
             amount:
               usd: 200.0
             unit: "MONTHLY"
-        displayName: "5 node Elasticache redis5.0.6, persistent storage, 1.37GiB memory limit"
+        displayName: "5 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engineVersion: 6.2
+      approvedMajorVersions:
+        - "7.0"
+        - "6.2"
+        - "6.0"
+        - "5.0.6"
       numberCluster: 5
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
-      parameterGroup: default.redis5.0
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
