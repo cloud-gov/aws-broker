@@ -24,6 +24,7 @@ type Options struct {
 	PubliclyAccessible    bool   `json:"publicly_accessible"`
 	Version               string `json:"version"`
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
+        RedisVersion          string 'json:"redis_version"
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -131,8 +132,6 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	if planErr != nil {
 		return planErr
 	}
-
-	// Check to see if there is a major version specified and if so, check to
 	// make sure it's a valid major version.
 	if options.Version != "" {
 		// Check to make sure that the version specified is allowed by the plan.
@@ -144,6 +143,18 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		}
 	}
 
+        // Check to see if there is a major version specified for Redis and if so, check to
+        // make sure it's a valid major version.
+        if options.RedisVersion != "" {
+        // Check to make sure that the version specified is allowed by the plan.
+                 if !rplan.CheckVersion(options.RedisVersion) {
+                         return response.NewErrorResponse(
+                                 http.StatusBadRequest,
+                                 options.RedisVersion+" is not a supported major version; major version must be one of: "+strings.Join(rplan.ApprovedMajorVersions, ", ")+".",
+                         )
+                 }
+
+        }
 	err := newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
