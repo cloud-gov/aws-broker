@@ -219,7 +219,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	// Standard Parameters
 	params := &opensearchservice.CreateDomainInput{
 		DomainName:                  aws.String(i.Domain),
-		EngineVersion::              aws.String(i.ElasticsearchVersion),
+		EngineVersion:              aws.String(i.ElasticsearchVersion),
 		EBSOptions:                  ebsoptions,
 		ClusterConfig:               esclusterconfig,
 		SnapshotOptions:             snapshotOptions,
