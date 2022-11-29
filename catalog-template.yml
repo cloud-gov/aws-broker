@@ -1345,7 +1345,7 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_6.8
     dataCount: 1
-    instanceType: t3.small.elasticsearch
+    instanceType: t3.small.search
     volumeSize: 15
     volumeType: gp2
     encryptAtRest: false
@@ -1374,7 +1374,7 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     dataCount: 1
-    instanceType: t3.small.elasticsearch
+    instanceType: t3.small.search
     volumeSize: 15
     volumeType: gp2
     encryptAtRest: false
@@ -1403,8 +1403,8 @@ elasticsearch:
     elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
-    instanceType: c5.large.elasticsearch
-    masterInstanceType: c5.large.elasticsearch
+    instanceType: c5.large.search
+    masterInstanceType: c5.large.search
     volumeSize: 15
     volumeType: gp2
     masterEnabled: true
@@ -1435,8 +1435,8 @@ elasticsearch:
     elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
-    instanceType: c5.large.elasticsearch
-    masterInstanceType: c5.large.elasticsearch
+    instanceType: c5.large.search
+    masterInstanceType: c5.large.search
     volumeSize: 15
     volumeType: gp2
     masterEnabled: true
@@ -1467,8 +1467,8 @@ elasticsearch:
     elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
-    instanceType: c5.xlarge.elasticsearch
-    masterInstanceType: c5.xlarge.elasticsearch
+    instanceType: c5.xlarge.search
+    masterInstanceType: c5.xlarge.search
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
@@ -1499,8 +1499,8 @@ elasticsearch:
     elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
-    instanceType: c5.xlarge.elasticsearch
-    masterInstanceType: c5.xlarge.elasticsearch
+    instanceType: c5.xlarge.search
+    masterInstanceType: c5.xlarge.search
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
@@ -1531,8 +1531,8 @@ elasticsearch:
     elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
-    instanceType: c5.2xlarge.elasticsearch
-    masterInstanceType: c5.2xlarge.elasticsearch
+    instanceType: c5.2xlarge.search
+    masterInstanceType: c5.2xlarge.search
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
@@ -1563,8 +1563,8 @@ elasticsearch:
     elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
-    instanceType: c5.2xlarge.elasticsearch
-    masterInstanceType: c5.2xlarge.elasticsearch
+    instanceType: c5.2xlarge.search
+    masterInstanceType: c5.2xlarge.search
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
