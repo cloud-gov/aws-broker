@@ -219,9 +219,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	// Standard Parameters
 	params := &opensearchservice.CreateDomainInput{
 		DomainName:                  aws.String(i.Domain),
-		ElasticsearchVersion:        aws.String(i.ElasticsearchVersion),
+		EngineVersion::              aws.String(i.ElasticsearchVersion),
 		EBSOptions:                  ebsoptions,
-		ElasticsearchClusterConfig:  esclusterconfig,
+		ClusterConfig:               esclusterconfig,
 		SnapshotOptions:             snapshotOptions,
 		NodeToNodeEncryptionOptions: nodeOptions,
 		DomainEndpointOptions:       domainOptions,
@@ -232,7 +232,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	params.SetAccessPolicies(accessControlPolicy)
 
-	resp, err := svc.CreateElasticsearchDomain(params)
+	resp, err := svc.CreateDomain(params)
 	// Pretty-print the response data.
 	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
@@ -288,7 +288,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
 	}
-	resp, err := svc.UpdateElasticsearchDomainConfig(params)
+	resp, err := svc.UpdateDomainConfig(params)
 	fmt.Println(awsutil.StringValue(resp))
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
@@ -305,7 +305,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := svc.DescribeElasticsearchDomain(params)
+		resp, err := svc.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -375,7 +375,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 	params := &opensearchservice.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	_, err := svc.DescribeElasticsearchDomain(params)
+	_, err := svc.DescribeDomain(params)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			// Generic AWS error with Code, Message, and original error (if any)
@@ -409,7 +409,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := svc.DescribeElasticsearchDomain(params)
+		resp, err := svc.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -756,7 +756,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 	params := &opensearchservice.DeleteDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	resp, err := svc.DeleteElasticsearchDomain(params)
+	resp, err := svc.DeleteDomain(params)
 
 	// Pretty-print the response data.
 	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
@@ -773,7 +773,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		_, err := svc.DescribeElasticsearchDomain(params)
+		_, err := svc.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Instance no longer exists, this is success
