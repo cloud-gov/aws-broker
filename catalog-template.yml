@@ -1343,7 +1343,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "non-prod single node elasticsearch 6.8"
     free: false
-    elasticsearchVersion: 6.8
+    elasticsearchVersion: Elasticsearch_6.8
     dataCount: 1
     instanceType: t3.small.elasticsearch
     volumeSize: 15
@@ -1372,7 +1372,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "non-prod single node elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     dataCount: 1
     instanceType: t3.small.elasticsearch
     volumeSize: 15
@@ -1400,7 +1400,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "es cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
     instanceType: c5.large.elasticsearch
@@ -1432,7 +1432,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "es cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
     instanceType: c5.large.elasticsearch
@@ -1464,7 +1464,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "es large cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
     instanceType: c5.xlarge.elasticsearch
@@ -1496,7 +1496,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "es large cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
     instanceType: c5.xlarge.elasticsearch
@@ -1528,7 +1528,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "es xlarge cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
     instanceType: c5.2xlarge.elasticsearch
@@ -1560,7 +1560,7 @@ elasticsearch:
         unit: "MONTHLY"
       displayName: "es xlarge cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
-    elasticsearchVersion: 7.4
+    elasticsearchVersion: Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
     instanceType: c5.2xlarge.elasticsearch
