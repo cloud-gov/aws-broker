@@ -331,7 +331,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 				i.Host = *(resp.DomainStatus.Endpoints["vpc"])
 				i.ARN = *(resp.DomainStatus.ARN)
 				i.State = base.InstanceReady
-				i.CurrentESVersion = *(resp.DomainStatus.ElasticsearchVersion)
+				i.CurrentESVersion = *(resp.DomainStatus.EngineVersion)
 				// Should only be one regardless. Just return now.
 			} else {
 				// Something went horribly wrong. Should never get here.
