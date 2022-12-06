@@ -24,7 +24,6 @@ type Options struct {
 	PubliclyAccessible    bool   `json:"publicly_accessible"`
 	Version               string `json:"version"`
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
-
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
