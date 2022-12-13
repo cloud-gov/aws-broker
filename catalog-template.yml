@@ -65,7 +65,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -101,7 +101,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -137,7 +137,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -173,7 +173,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -209,7 +209,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -245,7 +245,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -281,7 +281,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -317,7 +317,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -353,7 +353,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -389,7 +389,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -426,7 +426,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -462,7 +462,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -500,7 +500,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -536,7 +536,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -572,7 +572,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -606,7 +606,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -664,7 +664,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -699,7 +699,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -734,7 +734,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -769,7 +769,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -804,7 +804,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -839,7 +839,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -874,7 +874,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -909,7 +909,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -944,7 +944,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -979,7 +979,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -1014,7 +1014,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -1049,7 +1049,7 @@ rds:
       plan_updateable: true
       redundant: true
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -1081,7 +1081,7 @@ rds:
       licenseModel: license-included
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.oracle_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -1113,7 +1113,7 @@ rds:
       licenseModel: license-included
       redundant: false
       encrypted: true
-      storage_type: gp3
+      storage_type: gp2
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.mssql_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -1347,7 +1347,7 @@ elasticsearch:
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
-    volumeType: gp3
+    volumeType: gp2
     encryptAtRest: false
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
@@ -1376,7 +1376,7 @@ elasticsearch:
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
-    volumeType: gp3
+    volumeType: gp2
     encryptAtRest: false
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
@@ -1406,7 +1406,7 @@ elasticsearch:
     instanceType: c5.large.search
     masterInstanceType: c5.large.search
     volumeSize: 15
-    volumeType: gp3
+    volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1438,7 +1438,7 @@ elasticsearch:
     instanceType: c5.large.search
     masterInstanceType: c5.large.search
     volumeSize: 15
-    volumeType: gp3
+    volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1470,7 +1470,7 @@ elasticsearch:
     instanceType: c5.xlarge.search
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
-    volumeType: gp3
+    volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1502,7 +1502,7 @@ elasticsearch:
     instanceType: c5.xlarge.search
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
-    volumeType: gp3
+    volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1534,7 +1534,7 @@ elasticsearch:
     instanceType: c5.2xlarge.search
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
-    volumeType: gp3
+    volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1566,7 +1566,7 @@ elasticsearch:
     instanceType: c5.2xlarge.search
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
-    volumeType: gp3
+    volumeType: gp2
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
