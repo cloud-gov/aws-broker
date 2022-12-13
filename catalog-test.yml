@@ -32,7 +32,7 @@ elasticsearch:
     instanceType: c5.large.elasticsearch
     masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -61,7 +61,7 @@ elasticsearch:
     dataCount: 1
     instanceType: t3.small.elasticsearch
     volumeSize: 10
-    volumeType: gp2
+    volumeType: gp3
     encryptAtRest: false
     automatedSnapshotStartHour: 7
     securityGroup: sec-group
@@ -210,7 +210,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp2
+      storage_type: gp3
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -242,7 +242,7 @@ rds:
       plan_updateable: true
       redundant: false
       encrypted: true
-      storage_type: gp2
+      storage_type: gp3
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -273,7 +273,7 @@ rds:
       dbType: postgres
       redundant: true
       encrypted: true
-      storage_type: gp2
+      storage_type: gp3
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.postgres_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
@@ -325,7 +325,7 @@ rds:
         - "8.0"
       plan_updateable: true
       securityGroup: sg-123456
-      storage_type: gp2
+      storage_type: gp3
       backup_retention_period: 14
       subnetGroup: subnet-group
       tags:
@@ -354,7 +354,7 @@ rds:
         - "8.0"
       plan_updateable: true
       securityGroup: sg-123456
-      storage_type: gp2
+      storage_type: gp3
       backup_retention_period: 14
       subnetGroup: subnet-group
       tags:
