@@ -104,7 +104,16 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	if planErr != nil {
 		return planErr
 	}
-
+    
+	if options.ElasticsearchVersion != "" {
+		// Check to make sure that the version specified is allowed by the plan.
+		if !plan.CheckVersion(options.ElasticsearchVersion) {
+			return response.NewErrorResponse(
+				http.StatusBadRequest,
+				options.ElasticsearchVersion +" is not a supported major version; major version must be one of: Opensearch_2.3, Opensearch_1.3, Elasticsearch_7.4 "+".",
+			)
+		}
+	}
 	err := newInstance.init(
 		id,
 		createRequest.OrganizationGUID,

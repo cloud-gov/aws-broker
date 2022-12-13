@@ -219,7 +219,6 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	// Standard Parameters
 	params := &opensearchservice.CreateDomainInput{
 		DomainName:                  aws.String(i.Domain),
-		EngineVersion:              aws.String(i.ElasticsearchVersion),
 		EBSOptions:                  ebsoptions,
 		ClusterConfig:               esclusterconfig,
 		SnapshotOptions:             snapshotOptions,
@@ -229,7 +228,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
 	}
-
+    if i.EngineVersion != ""{
+		params.EngineVersion = aws.String(i.ElasticsearchVersion)
+	}
 	params.SetAccessPolicies(accessControlPolicy)
 
 	resp, err := svc.CreateDomain(params)
