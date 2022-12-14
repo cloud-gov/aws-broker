@@ -1344,6 +1344,10 @@ elasticsearch:
       displayName: "non-prod single node elasticsearch 6.8"
     free: false
     elasticsearchVersion: Elasticsearch_6.8
+    ApprovedMajorVersions:
+    - "Opensearch_2.3" 
+    - "Opensearch_1.3"
+    - "Elasticsearch_7.4"
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
@@ -1373,6 +1377,10 @@ elasticsearch:
       displayName: "non-prod single node elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
@@ -1401,6 +1409,10 @@ elasticsearch:
       displayName: "es cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
     instanceType: c5.large.search
@@ -1433,6 +1445,10 @@ elasticsearch:
       displayName: "es cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
     instanceType: c5.large.search
@@ -1465,6 +1481,10 @@ elasticsearch:
       displayName: "es large cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
     instanceType: c5.xlarge.search
@@ -1497,6 +1517,10 @@ elasticsearch:
       displayName: "es large cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
     instanceType: c5.xlarge.search
@@ -1529,6 +1553,10 @@ elasticsearch:
       displayName: "es xlarge cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     masterCount: 3
     dataCount: 2
     instanceType: c5.2xlarge.search
@@ -1561,6 +1589,10 @@ elasticsearch:
       displayName: "es xlarge cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
+    ApprovedMajorVersions:
+    - Opensearch_2.3
+    - Opensearch_1.3
+    - Elasticsearch_7.4
     masterCount: 3
     dataCount: 4
     instanceType: c5.2xlarge.search
