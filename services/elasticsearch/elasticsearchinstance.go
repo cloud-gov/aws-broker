@@ -152,7 +152,6 @@ func (i *ElasticsearchInstance) init(uuid string,
 		return err
 	}
 
-	i.ElasticsearchVersion = plan.ElasticsearchVersion
 	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
 	i.DataCount, _ = strconv.Atoi(plan.DataCount)
 	i.InstanceType = plan.InstanceType
@@ -170,7 +169,12 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	i.BrokerSnapshotsEnabled = false
-
+    if options.ElasticsearchVersion != "" {
+		i.ElasticsearchVersion = options.ElasticsearchVersion
+	} else {
+		// Default to the version provided by the plan chosen in catalog.
+		i.ElasticsearchVersion = plan.ElasticsearchVersion
+	}
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid
 	i.Tags["Space GUID"] = spaceGUID

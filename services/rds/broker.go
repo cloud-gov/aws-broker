@@ -141,7 +141,6 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 			)
 		}
 	}
-
 	err := newInstance.init(
 		id,
 		createRequest.OrganizationGUID,

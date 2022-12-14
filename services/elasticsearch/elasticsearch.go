@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/elasticsearchservice"
+	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -90,7 +90,7 @@ type dedicatedElasticsearchAdapter struct {
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
@@ -134,11 +134,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	accountID := result.Account
 
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
-	var elasticsearchTags []*elasticsearchservice.Tag
+	var elasticsearchTags []*opensearchservice.Tag
 	time.Sleep(5 * time.Second)
 
 	for k, v := range i.Tags {
-		tag := elasticsearchservice.Tag{
+		tag := opensearchservice.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		}
@@ -146,17 +146,17 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		elasticsearchTags = append(elasticsearchTags, &tag)
 	}
 
-	ebsoptions := &elasticsearchservice.EBSOptions{
+	ebsoptions := &opensearchservice.EBSOptions{
 		EBSEnabled: aws.Bool(true),
 		VolumeSize: aws.Int64(int64(i.VolumeSize)),
 		VolumeType: aws.String(i.VolumeType),
 	}
 
-	zoneAwarenessConfig := &elasticsearchservice.ZoneAwarenessConfig{
+	zoneAwarenessConfig := &opensearchservice.ZoneAwarenessConfig{
 		AvailabilityZoneCount: aws.Int64(2),
 	}
 
-	esclusterconfig := &elasticsearchservice.ElasticsearchClusterConfig{
+	esclusterconfig := &opensearchservice.ClusterConfig{
 		InstanceType:  aws.String(i.InstanceType),
 		InstanceCount: aws.Int64(int64(i.DataCount)),
 	}
@@ -173,23 +173,23 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	log.Println(fmt.Sprint(i.MasterCount))
 
-	snapshotOptions := &elasticsearchservice.SnapshotOptions{
+	snapshotOptions := &opensearchservice.SnapshotOptions{
 		AutomatedSnapshotStartHour: aws.Int64(int64(i.AutomatedSnapshotStartHour)),
 	}
 
-	nodeOptions := &elasticsearchservice.NodeToNodeEncryptionOptions{
+	nodeOptions := &opensearchservice.NodeToNodeEncryptionOptions{
 		Enabled: aws.Bool(i.NodeToNodeEncryption),
 	}
 
-	domainOptions := &elasticsearchservice.DomainEndpointOptions{
+	domainOptions := &opensearchservice.DomainEndpointOptions{
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	encryptionAtRestOptions := &elasticsearchservice.EncryptionAtRestOptions{
+	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
 		Enabled: aws.Bool(i.EncryptAtRest),
 	}
 
-	VPCOptions := &elasticsearchservice.VPCOptions{
+	VPCOptions := &opensearchservice.VPCOptions{
 		SecurityGroupIds: []*string{
 			&i.SecGroup,
 		},
@@ -217,11 +217,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	// Standard Parameters
-	params := &elasticsearchservice.CreateElasticsearchDomainInput{
+	params := &opensearchservice.CreateDomainInput{
 		DomainName:                  aws.String(i.Domain),
-		ElasticsearchVersion:        aws.String(i.ElasticsearchVersion),
 		EBSOptions:                  ebsoptions,
-		ElasticsearchClusterConfig:  esclusterconfig,
+		ClusterConfig:               esclusterconfig,
 		SnapshotOptions:             snapshotOptions,
 		NodeToNodeEncryptionOptions: nodeOptions,
 		DomainEndpointOptions:       domainOptions,
@@ -229,10 +228,12 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
 	}
-
+    if i.ElasticsearchVersion != ""{
+		params.EngineVersion = aws.String(i.ElasticsearchVersion)
+	}
 	params.SetAccessPolicies(accessControlPolicy)
 
-	resp, err := svc.CreateElasticsearchDomain(params)
+	resp, err := svc.CreateDomain(params)
 	// Pretty-print the response data.
 	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
@@ -251,7 +252,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		}
 		i.IamPolicy = policy
 		i.IamPolicyARN = policyARN
-		paramsTags := &elasticsearchservice.AddTagsInput{
+		paramsTags := &opensearchservice.AddTagsInput{
 			TagList: elasticsearchTags,
 			ARN:     resp.DomainStatus.ARN,
 		}
@@ -272,7 +273,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 }
 
 func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	AdvancedOptions := make(map[string]*string)
 
@@ -284,11 +285,11 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
 	// Standard Parameters
-	params := &elasticsearchservice.UpdateElasticsearchDomainConfigInput{
+	params := &opensearchservice.UpdateDomainConfigInput{
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
 	}
-	resp, err := svc.UpdateElasticsearchDomainConfig(params)
+	resp, err := svc.UpdateDomainConfig(params)
 	fmt.Println(awsutil.StringValue(resp))
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
@@ -300,12 +301,12 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := svc.DescribeElasticsearchDomain(params)
+		resp, err := svc.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -331,7 +332,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 				i.Host = *(resp.DomainStatus.Endpoints["vpc"])
 				i.ARN = *(resp.DomainStatus.ARN)
 				i.State = base.InstanceReady
-				i.CurrentESVersion = *(resp.DomainStatus.ElasticsearchVersion)
+				i.CurrentESVersion = *(resp.DomainStatus.EngineVersion)
 				// Should only be one regardless. Just return now.
 			} else {
 				// Something went horribly wrong. Should never get here.
@@ -371,11 +372,11 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 // we make the deletion async, set status to in-progress and rollup to return a 202
 func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	//check for backing resource and do async otherwise remove from db
-	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-	params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	params := &opensearchservice.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	_, err := svc.DescribeElasticsearchDomain(params)
+	_, err := svc.DescribeDomain(params)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			// Generic AWS error with Code, Message, and original error (if any)
@@ -385,7 +386,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
 			}
 			// Instance no longer exists, force a removal from brokerdb
-			if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+			if awsErr.Code() == opensearchservice.ErrCodeResourceNotFoundException {
 				return base.InstanceGone, err
 			}
 		}
@@ -404,12 +405,12 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	// First, we need to check if the instance state
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := svc.DescribeElasticsearchDomain(params)
+		resp, err := svc.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -751,12 +752,12 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 
 // in which we finally delete the ES Domain and wait for it to complete
 func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *ElasticsearchInstance) error {
-	svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	params := &elasticsearchservice.DeleteElasticsearchDomainInput{
+	params := &opensearchservice.DeleteDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	resp, err := svc.DeleteElasticsearchDomain(params)
+	resp, err := svc.DeleteDomain(params)
 
 	// Pretty-print the response data.
 	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
@@ -768,16 +769,16 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 	// now we poll for completion
 	for {
 		time.Sleep(time.Minute)
-		svc := elasticsearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-		params := &elasticsearchservice.DescribeElasticsearchDomainInput{
+		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		_, err := svc.DescribeElasticsearchDomain(params)
+		_, err := svc.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Instance no longer exists, this is success
-				if awsErr.Code() == elasticsearchservice.ErrCodeResourceNotFoundException {
+				if awsErr.Code() == opensearchservice.ErrCodeResourceNotFoundException {
 					return nil
 				}
 				// Generic AWS error with Code, Message, and original error (if any)
