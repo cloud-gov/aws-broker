@@ -144,7 +144,7 @@ type RedisPlan struct {
 	SnapshotWindow             string            `yaml:"snapshotWindow" json:"-" validate:"required"`
 	SnapshotRetentionLimit     int               `yaml:"snapshotRetentionLimit" json:"-"`
 	AutomaticFailoverEnabled   bool              `yaml:"automaticFailoverEnabled" json:"-"`
-    ApprovedMajorVersions     []string          `yaml:"approvedMajorVersions" json:"-"`
+        ApprovedMajorVersions     []string          `yaml:"approvedMajorVersions" json:"-"`
 }
 
 // CheckVersion verifies that a specific version chosen by the user for a new
