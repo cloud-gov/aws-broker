@@ -1344,7 +1344,7 @@ elasticsearch:
       displayName: "non-prod single node elasticsearch 6.8"
     free: false
     elasticsearchVersion: Elasticsearch_6.8
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "Opensearch_2.3" 
     - "Opensearch_1.3"
     - "Elasticsearch_7.4"
@@ -1377,7 +1377,7 @@ elasticsearch:
       displayName: "non-prod single node elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "OpenSearch_2.3"
     - "OpenSearch_1.3"
     - "Elasticsearch_7.4"
@@ -1409,7 +1409,7 @@ elasticsearch:
       displayName: "es cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "OpenSearch_2.3"
     - "OpenSearch_1.3"
     - "Elasticsearch_7.4"
@@ -1445,7 +1445,7 @@ elasticsearch:
       displayName: "es cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "OpenSearch_2.3"
     - "OpenSearch_1.3"
     - "Elasticsearch_7.4"
@@ -1481,7 +1481,7 @@ elasticsearch:
       displayName: "es large cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "Opensearch_2.3"
     - "Opensearch_1.3"
     - "Elasticsearch_7.4"
@@ -1517,7 +1517,7 @@ elasticsearch:
       displayName: "es large cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "OpenSearch_2.3"
     - "OpenSearch_1.3"
     - "Elasticsearch_7.4"
@@ -1553,7 +1553,7 @@ elasticsearch:
       displayName: "es xlarge cluster 3 master 2 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "OpenSearch_2.3"
     - "OpenSearch_1.3"
     - "Elasticsearch_7.4"
@@ -1589,7 +1589,7 @@ elasticsearch:
       displayName: "es xlarge cluster 3 master 4 data based on elasticsearch 7.4"
     free: false
     elasticsearchVersion: Elasticsearch_7.4
-    ApprovedMajorVersions:
+    approvedMajorVersions:
     - "OpenSearch_2.3"
     - "OpenSearch_1.3"
     - "Elasticsearch_7.4"
