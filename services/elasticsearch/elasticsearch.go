@@ -228,7 +228,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
 	}
-    if i.EngineVersion != ""{
+    if i.ElasticsearchVersion != ""{
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
 	}
 	params.SetAccessPolicies(accessControlPolicy)
