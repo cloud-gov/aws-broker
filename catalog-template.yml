@@ -1378,9 +1378,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
@@ -1410,9 +1410,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
     masterCount: 3
     dataCount: 2
     instanceType: c5.large.search
@@ -1446,9 +1446,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
     masterCount: 3
     dataCount: 4
     instanceType: c5.large.search
@@ -1482,9 +1482,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "Opensearch_2.3"
+    - "Opensearch_1.3"
+    - "Elasticsearch_7.4"
     masterCount: 3
     dataCount: 2
     instanceType: c5.xlarge.search
@@ -1518,9 +1518,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
     masterCount: 3
     dataCount: 4
     instanceType: c5.xlarge.search
@@ -1554,9 +1554,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
     masterCount: 3
     dataCount: 2
     instanceType: c5.2xlarge.search
@@ -1590,9 +1590,9 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_7.4
     ApprovedMajorVersions:
-    - Opensearch_2.3
-    - Opensearch_1.3
-    - Elasticsearch_7.4
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
     masterCount: 3
     dataCount: 4
     instanceType: c5.2xlarge.search
