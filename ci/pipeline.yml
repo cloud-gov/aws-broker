@@ -7,6 +7,9 @@ jobs:
       resource: aws-broker-app-development
       trigger: true
     - get: pipeline-tasks
+    - get: db-app-development
+    - get: redis-app-development
+    - get: search-app-development
   - task: run_tests
     file: aws-broker-app/ci/run_tests.yml
 
@@ -190,14 +193,130 @@ jobs:
       SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
       SERVICE_ORGANIZATION: cloud-gov
 
-- name: acceptance-tests-development
+- name: acceptance-tests-redis-development
+  plan:
+  - in_parallel:
+      steps:
+      - get: aws-broker-app
+        resource: aws-broker-app-development
+      - get: aws-db-test
+      - get: redis-app-development
+        passed:
+        - deploy-aws-broker-development
+        trigger: true
+  - in_parallel:
+      steps:
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          BROKER_NAME: ((development-broker-name))
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: redis-dev
+          REGION: ((development-aws-default-region))
+  on_failure:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :x: Acceptance Tests for aws-broker on development FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+  on_success:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on development PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+
+- name: acceptance-tests-search-development
+  plan:
+  - in_parallel:
+      steps:
+      - get: aws-broker-app
+        resource: aws-broker-app-development
+      - get: aws-db-test
+      - get: search-app-development
+        passed:
+        - deploy-aws-broker-development
+        trigger: true
+  - in_parallel:
+      steps:
+      - task: smoke-tests-unbound-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        params:
+          BROKER_NAME: ((development-broker-name))
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          BROKER_NAME: ((development-broker-name))
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          BROKER_NAME: ((development-broker-name))
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((development-aws-default-region))
+  on_failure:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :x: Acceptance Tests for aws-broker on development FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+  on_success:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on development PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+
+- name: acceptance-tests-db-development
   plan:
   - in_parallel:
     - get: aws-broker-app
       resource: aws-broker-app-development
-      passed: [deploy-aws-broker-development]
-      trigger: true
     - get: aws-db-test
+    - get: db-app-development
+      passed:
+      - deploy-aws-broker-development
+      trigger: true
   - in_parallel:
       steps:
       - task: smoke-tests-postgres
@@ -311,58 +430,6 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
-
-      - task: smoke-tests-redis
-        file: aws-broker-app/ci/run-smoke-test-task.yml
-        params:
-          BROKER_NAME: ((development-broker-name))
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_NAME: aws-elasticache-redis
-          SERVICE_PLAN: redis-dev
-          REGION: ((development-aws-default-region))
-
-      - task: smoke-tests-unbound-elasticsearch
-        file: aws-broker-app/ci/run-smoke-test-unbound.yml
-        params:
-          BROKER_NAME: ((development-broker-name))
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_NAME: aws-elasticsearch
-          SERVICE_PLAN: es-dev
-          REGION: ((development-aws-default-region))
-
-      - task: smoke-tests-elasticsearch
-        file: aws-broker-app/ci/run-smoke-test-task.yml
-        params:
-          BROKER_NAME: ((development-broker-name))
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_NAME: aws-elasticsearch
-          SERVICE_PLAN: es-dev
-          REGION: ((development-aws-default-region))
-
-      - task: smoke-tests-elasticsearch-advanced-options
-        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
-        params:
-          BROKER_NAME: ((development-broker-name))
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          SERVICE_NAME: aws-elasticsearch
-          SERVICE_PLAN: es-dev
-          REGION: ((development-aws-default-region))
   on_success:
     put: slack
     params:
@@ -382,12 +449,270 @@ jobs:
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
+- name: acceptance-tests-db-staging
+  plan:
+  - in_parallel:
+      steps:
+      - get: aws-broker-app
+      - get: db-app-staging
+        passed:
+        - deploy-aws-broker-staging
+        trigger: true
+      - get: aws-db-test
+  - in_parallel:
+      steps:
+      - task: smoke-tests-postgres
+        file: aws-broker-app/ci/run-smoke-tests.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: medium-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-postgres-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+          DB_VERSION: 11
+
+      - task: smoke-tests-postgres-update-micro-to-small
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          NEW_SERVICE_PLAN: small-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-mysql
+        file: aws-broker-app/ci/run-smoke-tests.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-update-storage
+        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-mysql-version
+        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          DB_TYPE: mysql
+          DB_VERSION: 5.7
+
+      - task: smoke-tests-mysql-update-small-to-medium
+        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: small-mysql
+          NEW_SERVICE_PLAN: medium-mysql
+          DB_TYPE: mysql
+
+      - task: smoke-tests-oracle
+        file: aws-broker-app/ci/run-smoke-tests.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: medium-oracle-se2
+          DB_TYPE: oracle-se2
+  on_failure:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :x: Acceptance Tests for aws-broker on staging FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+  on_success:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+
+- name: acceptance-tests-redis-staging
+  plan:
+  - in_parallel:
+      steps:
+      - get: aws-broker-app
+      - get: redis-app-staging
+        passed:
+        - deploy-aws-broker-staging
+        trigger: true
+      - get: aws-db-test
+  - in_parallel:
+      steps:
+      - task: smoke-tests-redis
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticache-redis
+          SERVICE_PLAN: redis-dev
+          REGION: ((staging-aws-default-region))
+  on_failure:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :x: Acceptance Tests for aws-broker on staging FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+  on_success:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+
+- name: acceptance-tests-search-staging
+  plan:
+  - in_parallel:
+      steps:
+      - get: aws-broker-app
+      - get: search-app-staging
+        passed:
+        - deploy-aws-broker-staging
+        trigger: true
+      - get: aws-db-test
+  - in_parallel:
+      steps:
+      - task: smoke-tests-unbound-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((staging-aws-default-region))
+
+      - task: smoke-tests-elasticsearch
+        file: aws-broker-app/ci/run-smoke-test-task.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((staging-aws-default-region))
+
+      - task: smoke-tests-elasticsearch-advanced-options
+        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_NAME: aws-elasticsearch
+          SERVICE_PLAN: es-dev
+          REGION: ((staging-aws-default-region))
+  on_failure:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :x: Acceptance Tests for aws-broker on staging FAILED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+  on_success:
+    params:
+      channel: '#cg-platform-news'
+      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      text: |
+        :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      username: concourse
+    put: slack
+
 - name: deploy-aws-broker-staging
   plan:
   - in_parallel:
     - get: aws-broker-app
       trigger: true
     - get: pipeline-tasks
+    - get: db-app-staging
+    - get: redis-app-staging
+    - get: search-app-staging
   - task: run_tests
     file: aws-broker-app/ci/run_tests.yml
 
@@ -570,203 +895,16 @@ jobs:
       SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
       SERVICE_ORGANIZATION: cloud-gov
 
-- name: acceptance-tests-staging
-  plan:
-  - in_parallel:
-    - get: aws-broker-app
-      passed: [deploy-aws-broker-staging]
-      trigger: true
-    - get: aws-db-test
-  - in_parallel:
-      steps:
-      - task: smoke-tests-postgres
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: micro-psql
-          DB_TYPE: postgres
 
-      - task: smoke-tests-postgres-update-storage
-        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: micro-psql
-          NEW_SERVICE_PLAN: medium-psql
-          DB_TYPE: postgres
-
-      - task: smoke-tests-postgres-version
-        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: micro-psql
-          DB_TYPE: postgres
-          DB_VERSION: 11
-
-      - task: smoke-tests-postgres-update-micro-to-small
-        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: micro-psql
-          NEW_SERVICE_PLAN: small-psql
-          DB_TYPE: postgres
-
-      - task: smoke-tests-mysql
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: small-mysql
-          DB_TYPE: mysql
-
-      - task: smoke-tests-mysql-update-storage
-        file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: small-mysql
-          DB_TYPE: mysql
-
-      - task: smoke-tests-mysql-version
-        file: aws-broker-app/ci/run-smoke-tests-db-version.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: small-mysql
-          DB_TYPE: mysql
-          DB_VERSION: 5.7
-
-      - task: smoke-tests-mysql-update-small-to-medium
-        file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: small-mysql
-          NEW_SERVICE_PLAN: medium-mysql
-          DB_TYPE: mysql
-
-      - task: smoke-tests-oracle
-        file: aws-broker-app/ci/run-smoke-tests.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_PLAN: medium-oracle-se2
-          DB_TYPE: oracle-se2
-
-      - task: smoke-tests-redis
-        file: aws-broker-app/ci/run-smoke-test-task.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_NAME: aws-elasticache-redis
-          SERVICE_PLAN: redis-dev
-          REGION: ((staging-aws-default-region))
-
-      - task: smoke-tests-unbound-elasticsearch
-        file: aws-broker-app/ci/run-smoke-test-unbound.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_NAME: aws-elasticsearch
-          SERVICE_PLAN: es-dev
-          REGION: ((staging-aws-default-region))
-
-      - task: smoke-tests-elasticsearch
-        file: aws-broker-app/ci/run-smoke-test-task.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_NAME: aws-elasticsearch
-          SERVICE_PLAN: es-dev
-          REGION: ((staging-aws-default-region))
-
-      - task: smoke-tests-elasticsearch-advanced-options
-        file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
-        params:
-          BROKER_NAME: ((staging-broker-name))
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          SERVICE_NAME: aws-elasticsearch
-          SERVICE_PLAN: es-dev
-          REGION: ((staging-aws-default-region))
-  on_success:
-    put: slack
-    params:
-      text: |
-        :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform-news'
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
-  on_failure:
-    put: slack
-    params:
-      text: |
-        :x: Acceptance Tests for aws-broker on staging FAILED
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform-news'
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
 
 - name: terraform-plan-aws-broker-prod
   plan:
   - in_parallel:
     - get: aws-broker-app
-      passed: [acceptance-tests-staging]
+      passed:
+      - acceptance-tests-db-staging
+      - acceptance-tests-redis-staging
+      - acceptance-tests-search-staging
       trigger: true
     - get: pipeline-tasks
       trigger: true
@@ -843,8 +981,11 @@ jobs:
   plan:
   - in_parallel:
     - get: aws-broker-app
-      passed: [acceptance-tests-staging, terraform-plan-aws-broker-prod]
-      # trigger: true
+      passed:
+      - acceptance-tests-db-staging
+      - acceptance-tests-redis-staging
+      - acceptance-tests-search-staging
+      - terraform-plan-aws-broker-prod
     - get: pipeline-tasks
 
   - task: provision-rds
@@ -1204,6 +1345,60 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     uri: ((aws-broker-url-development))
     branch: ((aws-broker-branch-development))
+
+- name: db-app-development
+  source:
+    branch: ((aws-broker-branch-development))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
+    paths:
+    - services/rds/*
+    uri: https://github.com/18F/aws-broker
+  type: git
+
+- name: db-app-staging
+  source:
+    branch: ((aws-broker-branch))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
+    paths:
+    - services/rds/*
+    uri: https://github.com/18F/aws-broker
+  type: git
+
+- name: redis-app-development
+  source:
+    branch: ((aws-broker-branch-development))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
+    paths:
+    - services/redis/*
+    uri: ((aws-broker-url-development))
+  type: git
+
+- name: redis-app-staging
+  source:
+    branch: ((aws-broker-branch))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
+    paths:
+    - services/redis/*
+    uri: ((aws-broker-url-development))
+  type: git
+
+- name: search-app-development
+  source:
+    branch: ((aws-broker-branch-development))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
+    paths:
+    - services/elasticsearch/*
+    uri: ((aws-broker-url-development))
+  type: git
+
+- name: search-app-staging
+  source:
+    branch: ((aws-broker-branch))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
+    paths:
+    - services/elasticsearch/*
+    uri: https://github.com/18F/aws-broker
+  type: git
 
 - name: aws-db-test
   type: git
