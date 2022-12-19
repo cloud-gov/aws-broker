@@ -1352,7 +1352,7 @@ elasticsearch:
     instanceType: t3.small.search
     volumeSize: 15
     volumeType: gp2
-    encryptAtRest: false
+    encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
@@ -1385,7 +1385,7 @@ elasticsearch:
     instanceType: t3.small.search
     volumeSize: 15
     volumeType: gp2
-    encryptAtRest: false
+    encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))

@@ -62,7 +62,7 @@ elasticsearch:
     instanceType: t3.small.elasticsearch
     volumeSize: 10
     volumeType: gp2
-    encryptAtRest: false
+    encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: sec-group
     subnetIDaz1: subnet-1
