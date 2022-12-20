@@ -185,7 +185,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	LogPublishingOptions := &opensearchservice.LogPublishingOptions{
+	logPublishingOptions := &opensearchservice.LogPublishingOptions{
 		AUDIT_LOGS: {
 		Enabled: aws.Bool(true),
 		CloudWatchLogsLogGroupArn: String,
@@ -234,7 +234,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
-		LogPublishingOptions:         LogPublishingOptions,
+		LogPublishingOptions:         logPublishingOptions,
 	}
     if i.ElasticsearchVersion != ""{
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
