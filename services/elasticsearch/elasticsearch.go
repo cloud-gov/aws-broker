@@ -188,7 +188,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	LogPublishingOption := &opensearchservice.LogPublishingOption{
 		"AUDIT_LOGS":{ 
 		Enabled: aws.bool(true),
-		}
+		},
 	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
@@ -294,7 +294,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	LogPublishingOption := &opensearchservice.LogPublishingOption{
 		"AUDIT_LOGS":{ 
 		Enabled: aws.bool(true),
-		}
+		},
 	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
@@ -305,7 +305,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
 		LogPublishingOption:  LogPublishingOption,
-		EncryptionAtRestOptions: encryptionAtRestOptions
+		EncryptionAtRestOptions: encryptionAtRestOptions,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
 	fmt.Println(awsutil.StringValue(resp))
