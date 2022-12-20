@@ -185,7 +185,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	logPublishingOptions := &opensearchservice.LogPublishingOptions{
+	logPublishingOptions := &opensearchservice.LogPublishingOption{
 		AUDIT_LOGS: {
 		Enabled: aws.Bool(true),
 		CloudWatchLogsLogGroupArn: String,
@@ -292,7 +292,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
-	LogPublishingOptions := &opensearchservice.LogPublishingOptions{
+	LogPublishingOptions := &opensearchservice.LogPublishingOption{
 		AUDIT_LOGS:{ 
 		Enabled: aws.bool(true),
 		},
