@@ -234,7 +234,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
-		LogPublishingOption:         LogPublishingOptions,
+		LogPublishingOptions:         LogPublishingOptions,
 	}
     if i.ElasticsearchVersion != ""{
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
@@ -292,8 +292,8 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
-	LogPublishingOption := &opensearchservice.LogPublishingOption{
-		"AUDIT_LOGS":{ 
+	LogPublishingOptions := &opensearchservice.LogPublishingOptions{
+		AUDIT_LOGS:{ 
 		Enabled: aws.bool(true),
 		},
 	}
@@ -305,7 +305,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	params := &opensearchservice.UpdateDomainConfigInput{
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
-		LogPublishingOption:  LogPublishingOption,
+		LogPublishingOptions:  LogPublishingOptions,
 		EncryptionAtRestOptions: encryptionAtRestOptions,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
