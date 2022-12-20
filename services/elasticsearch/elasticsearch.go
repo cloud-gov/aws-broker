@@ -227,6 +227,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
+		LogPublishingOption:         AUDIT_LOGS,
 	}
     if i.ElasticsearchVersion != ""{
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
@@ -288,6 +289,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	params := &opensearchservice.UpdateDomainConfigInput{
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
+		LogPublishingOption:  AUDIT_LOGS,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
 	fmt.Println(awsutil.StringValue(resp))
