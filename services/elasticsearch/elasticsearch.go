@@ -185,7 +185,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	logPublishingOption := &opensearchservice.LogPublishingOption{
+	logOptions := &opensearchservice.LogPublishingOption{
 		Enabled: aws.Bool(true),
 		CloudWatchLogsLogGroupArn: string,
 	}
@@ -232,7 +232,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
-		LogPublishingOptions:         logPublishingOption,
+		LogPublishingOptions:         logOptions,
 	}
     if i.ElasticsearchVersion != ""{
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
@@ -290,7 +290,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
-	LogPublishingOptions := &opensearchservice.LogPublishingOption{
+	logOptions := &opensearchservice.LogPublishingOption{
 		Enabled: aws.Bool(true),
 		CloudWatchLogsLogGroupArn: string,
 
@@ -303,7 +303,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	params := &opensearchservice.UpdateDomainConfigInput{
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
-		LogPublishingOptions:  LogPublishingOptions,
+		LogPublishingOptions:  logOptions,
 		EncryptionAtRestOptions: encryptionAtRestOptions,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
