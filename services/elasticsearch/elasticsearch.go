@@ -15,8 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cloudfoundry-community/s3-broker/awsiam"
@@ -185,9 +185,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	logOptions := &opensearchservice.LogPublishingOption{
-		Enabled: aws.Bool(true),
-		CloudWatchLogsLogGroupArn: string,
+	logOptions := map[string]*opensearchservice.LogPublishingOption{
+		opensearchservice.LogTypeAuditLogs: {
+			CloudWatchLogsLogGroupArn: aws.String(""),
+			Enabled:                   aws.Bool(true),
+		},
 	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
@@ -232,9 +234,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
-		LogPublishingOptions:         logOptions,
+		LogPublishingOptions:        logOptions,
 	}
-    if i.ElasticsearchVersion != ""{
+	if i.ElasticsearchVersion != "" {
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
 	}
 	params.SetAccessPolicies(accessControlPolicy)
@@ -282,7 +284,12 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	AdvancedOptions := make(map[string]*string)
-
+	logOptions := map[string]*opensearchservice.LogPublishingOption{
+		opensearchservice.LogTypeAuditLogs: {
+			CloudWatchLogsLogGroupArn: aws.String(""),
+			Enabled:                   aws.Bool(true),
+		},
+	}
 	if i.IndicesFieldDataCacheSize != "" {
 		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
 	}
@@ -290,20 +297,16 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
-	logOptions := &opensearchservice.LogPublishingOption{
-		Enabled: aws.Bool(true),
-		CloudWatchLogsLogGroupArn: string,
-
-	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
 		Enabled: aws.Bool(i.EncryptAtRest),
 	}
+
 	// Standard Parameters
 	params := &opensearchservice.UpdateDomainConfigInput{
-		DomainName:      aws.String(i.Domain),
-		AdvancedOptions: AdvancedOptions,
-		LogPublishingOptions:  logOptions,
+		DomainName:              aws.String(i.Domain),
+		AdvancedOptions:         AdvancedOptions,
+		LogPublishingOptions:    logOptions,
 		EncryptionAtRestOptions: encryptionAtRestOptions,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
@@ -704,7 +707,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	return nil
 }
 
-//in which we clean up all the roles and policies for the ES domain
+// in which we clean up all the roles and policies for the ES domain
 func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
 	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	logger := lager.NewLogger("aws-broker")
