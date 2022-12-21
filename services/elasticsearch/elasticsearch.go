@@ -187,7 +187,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	logOptions := map[string]*opensearchservice.LogPublishingOption{
 		opensearchservice.LogTypeAuditLogs: {
-			CloudWatchLogsLogGroupArn: aws.String(""),
+			CloudWatchLogsLogGroupArn: aws.String(i.ARN),
 			Enabled:                   aws.Bool(true),
 		},
 	}
@@ -286,7 +286,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	AdvancedOptions := make(map[string]*string)
 	logOptions := map[string]*opensearchservice.LogPublishingOption{
 		opensearchservice.LogTypeAuditLogs: {
-			CloudWatchLogsLogGroupArn: aws.String(""),
+			CloudWatchLogsLogGroupArn: aws.String(i.ARN),
 			Enabled:                   aws.Bool(true),
 		},
 	}
