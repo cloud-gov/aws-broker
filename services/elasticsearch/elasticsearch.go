@@ -186,10 +186,8 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	logPublishingOptions := &opensearchservice.LogPublishingOption{
-		AUDIT_LOGS: {
 		Enabled: aws.Bool(true),
 		CloudWatchLogsLogGroupArn: String,
-		},
 	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
@@ -293,9 +291,9 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
 	LogPublishingOptions := &opensearchservice.LogPublishingOption{
-		AUDIT_LOGS:{ 
-		Enabled: aws.bool(true),
-		},
+		Enabled: aws.Bool(true),
+		CloudWatchLogsLogGroupArn: String,
+		
 	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
