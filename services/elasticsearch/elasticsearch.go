@@ -185,12 +185,12 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	logOptions := map[string]*opensearchservice.LogPublishingOption{
-		opensearchservice.LogTypeAuditLogs: {
-			CloudWatchLogsLogGroupArn: aws.String(i.ARN),
-			Enabled:                   aws.Bool(true),
-		},
-	}
+	// logOptions := map[string]*opensearchservice.LogPublishingOption{
+	// 	opensearchservice.LogTypeAuditLogs: {
+	// 		CloudWatchLogsLogGroupArn: aws.String(i.ARN),
+	// 		Enabled:                   aws.Bool(true),
+	// 	},
+	// }
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
 		Enabled: aws.Bool(i.EncryptAtRest),
@@ -234,7 +234,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
-		LogPublishingOptions:        logOptions,
+		//LogPublishingOptions:        logOptions,
 	}
 	if i.ElasticsearchVersion != "" {
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
