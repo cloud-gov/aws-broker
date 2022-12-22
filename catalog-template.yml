@@ -55,7 +55,7 @@ rds:
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -91,7 +91,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.micro
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -127,7 +127,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.small
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -163,7 +163,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.small
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -199,7 +199,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -235,7 +235,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -271,7 +271,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -307,7 +307,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -343,7 +343,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -379,7 +379,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -416,7 +416,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -452,7 +452,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -490,7 +490,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.2xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -526,7 +526,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.2xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "10"
         - "11"
@@ -564,7 +564,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: &m6-xlarge db.m6g.xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "12"
       dbVersion: "12"
@@ -598,7 +598,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: *m6-xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "12"
       dbVersion: "12"
@@ -655,7 +655,7 @@ rds:
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -690,7 +690,7 @@ rds:
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -725,7 +725,7 @@ rds:
       free: true
       adapter: dedicated
       instanceClass: db.t2.small
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -760,7 +760,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t2.small
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -795,7 +795,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t2.medium
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -830,7 +830,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t2.medium
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -865,7 +865,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -900,7 +900,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -935,7 +935,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -970,7 +970,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -1005,7 +1005,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -1040,7 +1040,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.xlarge
-      allocatedStorage: 10
+      allocatedStorage: 12
       approvedMajorVersions:
         - "5.7"
         - "8.0"
@@ -1076,7 +1076,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
-      allocatedStorage: 10
+      allocatedStorage: 12
       dbType: oracle-se2
       licenseModel: license-included
       redundant: false
@@ -1108,7 +1108,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m5.large
-      allocatedStorage: 10
+      allocatedStorage: 12
       dbType: sqlserver-se
       licenseModel: license-included
       redundant: false
