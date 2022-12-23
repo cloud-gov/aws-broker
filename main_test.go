@@ -513,7 +513,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.AllocatedStorage != 15 {
+	if i.AllocatedStorage != 25 {
 		println(i.AllocatedStorage)
 		t.Error("The Allocated Storage for the instance should be 15")
 	}
