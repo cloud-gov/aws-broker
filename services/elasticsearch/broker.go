@@ -23,9 +23,10 @@ type ElasticsearchAdvancedOptions struct {
 }
 
 type ElasticsearchOptions struct {
-	ElasticsearchVersion string                       `json:"elasticsearchVersion"`
-	Bucket               string                       `json:"bucket"`
-	AdvancedOptions      ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
+	ElasticsearchVersion    string                       `json:"elasticsearchVersion"`
+	Bucket                  string                       `json:"bucket"`
+	AdvancedOptions         ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
+	AdvancedSecurityOptions string                       `json:"advanced_security_options"`
 }
 
 func (r ElasticsearchOptions) Validate(settings *config.Settings) error {
@@ -104,13 +105,13 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	if planErr != nil {
 		return planErr
 	}
-    
+
 	if options.ElasticsearchVersion != "" {
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.ElasticsearchVersion) {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
-				options.ElasticsearchVersion +" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4 "+".",
+				options.ElasticsearchVersion+" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4 "+".",
 			)
 		}
 	}
