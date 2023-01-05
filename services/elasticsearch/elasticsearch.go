@@ -203,7 +203,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	AdvancedOptions := make(map[string]*string)
-
+	//AdvancedSecurityOptions := make(map[string]*string)
 	if i.IndicesFieldDataCacheSize != "" {
 		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
 	}
@@ -211,6 +211,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	if i.IndicesQueryBoolMaxClauseCount != "" {
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
+
+	// if i.AdvancedSecurityOptions != ""{
+	// 	AdvancedSecurityOptions["Enabled"] = &i.AdvancedSecurityOptions
+	// }
 
 	if i.DataCount > 1 {
 		VPCOptions.SetSubnetIds([]*string{
@@ -234,6 +238,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
+		// AdvancedSecurityOptions:     AdvancedSecurityOptions,
 		//LogPublishingOptions:        logOptions,
 	}
 	if i.ElasticsearchVersion != "" {
@@ -301,6 +306,9 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
 		Enabled: aws.Bool(i.EncryptAtRest),
 	}
+	advancedSecurityOptions := &opensearchservice.AdvancedSecurityOptionsInput_{
+		Enabled: aws.Bool(true),
+	}
 
 	// Standard Parameters
 	params := &opensearchservice.UpdateDomainConfigInput{
@@ -308,6 +316,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		AdvancedOptions:         AdvancedOptions,
 		LogPublishingOptions:    logOptions,
 		EncryptionAtRestOptions: encryptionAtRestOptions,
+		AdvancedSecurityOptions: advancedSecurityOptions,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
 	fmt.Println(awsutil.StringValue(resp))
