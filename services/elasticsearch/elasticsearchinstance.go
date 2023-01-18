@@ -48,6 +48,7 @@ type ElasticsearchInstance struct {
 	IamPassRolePolicyARN           string `sql:"size(255)"`
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
+	AdvancedSecurityOptions        string `sql;"size(255)"`
 
 	ClearPassword string `sql:"-"`
 
@@ -58,6 +59,7 @@ type ElasticsearchInstance struct {
 	SubnetIDAZ1 string            `sql:"-"`
 	SubnetIDAZ2 string            `sql:"-"`
 	SecGroup    string            `sql:"-"`
+	AuditLog    string            `sql:"-"`
 }
 
 func (i *ElasticsearchInstance) setPassword(password, key string) error {
@@ -162,6 +164,7 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.NodeToNodeEncryption = plan.NodeToNodeEncryption
 	i.EncryptAtRest = plan.EncryptAtRest
 	i.AutomatedSnapshotStartHour, _ = strconv.Atoi(plan.AutomatedSnapshotStartHour)
+	i.AuditLog = plan.AuditLog
 	i.SecGroup = plan.SecurityGroup
 	i.SubnetIDAZ1 = plan.SubnetIDAZ1
 	i.SubnetIDAZ2 = plan.SubnetIDAZ2
@@ -169,7 +172,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	i.BrokerSnapshotsEnabled = false
-    if options.ElasticsearchVersion != "" {
+	i.AdvancedSecurityOptions = options.AdvancedSecurityOptions
+	if options.ElasticsearchVersion != "" {
 		i.ElasticsearchVersion = options.ElasticsearchVersion
 	} else {
 		// Default to the version provided by the plan chosen in catalog.
@@ -188,7 +192,7 @@ func (i *ElasticsearchInstance) init(uuid string,
 func (i *ElasticsearchInstance) update(
 	options ElasticsearchOptions,
 ) error {
-
+	i.AdvancedSecurityOptions = options.AdvancedSecurityOptions
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	return nil

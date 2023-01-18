@@ -185,12 +185,12 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EnforceHTTPS: aws.Bool(true),
 	}
 
-	// logOptions := map[string]*opensearchservice.LogPublishingOption{
-	// 	opensearchservice.LogTypeAuditLogs: {
-	// 		CloudWatchLogsLogGroupArn: aws.String(i.ARN),
-	// 		Enabled:                   aws.Bool(true),
-	// 	},
-	// }
+	logOptions := map[string]*opensearchservice.LogPublishingOption{
+		opensearchservice.LogTypeAuditLogs: {
+			CloudWatchLogsLogGroupArn: &i.AuditLog,
+			Enabled:                   aws.Bool(true),
+		},
+	}
 
 	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
 		Enabled: aws.Bool(i.EncryptAtRest),
@@ -212,6 +212,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
 	}
 
+	advancedSecurityOptions := &opensearchservice.AdvancedSecurityOptionsInput_{
+		Enabled: aws.Bool(true),
+	}
 	// if i.AdvancedSecurityOptions != ""{
 	// 	AdvancedSecurityOptions["Enabled"] = &i.AdvancedSecurityOptions
 	// }
@@ -238,8 +241,8 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		EncryptionAtRestOptions:     encryptionAtRestOptions,
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
-		// AdvancedSecurityOptions:     AdvancedSecurityOptions,
-		//LogPublishingOptions:        logOptions,
+		AdvancedSecurityOptions:     advancedSecurityOptions,
+		LogPublishingOptions:        logOptions,
 	}
 	if i.ElasticsearchVersion != "" {
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
@@ -291,7 +294,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	AdvancedOptions := make(map[string]*string)
 	logOptions := map[string]*opensearchservice.LogPublishingOption{
 		opensearchservice.LogTypeAuditLogs: {
-			CloudWatchLogsLogGroupArn: aws.String(i.ARN),
+			CloudWatchLogsLogGroupArn: &i.AuditLog,
 			Enabled:                   aws.Bool(true),
 		},
 	}
