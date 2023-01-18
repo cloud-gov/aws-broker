@@ -1354,7 +1354,7 @@ elasticsearch:
     volumeType: gp3
     encryptAtRest: true
     automatedSnapshotStartHour: 7
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1388,7 +1388,7 @@ elasticsearch:
     volumeType: gp3
     encryptAtRest: true
     automatedSnapshotStartHour: 7
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1425,7 +1425,7 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1462,7 +1462,7 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1499,7 +1499,7 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1536,7 +1536,7 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1573,7 +1573,7 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
@@ -1610,7 +1610,7 @@ elasticsearch:
     nodeToNodeEncryption: true
     encryptAtRest: true
     automatedSnapshotStartHour: 6
-    auditLog: (( grab meta.elasticsearch.log_group))
+    auditLog: (( grab meta.elasticsearch.log_group ))
     securityGroup: (( grab meta.elasticsearch.security_group ))
     subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
     subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
