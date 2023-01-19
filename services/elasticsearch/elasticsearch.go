@@ -178,7 +178,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	nodeOptions := &opensearchservice.NodeToNodeEncryptionOptions{
-		Enabled: aws.Bool(i.NodeToNodeEncryption),
+		Enabled: aws.Bool(true), //(i.NodeToNodeEncryption),
 	}
 
 	domainOptions := &opensearchservice.DomainEndpointOptions{
@@ -215,9 +215,6 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	advancedSecurityOptions := &opensearchservice.AdvancedSecurityOptionsInput_{
 		Enabled: aws.Bool(true),
 	}
-	// if i.AdvancedSecurityOptions != ""{
-	// 	AdvancedSecurityOptions["Enabled"] = &i.AdvancedSecurityOptions
-	// }
 
 	if i.DataCount > 1 {
 		VPCOptions.SetSubnetIds([]*string{
@@ -312,14 +309,18 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	advancedSecurityOptions := &opensearchservice.AdvancedSecurityOptionsInput_{
 		Enabled: aws.Bool(true),
 	}
+	nodeToNodeEncryption := &opensearchservice.NodeToNodeEncryptionOptions{
+		Enabled: aws.Bool(true),
+	}
 
 	// Standard Parameters
 	params := &opensearchservice.UpdateDomainConfigInput{
-		DomainName:              aws.String(i.Domain),
-		AdvancedOptions:         AdvancedOptions,
-		LogPublishingOptions:    logOptions,
-		EncryptionAtRestOptions: encryptionAtRestOptions,
-		AdvancedSecurityOptions: advancedSecurityOptions,
+		DomainName:                  aws.String(i.Domain),
+		AdvancedOptions:             AdvancedOptions,
+		LogPublishingOptions:        logOptions,
+		EncryptionAtRestOptions:     encryptionAtRestOptions,
+		AdvancedSecurityOptions:     advancedSecurityOptions,
+		NodeToNodeEncryptionOptions: nodeToNodeEncryption,
 	}
 	resp, err := svc.UpdateDomainConfig(params)
 	fmt.Println(awsutil.StringValue(resp))
