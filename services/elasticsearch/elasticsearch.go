@@ -182,7 +182,8 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	domainOptions := &opensearchservice.DomainEndpointOptions{
-		EnforceHTTPS: aws.Bool(true),
+		EnforceHTTPS:      aws.Bool(true),
+		TLSSecurityPolicy: aws.String(opensearchservice.TLSSecurityPolicyPolicyMinTls12201907),
 	}
 
 	logOptions := map[string]*opensearchservice.LogPublishingOption{
