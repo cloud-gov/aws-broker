@@ -15,14 +15,6 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-type BinaryLogFormatType string
-
-const (
-	ROW       BinaryLogFormatType = "ROW"
-	STATEMENT BinaryLogFormatType = "STATEMENT"
-	MIXED     BinaryLogFormatType = "MIXED"
-)
-
 // Options is a struct containing all of the custom parameters supported by
 // the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
