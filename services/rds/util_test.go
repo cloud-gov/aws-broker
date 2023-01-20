@@ -2,34 +2,34 @@ package rds
 
 import (
 	"testing"
-
-	"github.com/18F/aws-broker/config"
 )
 
-func TestOptionsBinaryLogFormatValidation(t *testing.T) {
+func TestBinaryLogFormatValidation(t *testing.T) {
 	testCases := map[string]struct {
 		binaryLogFormat string
-		settings        *config.Settings
 		expectedErr     bool
 	}{
 		"invalid": {
 			binaryLogFormat: "foo",
-			settings:        &config.Settings{},
 			expectedErr:     true,
 		},
-		"row": {
+		"ROW": {
 			binaryLogFormat: "ROW",
-			settings:        &config.Settings{},
+			expectedErr:     false,
+		},
+		"STATEMENT": {
+			binaryLogFormat: "STATEMENT",
+			expectedErr:     false,
+		},
+		"MIXED": {
+			binaryLogFormat: "MIXED",
 			expectedErr:     false,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			opts := Options{
-				BinaryLogFormat: test.binaryLogFormat,
-			}
-			err := opts.Validate(test.settings)
+			err := validateBinaryLogFormat(test.binaryLogFormat)
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}

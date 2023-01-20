@@ -44,11 +44,8 @@ func (o Options) Validate(settings *config.Settings) error {
 		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
 	}
 
-	switch o.BinaryLogFormat {
-	case "ROW", "STATEMENT", "MIXED":
-		// these are the allowed values, continue
-	default:
-		return fmt.Errorf("invalid binary log format %s", o.BinaryLogFormat)
+	if err := validateBinaryLogFormat(o.BinaryLogFormat); err != nil {
+		return err
 	}
 
 	return nil
