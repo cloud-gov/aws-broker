@@ -46,7 +46,7 @@ func (o Options) Validate(settings *config.Settings) error {
 
 	switch o.BinaryLogFormat {
 	case "ROW", "STATEMENT", "MIXED":
-		// continue
+		// these are the allowed values, continue
 	default:
 		return fmt.Errorf("invalid binary log format %s", o.BinaryLogFormat)
 	}

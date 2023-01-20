@@ -281,8 +281,11 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
 		}
 
-		// Currently, we only have one custom parameter for mysql, but if
-		// we ever need to apply more, you can add them in here.
+		if i.BinaryLogFormat != "" {
+			customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+		}
+
+		// If you need to add more custom parameters for MySQL, you can add them in here.
 
 		// apply parameter group
 		pgroupName, err := getCustomParameterGroup(PgroupPrefix+i.FormatDBName(), i, customRDSParameters, svc)
