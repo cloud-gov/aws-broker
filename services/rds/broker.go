@@ -15,6 +15,14 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
+type BinaryLogFormatType string
+
+const (
+	ROW       BinaryLogFormatType = "ROW"
+	STATEMENT BinaryLogFormatType = "STATEMENT"
+	MIXED     BinaryLogFormatType = "MIXED"
+)
+
 // Options is a struct containing all of the custom parameters supported by
 // the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
@@ -24,6 +32,7 @@ type Options struct {
 	PubliclyAccessible    bool   `json:"publicly_accessible"`
 	Version               string `json:"version"`
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
+	BinaryLogFormat       string `json:"binary_log_format"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -41,6 +50,13 @@ func (o Options) Validate(settings *config.Settings) error {
 
 	if o.BackupRetentionPeriod != 0 && o.BackupRetentionPeriod < settings.MinBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
+	}
+
+	switch o.BinaryLogFormat {
+	case "ROW", "STATEMENT", "MIXED":
+		// continue
+	default:
+		return fmt.Errorf("invalid binary log format %s", o.BinaryLogFormat)
 	}
 
 	return nil
