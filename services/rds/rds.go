@@ -226,6 +226,26 @@ func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 	return false
 }
 
+func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[string]string {
+	customRDSParameters := make(map[string]map[string]string)
+
+	// enable functions
+	customRDSParameters["mysql"] = make(map[string]string)
+	if i.EnableFunctions && s.EnableFunctionsFeature {
+		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
+	} else {
+		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
+	}
+
+	if i.BinaryLogFormat != "" {
+		customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+	}
+
+	// If you need to add more custom parameters, you can add them in here.
+
+	return customRDSParameters
+}
+
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	var rdsTags []*rds.Tag
@@ -271,21 +291,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
 	if needCustomParameters(i, d.settings) {
-		customRDSParameters := make(map[string]map[string]string)
-
-		// enable functions
-		customRDSParameters["mysql"] = make(map[string]string)
-		if i.EnableFunctions && d.settings.EnableFunctionsFeature {
-			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
-		} else {
-			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
-		}
-
-		if i.BinaryLogFormat != "" {
-			customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
-		}
-
-		// If you need to add more custom parameters for MySQL, you can add them in here.
+		customRDSParameters := getCustomParameters(i, d.settings)
 
 		// apply parameter group
 		pgroupName, err := getCustomParameterGroup(PgroupPrefix+i.FormatDBName(), i, customRDSParameters, svc)

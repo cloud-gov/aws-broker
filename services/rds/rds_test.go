@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/18F/aws-broker/config"
@@ -79,6 +80,74 @@ func TestNeedCustomParameters(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if needCustomParameters(test.dbInstance, test.settings) != test.expectedOk {
 				t.Fatalf("should be %v", test.expectedOk)
+			}
+		})
+	}
+}
+
+func TestGetCustomParameters(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance     *RDSInstance
+		settings       config.Settings
+		expectedParams map[string]map[string]string
+	}{
+		"enabled functions": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+			},
+			settings: config.Settings{
+				EnableFunctionsFeature: true,
+			},
+			expectedParams: map[string]map[string]string{
+				"mysql": {
+					"log_bin_trust_function_creators": "1",
+				},
+			},
+		},
+		"instance functions disabled, settings enabled": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: false,
+			},
+			settings: config.Settings{
+				EnableFunctionsFeature: true,
+			},
+			expectedParams: map[string]map[string]string{
+				"mysql": {
+					"log_bin_trust_function_creators": "0",
+				},
+			},
+		},
+		"instance functions enabled, settings disabled": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+			},
+			settings: config.Settings{
+				EnableFunctionsFeature: false,
+			},
+			expectedParams: map[string]map[string]string{
+				"mysql": {
+					"log_bin_trust_function_creators": "0",
+				},
+			},
+		},
+		"binary log format": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat: "ROW",
+			},
+			settings: config.Settings{},
+			expectedParams: map[string]map[string]string{
+				"mysql": {
+					"log_bin_trust_function_creators": "0",
+					"binlog_format":                   "ROW",
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params := getCustomParameters(test.dbInstance, test.settings)
+			if !reflect.DeepEqual(params, test.expectedParams) {
+				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
 			}
 		})
 	}
