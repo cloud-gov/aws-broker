@@ -219,6 +219,10 @@ func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 		(i.DbType == "mysql") {
 		return true
 	}
+	if i.BinaryLogFormat != "" &&
+		(i.DbType == "mysql") {
+		return true
+	}
 	return false
 }
 
