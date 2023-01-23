@@ -132,7 +132,11 @@ const PgroupPrefix = "cg-aws-broker-"
 // This function will return the a custom parameter group with whatever custom
 // parameters have been requested.  If there is no custom parameter group, it
 // will be created.
-func getCustomParameterGroup(pgroupName string, i *RDSInstance, customparams map[string]map[string]string, svc *rds.RDS) (string, error) {
+func createOrModifyCustomParameterGroup(i *RDSInstance, customparams map[string]map[string]string, svc *rds.RDS) (string, error) {
+	// i.FormatDBName() should always return the same value for the same database name,
+	// so the parameter group name should remain consistent
+	pgroupName := PgroupPrefix + i.FormatDBName()
+
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(pgroupName),
 		MaxRecords:           aws.Int64(20),
@@ -246,6 +250,26 @@ func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[strin
 	return customRDSParameters
 }
 
+func provisionCustomParameterGroupIfNecessary(
+	i *RDSInstance,
+	s config.Settings,
+	svc *rds.RDS,
+) (string, error) {
+	if !needCustomParameters(i, s) {
+		return "", nil
+	}
+
+	customRDSParameters := getCustomParameters(i, s)
+
+	// apply parameter group
+	pgroupName, err := createOrModifyCustomParameterGroup(i, customRDSParameters, svc)
+	if err != nil {
+		log.Println(err.Error())
+		return "", err
+	}
+	return pgroupName, nil
+}
+
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	var rdsTags []*rds.Tag
@@ -290,16 +314,12 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	if needCustomParameters(i, d.settings) {
-		customRDSParameters := getCustomParameters(i, d.settings)
-
-		// apply parameter group
-		pgroupName, err := getCustomParameterGroup(PgroupPrefix+i.FormatDBName(), i, customRDSParameters, svc)
-		if err != nil {
-			log.Println(err.Error())
-			return base.InstanceNotCreated, nil
-		}
-		params.DBParameterGroupName = aws.String(pgroupName)
+	pGroupName, err := provisionCustomParameterGroupIfNecessary(i, d.settings, svc)
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+	if pGroupName != "" {
+		params.DBParameterGroupName = aws.String(pGroupName)
 	}
 
 	resp, err := svc.CreateDBInstance(params)
@@ -331,6 +351,16 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		DBInstanceIdentifier:     &i.Database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
 		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
+	}
+
+	// If a custom parameter has been requested, and the feature is enabled,
+	// create/update a custom parameter group for our custom parameters.
+	pGroupName, err := provisionCustomParameterGroupIfNecessary(i, d.settings, svc)
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+	if pGroupName != "" {
+		params.DBParameterGroupName = aws.String(pGroupName)
 	}
 
 	resp, err := svc.ModifyDBInstance(params)

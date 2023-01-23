@@ -233,6 +233,11 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		existingInstance.BackupRetentionPeriod = options.BackupRetentionPeriod
 	}
 
+	// Check if there is a binary log format change and if so, apply it
+	if options.BinaryLogFormat != "" {
+		existingInstance.BinaryLogFormat = options.BinaryLogFormat
+	}
+
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
 	if newPlanErr != nil {
