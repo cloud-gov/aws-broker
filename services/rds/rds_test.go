@@ -5,7 +5,26 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/config"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
+
+type mockRDSClient struct {
+	rdsiface.RDSAPI
+}
+
+func (m *mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
+	return nil, nil
+}
+
+func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
+	return nil, nil
+}
+
+func (m *mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
+	return nil, nil
+}
 
 func TestNeedCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
@@ -150,5 +169,24 @@ func TestGetCustomParameters(t *testing.T) {
 				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
 			}
 		})
+	}
+}
+
+func TestGetModifyDbInstanceInput(t *testing.T) {
+	i := &RDSInstance{
+		BinaryLogFormat: "ROW",
+		DbType:          "mysql",
+	}
+	d := &dedicatedDBAdapter{}
+	svc := &mockRDSClient{}
+
+	params, err := getModifyDbInstanceInput(i, d, svc)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+	// log := fmt.Sprintf("params: %s", params)
+	// fmt.Println(log)
+	if params.DBParameterGroupName == aws.String("") {
+		t.Fatalf("expected group name")
 	}
 }

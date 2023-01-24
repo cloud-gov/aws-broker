@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/catalog"
@@ -132,7 +133,11 @@ const PgroupPrefix = "cg-aws-broker-"
 // This function will return the a custom parameter group with whatever custom
 // parameters have been requested.  If there is no custom parameter group, it
 // will be created.
-func createOrModifyCustomParameterGroup(i *RDSInstance, customparams map[string]map[string]string, svc *rds.RDS) (string, error) {
+func createOrModifyCustomParameterGroup(
+	i *RDSInstance,
+	customparams map[string]map[string]string,
+	svc rdsiface.RDSAPI,
+) (string, error) {
 	// i.FormatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
 	pgroupName := PgroupPrefix + i.FormatDBName()
@@ -241,6 +246,7 @@ func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[strin
 		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
 	}
 
+	// set MySQL binary log format
 	if i.BinaryLogFormat != "" {
 		customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
 	}
@@ -253,7 +259,7 @@ func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[strin
 func provisionCustomParameterGroupIfNecessary(
 	i *RDSInstance,
 	s config.Settings,
-	svc *rds.RDS,
+	svc rdsiface.RDSAPI,
 ) (string, error) {
 	if !needCustomParameters(i, s) {
 		return "", nil
@@ -268,6 +274,39 @@ func provisionCustomParameterGroupIfNecessary(
 		return "", err
 	}
 	return pgroupName, nil
+}
+
+func getModifyDbInstanceInput(
+	i *RDSInstance,
+	d *dedicatedDBAdapter,
+	svc rdsiface.RDSAPI,
+) (*rds.ModifyDBInstanceInput, error) {
+	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
+	// NOTE:  Only the following actions are allowed at this point:
+	// - Instance class modification (change of plan)
+	// - Multi AZ (redundancy)
+	// - Allocated storage
+	// These actions are applied immediately.
+	params := &rds.ModifyDBInstanceInput{
+		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
+		ApplyImmediately:         aws.Bool(true),
+		DBInstanceClass:          &d.Plan.InstanceClass,
+		MultiAZ:                  &d.Plan.Redundant,
+		DBInstanceIdentifier:     &i.Database,
+		AllowMajorVersionUpgrade: aws.Bool(false),
+		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
+	}
+
+	// If a custom parameter has been requested, and the feature is enabled,
+	// create/update a custom parameter group for our custom parameters.
+	pGroupName, err := provisionCustomParameterGroupIfNecessary(i, d.settings, svc)
+	if err != nil {
+		return nil, err
+	}
+	if pGroupName != "" {
+		params.DBParameterGroupName = aws.String(pGroupName)
+	}
+	return params, nil
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
@@ -337,30 +376,9 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
-	// NOTE:  Only the following actions are allowed at this point:
-	// - Instance class modification (change of plan)
-	// - Multi AZ (redundancy)
-	// - Allocated storage
-	// These actions are applied immediately.
-	params := &rds.ModifyDBInstanceInput{
-		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
-		ApplyImmediately:         aws.Bool(true),
-		DBInstanceClass:          &d.Plan.InstanceClass,
-		MultiAZ:                  &d.Plan.Redundant,
-		DBInstanceIdentifier:     &i.Database,
-		AllowMajorVersionUpgrade: aws.Bool(false),
-		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
-	}
-
-	// If a custom parameter has been requested, and the feature is enabled,
-	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := provisionCustomParameterGroupIfNecessary(i, d.settings, svc)
+	params, err := getModifyDbInstanceInput(i, d, svc)
 	if err != nil {
 		return base.InstanceNotCreated, err
-	}
-	if pGroupName != "" {
-		params.DBParameterGroupName = aws.String(pGroupName)
 	}
 
 	resp, err := svc.ModifyDBInstance(params)
@@ -495,7 +513,7 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 }
 
 // search out all the parameter groups that we created and try to clean them up
-func cleanupCustomParameterGroups(svc *rds.RDS) {
+func cleanupCustomParameterGroups(svc rdsiface.RDSAPI) {
 	input := &rds.DescribeDBParameterGroupsInput{}
 	err := svc.DescribeDBParameterGroupsPages(input,
 		func(pgroups *rds.DescribeDBParameterGroupsOutput, lastPage bool) bool {
