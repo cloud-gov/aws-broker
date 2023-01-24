@@ -256,16 +256,15 @@ func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[strin
 	return customRDSParameters
 }
 
-func provisionCustomParameterGroupIfNecessary(
+func (d *dedicatedDBAdapter) provisionCustomParameterGroupIfNecessary(
 	i *RDSInstance,
-	s config.Settings,
 	svc rdsiface.RDSAPI,
 ) (string, error) {
-	if !needCustomParameters(i, s) {
+	if !needCustomParameters(i, d.settings) {
 		return "", nil
 	}
 
-	customRDSParameters := getCustomParameters(i, s)
+	customRDSParameters := getCustomParameters(i, d.settings)
 
 	// apply parameter group
 	pgroupName, err := createOrModifyCustomParameterGroup(i, customRDSParameters, svc)
@@ -276,9 +275,8 @@ func provisionCustomParameterGroupIfNecessary(
 	return pgroupName, nil
 }
 
-func getModifyDbInstanceInput(
+func (d *dedicatedDBAdapter) getModifyDbInstanceInput(
 	i *RDSInstance,
-	d *dedicatedDBAdapter,
 	svc rdsiface.RDSAPI,
 ) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
@@ -299,7 +297,7 @@ func getModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := provisionCustomParameterGroupIfNecessary(i, d.settings, svc)
+	pGroupName, err := d.provisionCustomParameterGroupIfNecessary(i, svc)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +351,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := provisionCustomParameterGroupIfNecessary(i, d.settings, svc)
+	pGroupName, err := d.provisionCustomParameterGroupIfNecessary(i, svc)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -376,7 +374,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	params, err := getModifyDbInstanceInput(i, d, svc)
+	params, err := d.getModifyDbInstanceInput(i, svc)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}

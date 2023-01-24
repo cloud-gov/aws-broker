@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -24,6 +25,16 @@ func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.Modif
 
 func (m *mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
 	return nil, nil
+}
+
+type mockDedicatedDbAdapter struct {
+	dedicatedDBAdapter
+
+	customPgroupName string
+}
+
+func (m *mockDedicatedDbAdapter) provisionCustomParameterGroupIfNecessary(i *RDSInstance, svc rdsiface.RDSAPI) (string, error) {
+	return m.customPgroupName, nil
 }
 
 func TestNeedCustomParameters(t *testing.T) {
@@ -177,16 +188,35 @@ func TestGetModifyDbInstanceInput(t *testing.T) {
 		BinaryLogFormat: "ROW",
 		DbType:          "mysql",
 	}
-	d := &dedicatedDBAdapter{}
+	d := &mockDedicatedDbAdapter{
+		customPgroupName: "foobar",
+	}
 	svc := &mockRDSClient{}
 
-	params, err := getModifyDbInstanceInput(i, d, svc)
+	params, err := d.getModifyDbInstanceInput(i, svc)
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
-	// log := fmt.Sprintf("params: %s", params)
-	// fmt.Println(log)
-	if params.DBParameterGroupName == aws.String("") {
+	log := fmt.Sprintf("params: %s", params)
+	fmt.Println(log)
+	if params.DBParameterGroupName == aws.String("foobar") {
+		t.Fatalf("expected group name")
+	}
+}
+
+func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
+	i := &RDSInstance{
+		BinaryLogFormat: "ROW",
+		DbType:          "mysql",
+	}
+	d := &dedicatedDBAdapter{}
+	svc := &mockRDSClient{}
+
+	pGroupName, err := d.provisionCustomParameterGroupIfNecessary(i, svc)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+	if pGroupName == "" {
 		t.Fatalf("expected group name")
 	}
 }
