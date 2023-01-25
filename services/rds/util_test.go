@@ -13,6 +13,10 @@ func TestBinaryLogFormatValidation(t *testing.T) {
 			binaryLogFormat: "foo",
 			expectedErr:     true,
 		},
+		"empty": {
+			binaryLogFormat: "",
+			expectedErr:     false,
+		},
 		"ROW": {
 			binaryLogFormat: "ROW",
 			expectedErr:     false,
