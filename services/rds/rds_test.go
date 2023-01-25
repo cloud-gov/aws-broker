@@ -57,7 +57,7 @@ func TestGetModifyDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := getModifyDbInstanceInput(test.dbInstance, test.dbAdapter, test.svc, test.pGroupAdapter)
+			params, err := prepareModifyDbInstanceInput(test.dbInstance, test.dbAdapter, test.svc, test.pGroupAdapter)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}

@@ -125,7 +125,7 @@ type dedicatedDBAdapter struct {
 	settings config.Settings
 }
 
-func getModifyDbInstanceInput(
+func prepareModifyDbInstanceInput(
 	i *RDSInstance,
 	d *dedicatedDBAdapter,
 	svc rdsiface.RDSAPI,
@@ -228,7 +228,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	pGroupAdapter := &parameterGroupAdapter{}
-	params, err := getModifyDbInstanceInput(i, d, svc, pGroupAdapter)
+	params, err := prepareModifyDbInstanceInput(i, d, svc, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
