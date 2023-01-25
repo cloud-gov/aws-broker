@@ -27,6 +27,14 @@ type dbAdapter interface {
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 }
 
+type parameterGroupAdapterInterface interface {
+	provisionCustomParameterGroupIfNecessary(
+		i *RDSInstance,
+		d *dedicatedDBAdapter,
+		svc rdsiface.RDSAPI,
+	) (string, error)
+}
+
 // MockDBAdapter is a struct meant for testing.
 // It should only be used in *_test.go files.
 // It is only here because *_test.go files are only compiled during "go test"
@@ -256,8 +264,11 @@ func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[strin
 	return customRDSParameters
 }
 
-func (d *dedicatedDBAdapter) provisionCustomParameterGroupIfNecessary(
+type parameterGroupAdapter struct{}
+
+func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
 	i *RDSInstance,
+	d *dedicatedDBAdapter,
 	svc rdsiface.RDSAPI,
 ) (string, error) {
 	if !needCustomParameters(i, d.settings) {
@@ -275,9 +286,11 @@ func (d *dedicatedDBAdapter) provisionCustomParameterGroupIfNecessary(
 	return pgroupName, nil
 }
 
-func (d *dedicatedDBAdapter) getModifyDbInstanceInput(
+func getModifyDbInstanceInput(
 	i *RDSInstance,
+	d *dedicatedDBAdapter,
 	svc rdsiface.RDSAPI,
+	pGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// NOTE:  Only the following actions are allowed at this point:
@@ -297,7 +310,7 @@ func (d *dedicatedDBAdapter) getModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := d.provisionCustomParameterGroupIfNecessary(i, svc)
+	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +364,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := d.provisionCustomParameterGroupIfNecessary(i, svc)
+	pGroupAdapter := &parameterGroupAdapter{}
+	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -374,7 +388,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	params, err := d.getModifyDbInstanceInput(i, svc)
+	pGroupAdapter := &parameterGroupAdapter{}
+	params, err := getModifyDbInstanceInput(i, d, svc, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
