@@ -24,6 +24,7 @@ type Options struct {
 	PubliclyAccessible    bool   `json:"publicly_accessible"`
 	Version               string `json:"version"`
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
+	BinaryLogFormat       string `json:"binary_log_format"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -41,6 +42,10 @@ func (o Options) Validate(settings *config.Settings) error {
 
 	if o.BackupRetentionPeriod != 0 && o.BackupRetentionPeriod < settings.MinBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
+	}
+
+	if err := validateBinaryLogFormat(o.BinaryLogFormat); err != nil {
+		return err
 	}
 
 	return nil
@@ -226,6 +231,11 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	// Check if there is a backup retention change:
 	if options.BackupRetentionPeriod > 0 {
 		existingInstance.BackupRetentionPeriod = options.BackupRetentionPeriod
+	}
+
+	// Check if there is a binary log format change and if so, apply it
+	if options.BinaryLogFormat != "" {
+		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
 	// Fetch the new plan that has been requested.

@@ -39,6 +39,8 @@ type RDSInstance struct {
 	DbType       string `sql:"size(255)"`
 	DbVersion    string `sql:"size(255)"`
 	LicenseModel string `sql:"size(255)"`
+
+	BinaryLogFormat string `sql:"size(255)"`
 }
 
 func (i *RDSInstance) FormatDBName() string {
@@ -177,6 +179,7 @@ func (i *RDSInstance) init(uuid string,
 	}
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible
+	i.BinaryLogFormat = options.BinaryLogFormat
 
 	return nil
 }
