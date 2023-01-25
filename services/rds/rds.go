@@ -125,42 +125,13 @@ type dedicatedDBAdapter struct {
 	settings config.Settings
 }
 
-func prepareModifyDbInstanceInput(
+func prepareCreateDbInput(
 	i *RDSInstance,
 	d *dedicatedDBAdapter,
 	svc rdsiface.RDSAPI,
+	password string,
 	pGroupAdapter parameterGroupAdapterInterface,
-) (*rds.ModifyDBInstanceInput, error) {
-	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
-	// NOTE:  Only the following actions are allowed at this point:
-	// - Instance class modification (change of plan)
-	// - Multi AZ (redundancy)
-	// - Allocated storage
-	// These actions are applied immediately.
-	params := &rds.ModifyDBInstanceInput{
-		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
-		ApplyImmediately:         aws.Bool(true),
-		DBInstanceClass:          &d.Plan.InstanceClass,
-		MultiAZ:                  &d.Plan.Redundant,
-		DBInstanceIdentifier:     &i.Database,
-		AllowMajorVersionUpgrade: aws.Bool(false),
-		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
-	}
-
-	// If a custom parameter has been requested, and the feature is enabled,
-	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
-	if err != nil {
-		return nil, err
-	}
-	if pGroupName != "" {
-		params.DBParameterGroupName = aws.String(pGroupName)
-	}
-	return params, nil
-}
-
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+) (*rds.CreateDBInstanceInput, error) {
 	var rdsTags []*rds.Tag
 
 	for k, v := range i.Tags {
@@ -203,13 +174,58 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupAdapter := &parameterGroupAdapter{}
 	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
 	if err != nil {
-		return base.InstanceNotCreated, err
+		return nil, err
 	}
 	if pGroupName != "" {
 		params.DBParameterGroupName = aws.String(pGroupName)
+	}
+
+	return params, nil
+}
+
+func prepareModifyDbInstanceInput(
+	i *RDSInstance,
+	d *dedicatedDBAdapter,
+	svc rdsiface.RDSAPI,
+	pGroupAdapter parameterGroupAdapterInterface,
+) (*rds.ModifyDBInstanceInput, error) {
+	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
+	// NOTE:  Only the following actions are allowed at this point:
+	// - Instance class modification (change of plan)
+	// - Multi AZ (redundancy)
+	// - Allocated storage
+	// These actions are applied immediately.
+	params := &rds.ModifyDBInstanceInput{
+		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
+		ApplyImmediately:         aws.Bool(true),
+		DBInstanceClass:          &d.Plan.InstanceClass,
+		MultiAZ:                  &d.Plan.Redundant,
+		DBInstanceIdentifier:     &i.Database,
+		AllowMajorVersionUpgrade: aws.Bool(false),
+		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
+	}
+
+	// If a custom parameter has been requested, and the feature is enabled,
+	// create/update a custom parameter group for our custom parameters.
+	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
+	if err != nil {
+		return nil, err
+	}
+	if pGroupName != "" {
+		params.DBParameterGroupName = aws.String(pGroupName)
+	}
+	return params, nil
+}
+
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
+	pGroupAdapter := &parameterGroupAdapter{}
+	params, err := prepareCreateDbInput(i, d, svc, password, pGroupAdapter)
+	if err != nil {
+		return base.InstanceNotCreated, err
 	}
 
 	resp, err := svc.CreateDBInstance(params)

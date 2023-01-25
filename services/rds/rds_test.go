@@ -19,7 +19,56 @@ func (m *mockParameterGroupAdapter) provisionCustomParameterGroupIfNecessary(i *
 	return m.customPgroupName, nil
 }
 
-func TestGetModifyDbInstanceInput(t *testing.T) {
+func TestPrepareCreateDbInstanceInput(t *testing.T) {
+	testErr := errors.New("fail")
+	testCases := map[string]struct {
+		dbInstance        *RDSInstance
+		dbAdapter         *dedicatedDBAdapter
+		pGroupAdapter     *mockParameterGroupAdapter
+		svc               *mockRDSClient
+		expectedGroupName string
+		expectedErr       error
+	}{
+		"expect returned group name": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat: "ROW",
+				DbType:          "mysql",
+			},
+			dbAdapter: &dedicatedDBAdapter{},
+			pGroupAdapter: &mockParameterGroupAdapter{
+				customPgroupName: "foobar",
+			},
+			svc:               &mockRDSClient{},
+			expectedGroupName: "foobar",
+		},
+		"expect error": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat: "ROW",
+				DbType:          "mysql",
+			},
+			dbAdapter: &dedicatedDBAdapter{},
+			pGroupAdapter: &mockParameterGroupAdapter{
+				returnErr: testErr,
+			},
+			svc:         &mockRDSClient{},
+			expectedErr: testErr,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params, err := prepareCreateDbInput(test.dbInstance, test.dbAdapter, test.svc, "foobar", test.pGroupAdapter)
+			if err != nil && test.expectedErr == nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if test.expectedErr == nil && *params.DBParameterGroupName != test.expectedGroupName {
+				t.Fatalf("expected group name: %s, got: %s", test.expectedGroupName, *params.DBParameterGroupName)
+			}
+		})
+	}
+}
+
+func TestPrepareModifyDbInstanceInput(t *testing.T) {
 	testErr := errors.New("fail")
 	testCases := map[string]struct {
 		dbInstance        *RDSInstance
@@ -62,7 +111,7 @@ func TestGetModifyDbInstanceInput(t *testing.T) {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if test.expectedErr == nil && *params.DBParameterGroupName != test.expectedGroupName {
-				t.Fatalf("expected group name: %s", test.expectedGroupName)
+				t.Fatalf("expected group name: %s, got: %s", test.expectedGroupName, *params.DBParameterGroupName)
 			}
 		})
 	}
