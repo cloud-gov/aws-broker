@@ -15,8 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cloudfoundry-community/s3-broker/awsiam"
@@ -228,7 +228,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
 	}
-    if i.ElasticsearchVersion != ""{
+	if i.ElasticsearchVersion != "" {
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
 	}
 	params.SetAccessPolicies(accessControlPolicy)
@@ -480,9 +480,16 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := ip.CreateAssumeRole(policy, rolename)
 		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				if awsErr.Code() != iam.ErrCodeEntityAlreadyExistsException {
+					fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
+					d.logger.Info(fmt.Sprintf("role %s already exists, continuing", rolename))
+				}
+			}
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
 			return err
 		}
+
 		i.SnapshotARN = *arole.Arn
 		snapshotRole = arole
 
