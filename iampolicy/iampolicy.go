@@ -105,12 +105,12 @@ func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*i
 			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
 				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
 				fmt.Printf("role %s already exists, continuing", rolename)
-				resp, err := ip.iamsvc.GetRole(&iam.GetRoleInput{
+				resp, innerErr := ip.iamsvc.GetRole(&iam.GetRoleInput{
 					RoleName: aws.String(rolename),
 				})
-				if err != nil {
+				if innerErr != nil {
 					logAWSError(err)
-					return nil, err
+					return nil, innerErr
 				}
 				return resp.Role, nil
 			}
@@ -137,17 +137,26 @@ func (ip *IamPolicyHandler) CreateUserPolicy(policy string, policyname string, u
 	respPolicy, err := ip.iamsvc.CreatePolicy(rolePolicyInput)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
+				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
+				fmt.Printf("policy name %s already exists, attempting to get policy ARN", policyname)
+				resp, innerErr := ip.iamsvc.ListAttachedUserPolicies(&iam.ListAttachedUserPoliciesInput{
+					UserName: aws.String(username),
+				})
+				if innerErr != nil {
+					logAWSError(err)
+					return "", innerErr
+				}
+				for _, policy := range resp.AttachedPolicies {
+					if *policy.PolicyName == policyname {
+						fmt.Printf("found policy ARN %s for policy %s", *policy.PolicyArn, policyname)
+						return *policy.PolicyArn, nil
+					}
+				}
+				return "", err
 			}
-		} else {
-			// This case should never be hit, the SDK should always return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
 		}
+		logAWSError(err)
 		// return if error
 		return IamRolePolicyARN, err
 	}
@@ -157,23 +166,12 @@ func (ip *IamPolicyHandler) CreateUserPolicy(policy string, policyname string, u
 	if respPolicy.Policy.Arn != nil {
 		IamRolePolicyARN = *(respPolicy.Policy.Arn)
 		userAttachPolicyInput := &iam.AttachUserPolicyInput{
-			PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
+			PolicyArn: aws.String(IamRolePolicyARN),
 			UserName:  aws.String(username),
 		}
 		_, err := ip.iamsvc.AttachUserPolicy(userAttachPolicyInput)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			logAWSError(err)
 			return IamRolePolicyARN, err
 		}
 	}

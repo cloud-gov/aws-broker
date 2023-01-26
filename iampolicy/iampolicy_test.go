@@ -34,7 +34,9 @@ var objectStatement PolicyStatementEntry = PolicyStatementEntry{
 type mockIamClient struct {
 	iamiface.IAMAPI
 
-	createRoleErr error
+	createRoleErr    error
+	createPolicyErr  error
+	attachedPolicies []*iam.AttachedPolicy
 }
 
 func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleOutput, error) {
@@ -62,12 +64,21 @@ func (m *mockIamClient) GetRole(input *iam.GetRoleInput) (*iam.GetRoleOutput, er
 }
 
 func (m *mockIamClient) CreatePolicy(input *iam.CreatePolicyInput) (*iam.CreatePolicyOutput, error) {
+	if m.createPolicyErr != nil {
+		return nil, m.createPolicyErr
+	}
 	arn := "arn:aws:iam::123456789012:policy/" + *(input.PolicyName)
 	return &iam.CreatePolicyOutput{
 		Policy: &iam.Policy{
 			Arn:        aws.String(arn),
 			PolicyName: input.PolicyName,
 		},
+	}, nil
+}
+
+func (m *mockIamClient) ListAttachedUserPolicies(input *iam.ListAttachedUserPoliciesInput) (*iam.ListAttachedUserPoliciesOutput, error) {
+	return &iam.ListAttachedUserPoliciesOutput{
+		AttachedPolicies: m.attachedPolicies,
 	}, nil
 }
 
@@ -183,6 +194,39 @@ func TestCreateUserPolicy(t *testing.T) {
 		}
 	} else {
 		t.Error("PolicyARN is nil")
+	}
+}
+
+func TestCreateUserPolicyAlreadyExists(t *testing.T) {
+	Domain := "foobar"
+	ARN := "arn:aws:iam::123456789012:elasticsearch/" + Domain
+	snapshotRoleARN := "arn:aws:iam::123456789012:role/test-role"
+	policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + snapshotRoleARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + ARN + `/*"}]}`
+	policyname := Domain + "-to-S3-ESRolePolicy"
+	username := Domain
+
+	createPolicyErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "policy already exists", errors.New("fail"))
+
+	ip := &IamPolicyHandler{
+		iamsvc: &mockIamClient{
+			createPolicyErr: createPolicyErr,
+			attachedPolicies: []*iam.AttachedPolicy{
+				{
+					PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyname),
+					PolicyName: aws.String(policyname),
+				},
+			},
+		},
+	}
+
+	policyArn, err := ip.CreateUserPolicy(policy, policyname, username)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedArn := "arn:aws:iam::123456789012:policy/" + policyname
+	if policyArn != expectedArn {
+		t.Errorf("Expected Arn %s but got %s", expectedArn, policyArn)
 	}
 }
 
