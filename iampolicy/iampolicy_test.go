@@ -34,9 +34,10 @@ var objectStatement PolicyStatementEntry = PolicyStatementEntry{
 type mockIamClient struct {
 	iamiface.IAMAPI
 
-	createRoleErr    error
-	createPolicyErr  error
-	attachedPolicies []*iam.AttachedPolicy
+	createRoleErr        error
+	createPolicyErr      error
+	attachedUserPolicies []*iam.AttachedPolicy
+	attachedRolePolicies []*iam.AttachedPolicy
 }
 
 func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleOutput, error) {
@@ -78,7 +79,13 @@ func (m *mockIamClient) CreatePolicy(input *iam.CreatePolicyInput) (*iam.CreateP
 
 func (m *mockIamClient) ListAttachedUserPolicies(input *iam.ListAttachedUserPoliciesInput) (*iam.ListAttachedUserPoliciesOutput, error) {
 	return &iam.ListAttachedUserPoliciesOutput{
-		AttachedPolicies: m.attachedPolicies,
+		AttachedPolicies: m.attachedUserPolicies,
+	}, nil
+}
+
+func (m *mockIamClient) ListAttachedRolePolicies(input *iam.ListAttachedRolePoliciesInput) (*iam.ListAttachedRolePoliciesOutput, error) {
+	return &iam.ListAttachedRolePoliciesOutput{
+		AttachedPolicies: m.attachedRolePolicies,
 	}, nil
 }
 
@@ -210,7 +217,7 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 	ip := &IamPolicyHandler{
 		iamsvc: &mockIamClient{
 			createPolicyErr: createPolicyErr,
-			attachedPolicies: []*iam.AttachedPolicy{
+			attachedUserPolicies: []*iam.AttachedPolicy{
 				{
 					PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyname),
 					PolicyName: aws.String(policyname),
@@ -251,6 +258,37 @@ func TestCreatePolicyAttachRole(t *testing.T) {
 		t.Error("policy arn is nil")
 	}
 
+}
+
+func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
+	policyName := "test-pol"
+	roleName := "test-role"
+	createPolicyErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "policy already exists", errors.New("fail"))
+
+	ip := &IamPolicyHandler{
+		iamsvc: &mockIamClient{
+			createPolicyErr: createPolicyErr,
+			attachedRolePolicies: []*iam.AttachedPolicy{
+				{
+					PolicyName: aws.String(policyName),
+					PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyName),
+				},
+			},
+		},
+	}
+	role := iam.Role{
+		RoleName: aws.String(roleName),
+	}
+
+	policyarn, err := ip.CreatePolicyAttachRole(policyName, mockPolDoc, role)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedarn := "arn:aws:iam::123456789012:policy/" + policyName
+	if policyarn != expectedarn {
+		t.Errorf("Expected Arn %s but got %s", expectedarn, policyarn)
+	}
 }
 
 func TestUpdateExistingPolicy(t *testing.T) {

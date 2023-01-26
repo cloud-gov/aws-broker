@@ -188,13 +188,33 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 
 	respPolicy, err := ip.iamsvc.CreatePolicy(rolePolicyInput)
 	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
+				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
+				fmt.Printf("policy name %s already exists, attempting to get policy ARN", policyname)
+				resp, innerErr := ip.iamsvc.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
+					RoleName: role.RoleName,
+				})
+				if innerErr != nil {
+					logAWSError(err)
+					return "", innerErr
+				}
+				for _, policy := range resp.AttachedPolicies {
+					if *policy.PolicyName == policyname {
+						fmt.Printf("found policy ARN %s for role %s", *policy.PolicyArn, *role.RoleName)
+						return *policy.PolicyArn, nil
+					}
+				}
+				return "", err
+			}
+		}
 		logAWSError(err)
 		return policyarn, err
 	}
 	if respPolicy.Policy.Arn != nil && role.RoleName != nil {
 		policyarn = *(respPolicy.Policy.Arn)
 		roleAttachPolicyInput := &iam.AttachRolePolicyInput{
-			PolicyArn: aws.String(*(respPolicy.Policy.Arn)),
+			PolicyArn: aws.String(policyarn),
 			RoleName:  aws.String(*(role.RoleName)),
 		}
 
