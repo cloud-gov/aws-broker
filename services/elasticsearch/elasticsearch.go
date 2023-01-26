@@ -480,12 +480,6 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := ip.CreateAssumeRole(policy, rolename)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() != iam.ErrCodeEntityAlreadyExistsException {
-					fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
-					d.logger.Info(fmt.Sprintf("role %s already exists, continuing", rolename))
-				}
-			}
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
 			return err
 		}

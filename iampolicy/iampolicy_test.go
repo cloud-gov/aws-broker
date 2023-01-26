@@ -1,9 +1,11 @@
 package iampolicy
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
@@ -31,15 +33,30 @@ var objectStatement PolicyStatementEntry = PolicyStatementEntry{
 
 type mockIamClient struct {
 	iamiface.IAMAPI
+
+	createRoleErr error
 }
 
 func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleOutput, error) {
+	if m.createRoleErr != nil {
+		return nil, m.createRoleErr
+	}
 	arn := "arn:aws:iam::123456789012:role/" + *(input.RoleName)
 	return &iam.CreateRoleOutput{
 		Role: &iam.Role{
 			Arn:                      aws.String(arn),
 			RoleName:                 input.RoleName,
 			AssumeRolePolicyDocument: input.AssumeRolePolicyDocument,
+		},
+	}, nil
+}
+
+func (m *mockIamClient) GetRole(input *iam.GetRoleInput) (*iam.GetRoleOutput, error) {
+	arn := "arn:aws:iam::123456789012:role/" + *(input.RoleName)
+	return &iam.GetRoleOutput{
+		Role: &iam.Role{
+			Arn:      aws.String(arn),
+			RoleName: input.RoleName,
 		},
 	}, nil
 }
@@ -119,6 +136,29 @@ func TestCreateAssumeRole(t *testing.T) {
 		}
 	} else {
 		t.Error("Role is nil")
+	}
+}
+
+func TestCreateAssumeRoleAlreadyExists(t *testing.T) {
+	policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
+	rolename := "test-role"
+	createRoleErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "already exists", errors.New("fail"))
+	ip := &IamPolicyHandler{
+		iamsvc: &mockIamClient{
+			createRoleErr: createRoleErr,
+		},
+	}
+
+	role, err := ip.CreateAssumeRole(policy, rolename)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if *(role.RoleName) != rolename {
+		t.Errorf("RoleName returned as %v, expected: %s", role.RoleName, rolename)
+	}
+	expectedArn := "arn:aws:iam::123456789012:role/" + rolename
+	if *role.Arn != expectedArn {
+		t.Errorf("ARN returned as %v, expected %s", role.Arn, expectedArn)
 	}
 }
 

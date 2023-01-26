@@ -77,6 +77,21 @@ func NewIamPolicyHandler(region string) *IamPolicyHandler {
 	return &ip
 }
 
+func logAWSError(err error) {
+	if awsErr, ok := err.(awserr.Error); ok {
+		// Generic AWS error with Code, Message, and original error (if any)
+		fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
+		if reqErr, ok := err.(awserr.RequestFailure); ok {
+			// A service error occurred
+			fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+		}
+	} else {
+		// This case should never be hit, the SDK should always return an
+		// error which satisfies the awserr.Error interface.
+		fmt.Println(err.Error())
+	}
+}
+
 // create new assumable role with the trust policy
 func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*iam.Role, error) {
 	role := &iam.Role{}
@@ -87,17 +102,20 @@ func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*i
 	resp, err := ip.iamsvc.CreateRole(roleInput)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
+			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
+				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
+				fmt.Printf("role %s already exists, continuing", rolename)
+				resp, err := ip.iamsvc.GetRole(&iam.GetRoleInput{
+					RoleName: aws.String(rolename),
+				})
+				if err != nil {
+					logAWSError(err)
+					return nil, err
+				}
+				return resp.Role, nil
 			}
-		} else {
-			// This case should never be hit, the SDK should always return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
 		}
+		logAWSError(err)
 		return role, err
 	}
 
@@ -172,18 +190,7 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 
 	respPolicy, err := ip.iamsvc.CreatePolicy(rolePolicyInput)
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
-		} else {
-			// This case should never be hit, the SDK should always return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
-		}
+		logAWSError(err)
 		return policyarn, err
 	}
 	if respPolicy.Policy.Arn != nil && role.RoleName != nil {
@@ -195,18 +202,7 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 
 		respAttachPolicy, err := ip.iamsvc.AttachRolePolicy(roleAttachPolicyInput)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			logAWSError(err)
 			return policyarn, err
 		}
 		fmt.Println(awsutil.Prettify(respAttachPolicy))
@@ -224,42 +220,19 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 		PolicyArn: aws.String(policyARN),
 	})
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
-		} else {
-			// This case should never be hit, the SDK should always return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
-		}
+		logAWSError(err)
 		fmt.Printf("UpdateExistingPolicy.GetPolicy with arn: %s failed", policyARN)
 		return respPolVer, err
 	}
 	// get existing policy's current version number
 	if resPolicy.Policy.DefaultVersionId != nil {
-
 		policyVersionInput := &iam.GetPolicyVersionInput{
 			PolicyArn: aws.String(policyARN),
 			VersionId: aws.String(*(resPolicy.Policy.DefaultVersionId)),
 		}
 		resPolicyVersion, err := ip.iamsvc.GetPolicyVersion(policyVersionInput)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			logAWSError(err)
 			fmt.Printf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed", *(resPolicy.Policy.DefaultVersionId))
 			return respPolVer, err
 		}
@@ -296,18 +269,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 
 		resp, err := ip.iamsvc.CreatePolicyVersion(policyUpdatedVersion)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			logAWSError(err)
 			fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v", policyUpdatedVersion)
 			return respPolVer, err
 		}
