@@ -15,8 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cloudfoundry-community/s3-broker/awsiam"
@@ -228,7 +228,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		VPCOptions:                  VPCOptions,
 		AdvancedOptions:             AdvancedOptions,
 	}
-    if i.ElasticsearchVersion != ""{
+	if i.ElasticsearchVersion != "" {
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
 	}
 	params.SetAccessPolicies(accessControlPolicy)
@@ -483,6 +483,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
 			return err
 		}
+
 		i.SnapshotARN = *arole.Arn
 		snapshotRole = arole
 

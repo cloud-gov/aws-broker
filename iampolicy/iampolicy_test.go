@@ -1,9 +1,11 @@
 package iampolicy
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
@@ -31,9 +33,17 @@ var objectStatement PolicyStatementEntry = PolicyStatementEntry{
 
 type mockIamClient struct {
 	iamiface.IAMAPI
+
+	createRoleErr        error
+	createPolicyErr      error
+	attachedUserPolicies []*iam.AttachedPolicy
+	attachedRolePolicies []*iam.AttachedPolicy
 }
 
 func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleOutput, error) {
+	if m.createRoleErr != nil {
+		return nil, m.createRoleErr
+	}
 	arn := "arn:aws:iam::123456789012:role/" + *(input.RoleName)
 	return &iam.CreateRoleOutput{
 		Role: &iam.Role{
@@ -44,13 +54,38 @@ func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleO
 	}, nil
 }
 
+func (m *mockIamClient) GetRole(input *iam.GetRoleInput) (*iam.GetRoleOutput, error) {
+	arn := "arn:aws:iam::123456789012:role/" + *(input.RoleName)
+	return &iam.GetRoleOutput{
+		Role: &iam.Role{
+			Arn:      aws.String(arn),
+			RoleName: input.RoleName,
+		},
+	}, nil
+}
+
 func (m *mockIamClient) CreatePolicy(input *iam.CreatePolicyInput) (*iam.CreatePolicyOutput, error) {
+	if m.createPolicyErr != nil {
+		return nil, m.createPolicyErr
+	}
 	arn := "arn:aws:iam::123456789012:policy/" + *(input.PolicyName)
 	return &iam.CreatePolicyOutput{
 		Policy: &iam.Policy{
 			Arn:        aws.String(arn),
 			PolicyName: input.PolicyName,
 		},
+	}, nil
+}
+
+func (m *mockIamClient) ListAttachedUserPolicies(input *iam.ListAttachedUserPoliciesInput) (*iam.ListAttachedUserPoliciesOutput, error) {
+	return &iam.ListAttachedUserPoliciesOutput{
+		AttachedPolicies: m.attachedUserPolicies,
+	}, nil
+}
+
+func (m *mockIamClient) ListAttachedRolePolicies(input *iam.ListAttachedRolePoliciesInput) (*iam.ListAttachedRolePoliciesOutput, error) {
+	return &iam.ListAttachedRolePoliciesOutput{
+		AttachedPolicies: m.attachedRolePolicies,
 	}, nil
 }
 
@@ -122,6 +157,29 @@ func TestCreateAssumeRole(t *testing.T) {
 	}
 }
 
+func TestCreateAssumeRoleAlreadyExists(t *testing.T) {
+	policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
+	rolename := "test-role"
+	createRoleErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "already exists", errors.New("fail"))
+	ip := &IamPolicyHandler{
+		iamsvc: &mockIamClient{
+			createRoleErr: createRoleErr,
+		},
+	}
+
+	role, err := ip.CreateAssumeRole(policy, rolename)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if *(role.RoleName) != rolename {
+		t.Errorf("RoleName returned as %v, expected: %s", role.RoleName, rolename)
+	}
+	expectedArn := "arn:aws:iam::123456789012:role/" + rolename
+	if *role.Arn != expectedArn {
+		t.Errorf("ARN returned as %v, expected %s", role.Arn, expectedArn)
+	}
+}
+
 func TestCreateUserPolicy(t *testing.T) {
 	ip := &IamPolicyHandler{
 		iamsvc: &mockIamClient{},
@@ -146,6 +204,39 @@ func TestCreateUserPolicy(t *testing.T) {
 	}
 }
 
+func TestCreateUserPolicyAlreadyExists(t *testing.T) {
+	Domain := "foobar"
+	ARN := "arn:aws:iam::123456789012:elasticsearch/" + Domain
+	snapshotRoleARN := "arn:aws:iam::123456789012:role/test-role"
+	policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + snapshotRoleARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + ARN + `/*"}]}`
+	policyname := Domain + "-to-S3-ESRolePolicy"
+	username := Domain
+
+	createPolicyErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "policy already exists", errors.New("fail"))
+
+	ip := &IamPolicyHandler{
+		iamsvc: &mockIamClient{
+			createPolicyErr: createPolicyErr,
+			attachedUserPolicies: []*iam.AttachedPolicy{
+				{
+					PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyname),
+					PolicyName: aws.String(policyname),
+				},
+			},
+		},
+	}
+
+	policyArn, err := ip.CreateUserPolicy(policy, policyname, username)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedArn := "arn:aws:iam::123456789012:policy/" + policyname
+	if policyArn != expectedArn {
+		t.Errorf("Expected Arn %s but got %s", expectedArn, policyArn)
+	}
+}
+
 func TestCreatePolicyAttachRole(t *testing.T) {
 	ip := &IamPolicyHandler{
 		iamsvc: &mockIamClient{},
@@ -167,6 +258,37 @@ func TestCreatePolicyAttachRole(t *testing.T) {
 		t.Error("policy arn is nil")
 	}
 
+}
+
+func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
+	policyName := "test-pol"
+	roleName := "test-role"
+	createPolicyErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "policy already exists", errors.New("fail"))
+
+	ip := &IamPolicyHandler{
+		iamsvc: &mockIamClient{
+			createPolicyErr: createPolicyErr,
+			attachedRolePolicies: []*iam.AttachedPolicy{
+				{
+					PolicyName: aws.String(policyName),
+					PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyName),
+				},
+			},
+		},
+	}
+	role := iam.Role{
+		RoleName: aws.String(roleName),
+	}
+
+	policyarn, err := ip.CreatePolicyAttachRole(policyName, mockPolDoc, role)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedarn := "arn:aws:iam::123456789012:policy/" + policyName
+	if policyarn != expectedarn {
+		t.Errorf("Expected Arn %s but got %s", expectedarn, policyarn)
+	}
 }
 
 func TestUpdateExistingPolicy(t *testing.T) {
