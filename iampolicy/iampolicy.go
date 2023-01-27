@@ -104,7 +104,7 @@ func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*i
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
 				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
-				fmt.Printf("role %s already exists, continuing", rolename)
+				fmt.Printf("role %s already exists, continuing\n", rolename)
 				resp, innerErr := ip.iamsvc.GetRole(&iam.GetRoleInput{
 					RoleName: aws.String(rolename),
 				})
@@ -139,7 +139,7 @@ func (ip *IamPolicyHandler) CreateUserPolicy(policy string, policyname string, u
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
 				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
-				fmt.Printf("policy name %s already exists, attempting to get policy ARN", policyname)
+				fmt.Printf("policy name %s already exists, attempting to get policy ARN\n", policyname)
 				resp, innerErr := ip.iamsvc.ListAttachedUserPolicies(&iam.ListAttachedUserPoliciesInput{
 					UserName: aws.String(username),
 				})
@@ -149,7 +149,7 @@ func (ip *IamPolicyHandler) CreateUserPolicy(policy string, policyname string, u
 				}
 				for _, policy := range resp.AttachedPolicies {
 					if *policy.PolicyName == policyname {
-						fmt.Printf("found policy ARN %s for policy %s", *policy.PolicyArn, policyname)
+						fmt.Printf("found policy ARN %s for policy %s\n", *policy.PolicyArn, policyname)
 						return *policy.PolicyArn, nil
 					}
 				}
@@ -191,7 +191,7 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == iam.ErrCodeEntityAlreadyExistsException {
 				fmt.Println(iam.ErrCodeEntityAlreadyExistsException, awsErr.Error())
-				fmt.Printf("policy name %s already exists, attempting to get policy ARN", policyname)
+				fmt.Printf("policy name %s already exists, attempting to get policy ARN\n", policyname)
 				resp, innerErr := ip.iamsvc.ListAttachedRolePolicies(&iam.ListAttachedRolePoliciesInput{
 					RoleName: role.RoleName,
 				})
@@ -201,7 +201,7 @@ func (ip *IamPolicyHandler) CreatePolicyAttachRole(policyname string, policy str
 				}
 				for _, policy := range resp.AttachedPolicies {
 					if *policy.PolicyName == policyname {
-						fmt.Printf("found policy ARN %s for role %s", *policy.PolicyArn, *role.RoleName)
+						fmt.Printf("found policy ARN %s for role %s\n", *policy.PolicyArn, *role.RoleName)
 						return *policy.PolicyArn, nil
 					}
 				}
@@ -239,7 +239,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 	})
 	if err != nil {
 		logAWSError(err)
-		fmt.Printf("UpdateExistingPolicy.GetPolicy with arn: %s failed", policyARN)
+		fmt.Printf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN)
 		return respPolVer, err
 	}
 	// get existing policy's current version number
@@ -251,7 +251,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 		resPolicyVersion, err := ip.iamsvc.GetPolicyVersion(policyVersionInput)
 		if err != nil {
 			logAWSError(err)
-			fmt.Printf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed", *(resPolicy.Policy.DefaultVersionId))
+			fmt.Printf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId))
 			return respPolVer, err
 		}
 
@@ -259,7 +259,7 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 		if resPolicyVersion.PolicyVersion.Document != nil {
 			err = policyDoc.FromString(*resPolicyVersion.PolicyVersion.Document)
 			if err != nil {
-				fmt.Printf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed", (*resPolicyVersion.PolicyVersion.Document))
+				fmt.Printf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed\n", (*resPolicyVersion.PolicyVersion.Document))
 				return respPolVer, err
 			}
 		}
@@ -288,13 +288,13 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 		resp, err := ip.iamsvc.CreatePolicyVersion(policyUpdatedVersion)
 		if err != nil {
 			logAWSError(err)
-			fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v", policyUpdatedVersion)
+			fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion)
 			return respPolVer, err
 		}
 		if resp.PolicyVersion != nil {
 			respPolVer = resp.PolicyVersion
 		}
-		fmt.Printf("UpdateExistingPolicy Success with: %v", respPolVer)
+		fmt.Printf("UpdateExistingPolicy Success with: %v\n", respPolVer)
 	}
 
 	return respPolVer, nil
