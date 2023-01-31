@@ -17,6 +17,8 @@ type mockRDSClient struct {
 	dbEngineVersions       []*rds.DBEngineVersion
 	describeEngVersionsErr error
 	describeDbParamsErr    error
+	createDbParamGroupErr  error
+	modifyDbParamGroupErr  error
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -34,6 +36,20 @@ func (m mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInp
 	}
 	if m.describeEngVersionsErr != nil {
 		return nil, m.describeEngVersionsErr
+	}
+	return nil, nil
+}
+
+func (m mockRDSClient) CreateDBParameterGroup(*rds.CreateDBParameterGroupInput) (*rds.CreateDBParameterGroupOutput, error) {
+	if m.createDbParamGroupErr != nil {
+		return nil, m.createDbParamGroupErr
+	}
+	return nil, nil
+}
+
+func (m mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
+	if m.modifyDbParamGroupErr != nil {
+		return nil, m.modifyDbParamGroupErr
 	}
 	return nil, nil
 }
@@ -262,6 +278,85 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 			})
 			if exists != test.expectedExists {
 				t.Fatalf("expected: %t, got: %t", test.expectedExists, exists)
+			}
+		})
+	}
+}
+
+func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
+	createDbParamGroupErr := errors.New("create DB params err")
+	describeEngVersionsErr := errors.New("describe DB engine versions err")
+	modifyDbParamGroupErr := errors.New("modify DB params err")
+
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		describeDbParamsErr    error
+		describeEngVersionsErr error
+		createDbParamGroupErr  error
+		modifyDbParamGroupErr  error
+		expectedPGroupName     string
+		pGroupPrefix           string
+		expectedErr            error
+	}{
+		"error getting parameter group family": {
+			dbInstance: &RDSInstance{
+				Database: "foobar",
+				DbType:   "postgres",
+			},
+			describeDbParamsErr:    errors.New("describe DB params err"),
+			describeEngVersionsErr: describeEngVersionsErr,
+			expectedPGroupName:     "",
+			expectedErr:            describeEngVersionsErr,
+		},
+		"error creating database parameter group": {
+			dbInstance: &RDSInstance{
+				Database:  "foobar",
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			describeDbParamsErr:   errors.New("describe DB params err"),
+			createDbParamGroupErr: createDbParamGroupErr,
+			expectedPGroupName:    "",
+			expectedErr:           createDbParamGroupErr,
+		},
+		"error modifying database parameter group": {
+			dbInstance: &RDSInstance{
+				Database:  "foobar",
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			modifyDbParamGroupErr: modifyDbParamGroupErr,
+			expectedPGroupName:    "",
+			expectedErr:           modifyDbParamGroupErr,
+		},
+		"success": {
+			dbInstance: &RDSInstance{
+				Database:  "foobar",
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			pGroupPrefix:       "",
+			expectedPGroupName: "foobar",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			pGroupPrefix = test.pGroupPrefix
+			pGroupName, err := createOrModifyCustomParameterGroupFunc(test.dbInstance, nil, &mockRDSClient{
+				describeDbParamsErr:    test.describeDbParamsErr,
+				createDbParamGroupErr:  test.createDbParamGroupErr,
+				describeEngVersionsErr: test.describeEngVersionsErr,
+				modifyDbParamGroupErr:  test.modifyDbParamGroupErr,
+			})
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if pGroupName != test.expectedPGroupName {
+				t.Errorf("expected parameter group name: %s, got: %s", test.expectedPGroupName, pGroupName)
 			}
 		})
 	}

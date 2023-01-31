@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"fmt"
 	"log"
 	"regexp"
 
@@ -11,14 +12,15 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
 
-// PgroupPrefix is the prefix for all pgroups created by the broker.
-const PgroupPrefix = "cg-aws-broker-"
-
 var (
 	needCustomParameters               = needCustomParametersFunc
 	getCustomParameters                = getCustomParametersFunc
 	createOrModifyCustomParameterGroup = createOrModifyCustomParameterGroupFunc
+	pGroupPrefix                       = pGroupPrefixReal
 )
+
+// PgroupPrefix is the prefix for all pgroups created by the broker.
+const pGroupPrefixReal = "cg-aws-broker-"
 
 type parameterGroupAdapterInterface interface {
 	provisionCustomParameterGroupIfNecessary(
@@ -28,7 +30,6 @@ type parameterGroupAdapterInterface interface {
 	) (string, error)
 }
 
-type parameterGroupUtils struct{}
 type parameterGroupAdapter struct{}
 
 func getParameterGroupFamily(i *RDSInstance, svc rdsiface.RDSAPI) (string, error) {
@@ -87,14 +88,14 @@ func createOrModifyCustomParameterGroupFunc(
 ) (string, error) {
 	// i.FormatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
-	pgroupName := PgroupPrefix + i.FormatDBName()
+	pgroupName := pGroupPrefix + i.FormatDBName()
 
 	parameterGroupExists := checkIfParameterGroupExists(pgroupName, svc)
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
 		pgroupFamily, err := getParameterGroupFamily(i, svc)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("encounted error getting parameter group family: %w", err)
 		}
 
 		log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
@@ -106,7 +107,7 @@ func createOrModifyCustomParameterGroupFunc(
 
 		_, err = svc.CreateDBParameterGroup(createInput)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("encounted error when creating database: %w", err)
 		}
 	}
 
@@ -198,9 +199,9 @@ func cleanupCustomParameterGroups(svc rdsiface.RDSAPI) {
 			// If the pgroup matches the prefix, then try to delete it.
 			// If it's in use, it will fail, so ignore that.
 			for _, pgroup := range pgroups.DBParameterGroups {
-				matched, err := regexp.Match("^"+PgroupPrefix, []byte(*pgroup.DBParameterGroupName))
+				matched, err := regexp.Match("^"+pGroupPrefix, []byte(*pgroup.DBParameterGroupName))
 				if err != nil {
-					log.Printf("error trying to match %s in %s: %s", PgroupPrefix, *pgroup.DBParameterGroupName, err.Error())
+					log.Printf("error trying to match %s in %s: %s", pGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
 				}
 				if matched {
 					deleteinput := &rds.DeleteDBParameterGroupInput{
