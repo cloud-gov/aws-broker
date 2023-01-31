@@ -16,6 +16,14 @@ type mockRDSClient struct {
 
 	dbEngineVersions       []*rds.DBEngineVersion
 	describeEngVersionsErr error
+	describeDbParamsErr    error
+}
+
+func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
+	if m.describeDbParamsErr != nil {
+		return nil, m.describeDbParamsErr
+	}
+	return nil, nil
 }
 
 func (m mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInput) (*rds.DescribeDBEngineVersionsOutput, error) {
@@ -225,6 +233,35 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			}
 			if pGroupFamily != test.expectedPGroupFamily {
 				t.Fatalf("expected parameter group family: %s, got: %s", test.expectedPGroupFamily, pGroupFamily)
+			}
+		})
+	}
+}
+
+func TestCheckIfParameterGroupExists(t *testing.T) {
+	dbParamsErr := errors.New("fail")
+	testCases := map[string]struct {
+		pGroupName          string
+		describeDbParamsErr error
+		expectedExists      bool
+	}{
+		"error, return false": {
+			describeDbParamsErr: dbParamsErr,
+			pGroupName:          "group1",
+			expectedExists:      false,
+		},
+		"no error, return true": {
+			pGroupName:     "group2",
+			expectedExists: true,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			exists := checkIfParameterGroupExists(test.pGroupName, mockRDSClient{
+				describeDbParamsErr: test.describeDbParamsErr,
+			})
+			if exists != test.expectedExists {
+				t.Fatalf("expected: %t, got: %t", test.expectedExists, exists)
 			}
 		})
 	}

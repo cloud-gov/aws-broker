@@ -63,6 +63,22 @@ func getParameterGroupFamily(
 	return pgroupFamily, nil
 }
 
+func checkIfParameterGroupExists(pgroupName string, svc rdsiface.RDSAPI) bool {
+	dbParametersInput := &rds.DescribeDBParametersInput{
+		DBParameterGroupName: aws.String(pgroupName),
+		MaxRecords:           aws.Int64(20),
+		Source:               aws.String("system"),
+	}
+
+	// If the db parameter group has already been created, we can return.
+	_, err := svc.DescribeDBParameters(dbParametersInput)
+	parameterGroupExists := (err == nil)
+	if parameterGroupExists {
+		log.Printf("%s parameter group already exists", pgroupName)
+	}
+	return parameterGroupExists
+}
+
 // This function will return the a custom parameter group with whatever custom
 // parameters have been requested.  If there is no custom parameter group, it
 // will be created.
