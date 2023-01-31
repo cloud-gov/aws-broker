@@ -6,11 +6,28 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/config"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
 
 type mockRDSClient struct {
 	rdsiface.RDSAPI
+
+	dbEngineVersions       []*rds.DBEngineVersion
+	describeEngVersionsErr error
+}
+
+func (m mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInput) (*rds.DescribeDBEngineVersionsOutput, error) {
+	if m.dbEngineVersions != nil {
+		return &rds.DescribeDBEngineVersionsOutput{
+			DBEngineVersions: m.dbEngineVersions,
+		}, nil
+	}
+	if m.describeEngVersionsErr != nil {
+		return nil, m.describeEngVersionsErr
+	}
+	return nil, nil
 }
 
 func TestNeedCustomParameters(t *testing.T) {
@@ -154,6 +171,60 @@ func TestGetCustomParameters(t *testing.T) {
 			params := getCustomParameters(test.dbInstance, test.settings)
 			if !reflect.DeepEqual(params, test.expectedParams) {
 				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
+			}
+		})
+	}
+}
+
+func TestGetParameterGroupFamily(t *testing.T) {
+	serviceErr := errors.New("fail")
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		dbEngineVersions       []*rds.DBEngineVersion
+		describeEngVersionsErr error
+		expectedErr            error
+		expectedPGroupFamily   string
+	}{
+		"no db version": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			dbEngineVersions: []*rds.DBEngineVersion{
+				{
+					DBParameterGroupFamily: aws.String("postgres12"),
+				},
+			},
+			expectedPGroupFamily: "postgres12",
+		},
+		"has db version": {
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "13",
+			},
+			expectedPGroupFamily: "postgres13",
+		},
+		"RDS service returns error": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			describeEngVersionsErr: serviceErr,
+			expectedErr:            serviceErr,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			pGroupFamily, err := getParameterGroupFamily(test.dbInstance, mockRDSClient{
+				dbEngineVersions:       test.dbEngineVersions,
+				describeEngVersionsErr: test.describeEngVersionsErr,
+			})
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if test.expectedErr != nil && err != test.expectedErr {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if pGroupFamily != test.expectedPGroupFamily {
+				t.Fatalf("expected parameter group family: %s, got: %s", test.expectedPGroupFamily, pGroupFamily)
 			}
 		})
 	}
