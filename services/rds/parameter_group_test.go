@@ -139,6 +139,39 @@ func TestNeedCustomParameters(t *testing.T) {
 	}
 }
 
+func TestGetDefaultEngineParameter(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance     *RDSInstance
+		settings       config.Settings
+		expectedParams map[string]map[string]string
+	}{
+		"enabled functions": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			settings: config.Settings{},
+			expectedParams: map[string]map[string]string{
+				"postgres": {
+					"shared_preload_libaries": "pg-cron",
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{})
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !reflect.DeepEqual(params, test.expectedParams) {
+				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
+			}
+		})
+	}
+}
+
 func TestGetCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance     *RDSInstance
@@ -148,6 +181,7 @@ func TestGetCustomParameters(t *testing.T) {
 		"enabled functions": {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
+				DbType:          "mysql",
 			},
 			settings: config.Settings{
 				EnableFunctionsFeature: true,
@@ -161,6 +195,7 @@ func TestGetCustomParameters(t *testing.T) {
 		"instance functions disabled, settings enabled": {
 			dbInstance: &RDSInstance{
 				EnableFunctions: false,
+				DbType:          "mysql",
 			},
 			settings: config.Settings{
 				EnableFunctionsFeature: true,
@@ -174,6 +209,7 @@ func TestGetCustomParameters(t *testing.T) {
 		"instance functions enabled, settings disabled": {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
+				DbType:          "mysql",
 			},
 			settings: config.Settings{
 				EnableFunctionsFeature: false,
@@ -187,6 +223,7 @@ func TestGetCustomParameters(t *testing.T) {
 		"binary log format": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
+				DbType:          "mysql",
 			},
 			settings: config.Settings{},
 			expectedParams: map[string]map[string]string{
@@ -196,10 +233,26 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 		},
+		"enable PG cron": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			settings: config.Settings{},
+			expectedParams: map[string]map[string]string{
+				"postgres": {
+					"shared_preload_libraries": "pg-cron",
+				},
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := getCustomParameters(test.dbInstance, test.settings)
+			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{})
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
 			if !reflect.DeepEqual(params, test.expectedParams) {
 				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
 			}

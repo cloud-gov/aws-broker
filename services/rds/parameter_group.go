@@ -151,25 +151,67 @@ func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 	return false
 }
 
-func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[string]string {
+func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RDSAPI) (string, error) {
+	pGroupFamily, err := getParameterGroupFamily(i, svc)
+	if err != nil {
+		return "", err
+	}
+	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
+		DBParameterGroupFamily: &pGroupFamily,
+		MaxRecords:             aws.Int64(100),
+	}
+	for {
+		result, err := svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
+		if err != nil {
+			return "", err
+		}
+		for _, param := range result.EngineDefaults.Parameters {
+			if *param.ParameterName == paramName {
+				return *param.ParameterValue, nil
+			}
+		}
+		if *result.EngineDefaults.Marker == "" {
+			break
+		}
+		describeEngDefaultParamsInput.Marker = result.EngineDefaults.Marker
+	}
+	return "", nil
+}
+
+func getCustomParameters(
+	i *RDSInstance,
+	s config.Settings,
+	svc rdsiface.RDSAPI,
+) (map[string]map[string]string, error) {
 	customRDSParameters := make(map[string]map[string]string)
 
-	// enable functions
-	customRDSParameters["mysql"] = make(map[string]string)
-	if i.EnableFunctions && s.EnableFunctionsFeature {
-		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
-	} else {
-		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
+	if i.DbType == "mysql" {
+		// enable functions
+		customRDSParameters["mysql"] = make(map[string]string)
+		if i.EnableFunctions && s.EnableFunctionsFeature {
+			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
+		} else {
+			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
+		}
+
+		// set MySQL binary log format
+		if i.BinaryLogFormat != "" {
+			customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+		}
 	}
 
-	// set MySQL binary log format
-	if i.BinaryLogFormat != "" {
-		customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+	if i.DbType == "postgres" {
+		customRDSParameters["postgres"] = make(map[string]string)
+		if i.EnablePgCron {
+			// defaultSharedPreloadLibraries, err := getDefaultEngineParameter("shared_preload_libraries", i, svc)
+			// if err != nil {
+			// 	return nil, err
+			// }
+			customRDSParameters["postgres"]["shared_preload_libraries"] = "pg-cron"
+		}
 	}
 
-	// If you need to add more custom parameters, you can add them in here.
-
-	return customRDSParameters
+	return customRDSParameters, nil
 }
 
 func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
@@ -180,7 +222,10 @@ func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
 	if !needCustomParameters(i, d.settings) {
 		return "", nil
 	}
-	customRDSParameters := getCustomParameters(i, d.settings)
+	customRDSParameters, err := getCustomParameters(i, d.settings, svc)
+	if err != nil {
+		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
+	}
 
 	// apply parameter group
 	pgroupName, err := createOrModifyCustomParameterGroup(i, customRDSParameters, svc)
