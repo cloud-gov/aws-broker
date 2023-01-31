@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -14,11 +15,13 @@ import (
 type mockRDSClient struct {
 	rdsiface.RDSAPI
 
-	dbEngineVersions       []*rds.DBEngineVersion
-	describeEngVersionsErr error
-	describeDbParamsErr    error
-	createDbParamGroupErr  error
-	modifyDbParamGroupErr  error
+	dbEngineVersions                   []*rds.DBEngineVersion
+	describeEngVersionsErr             error
+	describeDbParamsErr                error
+	createDbParamGroupErr              error
+	modifyDbParamGroupErr              error
+	describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
+	describeEngineCallNum              int
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -50,6 +53,17 @@ func (m mockRDSClient) CreateDBParameterGroup(*rds.CreateDBParameterGroupInput) 
 func (m mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
 	if m.modifyDbParamGroupErr != nil {
 		return nil, m.modifyDbParamGroupErr
+	}
+	return nil, nil
+}
+
+func (m mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefaultParametersInput) (*rds.DescribeEngineDefaultParametersOutput, error) {
+	if m.describeEngineDefaultParamsResults != nil {
+		foo := m.describeEngineCallNum
+		fmt.Println(foo)
+		res := m.describeEngineDefaultParamsResults[foo]
+		foo++
+		return res, nil
 	}
 	return nil, nil
 }
@@ -141,32 +155,108 @@ func TestNeedCustomParameters(t *testing.T) {
 
 func TestGetDefaultEngineParameter(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance     *RDSInstance
-		settings       config.Settings
-		expectedParams map[string]map[string]string
+		dbInstance                         *RDSInstance
+		expectedParams                     map[string]map[string]string
+		paramName                          string
+		expectedParamValue                 string
+		describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
 	}{
-		"enabled functions": {
+		// "no default param value": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 		DbVersion:    "12",
+		// 	},
+		// 	paramName: "shared_preload_libraries",
+		// 	expectedParams: map[string]map[string]string{
+		// 		"postgres": {
+		// 			"shared_preload_libaries": "pg-cron",
+		// 		},
+		// 	},
+		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+		// 		{
+		// 			EngineDefaults: &rds.EngineDefaults{
+		// 				Parameters: []*rds.Parameter{},
+		// 			},
+		// 		},
+		// 	},
+		// 	expectedParamValue: "",
+		// },
+		// "default param value": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 		DbVersion:    "12",
+		// 	},
+		// 	paramName: "shared_preload_libraries",
+		// 	expectedParams: map[string]map[string]string{
+		// 		"postgres": {
+		// 			"shared_preload_libaries": "pg-cron",
+		// 		},
+		// 	},
+		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+		// 		{
+		// 			EngineDefaults: &rds.EngineDefaults{
+		// 				Parameters: []*rds.Parameter{
+		// 					{
+		// 						ParameterName:  aws.String("shared_preload_libraries"),
+		// 						ParameterValue: aws.String("random-library"),
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	expectedParamValue: "random-library",
+		// },
+		"default param value, with paging": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			settings: config.Settings{},
+			paramName: "shared_preload_libraries",
 			expectedParams: map[string]map[string]string{
 				"postgres": {
 					"shared_preload_libaries": "pg-cron",
 				},
 			},
+			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{
+							{
+								ParameterName:  aws.String("random-param"),
+								ParameterValue: aws.String("random-value"),
+							},
+						},
+						Marker: aws.String("marker"),
+					},
+				},
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{
+							{
+								ParameterName:  aws.String("shared_preload_libraries"),
+								ParameterValue: aws.String("a-library,b-library"),
+							},
+						},
+					},
+				},
+			},
+			expectedParamValue: "a-library,b-library",
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{})
+			paramValue, err := getDefaultEngineParameter(test.paramName, test.dbInstance, &mockRDSClient{
+				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
+				describeEngineCallNum:              0,
+			})
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if !reflect.DeepEqual(params, test.expectedParams) {
-				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
+			if paramValue != test.expectedParamValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParamValue, paramValue)
 			}
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
@@ -161,6 +162,8 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 		MaxRecords:             aws.Int64(100),
 	}
 	for {
+		fmt.Println("here")
+		fmt.Println(describeEngDefaultParamsInput)
 		result, err := svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
 		if err != nil {
 			return "", err
@@ -170,7 +173,7 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 				return *param.ParameterValue, nil
 			}
 		}
-		if *result.EngineDefaults.Marker == "" {
+		if result.EngineDefaults.Marker == nil || *result.EngineDefaults.Marker == "" {
 			break
 		}
 		describeEngDefaultParamsInput.Marker = result.EngineDefaults.Marker
@@ -203,11 +206,14 @@ func getCustomParameters(
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]string)
 		if i.EnablePgCron {
-			// defaultSharedPreloadLibraries, err := getDefaultEngineParameter("shared_preload_libraries", i, svc)
-			// if err != nil {
-			// 	return nil, err
-			// }
-			customRDSParameters["postgres"]["shared_preload_libraries"] = "pg-cron"
+			defaultSharedPreloadLibraries, err := getDefaultEngineParameter("shared_preload_libraries", i, svc)
+			if err != nil {
+				return nil, err
+			}
+			customRDSParameters["postgres"]["shared_preload_libraries"] = strings.Join([]string{
+				defaultSharedPreloadLibraries,
+				"pg-cron",
+			}, ",")
 		}
 	}
 
