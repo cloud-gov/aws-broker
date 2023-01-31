@@ -144,6 +144,10 @@ func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 		(i.DbType == "mysql") {
 		return true
 	}
+	if i.EnablePgCron &&
+		(i.DbType == "postgres") {
+		return true
+	}
 	return false
 }
 

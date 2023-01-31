@@ -121,6 +121,13 @@ func TestNeedCustomParameters(t *testing.T) {
 			},
 			expectedOk: true,
 		},
+		"enable PG cron": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+			},
+			expectedOk: true,
+		},
 	}
 
 	for name, test := range testCases {
