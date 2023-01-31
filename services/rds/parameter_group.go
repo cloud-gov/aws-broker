@@ -13,10 +13,7 @@ import (
 )
 
 var (
-	needCustomParameters               = needCustomParametersFunc
-	getCustomParameters                = getCustomParametersFunc
-	createOrModifyCustomParameterGroup = createOrModifyCustomParameterGroupFunc
-	pGroupPrefix                       = pGroupPrefixReal
+	pGroupPrefix = pGroupPrefixReal
 )
 
 // PgroupPrefix is the prefix for all pgroups created by the broker.
@@ -81,7 +78,7 @@ func checkIfParameterGroupExists(pgroupName string, svc rdsiface.RDSAPI) bool {
 // This function will return the a custom parameter group with whatever custom
 // parameters have been requested.  If there is no custom parameter group, it
 // will be created.
-func createOrModifyCustomParameterGroupFunc(
+func createOrModifyCustomParameterGroup(
 	i *RDSInstance,
 	customparams map[string]map[string]string,
 	svc rdsiface.RDSAPI,
@@ -135,7 +132,7 @@ func createOrModifyCustomParameterGroupFunc(
 }
 
 // This is here because the check is kinda big and ugly
-func needCustomParametersFunc(i *RDSInstance, s config.Settings) bool {
+func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 	// Currently, we only have one custom parameter for mysql, but if
 	// we ever need to apply more, you can add them in here.
 	if i.EnableFunctions &&
@@ -150,7 +147,7 @@ func needCustomParametersFunc(i *RDSInstance, s config.Settings) bool {
 	return false
 }
 
-func getCustomParametersFunc(i *RDSInstance, s config.Settings) map[string]map[string]string {
+func getCustomParameters(i *RDSInstance, s config.Settings) map[string]map[string]string {
 	customRDSParameters := make(map[string]map[string]string)
 
 	// enable functions
@@ -179,14 +176,13 @@ func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
 	if !needCustomParameters(i, d.settings) {
 		return "", nil
 	}
-
 	customRDSParameters := getCustomParameters(i, d.settings)
 
 	// apply parameter group
 	pgroupName, err := createOrModifyCustomParameterGroup(i, customRDSParameters, svc)
 	if err != nil {
 		log.Println(err.Error())
-		return "", err
+		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
 	return pgroupName, nil
 }

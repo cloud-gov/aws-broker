@@ -343,7 +343,7 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			pGroupPrefix = test.pGroupPrefix
-			pGroupName, err := createOrModifyCustomParameterGroupFunc(test.dbInstance, nil, &mockRDSClient{
+			pGroupName, err := createOrModifyCustomParameterGroup(test.dbInstance, nil, &mockRDSClient{
 				describeDbParamsErr:    test.describeDbParamsErr,
 				createDbParamGroupErr:  test.createDbParamGroupErr,
 				describeEngVersionsErr: test.describeEngVersionsErr,
@@ -363,58 +363,64 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 }
 
 func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
-	p := &parameterGroupAdapter{}
-	i := &RDSInstance{}
-	d := &dedicatedDBAdapter{}
-	svc := &mockRDSClient{}
-
-	createModifyErr := errors.New("create/modify error")
+	modifyDbParamGroupErr := errors.New("create DB param group error")
 
 	testCases := map[string]struct {
-		customParams         map[string]map[string]string
-		needCustomParameters bool
-		pGroupName           string
-		createOrModifyErr    error
-		expectedPGroupName   string
-		expectedErr          error
+		customParams          map[string]map[string]string
+		dbInstance            *RDSInstance
+		pGroupPrefix          string
+		modifyDbParamGroupErr error
+		expectedPGroupName    string
+		expectedErr           error
+		dedicatedDBAdapter    *dedicatedDBAdapter
 	}{
 		"does not need custom params": {
-			needCustomParameters: false,
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			dedicatedDBAdapter: &dedicatedDBAdapter{},
+			expectedPGroupName: "",
 		},
 		"needs custom params, success": {
-			needCustomParameters: true,
-			pGroupName:           "group1",
-			expectedPGroupName:   "group1",
+			dbInstance: &RDSInstance{
+				DbType:          "mysql",
+				BinaryLogFormat: "ROW",
+				Database:        "database1",
+			},
+			dedicatedDBAdapter: &dedicatedDBAdapter{},
+			pGroupPrefix:       "prefix-",
+			expectedPGroupName: "prefix-database1",
 		},
 		"needs custom params, error": {
-			needCustomParameters: true,
-			createOrModifyErr:    createModifyErr,
-			expectedErr:          createModifyErr,
+			dbInstance: &RDSInstance{
+				DbType:          "mysql",
+				BinaryLogFormat: "ROW",
+				Database:        "database1",
+			},
+			dedicatedDBAdapter:    &dedicatedDBAdapter{},
+			modifyDbParamGroupErr: modifyDbParamGroupErr,
+			expectedErr:           modifyDbParamGroupErr,
+			expectedPGroupName:    "",
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			needCustomParameters = func(i *RDSInstance, s config.Settings) bool {
-				return test.needCustomParameters
-			}
+			pGroupPrefix = test.pGroupPrefix
 
-			createOrModifyCustomParameterGroup = func(
-				i *RDSInstance,
-				customparams map[string]map[string]string,
-				svc rdsiface.RDSAPI,
-			) (string, error) {
-				if test.createOrModifyErr != nil {
-					return "", test.createOrModifyErr
-				}
-				return test.pGroupName, nil
-			}
+			p := &parameterGroupAdapter{}
+			pGroupName, err := p.provisionCustomParameterGroupIfNecessary(
+				test.dbInstance,
+				test.dedicatedDBAdapter,
+				&mockRDSClient{
+					modifyDbParamGroupErr: test.modifyDbParamGroupErr,
+				},
+			)
 
-			pGroupName, err := p.provisionCustomParameterGroupIfNecessary(i, d, svc)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if test.expectedErr != nil && err != test.expectedErr {
+			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 			if pGroupName != test.expectedPGroupName {
