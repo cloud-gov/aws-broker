@@ -41,6 +41,7 @@ type RDSInstance struct {
 	LicenseModel string `sql:"size(255)"`
 
 	BinaryLogFormat string `sql:"size(255)"`
+	EnablePgCron    bool   `sql:"-"`
 }
 
 func (i *RDSInstance) FormatDBName() string {
@@ -180,6 +181,7 @@ func (i *RDSInstance) init(uuid string,
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible
 	i.BinaryLogFormat = options.BinaryLogFormat
+	i.EnablePgCron = options.EnablePgCron
 
 	return nil
 }
