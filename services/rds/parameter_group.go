@@ -28,12 +28,10 @@ type parameterGroupAdapterInterface interface {
 	) (string, error)
 }
 
+type parameterGroupUtils struct{}
 type parameterGroupAdapter struct{}
 
-func getParameterGroupFamily(
-	i *RDSInstance,
-	svc rdsiface.RDSAPI,
-) (string, error) {
+func getParameterGroupFamily(i *RDSInstance, svc rdsiface.RDSAPI) (string, error) {
 	// If the DB version is not set (e.g., creating a new instance without
 	// providing a specific version), determine the default parameter group
 	// name from the default engine that will be chosen.
@@ -91,45 +89,12 @@ func createOrModifyCustomParameterGroupFunc(
 	// so the parameter group name should remain consistent
 	pgroupName := PgroupPrefix + i.FormatDBName()
 
-	dbParametersInput := &rds.DescribeDBParametersInput{
-		DBParameterGroupName: aws.String(pgroupName),
-		MaxRecords:           aws.Int64(20),
-		Source:               aws.String("system"),
-	}
-
-	// If the db parameter group has already been created, we can return.
-	_, err := svc.DescribeDBParameters(dbParametersInput)
-	if err == nil {
-		log.Printf("%s parameter group already exists", pgroupName)
-	} else {
+	parameterGroupExists := checkIfParameterGroupExists(pgroupName, svc)
+	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
-		pgroupFamily := ""
-
-		// If the DB version is not set (e.g., creating a new instance without
-		// providing a specific version), determine the default parameter group
-		// name from the default engine that will be chosen.
-		if i.DbVersion == "" {
-			dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
-				DefaultOnly: aws.Bool(true),
-				Engine:      aws.String(i.DbType),
-			}
-
-			// This call requires that the broker have permissions to make it.
-			defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
-
-			if err != nil {
-				return "Error retrieving default parameter group name", err
-			}
-
-			// The value from the engine info is a string pointer, so we must
-			// retrieve its actual value.
-			pgroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
-		} else {
-			// The DB instance has a version, therefore we can derive the
-			// parameter group family directly.
-			re := regexp.MustCompile(`^\d+\.*\d*`)
-			dbversion := re.Find([]byte(i.DbVersion))
-			pgroupFamily = i.DbType + string(dbversion)
+		pgroupFamily, err := getParameterGroupFamily(i, svc)
+		if err != nil {
+			return "", err
 		}
 
 		log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
@@ -141,7 +106,7 @@ func createOrModifyCustomParameterGroupFunc(
 
 		_, err = svc.CreateDBParameterGroup(createInput)
 		if err != nil {
-			return pgroupName, err
+			return "", err
 		}
 	}
 
@@ -160,9 +125,9 @@ func createOrModifyCustomParameterGroupFunc(
 		DBParameterGroupName: aws.String(pgroupName),
 		Parameters:           parameters,
 	}
-	_, err = svc.ModifyDBParameterGroup(modifyinput)
+	_, err := svc.ModifyDBParameterGroup(modifyinput)
 	if err != nil {
-		return pgroupName, err
+		return "", err
 	}
 
 	return pgroupName, nil
