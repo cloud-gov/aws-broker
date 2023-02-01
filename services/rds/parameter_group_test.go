@@ -2,7 +2,6 @@ package rds
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -21,7 +20,6 @@ type mockRDSClient struct {
 	createDbParamGroupErr              error
 	modifyDbParamGroupErr              error
 	describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
-	describeEngineCallNum              int
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -57,12 +55,12 @@ func (m mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) 
 	return nil, nil
 }
 
+var describeEngineCallNum int
+
 func (m mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefaultParametersInput) (*rds.DescribeEngineDefaultParametersOutput, error) {
 	if m.describeEngineDefaultParamsResults != nil {
-		foo := m.describeEngineCallNum
-		fmt.Println(foo)
-		res := m.describeEngineDefaultParamsResults[foo]
-		foo++
+		res := m.describeEngineDefaultParamsResults[describeEngineCallNum]
+		describeEngineCallNum++
 		return res, nil
 	}
 	return nil, nil
@@ -161,53 +159,53 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 		expectedParamValue                 string
 		describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
 	}{
-		// "no default param value": {
-		// 	dbInstance: &RDSInstance{
-		// 		EnablePgCron: true,
-		// 		DbType:       "postgres",
-		// 		DbVersion:    "12",
-		// 	},
-		// 	paramName: "shared_preload_libraries",
-		// 	expectedParams: map[string]map[string]string{
-		// 		"postgres": {
-		// 			"shared_preload_libaries": "pg-cron",
-		// 		},
-		// 	},
-		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-		// 		{
-		// 			EngineDefaults: &rds.EngineDefaults{
-		// 				Parameters: []*rds.Parameter{},
-		// 			},
-		// 		},
-		// 	},
-		// 	expectedParamValue: "",
-		// },
-		// "default param value": {
-		// 	dbInstance: &RDSInstance{
-		// 		EnablePgCron: true,
-		// 		DbType:       "postgres",
-		// 		DbVersion:    "12",
-		// 	},
-		// 	paramName: "shared_preload_libraries",
-		// 	expectedParams: map[string]map[string]string{
-		// 		"postgres": {
-		// 			"shared_preload_libaries": "pg-cron",
-		// 		},
-		// 	},
-		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-		// 		{
-		// 			EngineDefaults: &rds.EngineDefaults{
-		// 				Parameters: []*rds.Parameter{
-		// 					{
-		// 						ParameterName:  aws.String("shared_preload_libraries"),
-		// 						ParameterValue: aws.String("random-library"),
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// 	expectedParamValue: "random-library",
-		// },
+		"no default param value": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			paramName: "shared_preload_libraries",
+			expectedParams: map[string]map[string]string{
+				"postgres": {
+					"shared_preload_libaries": "pg-cron",
+				},
+			},
+			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{},
+					},
+				},
+			},
+			expectedParamValue: "",
+		},
+		"default param value": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			paramName: "shared_preload_libraries",
+			expectedParams: map[string]map[string]string{
+				"postgres": {
+					"shared_preload_libaries": "pg-cron",
+				},
+			},
+			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{
+							{
+								ParameterName:  aws.String("shared_preload_libraries"),
+								ParameterValue: aws.String("random-library"),
+							},
+						},
+					},
+				},
+			},
+			expectedParamValue: "random-library",
+		},
 		"default param value, with paging": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
@@ -248,9 +246,9 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
+			describeEngineCallNum = 0
 			paramValue, err := getDefaultEngineParameter(test.paramName, test.dbInstance, &mockRDSClient{
 				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
-				describeEngineCallNum:              0,
 			})
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)

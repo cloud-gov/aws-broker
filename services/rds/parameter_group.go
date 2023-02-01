@@ -162,8 +162,6 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 		MaxRecords:             aws.Int64(100),
 	}
 	for {
-		fmt.Println("here")
-		fmt.Println(describeEngDefaultParamsInput)
 		result, err := svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
 		if err != nil {
 			return "", err
