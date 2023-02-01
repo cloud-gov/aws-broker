@@ -406,6 +406,7 @@ func TestGetCustomParameters(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
+			describeEngineCallNum = 0
 			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{
 				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
 			})
