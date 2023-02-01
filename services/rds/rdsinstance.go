@@ -40,8 +40,9 @@ type RDSInstance struct {
 	DbVersion    string `sql:"size(255)"`
 	LicenseModel string `sql:"size(255)"`
 
-	BinaryLogFormat string `sql:"size(255)"`
-	EnablePgCron    bool   `sql:"-"`
+	BinaryLogFormat      string `sql:"size(255)"`
+	EnablePgCron         bool   `sql:"-"`
+	ParameterGroupFamily string `sql:"-"`
 }
 
 func (i *RDSInstance) FormatDBName() string {

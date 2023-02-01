@@ -260,11 +260,73 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 	}
 }
 
+func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance                         *RDSInstance
+		describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
+		customLibrary                      string
+		expectedParam                      string
+	}{
+		"no default param value": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{},
+					},
+				},
+			},
+			customLibrary: "library1",
+			expectedParam: "library1",
+		},
+		"has default param value": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{
+							{
+								ParameterName:  aws.String("shared_preload_libraries"),
+								ParameterValue: aws.String("library1"),
+							},
+						},
+					},
+				},
+			},
+			customLibrary: "library2",
+			expectedParam: "library2,library1",
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			describeEngineCallNum = 0
+			param, err := buildCustomSharePreloadLibrariesParam(test.dbInstance, test.customLibrary, &mockRDSClient{
+				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
+			})
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if param != test.expectedParam {
+				t.Fatalf("expected %s, got: %s", test.expectedParam, param)
+			}
+		})
+	}
+}
+
 func TestGetCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance     *RDSInstance
-		settings       config.Settings
-		expectedParams map[string]map[string]string
+		dbInstance                         *RDSInstance
+		settings                           config.Settings
+		expectedParams                     map[string]map[string]string
+		describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
 	}{
 		"enabled functions": {
 			dbInstance: &RDSInstance{
@@ -333,11 +395,20 @@ func TestGetCustomParameters(t *testing.T) {
 					"shared_preload_libraries": "pg-cron",
 				},
 			},
+			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+				{
+					EngineDefaults: &rds.EngineDefaults{
+						Parameters: []*rds.Parameter{},
+					},
+				},
+			},
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{})
+			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{
+				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
+			})
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -382,10 +453,16 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			describeEngVersionsErr: serviceErr,
 			expectedErr:            serviceErr,
 		},
+		"instance has parameter group family": {
+			dbInstance: &RDSInstance{
+				ParameterGroupFamily: "random-family",
+			},
+			expectedPGroupFamily: "random-family",
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			pGroupFamily, err := getParameterGroupFamily(test.dbInstance, mockRDSClient{
+			err := getParameterGroupFamily(test.dbInstance, mockRDSClient{
 				dbEngineVersions:       test.dbEngineVersions,
 				describeEngVersionsErr: test.describeEngVersionsErr,
 			})
@@ -395,8 +472,11 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			if test.expectedErr != nil && err != test.expectedErr {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if pGroupFamily != test.expectedPGroupFamily {
-				t.Fatalf("expected parameter group family: %s, got: %s", test.expectedPGroupFamily, pGroupFamily)
+			// if pGroupFamily != test.expectedPGroupFamily {
+			// 	t.Fatalf("expected parameter group family: %s, got: %s", test.expectedPGroupFamily, pGroupFamily)
+			// }
+			if test.dbInstance.ParameterGroupFamily != test.expectedPGroupFamily {
+				t.Fatalf("expected parameter group family: %s, got: %s", test.expectedPGroupFamily, test.dbInstance.ParameterGroupFamily)
 			}
 		})
 	}
