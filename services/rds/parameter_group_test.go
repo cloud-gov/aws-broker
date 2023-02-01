@@ -313,11 +313,14 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 }
 
 func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
+	describeEngineParamsErr := errors.New("describe engine params error")
 	testCases := map[string]struct {
 		dbInstance                         *RDSInstance
 		describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
 		customLibrary                      string
 		expectedParam                      string
+		expectedErr                        error
+		describeEngineDefaultParamsErr     error
 	}{
 		"no default param value": {
 			dbInstance: &RDSInstance{
@@ -356,15 +359,30 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 			customLibrary: "library2",
 			expectedParam: "library2,library1",
 		},
+		"describe db default params error": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			customLibrary:                  "library2",
+			expectedParam:                  "",
+			expectedErr:                    describeEngineParamsErr,
+			describeEngineDefaultParamsErr: describeEngineParamsErr,
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			describeEngineCallNum = 0
 			param, err := buildCustomSharePreloadLibrariesParam(test.dbInstance, test.customLibrary, &mockRDSClient{
 				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
+				describeEngineDefaultParamsErr:     test.describeEngineDefaultParamsErr,
 			})
-			if err != nil {
+			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
+			}
+			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 			if param != test.expectedParam {
 				t.Fatalf("expected %s, got: %s", test.expectedParam, param)
@@ -374,11 +392,14 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 }
 
 func TestGetCustomParameters(t *testing.T) {
+	describeEngineParamsErr := errors.New("describe db engine params error")
 	testCases := map[string]struct {
 		dbInstance                         *RDSInstance
 		settings                           config.Settings
 		expectedParams                     map[string]map[string]string
 		describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
+		expectedErr                        error
+		describeEngineDefaultParamsErr     error
 	}{
 		"enabled functions": {
 			dbInstance: &RDSInstance{
@@ -455,15 +476,30 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 		},
+		"describe db default params error": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			settings:                       config.Settings{},
+			expectedParams:                 nil,
+			expectedErr:                    describeEngineParamsErr,
+			describeEngineDefaultParamsErr: describeEngineParamsErr,
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			describeEngineCallNum = 0
 			params, err := getCustomParameters(test.dbInstance, test.settings, &mockRDSClient{
 				describeEngineDefaultParamsResults: test.describeEngineDefaultParamsResults,
+				describeEngineDefaultParamsErr:     test.describeEngineDefaultParamsErr,
 			})
-			if err != nil {
+			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
+			}
+			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 			if !reflect.DeepEqual(params, test.expectedParams) {
 				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
