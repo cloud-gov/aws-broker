@@ -19,6 +19,7 @@ var (
 
 // PgroupPrefix is the prefix for all pgroups created by the broker.
 const pGroupPrefixReal = "cg-aws-broker-"
+const pgCronLibraryName = "pg_cron"
 
 type parameterGroupAdapterInterface interface {
 	provisionCustomParameterGroupIfNecessary(
@@ -226,7 +227,7 @@ func getCustomParameters(
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]string)
 		if i.EnablePgCron {
-			preloadLibrariesParam, err := buildCustomSharePreloadLibrariesParam(i, "pg-cron", svc)
+			preloadLibrariesParam, err := buildCustomSharePreloadLibrariesParam(i, pgCronLibraryName, svc)
 			if err != nil {
 				return nil, err
 			}

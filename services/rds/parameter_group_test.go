@@ -465,7 +465,7 @@ func TestGetCustomParameters(t *testing.T) {
 			settings: config.Settings{},
 			expectedParams: map[string]map[string]string{
 				"postgres": {
-					"shared_preload_libraries": "pg-cron",
+					"shared_preload_libraries": "pg_cron",
 				},
 			},
 			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
