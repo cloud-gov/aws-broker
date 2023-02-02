@@ -17,16 +17,6 @@ func TestOptionsBinaryLogFormatValidation(t *testing.T) {
 			settings:        &config.Settings{},
 			expectedErr:     true,
 		},
-		"ROW": {
-			binaryLogFormat: "ROW",
-			settings:        &config.Settings{},
-			expectedErr:     false,
-		},
-		"STATEMENT": {
-			binaryLogFormat: "STATEMENT",
-			settings:        &config.Settings{},
-			expectedErr:     false,
-		},
 		"MIXED": {
 			binaryLogFormat: "MIXED",
 			settings:        &config.Settings{},

@@ -1,8 +1,10 @@
 package rds
 
 import (
+	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,14 +13,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
 
-// PgroupPrefix is the prefix for all pgroups created by the broker.
-const PgroupPrefix = "cg-aws-broker-"
-
 var (
-	needCustomParameters               = needCustomParametersFunc
-	getCustomParameters                = getCustomParametersFunc
-	createOrModifyCustomParameterGroup = createOrModifyCustomParameterGroupFunc
+	pGroupPrefix = pGroupPrefixReal
 )
+
+// PgroupPrefix is the prefix for all pgroups created by the broker.
+const pGroupPrefixReal = "cg-aws-broker-"
+const pgCronLibraryName = "pg_cron"
 
 type parameterGroupAdapterInterface interface {
 	provisionCustomParameterGroupIfNecessary(
@@ -30,18 +31,41 @@ type parameterGroupAdapterInterface interface {
 
 type parameterGroupAdapter struct{}
 
-// This function will return the a custom parameter group with whatever custom
-// parameters have been requested.  If there is no custom parameter group, it
-// will be created.
-func createOrModifyCustomParameterGroupFunc(
-	i *RDSInstance,
-	customparams map[string]map[string]string,
-	svc rdsiface.RDSAPI,
-) (string, error) {
-	// i.FormatDBName() should always return the same value for the same database name,
-	// so the parameter group name should remain consistent
-	pgroupName := PgroupPrefix + i.FormatDBName()
+func getParameterGroupFamily(i *RDSInstance, svc rdsiface.RDSAPI) error {
+	if i.ParameterGroupFamily != "" {
+		return nil
+	}
+	parameterGroupFamily := ""
+	// If the DB version is not set (e.g., creating a new instance without
+	// providing a specific version), determine the default parameter group
+	// name from the default engine that will be chosen.
+	if i.DbVersion == "" {
+		dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
+			DefaultOnly: aws.Bool(true),
+			Engine:      aws.String(i.DbType),
+		}
 
+		// This call requires that the broker have permissions to make it.
+		defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
+		if err != nil {
+			return err
+		}
+
+		// The value from the engine info is a string pointer, so we must
+		// retrieve its actual value.
+		parameterGroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
+	} else {
+		// The DB instance has a version, therefore we can derive the
+		// parameter group family directly.
+		re := regexp.MustCompile(`^\d+\.*\d*`)
+		dbversion := re.Find([]byte(i.DbVersion))
+		parameterGroupFamily = i.DbType + string(dbversion)
+	}
+	i.ParameterGroupFamily = parameterGroupFamily
+	return nil
+}
+
+func checkIfParameterGroupExists(pgroupName string, svc rdsiface.RDSAPI) bool {
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(pgroupName),
 		MaxRecords:           aws.Int64(20),
@@ -50,49 +74,43 @@ func createOrModifyCustomParameterGroupFunc(
 
 	// If the db parameter group has already been created, we can return.
 	_, err := svc.DescribeDBParameters(dbParametersInput)
-	if err == nil {
+	parameterGroupExists := (err == nil)
+	if parameterGroupExists {
 		log.Printf("%s parameter group already exists", pgroupName)
-	} else {
+	}
+	return parameterGroupExists
+}
+
+// This function will return the a custom parameter group with whatever custom
+// parameters have been requested.  If there is no custom parameter group, it
+// will be created.
+func createOrModifyCustomParameterGroup(
+	i *RDSInstance,
+	customparams map[string]map[string]string,
+	svc rdsiface.RDSAPI,
+) (string, error) {
+	// i.FormatDBName() should always return the same value for the same database name,
+	// so the parameter group name should remain consistent
+	pgroupName := pGroupPrefix + i.FormatDBName()
+
+	parameterGroupExists := checkIfParameterGroupExists(pgroupName, svc)
+	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
-		pgroupFamily := ""
-
-		// If the DB version is not set (e.g., creating a new instance without
-		// providing a specific version), determine the default parameter group
-		// name from the default engine that will be chosen.
-		if i.DbVersion == "" {
-			dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
-				DefaultOnly: aws.Bool(true),
-				Engine:      aws.String(i.DbType),
-			}
-
-			// This call requires that the broker have permissions to make it.
-			defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
-
-			if err != nil {
-				return "Error retrieving default parameter group name", err
-			}
-
-			// The value from the engine info is a string pointer, so we must
-			// retrieve its actual value.
-			pgroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
-		} else {
-			// The DB instance has a version, therefore we can derive the
-			// parameter group family directly.
-			re := regexp.MustCompile(`^\d+\.*\d*`)
-			dbversion := re.Find([]byte(i.DbVersion))
-			pgroupFamily = i.DbType + string(dbversion)
-			log.Printf("creating a parameter group named %s in the family of %s", pgroupName, pgroupFamily)
+		err := getParameterGroupFamily(i, svc)
+		if err != nil {
+			return "", fmt.Errorf("encounted error getting parameter group family: %w", err)
 		}
 
+		log.Printf("creating a parameter group named %s in the family of %s", pgroupName, i.ParameterGroupFamily)
 		createInput := &rds.CreateDBParameterGroupInput{
-			DBParameterGroupFamily: aws.String(pgroupFamily),
+			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(pgroupName),
 			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
 		}
 
 		_, err = svc.CreateDBParameterGroup(createInput)
 		if err != nil {
-			return pgroupName, err
+			return "", fmt.Errorf("encounted error when creating database: %w", err)
 		}
 	}
 
@@ -111,16 +129,16 @@ func createOrModifyCustomParameterGroupFunc(
 		DBParameterGroupName: aws.String(pgroupName),
 		Parameters:           parameters,
 	}
-	_, err = svc.ModifyDBParameterGroup(modifyinput)
+	_, err := svc.ModifyDBParameterGroup(modifyinput)
 	if err != nil {
-		return pgroupName, err
+		return "", err
 	}
 
 	return pgroupName, nil
 }
 
 // This is here because the check is kinda big and ugly
-func needCustomParametersFunc(i *RDSInstance, s config.Settings) bool {
+func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 	// Currently, we only have one custom parameter for mysql, but if
 	// we ever need to apply more, you can add them in here.
 	if i.EnableFunctions &&
@@ -132,28 +150,92 @@ func needCustomParametersFunc(i *RDSInstance, s config.Settings) bool {
 		(i.DbType == "mysql") {
 		return true
 	}
+	if i.EnablePgCron &&
+		(i.DbType == "postgres") {
+		return true
+	}
 	return false
 }
 
-func getCustomParametersFunc(i *RDSInstance, s config.Settings) map[string]map[string]string {
+func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RDSAPI) (string, error) {
+	err := getParameterGroupFamily(i, svc)
+	if err != nil {
+		return "", err
+	}
+	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
+		DBParameterGroupFamily: &i.ParameterGroupFamily,
+		MaxRecords:             aws.Int64(100),
+	}
+	for {
+		result, err := svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
+		if err != nil {
+			return "", err
+		}
+		for _, param := range result.EngineDefaults.Parameters {
+			if *param.ParameterName == paramName {
+				return *param.ParameterValue, nil
+			}
+		}
+		if result.EngineDefaults.Marker == nil || *result.EngineDefaults.Marker == "" {
+			break
+		}
+		describeEngDefaultParamsInput.Marker = result.EngineDefaults.Marker
+	}
+	return "", nil
+}
+
+func buildCustomSharePreloadLibrariesParam(
+	i *RDSInstance,
+	customLibrary string,
+	svc rdsiface.RDSAPI,
+) (string, error) {
+	defaultSharedPreloadLibraries, err := getDefaultEngineParameter("shared_preload_libraries", i, svc)
+	if err != nil {
+		return "", err
+	}
+	libraries := []string{
+		customLibrary,
+	}
+	if defaultSharedPreloadLibraries != "" {
+		libraries = append(libraries, defaultSharedPreloadLibraries)
+	}
+	return strings.Join(libraries, ","), nil
+}
+
+func getCustomParameters(
+	i *RDSInstance,
+	s config.Settings,
+	svc rdsiface.RDSAPI,
+) (map[string]map[string]string, error) {
 	customRDSParameters := make(map[string]map[string]string)
 
-	// enable functions
-	customRDSParameters["mysql"] = make(map[string]string)
-	if i.EnableFunctions && s.EnableFunctionsFeature {
-		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
-	} else {
-		customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
+	if i.DbType == "mysql" {
+		// enable functions
+		customRDSParameters["mysql"] = make(map[string]string)
+		if i.EnableFunctions && s.EnableFunctionsFeature {
+			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
+		} else {
+			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
+		}
+
+		// set MySQL binary log format
+		if i.BinaryLogFormat != "" {
+			customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+		}
 	}
 
-	// set MySQL binary log format
-	if i.BinaryLogFormat != "" {
-		customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+	if i.DbType == "postgres" {
+		customRDSParameters["postgres"] = make(map[string]string)
+		if i.EnablePgCron {
+			preloadLibrariesParam, err := buildCustomSharePreloadLibrariesParam(i, pgCronLibraryName, svc)
+			if err != nil {
+				return nil, err
+			}
+			customRDSParameters["postgres"]["shared_preload_libraries"] = preloadLibrariesParam
+		}
 	}
 
-	// If you need to add more custom parameters, you can add them in here.
-
-	return customRDSParameters
+	return customRDSParameters, nil
 }
 
 func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
@@ -164,14 +246,16 @@ func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
 	if !needCustomParameters(i, d.settings) {
 		return "", nil
 	}
-
-	customRDSParameters := getCustomParameters(i, d.settings)
+	customRDSParameters, err := getCustomParameters(i, d.settings, svc)
+	if err != nil {
+		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
+	}
 
 	// apply parameter group
 	pgroupName, err := createOrModifyCustomParameterGroup(i, customRDSParameters, svc)
 	if err != nil {
 		log.Println(err.Error())
-		return "", err
+		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
 	return pgroupName, nil
 }
@@ -184,9 +268,9 @@ func cleanupCustomParameterGroups(svc rdsiface.RDSAPI) {
 			// If the pgroup matches the prefix, then try to delete it.
 			// If it's in use, it will fail, so ignore that.
 			for _, pgroup := range pgroups.DBParameterGroups {
-				matched, err := regexp.Match("^"+PgroupPrefix, []byte(*pgroup.DBParameterGroupName))
+				matched, err := regexp.Match("^"+pGroupPrefix, []byte(*pgroup.DBParameterGroupName))
 				if err != nil {
-					log.Printf("error trying to match %s in %s: %s", PgroupPrefix, *pgroup.DBParameterGroupName, err.Error())
+					log.Printf("error trying to match %s in %s: %s", pGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
 				}
 				if matched {
 					deleteinput := &rds.DeleteDBParameterGroupInput{

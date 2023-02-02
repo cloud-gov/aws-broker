@@ -25,6 +25,7 @@ type Options struct {
 	Version               string `json:"version"`
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
 	BinaryLogFormat       string `json:"binary_log_format"`
+	EnablePgCron          bool   `json:"enable_pg_cron"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
