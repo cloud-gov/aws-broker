@@ -8,11 +8,12 @@ import (
 )
 
 type mockParameterGroupAdapter struct {
+	svc              rdsiface.RDSAPI
 	customPgroupName string
 	returnErr        error
 }
 
-func (m *mockParameterGroupAdapter) provisionCustomParameterGroupIfNecessary(i *RDSInstance, d *dedicatedDBAdapter, svc rdsiface.RDSAPI) (string, error) {
+func (m *mockParameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, d *dedicatedDBAdapter) (string, error) {
 	if m.returnErr != nil {
 		return "", m.returnErr
 	}
@@ -37,8 +38,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
 				customPgroupName: "foobar",
+				svc:              &mockRDSClient{},
 			},
-			svc:               &mockRDSClient{},
 			expectedGroupName: "foobar",
 		},
 		"expect error": {
@@ -49,15 +50,15 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
 				returnErr: testErr,
+				svc:       &mockRDSClient{},
 			},
-			svc:         &mockRDSClient{},
 			expectedErr: testErr,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := prepareCreateDbInput(test.dbInstance, test.dbAdapter, test.svc, "foobar", test.pGroupAdapter)
+			params, err := prepareCreateDbInput(test.dbInstance, test.dbAdapter, "foobar", test.pGroupAdapter)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -86,8 +87,8 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
 				customPgroupName: "foobar",
+				svc:              &mockRDSClient{},
 			},
-			svc:               &mockRDSClient{},
 			expectedGroupName: "foobar",
 		},
 		"expect error": {
@@ -97,16 +98,16 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
+				svc:       &mockRDSClient{},
 				returnErr: testErr,
 			},
-			svc:         &mockRDSClient{},
 			expectedErr: testErr,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := prepareModifyDbInstanceInput(test.dbInstance, test.dbAdapter, test.svc, test.pGroupAdapter)
+			params, err := prepareModifyDbInstanceInput(test.dbInstance, test.dbAdapter, test.pGroupAdapter)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}

@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/catalog"
@@ -128,7 +127,6 @@ type dedicatedDBAdapter struct {
 func prepareCreateDbInput(
 	i *RDSInstance,
 	d *dedicatedDBAdapter,
-	svc rdsiface.RDSAPI,
 	password string,
 	pGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.CreateDBInstanceInput, error) {
@@ -174,7 +172,7 @@ func prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
+	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i, d)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +186,6 @@ func prepareCreateDbInput(
 func prepareModifyDbInstanceInput(
 	i *RDSInstance,
 	d *dedicatedDBAdapter,
-	svc rdsiface.RDSAPI,
 	pGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
@@ -209,7 +206,7 @@ func prepareModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.provisionCustomParameterGroupIfNecessary(i, d, svc)
+	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i, d)
 	if err != nil {
 		return nil, err
 	}
@@ -222,8 +219,10 @@ func prepareModifyDbInstanceInput(
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	pGroupAdapter := &parameterGroupAdapter{}
-	params, err := prepareCreateDbInput(i, d, svc, password, pGroupAdapter)
+	pGroupAdapter := &parameterGroupAdapter{
+		svc: svc,
+	}
+	params, err := prepareCreateDbInput(i, d, password, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -244,7 +243,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	pGroupAdapter := &parameterGroupAdapter{}
-	params, err := prepareModifyDbInstanceInput(i, d, svc, pGroupAdapter)
+	params, err := prepareModifyDbInstanceInput(i, d, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}

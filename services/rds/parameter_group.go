@@ -22,16 +22,17 @@ const pGroupPrefixReal = "cg-aws-broker-"
 const pgCronLibraryName = "pg_cron"
 
 type parameterGroupAdapterInterface interface {
-	provisionCustomParameterGroupIfNecessary(
+	ProvisionCustomParameterGroupIfNecessary(
 		i *RDSInstance,
 		d *dedicatedDBAdapter,
-		svc rdsiface.RDSAPI,
 	) (string, error)
 }
 
-type parameterGroupAdapter struct{}
+type parameterGroupAdapter struct {
+	svc rdsiface.RDSAPI
+}
 
-func getParameterGroupFamily(i *RDSInstance, svc rdsiface.RDSAPI) error {
+func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
 	if i.ParameterGroupFamily != "" {
 		return nil
 	}
@@ -46,7 +47,7 @@ func getParameterGroupFamily(i *RDSInstance, svc rdsiface.RDSAPI) error {
 		}
 
 		// This call requires that the broker have permissions to make it.
-		defaultEngineInfo, err := svc.DescribeDBEngineVersions(dbEngineVersionsInput)
+		defaultEngineInfo, err := p.svc.DescribeDBEngineVersions(dbEngineVersionsInput)
 		if err != nil {
 			return err
 		}
@@ -65,7 +66,7 @@ func getParameterGroupFamily(i *RDSInstance, svc rdsiface.RDSAPI) error {
 	return nil
 }
 
-func checkIfParameterGroupExists(pgroupName string, svc rdsiface.RDSAPI) bool {
+func (p *parameterGroupAdapter) checkIfParameterGroupExists(pgroupName string) bool {
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(pgroupName),
 		MaxRecords:           aws.Int64(20),
@@ -73,7 +74,7 @@ func checkIfParameterGroupExists(pgroupName string, svc rdsiface.RDSAPI) bool {
 	}
 
 	// If the db parameter group has already been created, we can return.
-	_, err := svc.DescribeDBParameters(dbParametersInput)
+	_, err := p.svc.DescribeDBParameters(dbParametersInput)
 	parameterGroupExists := (err == nil)
 	if parameterGroupExists {
 		log.Printf("%s parameter group already exists", pgroupName)
@@ -84,19 +85,18 @@ func checkIfParameterGroupExists(pgroupName string, svc rdsiface.RDSAPI) bool {
 // This function will return the a custom parameter group with whatever custom
 // parameters have been requested.  If there is no custom parameter group, it
 // will be created.
-func createOrModifyCustomParameterGroup(
+func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
 	customparams map[string]map[string]string,
-	svc rdsiface.RDSAPI,
 ) (string, error) {
 	// i.FormatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
 	pgroupName := pGroupPrefix + i.FormatDBName()
 
-	parameterGroupExists := checkIfParameterGroupExists(pgroupName, svc)
+	parameterGroupExists := p.checkIfParameterGroupExists(pgroupName)
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
-		err := getParameterGroupFamily(i, svc)
+		err := p.getParameterGroupFamily(i)
 		if err != nil {
 			return "", fmt.Errorf("encounted error getting parameter group family: %w", err)
 		}
@@ -108,7 +108,7 @@ func createOrModifyCustomParameterGroup(
 			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
 		}
 
-		_, err = svc.CreateDBParameterGroup(createInput)
+		_, err = p.svc.CreateDBParameterGroup(createInput)
 		if err != nil {
 			return "", fmt.Errorf("encounted error when creating database: %w", err)
 		}
@@ -129,7 +129,7 @@ func createOrModifyCustomParameterGroup(
 		DBParameterGroupName: aws.String(pgroupName),
 		Parameters:           parameters,
 	}
-	_, err := svc.ModifyDBParameterGroup(modifyinput)
+	_, err := p.svc.ModifyDBParameterGroup(modifyinput)
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +138,7 @@ func createOrModifyCustomParameterGroup(
 }
 
 // This is here because the check is kinda big and ugly
-func needCustomParameters(i *RDSInstance, s config.Settings) bool {
+func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance, s config.Settings) bool {
 	// Currently, we only have one custom parameter for mysql, but if
 	// we ever need to apply more, you can add them in here.
 	if i.EnableFunctions &&
@@ -157,8 +157,8 @@ func needCustomParameters(i *RDSInstance, s config.Settings) bool {
 	return false
 }
 
-func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RDSAPI) (string, error) {
-	err := getParameterGroupFamily(i, svc)
+func (p *parameterGroupAdapter) getDefaultEngineParameter(paramName string, i *RDSInstance) (string, error) {
+	err := p.getParameterGroupFamily(i)
 	if err != nil {
 		return "", err
 	}
@@ -166,7 +166,7 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 		DBParameterGroupFamily: &i.ParameterGroupFamily,
 	}
 	for {
-		result, err := svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
+		result, err := p.svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
 		if err != nil {
 			return "", err
 		}
@@ -184,12 +184,11 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 	return "", nil
 }
 
-func buildCustomSharePreloadLibrariesParam(
+func (p *parameterGroupAdapter) buildCustomSharePreloadLibrariesParam(
 	i *RDSInstance,
 	customLibrary string,
-	svc rdsiface.RDSAPI,
 ) (string, error) {
-	defaultSharedPreloadLibraries, err := getDefaultEngineParameter("shared_preload_libraries", i, svc)
+	defaultSharedPreloadLibraries, err := p.getDefaultEngineParameter("shared_preload_libraries", i)
 	if err != nil {
 		return "", err
 	}
@@ -202,10 +201,9 @@ func buildCustomSharePreloadLibrariesParam(
 	return strings.Join(libraries, ","), nil
 }
 
-func getCustomParameters(
+func (p *parameterGroupAdapter) getCustomParameters(
 	i *RDSInstance,
 	s config.Settings,
-	svc rdsiface.RDSAPI,
 ) (map[string]map[string]string, error) {
 	customRDSParameters := make(map[string]map[string]string)
 
@@ -227,7 +225,7 @@ func getCustomParameters(
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]string)
 		if i.EnablePgCron {
-			preloadLibrariesParam, err := buildCustomSharePreloadLibrariesParam(i, pgCronLibraryName, svc)
+			preloadLibrariesParam, err := p.buildCustomSharePreloadLibrariesParam(i, pgCronLibraryName)
 			if err != nil {
 				return nil, err
 			}
@@ -238,21 +236,20 @@ func getCustomParameters(
 	return customRDSParameters, nil
 }
 
-func (p *parameterGroupAdapter) provisionCustomParameterGroupIfNecessary(
+func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(
 	i *RDSInstance,
 	d *dedicatedDBAdapter,
-	svc rdsiface.RDSAPI,
 ) (string, error) {
-	if !needCustomParameters(i, d.settings) {
+	if !p.needCustomParameters(i, d.settings) {
 		return "", nil
 	}
-	customRDSParameters, err := getCustomParameters(i, d.settings, svc)
+	customRDSParameters, err := p.getCustomParameters(i, d.settings)
 	if err != nil {
 		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
 
 	// apply parameter group
-	pgroupName, err := createOrModifyCustomParameterGroup(i, customRDSParameters, svc)
+	pgroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
 	if err != nil {
 		log.Println(err.Error())
 		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
