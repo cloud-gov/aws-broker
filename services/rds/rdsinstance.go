@@ -43,6 +43,7 @@ type RDSInstance struct {
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         bool   `sql:"size(255)"`
 	ParameterGroupFamily string `sql:"-"`
+	ParameterGroupName   string `sql:"size(255)"`
 }
 
 func (i *RDSInstance) FormatDBName() string {

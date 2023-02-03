@@ -13,7 +13,7 @@ type mockParameterGroupAdapter struct {
 	returnErr        error
 }
 
-func (m *mockParameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, d *dedicatedDBAdapter) (string, error) {
+func (m *mockParameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) (string, error) {
 	if m.returnErr != nil {
 		return "", m.returnErr
 	}
@@ -58,7 +58,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := prepareCreateDbInput(test.dbInstance, test.dbAdapter, "foobar", test.pGroupAdapter)
+			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, "foobar", test.pGroupAdapter)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -107,7 +107,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := prepareModifyDbInstanceInput(test.dbInstance, test.dbAdapter, test.pGroupAdapter)
+			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.pGroupAdapter)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}

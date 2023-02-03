@@ -124,9 +124,8 @@ type dedicatedDBAdapter struct {
 	settings config.Settings
 }
 
-func prepareCreateDbInput(
+func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
-	d *dedicatedDBAdapter,
 	password string,
 	pGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.CreateDBInstanceInput, error) {
@@ -172,7 +171,7 @@ func prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i, d)
+	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +182,8 @@ func prepareCreateDbInput(
 	return params, nil
 }
 
-func prepareModifyDbInstanceInput(
+func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 	i *RDSInstance,
-	d *dedicatedDBAdapter,
 	pGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
@@ -206,7 +204,7 @@ func prepareModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i, d)
+	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +221,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 		svc:      svc,
 		settings: d.settings,
 	}
-	params, err := prepareCreateDbInput(i, d, password, pGroupAdapter)
+	params, err := d.prepareCreateDbInput(i, password, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -247,7 +245,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		svc:      svc,
 		settings: d.settings,
 	}
-	params, err := prepareModifyDbInstanceInput(i, d, pGroupAdapter)
+	params, err := d.prepareModifyDbInstanceInput(i, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
