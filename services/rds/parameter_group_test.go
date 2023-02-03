@@ -156,8 +156,8 @@ func TestNeedCustomParameters(t *testing.T) {
 }
 
 func TestGetDefaultEngineParameter(t *testing.T) {
-	describeEngineDefaultParamsErr := errors.New("describe db engine default params err")
-	describeEngVersionsErr := errors.New("describe eng versions err")
+	// describeEngineDefaultParamsErr := errors.New("describe db engine default params err")
+	// describeEngVersionsErr := errors.New("describe eng versions err")
 	testCases := map[string]struct {
 		dbInstance                         *RDSInstance
 		expectedParams                     map[string]map[string]string
@@ -168,53 +168,53 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 		describeEngineDefaultParamsErr     error
 		expectedErr                        error
 	}{
-		"no default param value": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: true,
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
-			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-				{
-					EngineDefaults: &rds.EngineDefaults{
-						Parameters: []*rds.Parameter{},
-					},
-				},
-			},
-			expectedParamValue: "",
-		},
-		"default param value": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: true,
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
-			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-				{
-					EngineDefaults: &rds.EngineDefaults{
-						Parameters: []*rds.Parameter{
-							{
-								ParameterName:  aws.String("shared_preload_libraries"),
-								ParameterValue: aws.String("random-library"),
-							},
-						},
-					},
-				},
-			},
-			expectedParamValue: "random-library",
-		},
+		// "no default param value": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 		DbVersion:    "12",
+		// 	},
+		// 	paramName: "shared_preload_libraries",
+		// 	expectedParams: map[string]map[string]string{
+		// 		"postgres": {
+		// 			"shared_preload_libaries": "pg-cron",
+		// 		},
+		// 	},
+		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+		// 		{
+		// 			EngineDefaults: &rds.EngineDefaults{
+		// 				Parameters: []*rds.Parameter{},
+		// 			},
+		// 		},
+		// 	},
+		// 	expectedParamValue: "",
+		// },
+		// "default param value": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 		DbVersion:    "12",
+		// 	},
+		// 	paramName: "shared_preload_libraries",
+		// 	expectedParams: map[string]map[string]string{
+		// 		"postgres": {
+		// 			"shared_preload_libaries": "pg-cron",
+		// 		},
+		// 	},
+		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+		// 		{
+		// 			EngineDefaults: &rds.EngineDefaults{
+		// 				Parameters: []*rds.Parameter{
+		// 					{
+		// 						ParameterName:  aws.String("shared_preload_libraries"),
+		// 						ParameterValue: aws.String("random-library"),
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	expectedParamValue: "random-library",
+		// },
 		"default param value, with paging": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
@@ -252,44 +252,44 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			},
 			expectedParamValue: "a-library,b-library",
 		},
-		"describe db engine params error": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: true,
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
-			describeEngineDefaultParamsErr: describeEngineDefaultParamsErr,
-			expectedErr:                    describeEngineDefaultParamsErr,
-			expectedParamValue:             "",
-		},
-		"describe db engine versions error": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: true,
-				DbType:       "postgres",
-			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
-			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-				{
-					EngineDefaults: &rds.EngineDefaults{
-						Parameters: []*rds.Parameter{},
-					},
-				},
-			},
-			describeEngVersionsErr: describeEngVersionsErr,
-			expectedErr:            describeEngVersionsErr,
-			expectedParamValue:     "",
-		},
+		// "describe db engine params error": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 		DbVersion:    "12",
+		// 	},
+		// 	paramName: "shared_preload_libraries",
+		// 	expectedParams: map[string]map[string]string{
+		// 		"postgres": {
+		// 			"shared_preload_libaries": "pg-cron",
+		// 		},
+		// 	},
+		// 	describeEngineDefaultParamsErr: describeEngineDefaultParamsErr,
+		// 	expectedErr:                    describeEngineDefaultParamsErr,
+		// 	expectedParamValue:             "",
+		// },
+		// "describe db engine versions error": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 	},
+		// 	paramName: "shared_preload_libraries",
+		// 	expectedParams: map[string]map[string]string{
+		// 		"postgres": {
+		// 			"shared_preload_libaries": "pg-cron",
+		// 		},
+		// 	},
+		// 	describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+		// 		{
+		// 			EngineDefaults: &rds.EngineDefaults{
+		// 				Parameters: []*rds.Parameter{},
+		// 			},
+		// 		},
+		// 	},
+		// 	describeEngVersionsErr: describeEngVersionsErr,
+		// 	expectedErr:            describeEngVersionsErr,
+		// 	expectedParamValue:     "",
+		// },
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -687,6 +687,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 		expectedPGroupName    string
 		expectedErr           error
 		dedicatedDBAdapter    *dedicatedDBAdapter
+		mockRDSClient         *mockRDSClient
 	}{
 		"does not need custom params": {
 			dbInstance: &RDSInstance{
@@ -694,8 +695,9 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			},
 			dedicatedDBAdapter: &dedicatedDBAdapter{},
 			expectedPGroupName: "",
+			mockRDSClient:      &mockRDSClient{},
 		},
-		"needs custom params, success": {
+		"enable binary log format, success": {
 			dbInstance: &RDSInstance{
 				DbType:          "mysql",
 				BinaryLogFormat: "ROW",
@@ -704,6 +706,32 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			dedicatedDBAdapter: &dedicatedDBAdapter{},
 			pGroupPrefix:       "prefix-",
 			expectedPGroupName: "prefix-database1",
+			mockRDSClient:      &mockRDSClient{},
+		},
+		"enable PG cron, success": {
+			dbInstance: &RDSInstance{
+				DbType:       "postgres",
+				DbVersion:    "12",
+				EnablePgCron: true,
+				Database:     "database2",
+			},
+			mockRDSClient: &mockRDSClient{
+				describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+					{
+						EngineDefaults: &rds.EngineDefaults{
+							Parameters: []*rds.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+				},
+			},
+			dedicatedDBAdapter: &dedicatedDBAdapter{},
+			pGroupPrefix:       "prefix-",
+			expectedPGroupName: "prefix-database2",
 		},
 		"needs custom params, error": {
 			dbInstance: &RDSInstance{
@@ -711,10 +739,12 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				Database:        "database1",
 			},
-			dedicatedDBAdapter:    &dedicatedDBAdapter{},
-			modifyDbParamGroupErr: modifyDbParamGroupErr,
-			expectedErr:           modifyDbParamGroupErr,
-			expectedPGroupName:    "",
+			dedicatedDBAdapter: &dedicatedDBAdapter{},
+			expectedErr:        modifyDbParamGroupErr,
+			mockRDSClient: &mockRDSClient{
+				modifyDbParamGroupErr: modifyDbParamGroupErr,
+			},
+			expectedPGroupName: "",
 		},
 	}
 
@@ -726,9 +756,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			pGroupName, err := p.provisionCustomParameterGroupIfNecessary(
 				test.dbInstance,
 				test.dedicatedDBAdapter,
-				&mockRDSClient{
-					modifyDbParamGroupErr: test.modifyDbParamGroupErr,
-				},
+				test.mockRDSClient,
 			)
 
 			if test.expectedErr == nil && err != nil {

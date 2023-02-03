@@ -164,7 +164,6 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 	}
 	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
 		DBParameterGroupFamily: &i.ParameterGroupFamily,
-		MaxRecords:             aws.Int64(100),
 	}
 	for {
 		result, err := svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
@@ -173,6 +172,7 @@ func getDefaultEngineParameter(paramName string, i *RDSInstance, svc rdsiface.RD
 		}
 		for _, param := range result.EngineDefaults.Parameters {
 			if *param.ParameterName == paramName {
+				log.Printf("found default parameter value %s for parameter %s", *param.ParameterValue, *param.ParameterName)
 				return *param.ParameterValue, nil
 			}
 		}
