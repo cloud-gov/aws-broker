@@ -398,7 +398,10 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		// clean up custom parameter groups
-		cleanupCustomParameterGroups(svc)
+		pGroupAdapter := &parameterGroupAdapter{
+			svc: svc,
+		}
+		pGroupAdapter.CleanupCustomParameterGroups()
 		return base.InstanceGone, nil
 	}
 	return base.InstanceNotGone, nil

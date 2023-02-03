@@ -13,12 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
 
-var (
-	pGroupPrefix = pGroupPrefixReal
-)
-
-// PgroupPrefix is the prefix for all pgroups created by the broker.
-const pGroupPrefixReal = "cg-aws-broker-"
 const pgCronLibraryName = "pg_cron"
 
 type parameterGroupAdapterInterface interface {
@@ -29,8 +23,9 @@ type parameterGroupAdapterInterface interface {
 }
 
 type parameterGroupAdapter struct {
-	svc      rdsiface.RDSAPI
-	settings config.Settings
+	svc                  rdsiface.RDSAPI
+	settings             config.Settings
+	parameterGroupPrefix string `default:"cg-aws-broker-"`
 }
 
 func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
@@ -93,7 +88,7 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 ) (string, error) {
 	// i.FormatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
-	pgroupName := pGroupPrefix + i.FormatDBName()
+	pgroupName := p.parameterGroupPrefix + i.FormatDBName()
 
 	parameterGroupExists := p.checkIfParameterGroupExists(pgroupName)
 	if !parameterGroupExists {
@@ -256,22 +251,23 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(
 }
 
 // search out all the parameter groups that we created and try to clean them up
-func cleanupCustomParameterGroups(svc rdsiface.RDSAPI) {
+func (p *parameterGroupAdapter) CleanupCustomParameterGroups() {
 	input := &rds.DescribeDBParameterGroupsInput{}
-	err := svc.DescribeDBParameterGroupsPages(input,
+	err := p.svc.DescribeDBParameterGroupsPages(input,
 		func(pgroups *rds.DescribeDBParameterGroupsOutput, lastPage bool) bool {
 			// If the pgroup matches the prefix, then try to delete it.
 			// If it's in use, it will fail, so ignore that.
 			for _, pgroup := range pgroups.DBParameterGroups {
-				matched, err := regexp.Match("^"+pGroupPrefix, []byte(*pgroup.DBParameterGroupName))
+				matched, err := regexp.Match("^"+p.parameterGroupPrefix, []byte(*pgroup.DBParameterGroupName))
 				if err != nil {
-					log.Printf("error trying to match %s in %s: %s", pGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
+
+					log.Printf("error trying to match %s in %s: %s", p.parameterGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
 				}
 				if matched {
 					deleteinput := &rds.DeleteDBParameterGroupInput{
 						DBParameterGroupName: aws.String(*pgroup.DBParameterGroupName),
 					}
-					_, err := svc.DeleteDBParameterGroup(deleteinput)
+					_, err := p.svc.DeleteDBParameterGroup(deleteinput)
 					if err == nil {
 						log.Printf("cleaned up %s parameter group", *pgroup.DBParameterGroupName)
 					} else if err.(awserr.Error).Code() != "InvalidDBParameterGroupState" {

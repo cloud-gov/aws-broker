@@ -674,7 +674,6 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		expectedPGroupName    string
-		pGroupPrefix          string
 		expectedErr           error
 		parameterGroupAdapter *parameterGroupAdapter
 	}{
@@ -727,17 +726,16 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 				DbType:    "postgres",
 				DbVersion: "12",
 			},
-			pGroupPrefix:       "",
 			expectedPGroupName: "foobar",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				svc:                  &mockRDSClient{},
+				parameterGroupPrefix: "",
 			},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			pGroupPrefix = test.pGroupPrefix
 			pGroupName, err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(test.dbInstance, nil)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
@@ -758,7 +756,6 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 	testCases := map[string]struct {
 		customParams          map[string]map[string]string
 		dbInstance            *RDSInstance
-		pGroupPrefix          string
 		expectedPGroupName    string
 		expectedErr           error
 		dedicatedDBAdapter    *dedicatedDBAdapter
@@ -781,10 +778,10 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				Database:        "database1",
 			},
 			dedicatedDBAdapter: &dedicatedDBAdapter{},
-			pGroupPrefix:       "prefix-",
 			expectedPGroupName: "prefix-database1",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				svc:                  &mockRDSClient{},
+				parameterGroupPrefix: "prefix-",
 			},
 		},
 		"enable PG cron, success": {
@@ -809,9 +806,9 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 						},
 					},
 				},
+				parameterGroupPrefix: "prefix-",
 			},
 			dedicatedDBAdapter: &dedicatedDBAdapter{},
-			pGroupPrefix:       "prefix-",
 			expectedPGroupName: "prefix-database2",
 		},
 		"needs custom params, error": {
@@ -833,8 +830,6 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			pGroupPrefix = test.pGroupPrefix
-
 			pGroupName, err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
 				test.dbInstance,
 				test.dedicatedDBAdapter,
