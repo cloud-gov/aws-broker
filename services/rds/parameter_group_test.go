@@ -771,7 +771,6 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			dbInstance: &RDSInstance{
 				DbType: "postgres",
 			},
-			dedicatedDBAdapter: &dedicatedDBAdapter{},
 			expectedPGroupName: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
 				svc: &mockRDSClient{},
@@ -783,7 +782,6 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				Database:        "database1",
 			},
-			dedicatedDBAdapter: &dedicatedDBAdapter{},
 			expectedPGroupName: "prefix-database1",
 			parameterGroupAdapter: &parameterGroupAdapter{
 				svc:                  &mockRDSClient{},
@@ -814,7 +812,6 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				},
 				parameterGroupPrefix: "prefix-",
 			},
-			dedicatedDBAdapter: &dedicatedDBAdapter{},
 			expectedPGroupName: "prefix-database2",
 		},
 		"needs custom params, error": {
@@ -823,8 +820,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				Database:        "database1",
 			},
-			dedicatedDBAdapter: &dedicatedDBAdapter{},
-			expectedErr:        modifyDbParamGroupErr,
+			expectedErr: modifyDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				svc: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
@@ -838,7 +834,6 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			pGroupName, err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
 				test.dbInstance,
-				test.dedicatedDBAdapter,
 			)
 
 			if test.expectedErr == nil && err != nil {
