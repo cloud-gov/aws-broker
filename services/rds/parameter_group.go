@@ -81,9 +81,9 @@ func (p *parameterGroupAdapter) CleanupCustomParameterGroups() {
 		}
 		return true
 	})
-
-	log.Printf("Could not retrieve list of parameter groups while cleaning up: %s", err.Error())
-	return
+	if err != nil {
+		log.Printf("Could not retrieve list of parameter groups while cleaning up: %s", err.Error())
+	}
 }
 
 func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
