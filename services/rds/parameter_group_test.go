@@ -197,7 +197,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			},
 			expectedParamValue: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -223,7 +223,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			},
 			expectedParamValue: "random-library",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -253,7 +253,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -297,7 +297,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			expectedErr:        describeEngineDefaultParamsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineDefaultParamsErr,
 				},
 			},
@@ -316,7 +316,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			expectedErr:        describeEngVersionsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngVersionsErr: describeEngVersionsErr,
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
@@ -341,7 +341,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			if paramValue != test.expectedParamValue {
 				t.Errorf("expected: %s, got: %s", test.expectedParamValue, paramValue)
 			}
-			mockClient, ok := test.parameterGroupAdapter.svc.(*mockRDSClient)
+			mockClient, ok := test.parameterGroupAdapter.rds.(*mockRDSClient)
 			if ok {
 				if mockClient.describeEngineDefaultParamsCallNum != test.expectedGetDefaultEngineParamsCalls {
 					t.Fatalf("expected %v, got %v", test.expectedGetDefaultEngineParamsCalls, mockClient.describeEngineDefaultParamsCallNum)
@@ -367,7 +367,7 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 				DbVersion:    "12",
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -387,7 +387,7 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 				DbVersion:    "12",
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -415,7 +415,7 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 			expectedParam: "",
 			expectedErr:   describeEngineParamsErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 				},
 			},
@@ -456,7 +456,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 				settings: config.Settings{
 					EnableFunctionsFeature: true,
 				},
@@ -473,7 +473,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 				settings: config.Settings{
 					EnableFunctionsFeature: true,
 				},
@@ -490,7 +490,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 				settings: config.Settings{
 					EnableFunctionsFeature: false,
 				},
@@ -508,7 +508,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc:      &mockRDSClient{},
+				rds:      &mockRDSClient{},
 				settings: config.Settings{},
 			},
 		},
@@ -525,7 +525,7 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
 				settings: config.Settings{},
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -546,7 +546,7 @@ func TestGetCustomParameters(t *testing.T) {
 			expectedErr:    describeEngineParamsErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				settings: config.Settings{},
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 				},
 			},
@@ -582,7 +582,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			},
 			expectedPGroupFamily: "postgres12",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					dbEngineVersions: []*rds.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
@@ -598,7 +598,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			},
 			expectedPGroupFamily: "postgres13",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 			},
 		},
 		"RDS service returns error": {
@@ -607,7 +607,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			},
 			expectedErr: serviceErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngVersionsErr: serviceErr,
 				},
 			},
@@ -618,7 +618,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			},
 			expectedPGroupFamily: "random-family",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 			},
 		},
 	}
@@ -649,7 +649,7 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 			pGroupName:     "group1",
 			expectedExists: false,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeDbParamsErr: dbParamsErr,
 				},
 			},
@@ -658,7 +658,7 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 			pGroupName:     "group2",
 			expectedExists: true,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 			},
 		},
 	}
@@ -691,7 +691,7 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 			expectedPGroupName: "",
 			expectedErr:        describeEngVersionsErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeDbParamsErr:    errors.New("describe DB params err"),
 					describeEngVersionsErr: describeEngVersionsErr,
 				},
@@ -706,7 +706,7 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 			expectedPGroupName: "",
 			expectedErr:        createDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeDbParamsErr:   errors.New("describe DB params err"),
 					createDbParamGroupErr: createDbParamGroupErr,
 				},
@@ -721,7 +721,7 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 			expectedPGroupName: "",
 			expectedErr:        modifyDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
 				},
 			},
@@ -734,7 +734,7 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 			},
 			expectedPGroupName: "foobar",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc:                  &mockRDSClient{},
+				rds:                  &mockRDSClient{},
 				parameterGroupPrefix: "",
 			},
 		},
@@ -773,7 +773,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			},
 			expectedPGroupName: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				rds: &mockRDSClient{},
 			},
 		},
 		"enable binary log format, success": {
@@ -784,7 +784,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			},
 			expectedPGroupName: "prefix-database1",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc:                  &mockRDSClient{},
+				rds:                  &mockRDSClient{},
 				parameterGroupPrefix: "prefix-",
 			},
 		},
@@ -796,7 +796,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				Database:     "database2",
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rds.EngineDefaults{
@@ -822,7 +822,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			},
 			expectedErr: modifyDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{
+				rds: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
 				},
 			},
