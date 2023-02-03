@@ -13,11 +13,12 @@ type mockParameterGroupAdapter struct {
 	returnErr        error
 }
 
-func (m *mockParameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) (string, error) {
+func (m *mockParameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
 	if m.returnErr != nil {
-		return "", m.returnErr
+		return m.returnErr
 	}
-	return m.customPgroupName, nil
+	i.ParameterGroupName = m.customPgroupName
+	return nil
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {

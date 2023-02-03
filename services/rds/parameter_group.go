@@ -16,7 +16,7 @@ import (
 const pgCronLibraryName = "pg_cron"
 
 type parameterGroupAdapterInterface interface {
-	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) (string, error)
+	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error
 }
 
 type parameterGroupAdapter struct {
@@ -25,22 +25,23 @@ type parameterGroupAdapter struct {
 	parameterGroupPrefix string `default:"cg-aws-broker-"`
 }
 
-func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) (string, error) {
+func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
 	if !p.needCustomParameters(i) {
-		return "", nil
+		return nil
 	}
 	customRDSParameters, err := p.getCustomParameters(i)
 	if err != nil {
-		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
+		return fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
 
 	// apply parameter group
-	pgroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
+	parameterGroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
 	if err != nil {
 		log.Println(err.Error())
-		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
+		return fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
-	return pgroupName, nil
+	i.ParameterGroupName = parameterGroupName
+	return nil
 }
 
 // search out all the parameter groups that we created and try to clean them up
@@ -159,9 +160,8 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 
 		_, err = p.svc.CreateDBParameterGroup(createInput)
 		if err != nil {
-			return "", fmt.Errorf("encountered error when creating database: %w", err)
+			return "", fmt.Errorf("encountered error when creating parameter group: %w", err)
 		}
-		i.ParameterGroupName = pgroupName
 	}
 
 	// iterate through the options and plug them into the parameter list

@@ -832,7 +832,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			pGroupName, err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
+			err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
 				test.dbInstance,
 			)
 
@@ -842,8 +842,8 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if pGroupName != test.expectedPGroupName {
-				t.Fatalf("unexpected group name: %s, expected: %s", pGroupName, test.expectedPGroupName)
+			if test.dbInstance.ParameterGroupName != test.expectedPGroupName {
+				t.Fatalf("unexpected group name: %s, expected: %s", test.dbInstance.ParameterGroupName, test.expectedPGroupName)
 			}
 		})
 	}

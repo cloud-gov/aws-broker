@@ -171,12 +171,12 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
+	err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
-	if pGroupName != "" {
-		params.DBParameterGroupName = aws.String(pGroupName)
+	if i.ParameterGroupName != "" {
+		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
 	}
 
 	return params, nil
@@ -204,12 +204,12 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	pGroupName, err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
+	err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
-	if pGroupName != "" {
-		params.DBParameterGroupName = aws.String(pGroupName)
+	if i.ParameterGroupName != "" {
+		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
 	}
 	return params, nil
 }
