@@ -8,7 +8,7 @@ import (
 )
 
 type mockParameterGroupAdapter struct {
-	svc              rdsiface.RDSAPI
+	rds              rdsiface.RDSAPI
 	customPgroupName string
 	returnErr        error
 }
@@ -27,7 +27,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 		dbInstance        *RDSInstance
 		dbAdapter         *dedicatedDBAdapter
 		pGroupAdapter     *mockParameterGroupAdapter
-		svc               *mockRDSClient
+		rds               *mockRDSClient
 		expectedGroupName string
 		expectedErr       error
 	}{
@@ -39,7 +39,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
 				customPgroupName: "foobar",
-				svc:              &mockRDSClient{},
+				rds:              &mockRDSClient{},
 			},
 			expectedGroupName: "foobar",
 		},
@@ -51,7 +51,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
 				returnErr: testErr,
-				svc:       &mockRDSClient{},
+				rds:       &mockRDSClient{},
 			},
 			expectedErr: testErr,
 		},
@@ -76,7 +76,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		dbInstance        *RDSInstance
 		dbAdapter         *dedicatedDBAdapter
 		pGroupAdapter     *mockParameterGroupAdapter
-		svc               *mockRDSClient
+		rds               *mockRDSClient
 		expectedGroupName string
 		expectedErr       error
 	}{
@@ -88,7 +88,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
 				customPgroupName: "foobar",
-				svc:              &mockRDSClient{},
+				rds:              &mockRDSClient{},
 			},
 			expectedGroupName: "foobar",
 		},
@@ -99,7 +99,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: &dedicatedDBAdapter{},
 			pGroupAdapter: &mockParameterGroupAdapter{
-				svc:       &mockRDSClient{},
+				rds:       &mockRDSClient{},
 				returnErr: testErr,
 			},
 			expectedErr: testErr,
