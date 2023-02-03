@@ -72,21 +72,25 @@ func (m mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefaul
 
 func TestNeedCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance *RDSInstance
-		settings   config.Settings
-		expectedOk bool
+		dbInstance            *RDSInstance
+		expectedOk            bool
+		parameterGroupAdapter *parameterGroupAdapter
 	}{
 		"default": {
 			dbInstance: &RDSInstance{},
-			settings:   config.Settings{},
 			expectedOk: false,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+			},
 		},
 		"valid binary log format": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			settings:   config.Settings{},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+			},
 			expectedOk: true,
 		},
 		"valid binary log format, wrong database type": {
@@ -94,7 +98,9 @@ func TestNeedCustomParameters(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "psql",
 			},
-			settings:   config.Settings{},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+			},
 			expectedOk: false,
 		},
 		"instance functions enabled, settings disabled": {
@@ -102,8 +108,10 @@ func TestNeedCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "mysql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: false,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{
+					EnableFunctionsFeature: false,
+				},
 			},
 			expectedOk: false,
 		},
@@ -112,8 +120,10 @@ func TestNeedCustomParameters(t *testing.T) {
 				EnableFunctions: false,
 				DbType:          "mysql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: true,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{
+					EnableFunctionsFeature: true,
+				},
 			},
 			expectedOk: false,
 		},
@@ -122,8 +132,10 @@ func TestNeedCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "psql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: true,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{
+					EnableFunctionsFeature: true,
+				},
 			},
 			expectedOk: false,
 		},
@@ -132,8 +144,10 @@ func TestNeedCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "mysql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: true,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{
+					EnableFunctionsFeature: true,
+				},
 			},
 			expectedOk: true,
 		},
@@ -143,13 +157,15 @@ func TestNeedCustomParameters(t *testing.T) {
 				DbType:       "postgres",
 			},
 			expectedOk: true,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+			},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			parameterGroupAdapter := &parameterGroupAdapter{}
-			if parameterGroupAdapter.needCustomParameters(test.dbInstance, test.settings) != test.expectedOk {
+			if test.parameterGroupAdapter.needCustomParameters(test.dbInstance) != test.expectedOk {
 				t.Fatalf("should be %v", test.expectedOk)
 			}
 		})
@@ -418,7 +434,6 @@ func TestGetCustomParameters(t *testing.T) {
 	describeEngineParamsErr := errors.New("describe db engine params error")
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
-		settings              config.Settings
 		expectedParams        map[string]map[string]string
 		expectedErr           error
 		parameterGroupAdapter *parameterGroupAdapter
@@ -428,9 +443,6 @@ func TestGetCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "mysql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: true,
-			},
 			expectedParams: map[string]map[string]string{
 				"mysql": {
 					"log_bin_trust_function_creators": "1",
@@ -438,6 +450,9 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
 				svc: &mockRDSClient{},
+				settings: config.Settings{
+					EnableFunctionsFeature: true,
+				},
 			},
 		},
 		"instance functions disabled, settings enabled": {
@@ -445,9 +460,6 @@ func TestGetCustomParameters(t *testing.T) {
 				EnableFunctions: false,
 				DbType:          "mysql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: true,
-			},
 			expectedParams: map[string]map[string]string{
 				"mysql": {
 					"log_bin_trust_function_creators": "0",
@@ -455,6 +467,9 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
 				svc: &mockRDSClient{},
+				settings: config.Settings{
+					EnableFunctionsFeature: true,
+				},
 			},
 		},
 		"instance functions enabled, settings disabled": {
@@ -462,9 +477,6 @@ func TestGetCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "mysql",
 			},
-			settings: config.Settings{
-				EnableFunctionsFeature: false,
-			},
 			expectedParams: map[string]map[string]string{
 				"mysql": {
 					"log_bin_trust_function_creators": "0",
@@ -472,6 +484,9 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
 				svc: &mockRDSClient{},
+				settings: config.Settings{
+					EnableFunctionsFeature: false,
+				},
 			},
 		},
 		"binary log format": {
@@ -479,7 +494,6 @@ func TestGetCustomParameters(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			settings: config.Settings{},
 			expectedParams: map[string]map[string]string{
 				"mysql": {
 					"log_bin_trust_function_creators": "0",
@@ -487,7 +501,8 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				svc: &mockRDSClient{},
+				svc:      &mockRDSClient{},
+				settings: config.Settings{},
 			},
 		},
 		"enable PG cron": {
@@ -496,13 +511,13 @@ func TestGetCustomParameters(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			settings: config.Settings{},
 			expectedParams: map[string]map[string]string{
 				"postgres": {
 					"shared_preload_libraries": "pg_cron",
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
 				svc: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
@@ -520,10 +535,10 @@ func TestGetCustomParameters(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			settings:       config.Settings{},
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
 				svc: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 				},
@@ -533,7 +548,7 @@ func TestGetCustomParameters(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			describeEngineCallNum = 0
-			params, err := test.parameterGroupAdapter.getCustomParameters(test.dbInstance, test.settings)
+			params, err := test.parameterGroupAdapter.getCustomParameters(test.dbInstance)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}

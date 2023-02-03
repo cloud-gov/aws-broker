@@ -29,7 +29,8 @@ type parameterGroupAdapterInterface interface {
 }
 
 type parameterGroupAdapter struct {
-	svc rdsiface.RDSAPI
+	svc      rdsiface.RDSAPI
+	settings config.Settings
 }
 
 func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
@@ -62,6 +63,7 @@ func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
 		dbversion := re.Find([]byte(i.DbVersion))
 		parameterGroupFamily = i.DbType + string(dbversion)
 	}
+	log.Printf("got parameter group family: %s", parameterGroupFamily)
 	i.ParameterGroupFamily = parameterGroupFamily
 	return nil
 }
@@ -110,7 +112,7 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 
 		_, err = p.svc.CreateDBParameterGroup(createInput)
 		if err != nil {
-			return "", fmt.Errorf("encounted error when creating database: %w", err)
+			return "", fmt.Errorf("encountered error when creating database: %w", err)
 		}
 	}
 
@@ -137,12 +139,9 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	return pgroupName, nil
 }
 
-// This is here because the check is kinda big and ugly
-func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance, s config.Settings) bool {
-	// Currently, we only have one custom parameter for mysql, but if
-	// we ever need to apply more, you can add them in here.
+func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
 	if i.EnableFunctions &&
-		s.EnableFunctionsFeature &&
+		p.settings.EnableFunctionsFeature &&
 		(i.DbType == "mysql") {
 		return true
 	}
@@ -198,19 +197,18 @@ func (p *parameterGroupAdapter) buildCustomSharePreloadLibrariesParam(
 	if defaultSharedPreloadLibraries != "" {
 		libraries = append(libraries, defaultSharedPreloadLibraries)
 	}
-	return strings.Join(libraries, ","), nil
+	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
+	log.Printf("generated custom share_preload_libraries param: %s", customSharePreloadLibrariesParam)
+	return customSharePreloadLibrariesParam, nil
 }
 
-func (p *parameterGroupAdapter) getCustomParameters(
-	i *RDSInstance,
-	s config.Settings,
-) (map[string]map[string]string, error) {
+func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]map[string]string, error) {
 	customRDSParameters := make(map[string]map[string]string)
 
 	if i.DbType == "mysql" {
 		// enable functions
 		customRDSParameters["mysql"] = make(map[string]string)
-		if i.EnableFunctions && s.EnableFunctionsFeature {
+		if i.EnableFunctions && p.settings.EnableFunctionsFeature {
 			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
 		} else {
 			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
@@ -240,10 +238,10 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(
 	i *RDSInstance,
 	d *dedicatedDBAdapter,
 ) (string, error) {
-	if !p.needCustomParameters(i, d.settings) {
+	if !p.needCustomParameters(i) {
 		return "", nil
 	}
-	customRDSParameters, err := p.getCustomParameters(i, d.settings)
+	customRDSParameters, err := p.getCustomParameters(i)
 	if err != nil {
 		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}

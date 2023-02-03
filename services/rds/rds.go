@@ -220,7 +220,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	pGroupAdapter := &parameterGroupAdapter{
-		svc: svc,
+		svc:      svc,
+		settings: d.settings,
 	}
 	params, err := prepareCreateDbInput(i, d, password, pGroupAdapter)
 	if err != nil {
@@ -242,7 +243,10 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	pGroupAdapter := &parameterGroupAdapter{}
+	pGroupAdapter := &parameterGroupAdapter{
+		svc:      svc,
+		settings: d.settings,
+	}
 	params, err := prepareModifyDbInstanceInput(i, d, pGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
