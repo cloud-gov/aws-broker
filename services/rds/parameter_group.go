@@ -27,21 +27,15 @@ type parameterGroupAdapter struct {
 
 func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) (string, error) {
 	if !p.needCustomParameters(i) {
-		fmt.Println("nope")
 		return "", nil
 	}
-	fmt.Println("cow1")
 	customRDSParameters, err := p.getCustomParameters(i)
 	if err != nil {
 		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
 
-	fmt.Println("cow2")
-
 	// apply parameter group
 	pgroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
-	fmt.Println("cow3")
-	fmt.Println(pgroupName)
 	if err != nil {
 		log.Println(err.Error())
 		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
@@ -149,9 +143,7 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	pgroupName := p.parameterGroupPrefix + i.FormatDBName()
 
 	parameterGroupExists := p.checkIfParameterGroupExists(pgroupName)
-	fmt.Println("moo")
 	if !parameterGroupExists {
-		fmt.Println("moo2")
 		// Otherwise, create a new parameter group in the proper family.
 		err := p.getParameterGroupFamily(i)
 		if err != nil {
@@ -207,7 +199,6 @@ func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
 	}
 	if i.EnablePgCron &&
 		(i.DbType == "postgres") {
-		fmt.Println("enabled")
 		return true
 	}
 
@@ -279,7 +270,6 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]string)
-		fmt.Println(i.EnablePgCron)
 		if i.EnablePgCron {
 			preloadLibrariesParam, err := p.buildCustomSharePreloadLibrariesParam(i, pgCronLibraryName)
 			if err != nil {
