@@ -28,6 +28,64 @@ type parameterGroupAdapter struct {
 	parameterGroupPrefix string `default:"cg-aws-broker-"`
 }
 
+func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(
+	i *RDSInstance,
+	d *dedicatedDBAdapter,
+) (string, error) {
+	if !p.needCustomParameters(i) {
+		return "", nil
+	}
+	customRDSParameters, err := p.getCustomParameters(i)
+	if err != nil {
+		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
+	}
+
+	// apply parameter group
+	pgroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
+	if err != nil {
+		log.Println(err.Error())
+		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
+	}
+	return pgroupName, nil
+}
+
+// search out all the parameter groups that we created and try to clean them up
+func (p *parameterGroupAdapter) CleanupCustomParameterGroups() {
+	input := &rds.DescribeDBParameterGroupsInput{}
+	err := p.svc.DescribeDBParameterGroupsPages(input,
+		func(pgroups *rds.DescribeDBParameterGroupsOutput, lastPage bool) bool {
+			// If the pgroup matches the prefix, then try to delete it.
+			// If it's in use, it will fail, so ignore that.
+			for _, pgroup := range pgroups.DBParameterGroups {
+				matched, err := regexp.Match("^"+p.parameterGroupPrefix, []byte(*pgroup.DBParameterGroupName))
+				if err != nil {
+
+					log.Printf("error trying to match %s in %s: %s", p.parameterGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
+				}
+				if matched {
+					deleteinput := &rds.DeleteDBParameterGroupInput{
+						DBParameterGroupName: aws.String(*pgroup.DBParameterGroupName),
+					}
+					_, err := p.svc.DeleteDBParameterGroup(deleteinput)
+					if err == nil {
+						log.Printf("cleaned up %s parameter group", *pgroup.DBParameterGroupName)
+					} else if err.(awserr.Error).Code() != "InvalidDBParameterGroupState" {
+						// If you can't delete it because it's in use, that is fine.
+						// The db takes a while to delete, so we will clean it up the
+						// next time this is called.  Otherwise there is some sort of AWS error
+						// and we should log that.
+						log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
+					}
+				}
+			}
+			return true
+		})
+	if err != nil {
+		log.Printf("Could not retrieve list of parameter groups while cleaning up: %s", err.Error())
+		return
+	}
+}
+
 func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
 	if i.ParameterGroupFamily != "" {
 		return nil
@@ -159,7 +217,8 @@ func (p *parameterGroupAdapter) getDefaultEngineParameter(paramName string, i *R
 	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
 		DBParameterGroupFamily: &i.ParameterGroupFamily,
 	}
-	for {
+	more := true
+	for more {
 		result, err := p.svc.DescribeEngineDefaultParameters(describeEngDefaultParamsInput)
 		if err != nil {
 			return "", err
@@ -170,10 +229,8 @@ func (p *parameterGroupAdapter) getDefaultEngineParameter(paramName string, i *R
 				return *param.ParameterValue, nil
 			}
 		}
-		if result.EngineDefaults.Marker == nil || *result.EngineDefaults.Marker == "" {
-			break
-		}
 		describeEngDefaultParamsInput.Marker = result.EngineDefaults.Marker
+		more = describeEngDefaultParamsInput.Marker != nil && *describeEngDefaultParamsInput.Marker != ""
 	}
 	return "", nil
 }
@@ -227,62 +284,4 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 	}
 
 	return customRDSParameters, nil
-}
-
-func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(
-	i *RDSInstance,
-	d *dedicatedDBAdapter,
-) (string, error) {
-	if !p.needCustomParameters(i) {
-		return "", nil
-	}
-	customRDSParameters, err := p.getCustomParameters(i)
-	if err != nil {
-		return "", fmt.Errorf("encountered error getting custom parameters: %w", err)
-	}
-
-	// apply parameter group
-	pgroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
-	if err != nil {
-		log.Println(err.Error())
-		return "", fmt.Errorf("encountered error applying parameter group: %w", err)
-	}
-	return pgroupName, nil
-}
-
-// search out all the parameter groups that we created and try to clean them up
-func (p *parameterGroupAdapter) CleanupCustomParameterGroups() {
-	input := &rds.DescribeDBParameterGroupsInput{}
-	err := p.svc.DescribeDBParameterGroupsPages(input,
-		func(pgroups *rds.DescribeDBParameterGroupsOutput, lastPage bool) bool {
-			// If the pgroup matches the prefix, then try to delete it.
-			// If it's in use, it will fail, so ignore that.
-			for _, pgroup := range pgroups.DBParameterGroups {
-				matched, err := regexp.Match("^"+p.parameterGroupPrefix, []byte(*pgroup.DBParameterGroupName))
-				if err != nil {
-
-					log.Printf("error trying to match %s in %s: %s", p.parameterGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
-				}
-				if matched {
-					deleteinput := &rds.DeleteDBParameterGroupInput{
-						DBParameterGroupName: aws.String(*pgroup.DBParameterGroupName),
-					}
-					_, err := p.svc.DeleteDBParameterGroup(deleteinput)
-					if err == nil {
-						log.Printf("cleaned up %s parameter group", *pgroup.DBParameterGroupName)
-					} else if err.(awserr.Error).Code() != "InvalidDBParameterGroupState" {
-						// If you can't delete it because it's in use, that is fine.
-						// The db takes a while to delete, so we will clean it up the
-						// next time this is called.  Otherwise there is some sort of AWS error
-						// and we should log that.
-						log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
-					}
-				}
-			}
-			return true
-		})
-	if err != nil {
-		log.Printf("Could not retrieve list of parameter groups while cleaning up: %s", err.Error())
-		return
-	}
 }
