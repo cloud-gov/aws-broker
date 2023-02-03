@@ -239,6 +239,8 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
+	existingInstance.EnablePgCron = options.EnablePgCron
+
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
 	if newPlanErr != nil {
