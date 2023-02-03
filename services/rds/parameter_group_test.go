@@ -451,7 +451,7 @@ func TestGetCustomParameters(t *testing.T) {
 	describeEngineParamsErr := errors.New("describe db engine params error")
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
-		expectedParams        map[string]map[string]string
+		expectedParams        map[string]map[string]paramDetails
 		expectedErr           error
 		parameterGroupAdapter *parameterGroupAdapter
 	}{
@@ -460,9 +460,12 @@ func TestGetCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "mysql",
 			},
-			expectedParams: map[string]map[string]string{
+			expectedParams: map[string]map[string]paramDetails{
 				"mysql": {
-					"log_bin_trust_function_creators": "1",
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "1",
+						applyMethod: "immediate",
+					},
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -477,9 +480,12 @@ func TestGetCustomParameters(t *testing.T) {
 				EnableFunctions: false,
 				DbType:          "mysql",
 			},
-			expectedParams: map[string]map[string]string{
+			expectedParams: map[string]map[string]paramDetails{
 				"mysql": {
-					"log_bin_trust_function_creators": "0",
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "0",
+						applyMethod: "immediate",
+					},
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -494,9 +500,12 @@ func TestGetCustomParameters(t *testing.T) {
 				EnableFunctions: true,
 				DbType:          "mysql",
 			},
-			expectedParams: map[string]map[string]string{
+			expectedParams: map[string]map[string]paramDetails{
 				"mysql": {
-					"log_bin_trust_function_creators": "0",
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "0",
+						applyMethod: "immediate",
+					},
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -511,10 +520,16 @@ func TestGetCustomParameters(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			expectedParams: map[string]map[string]string{
+			expectedParams: map[string]map[string]paramDetails{
 				"mysql": {
-					"log_bin_trust_function_creators": "0",
-					"binlog_format":                   "ROW",
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "0",
+						applyMethod: "immediate",
+					},
+					"binlog_format": paramDetails{
+						value:       "ROW",
+						applyMethod: "immediate",
+					},
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -528,9 +543,12 @@ func TestGetCustomParameters(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			expectedParams: map[string]map[string]string{
+			expectedParams: map[string]map[string]paramDetails{
 				"postgres": {
-					"shared_preload_libraries": "pg_cron",
+					"shared_preload_libraries": paramDetails{
+						value:       "pg_cron",
+						applyMethod: "pending-reboot",
+					},
 				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{

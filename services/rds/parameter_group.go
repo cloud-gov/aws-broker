@@ -25,6 +25,11 @@ type parameterGroupAdapter struct {
 	parameterGroupPrefix string
 }
 
+type paramDetails struct {
+	value       string
+	applyMethod string
+}
+
 func NewParameterGroupAdapater(rds rdsiface.RDSAPI, settings config.Settings) *parameterGroupAdapter {
 	return &parameterGroupAdapter{
 		rds:                  rds,
@@ -142,7 +147,7 @@ func (p *parameterGroupAdapter) checkIfParameterGroupExists(pgroupName string) b
 // will be created.
 func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
-	customparams map[string]map[string]string,
+	customparams map[string]map[string]paramDetails,
 ) (string, error) {
 	// i.FormatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
@@ -171,11 +176,11 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 
 	// iterate through the options and plug them into the parameter list
 	parameters := []*rds.Parameter{}
-	for k, v := range customparams[i.DbType] {
+	for paramName, paramDetails := range customparams[i.DbType] {
 		parameters = append(parameters, &rds.Parameter{
-			ApplyMethod:    aws.String("immediate"),
-			ParameterName:  aws.String(k),
-			ParameterValue: aws.String(v),
+			ApplyMethod:    aws.String(paramDetails.applyMethod),
+			ParameterName:  aws.String(paramName),
+			ParameterValue: aws.String(paramDetails.value),
 		})
 	}
 
@@ -256,32 +261,45 @@ func (p *parameterGroupAdapter) buildCustomSharePreloadLibrariesParam(
 	return customSharePreloadLibrariesParam, nil
 }
 
-func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]map[string]string, error) {
-	customRDSParameters := make(map[string]map[string]string)
+func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
+	customRDSParameters := make(map[string]map[string]paramDetails)
 
 	if i.DbType == "mysql" {
 		// enable functions
-		customRDSParameters["mysql"] = make(map[string]string)
+		customRDSParameters["mysql"] = make(map[string]paramDetails)
 		if i.EnableFunctions && p.settings.EnableFunctionsFeature {
-			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "1"
+			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = paramDetails{
+				value:       "1",
+				applyMethod: "immediate",
+			}
+
 		} else {
-			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = "0"
+			customRDSParameters["mysql"]["log_bin_trust_function_creators"] = paramDetails{
+				value:       "0",
+				applyMethod: "immediate",
+			}
 		}
 
 		// set MySQL binary log format
 		if i.BinaryLogFormat != "" {
-			customRDSParameters["mysql"]["binlog_format"] = i.BinaryLogFormat
+			customRDSParameters["mysql"]["binlog_format"] = paramDetails{
+				value:       i.BinaryLogFormat,
+				applyMethod: "immediate",
+			}
 		}
 	}
 
 	if i.DbType == "postgres" {
-		customRDSParameters["postgres"] = make(map[string]string)
+		customRDSParameters["postgres"] = make(map[string]paramDetails)
 		if i.EnablePgCron {
 			preloadLibrariesParam, err := p.buildCustomSharePreloadLibrariesParam(i, pgCronLibraryName)
 			if err != nil {
 				return nil, err
 			}
-			customRDSParameters["postgres"]["shared_preload_libraries"] = preloadLibrariesParam
+			customRDSParameters["postgres"]["shared_preload_libraries"] = paramDetails{
+				value:       preloadLibrariesParam,
+				applyMethod: "pending-reboot",
+			}
 		}
 	}
 
