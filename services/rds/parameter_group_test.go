@@ -69,6 +69,16 @@ func (m *mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefau
 	return nil, nil
 }
 
+func TestNewParameterGroupAdapter(t *testing.T) {
+	parameterGroupAdapter := NewParameterGroupAdapater(
+		&mockRDSClient{},
+		config.Settings{},
+	)
+	if parameterGroupAdapter.parameterGroupPrefix != "cg-aws-broker-" {
+		t.Errorf("actual prefix: %s", parameterGroupAdapter.parameterGroupPrefix)
+	}
+}
+
 func TestNeedCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance

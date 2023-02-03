@@ -22,7 +22,15 @@ type parameterGroupAdapterInterface interface {
 type parameterGroupAdapter struct {
 	rds                  rdsiface.RDSAPI
 	settings             config.Settings
-	parameterGroupPrefix string `default:"cg-aws-broker-"`
+	parameterGroupPrefix string
+}
+
+func NewParameterGroupAdapater(rds rdsiface.RDSAPI, settings config.Settings) *parameterGroupAdapter {
+	return &parameterGroupAdapter{
+		rds:                  rds,
+		settings:             settings,
+		parameterGroupPrefix: "cg-aws-broker-",
+	}
 }
 
 func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {

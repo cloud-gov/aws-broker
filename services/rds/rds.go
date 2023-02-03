@@ -127,7 +127,7 @@ type dedicatedDBAdapter struct {
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
 	password string,
-	pGroupAdapter parameterGroupAdapterInterface,
+	parameterGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.CreateDBInstanceInput, error) {
 	var rdsTags []*rds.Tag
 
@@ -171,7 +171,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
+	err := parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 	i *RDSInstance,
-	pGroupAdapter parameterGroupAdapterInterface,
+	parameterGroupAdapter parameterGroupAdapterInterface,
 ) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// NOTE:  Only the following actions are allowed at this point:
@@ -204,7 +204,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := pGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
+	err := parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
@@ -217,11 +217,8 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	pGroupAdapter := &parameterGroupAdapter{
-		svc:      svc,
-		settings: d.settings,
-	}
-	params, err := d.prepareCreateDbInput(i, password, pGroupAdapter)
+	parameterGroupAdapter := NewParameterGroupAdapater(svc, d.settings)
+	params, err := d.prepareCreateDbInput(i, password, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -241,11 +238,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	pGroupAdapter := &parameterGroupAdapter{
-		svc:      svc,
-		settings: d.settings,
-	}
-	params, err := d.prepareModifyDbInstanceInput(i, pGroupAdapter)
+	parameterGroupAdapter := NewParameterGroupAdapater(svc, d.settings)
+	params, err := d.prepareModifyDbInstanceInput(i, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -396,10 +390,8 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		// clean up custom parameter groups
-		pGroupAdapter := &parameterGroupAdapter{
-			svc: svc,
-		}
-		pGroupAdapter.CleanupCustomParameterGroups()
+		parameterGroupAdapter := NewParameterGroupAdapater(svc, d.settings)
+		parameterGroupAdapter.CleanupCustomParameterGroups()
 		return base.InstanceGone, nil
 	}
 	return base.InstanceNotGone, nil
