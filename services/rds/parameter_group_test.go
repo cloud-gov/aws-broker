@@ -21,6 +21,7 @@ type mockRDSClient struct {
 	modifyDbParamGroupErr              error
 	describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
 	describeEngineDefaultParamsErr     error
+	describeEngineDefaultParamsCallNum int
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -56,15 +57,13 @@ func (m mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) 
 	return nil, nil
 }
 
-var describeEngineCallNum int
-
-func (m mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefaultParametersInput) (*rds.DescribeEngineDefaultParametersOutput, error) {
+func (m *mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefaultParametersInput) (*rds.DescribeEngineDefaultParametersOutput, error) {
 	if m.describeEngineDefaultParamsErr != nil {
 		return nil, m.describeEngineDefaultParamsErr
 	}
 	if m.describeEngineDefaultParamsResults != nil {
-		res := m.describeEngineDefaultParamsResults[describeEngineCallNum]
-		describeEngineCallNum++
+		res := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsCallNum]
+		m.describeEngineDefaultParamsCallNum++
 		return res, nil
 	}
 	return nil, nil
@@ -176,12 +175,13 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 	describeEngineDefaultParamsErr := errors.New("describe db engine default params err")
 	describeEngVersionsErr := errors.New("describe eng versions err")
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
-		expectedParams        map[string]map[string]string
-		paramName             string
-		expectedParamValue    string
-		expectedErr           error
-		parameterGroupAdapter *parameterGroupAdapter
+		dbInstance                          *RDSInstance
+		expectedParams                      map[string]map[string]string
+		paramName                           string
+		expectedParamValue                  string
+		expectedErr                         error
+		parameterGroupAdapter               *parameterGroupAdapter
+		expectedGetDefaultEngineParamsCalls int
 	}{
 		"no default param value": {
 			dbInstance: &RDSInstance{
@@ -207,6 +207,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 					},
 				},
 			},
+			expectedGetDefaultEngineParamsCalls: 1,
 		},
 		"default param value": {
 			dbInstance: &RDSInstance{
@@ -237,6 +238,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 					},
 				},
 			},
+			expectedGetDefaultEngineParamsCalls: 1,
 		},
 		"default param value, with paging": {
 			dbInstance: &RDSInstance{
@@ -277,7 +279,8 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 					},
 				},
 			},
-			expectedParamValue: "a-library,b-library",
+			expectedParamValue:                  "a-library,b-library",
+			expectedGetDefaultEngineParamsCalls: 2,
 		},
 		"describe db engine params error": {
 			dbInstance: &RDSInstance{
@@ -328,7 +331,6 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			describeEngineCallNum = 0
 			paramValue, err := test.parameterGroupAdapter.getDefaultEngineParameter(test.paramName, test.dbInstance)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
@@ -338,6 +340,12 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 			}
 			if paramValue != test.expectedParamValue {
 				t.Errorf("expected: %s, got: %s", test.expectedParamValue, paramValue)
+			}
+			mockClient, ok := test.parameterGroupAdapter.svc.(*mockRDSClient)
+			if ok {
+				if mockClient.describeEngineDefaultParamsCallNum != test.expectedGetDefaultEngineParamsCalls {
+					t.Fatalf("expected %v, got %v", test.expectedGetDefaultEngineParamsCalls, mockClient.describeEngineDefaultParamsCallNum)
+				}
 			}
 		})
 	}
@@ -415,7 +423,6 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			describeEngineCallNum = 0
 			param, err := test.parameterGroupAdapter.buildCustomSharePreloadLibrariesParam(test.dbInstance, test.customLibrary)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
@@ -547,7 +554,6 @@ func TestGetCustomParameters(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			describeEngineCallNum = 0
 			params, err := test.parameterGroupAdapter.getCustomParameters(test.dbInstance)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
