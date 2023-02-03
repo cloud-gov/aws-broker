@@ -181,7 +181,7 @@ func TestNeedCustomParameters(t *testing.T) {
 	}
 }
 
-func TestGetDefaultEngineParameter(t *testing.T) {
+func TestGetDefaultEngineParameterValue(t *testing.T) {
 	describeEngineDefaultParamsErr := errors.New("describe db engine default params err")
 	describeEngVersionsErr := errors.New("describe eng versions err")
 	testCases := map[string]struct {
@@ -341,7 +341,7 @@ func TestGetDefaultEngineParameter(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			paramValue, err := test.parameterGroupAdapter.getDefaultEngineParameter(test.paramName, test.dbInstance)
+			paramValue, err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.paramName, test.dbInstance)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}

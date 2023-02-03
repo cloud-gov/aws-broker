@@ -210,11 +210,12 @@ func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
 	return false
 }
 
-func (p *parameterGroupAdapter) getDefaultEngineParameter(paramName string, i *RDSInstance) (string, error) {
+func (p *parameterGroupAdapter) getDefaultEngineParameterValue(paramName string, i *RDSInstance) (string, error) {
 	err := p.getParameterGroupFamily(i)
 	if err != nil {
 		return "", err
 	}
+
 	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
 		DBParameterGroupFamily: &i.ParameterGroupFamily,
 	}
@@ -240,7 +241,7 @@ func (p *parameterGroupAdapter) buildCustomSharePreloadLibrariesParam(
 	i *RDSInstance,
 	customLibrary string,
 ) (string, error) {
-	defaultSharedPreloadLibraries, err := p.getDefaultEngineParameter("shared_preload_libraries", i)
+	defaultSharedPreloadLibraries, err := p.getDefaultEngineParameterValue("shared_preload_libraries", i)
 	if err != nil {
 		return "", err
 	}
