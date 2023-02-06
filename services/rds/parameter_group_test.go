@@ -23,7 +23,9 @@ type mockRDSClient struct {
 	describeEngineDefaultParamsErr      error
 	describeEngineDefaultParamsNumPages int
 	describeEngineDefaultParamsPageNum  int
-	describeDbParamsResult              *rds.DescribeDBParametersOutput
+	describeDbParamsResults             []*rds.DescribeDBParametersOutput
+	describeDbParamsNumPages            int
+	describeDbParamsPageNum             int
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -77,7 +79,13 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 	if m.describeDbParamsErr != nil {
 		return m.describeDbParamsErr
 	}
-	fn(m.describeDbParamsResult, true)
+	shouldContinue := true
+	for shouldContinue {
+		output := m.describeDbParamsResults[m.describeDbParamsPageNum]
+		m.describeDbParamsPageNum++
+		lastPage := m.describeDbParamsPageNum == m.describeDbParamsNumPages
+		shouldContinue = fn(output, lastPage)
+	}
 	return nil
 }
 
@@ -422,18 +430,41 @@ func TestGetCustomParameterValue(t *testing.T) {
 		parameterName          string
 		expectedParameterValue string
 		expectedErr            error
+		expectedNumPages       int
 	}{
+		"no value": {
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []*rds.Parameter{},
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			parameterName:          "foo",
+			expectedParameterValue: "",
+			expectedNumPages:       1,
+		},
 		"gets value": {
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
-					describeDbParamsResult: &rds.DescribeDBParametersOutput{
-						Parameters: []*rds.Parameter{
-							{
-								ParameterName:  aws.String("foo"),
-								ParameterValue: aws.String("bar"),
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []*rds.Parameter{
+								{
+									ParameterName:  aws.String("foo"),
+									ParameterValue: aws.String("bar"),
+								},
 							},
 						},
 					},
+					describeDbParamsNumPages: 1,
 				},
 			},
 			dbInstance: &RDSInstance{
@@ -442,6 +473,39 @@ func TestGetCustomParameterValue(t *testing.T) {
 			},
 			parameterName:          "foo",
 			expectedParameterValue: "bar",
+			expectedNumPages:       1,
+		},
+		"gets value, with paging": {
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []*rds.Parameter{
+								{
+									ParameterName:  aws.String("moo"),
+									ParameterValue: aws.String("cow"),
+								},
+							},
+						},
+						{
+							Parameters: []*rds.Parameter{
+								{
+									ParameterName:  aws.String("foo"),
+									ParameterValue: aws.String("bar"),
+								},
+							},
+						},
+					},
+					describeDbParamsNumPages: 2,
+				},
+			},
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			parameterName:          "foo",
+			expectedParameterValue: "bar",
+			expectedNumPages:       2,
 		},
 		"error getting DB params": {
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -489,6 +553,12 @@ func TestGetCustomParameterValue(t *testing.T) {
 			if test.dbInstance.ParameterValues[test.parameterName] != test.expectedParameterValue {
 				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, test.dbInstance.ParameterValues[test.parameterName])
 			}
+			mockClient, ok := test.parameterGroupAdapter.rds.(*mockRDSClient)
+			if ok {
+				if mockClient.describeDbParamsPageNum != test.expectedNumPages {
+					t.Fatalf("expected %v, got %v", test.expectedNumPages, mockClient.describeDbParamsPageNum)
+				}
+			}
 		})
 	}
 }
@@ -501,26 +571,26 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 		expectedErr           error
 		parameterGroupAdapter *parameterGroupAdapter
 	}{
-		// "no default param value": {
-		// 	dbInstance: &RDSInstance{
-		// 		EnablePgCron: true,
-		// 		DbType:       "postgres",
-		// 		DbVersion:    "12",
-		// 	},
-		// 	parameterGroupAdapter: &parameterGroupAdapter{
-		// 		rds: &mockRDSClient{
-		// 			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-		// 				{
-		// 					EngineDefaults: &rds.EngineDefaults{
-		// 						Parameters: []*rds.Parameter{},
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// 	customLibrary: "library1",
-		// 	expectedParam: "library1",
-		// },
+		"no default param value": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
+			},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{
+					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+						{
+							EngineDefaults: &rds.EngineDefaults{
+								Parameters: []*rds.Parameter{},
+							},
+						},
+					},
+				},
+			},
+			customLibrary: "library1",
+			expectedParam: "library1",
+		},
 		"has default param value": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
@@ -595,6 +665,7 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 
 func TestGetCustomParameters(t *testing.T) {
 	describeEngineParamsErr := errors.New("describe db engine params error")
+	describeDbParamsErr := errors.New("describe db params error")
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		expectedParams        map[string]map[string]paramDetails
@@ -707,6 +778,7 @@ func TestGetCustomParameters(t *testing.T) {
 							},
 						},
 					},
+					describeEngineDefaultParamsNumPages: 1,
 				},
 			},
 		},
@@ -732,11 +804,11 @@ func TestGetCustomParameters(t *testing.T) {
 				DbVersion:     "12",
 			},
 			expectedParams: nil,
-			expectedErr:    describeEngineParamsErr,
+			expectedErr:    describeDbParamsErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				settings: config.Settings{},
 				rds: &mockRDSClient{
-					describeEngineDefaultParamsErr: describeEngineParamsErr,
+					describeDbParamsErr: describeDbParamsErr,
 				},
 			},
 		},

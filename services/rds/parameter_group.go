@@ -306,7 +306,11 @@ func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, paramete
 		Source:               aws.String("user"),
 	}
 	err = p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
-		return p.findParameterValueInResults(i, result.Parameters, parameterName)
+		foundValue := p.findParameterValueInResults(i, result.Parameters, parameterName)
+		if lastPage {
+			return false
+		}
+		return foundValue
 	})
 	return err
 }
