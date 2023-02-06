@@ -217,7 +217,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	parameterGroupAdapter := NewParameterGroupAdapater(svc, d.settings)
+	parameterGroupAdapter := NewParameterGroupAdapter(svc, d.settings)
 	params, err := d.prepareCreateDbInput(i, password, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
@@ -238,7 +238,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	parameterGroupAdapter := NewParameterGroupAdapater(svc, d.settings)
+	parameterGroupAdapter := NewParameterGroupAdapter(svc, d.settings)
 	params, err := d.prepareModifyDbInstanceInput(i, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
@@ -390,7 +390,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		// clean up custom parameter groups
-		parameterGroupAdapter := NewParameterGroupAdapater(svc, d.settings)
+		parameterGroupAdapter := NewParameterGroupAdapter(svc, d.settings)
 		parameterGroupAdapter.CleanupCustomParameterGroups()
 		return base.InstanceGone, nil
 	}

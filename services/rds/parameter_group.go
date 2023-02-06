@@ -30,7 +30,7 @@ type paramDetails struct {
 	applyMethod string
 }
 
-func NewParameterGroupAdapater(rds rdsiface.RDSAPI, settings config.Settings) *parameterGroupAdapter {
+func NewParameterGroupAdapter(rds rdsiface.RDSAPI, settings config.Settings) *parameterGroupAdapter {
 	return &parameterGroupAdapter{
 		rds:                  rds,
 		settings:             settings,

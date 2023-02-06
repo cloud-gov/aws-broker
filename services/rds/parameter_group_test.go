@@ -70,7 +70,7 @@ func (m *mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefau
 }
 
 func TestNewParameterGroupAdapter(t *testing.T) {
-	parameterGroupAdapter := NewParameterGroupAdapater(
+	parameterGroupAdapter := NewParameterGroupAdapter(
 		&mockRDSClient{},
 		config.Settings{},
 	)
