@@ -1074,6 +1074,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 							},
 						},
 					},
+					describeEngineDefaultParamsNumPages: 1,
 				},
 				parameterGroupPrefix: "prefix-",
 			},
@@ -1091,7 +1092,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
 				},
 			},
-			expectedPGroupName: "",
+			expectedPGroupName: "database1",
 		},
 	}
 
