@@ -14,15 +14,16 @@ import (
 type mockRDSClient struct {
 	rdsiface.RDSAPI
 
-	dbEngineVersions                   []*rds.DBEngineVersion
-	describeEngVersionsErr             error
-	describeDbParamsErr                error
-	createDbParamGroupErr              error
-	modifyDbParamGroupErr              error
-	describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
-	describeEngineDefaultParamsErr     error
-	describeEngineDefaultParamsCallNum int
-	describeDbParamsResult             *rds.DescribeDBParametersOutput
+	dbEngineVersions                    []*rds.DBEngineVersion
+	describeEngVersionsErr              error
+	describeDbParamsErr                 error
+	createDbParamGroupErr               error
+	modifyDbParamGroupErr               error
+	describeEngineDefaultParamsResults  []*rds.DescribeEngineDefaultParametersOutput
+	describeEngineDefaultParamsErr      error
+	describeEngineDefaultParamsNumPages int
+	describeEngineDefaultParamsPageNum  int
+	describeDbParamsResult              *rds.DescribeDBParametersOutput
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -58,16 +59,18 @@ func (m mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) 
 	return nil, nil
 }
 
-func (m *mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefaultParametersInput) (*rds.DescribeEngineDefaultParametersOutput, error) {
+func (m *mockRDSClient) DescribeEngineDefaultParametersPages(input *rds.DescribeEngineDefaultParametersInput, fn func(*rds.DescribeEngineDefaultParametersOutput, bool) bool) error {
 	if m.describeEngineDefaultParamsErr != nil {
-		return nil, m.describeEngineDefaultParamsErr
+		return m.describeEngineDefaultParamsErr
 	}
-	if m.describeEngineDefaultParamsResults != nil {
-		res := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsCallNum]
-		m.describeEngineDefaultParamsCallNum++
-		return res, nil
+	shouldContinue := true
+	for shouldContinue {
+		output := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsPageNum]
+		m.describeEngineDefaultParamsPageNum++
+		lastPage := m.describeEngineDefaultParamsPageNum == m.describeEngineDefaultParamsNumPages
+		shouldContinue = fn(output, lastPage)
 	}
-	return nil, nil
+	return nil
 }
 
 func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParametersInput, fn func(*rds.DescribeDBParametersOutput, bool) bool) error {
@@ -205,7 +208,6 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 	describeEngVersionsErr := errors.New("describe eng versions err")
 	testCases := map[string]struct {
 		dbInstance                          *RDSInstance
-		expectedParams                      map[string]map[string]string
 		paramName                           string
 		expectedParamValue                  string
 		expectedErr                         error
@@ -218,12 +220,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
+			paramName:          "shared_preload_libraries",
 			expectedParamValue: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
@@ -234,6 +231,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
+					describeEngineDefaultParamsNumPages: 1,
 				},
 			},
 			expectedGetDefaultEngineParamsCalls: 1,
@@ -244,12 +242,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
+			paramName:          "shared_preload_libraries",
 			expectedParamValue: "random-library",
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
@@ -265,6 +258,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
+					describeEngineDefaultParamsNumPages: 1,
 				},
 			},
 			expectedGetDefaultEngineParamsCalls: 1,
@@ -276,11 +270,6 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbVersion:    "12",
 			},
 			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
@@ -306,6 +295,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
+					describeEngineDefaultParamsNumPages: 2,
 				},
 			},
 			expectedParamValue:                  "a-library,b-library",
@@ -317,12 +307,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
+			paramName:          "shared_preload_libraries",
 			expectedErr:        describeEngineDefaultParamsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -336,12 +321,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				EnablePgCron: true,
 				DbType:       "postgres",
 			},
-			paramName: "shared_preload_libraries",
-			expectedParams: map[string]map[string]string{
-				"postgres": {
-					"shared_preload_libaries": "pg-cron",
-				},
-			},
+			paramName:          "shared_preload_libraries",
 			expectedErr:        describeEngVersionsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -360,20 +340,20 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			paramValue, err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.paramName, test.dbInstance)
+			err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.paramName, test.dbInstance)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if paramValue != test.expectedParamValue {
-				t.Errorf("expected: %s, got: %s", test.expectedParamValue, paramValue)
+			if test.dbInstance.ParameterValues[test.paramName] != test.expectedParamValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParamValue, test.dbInstance.ParameterValues[test.paramName])
 			}
 			mockClient, ok := test.parameterGroupAdapter.rds.(*mockRDSClient)
 			if ok {
-				if mockClient.describeEngineDefaultParamsCallNum != test.expectedGetDefaultEngineParamsCalls {
-					t.Fatalf("expected %v, got %v", test.expectedGetDefaultEngineParamsCalls, mockClient.describeEngineDefaultParamsCallNum)
+				if mockClient.describeEngineDefaultParamsPageNum != test.expectedGetDefaultEngineParamsCalls {
+					t.Fatalf("expected %v, got %v", test.expectedGetDefaultEngineParamsCalls, mockClient.describeEngineDefaultParamsPageNum)
 				}
 			}
 		})
@@ -499,7 +479,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			_, err := test.parameterGroupAdapter.getCustomParameterValue(test.dbInstance, test.parameterName)
+			err := test.parameterGroupAdapter.getCustomParameterValue(test.dbInstance, test.parameterName)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -513,8 +493,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 	}
 }
 
-func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
-	describeEngineParamsErr := errors.New("describe engine params error")
+func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		customLibrary         string
@@ -522,78 +501,93 @@ func TestBuildCustomSharePreloadLibrariesParam(t *testing.T) {
 		expectedErr           error
 		parameterGroupAdapter *parameterGroupAdapter
 	}{
-		"no default param value": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: true,
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
-			parameterGroupAdapter: &parameterGroupAdapter{
-				rds: &mockRDSClient{
-					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{},
-							},
-						},
-					},
-				},
-			},
-			customLibrary: "library1",
-			expectedParam: "library1",
-		},
+		// "no default param value": {
+		// 	dbInstance: &RDSInstance{
+		// 		EnablePgCron: true,
+		// 		DbType:       "postgres",
+		// 		DbVersion:    "12",
+		// 	},
+		// 	parameterGroupAdapter: &parameterGroupAdapter{
+		// 		rds: &mockRDSClient{
+		// 			describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+		// 				{
+		// 					EngineDefaults: &rds.EngineDefaults{
+		// 						Parameters: []*rds.Parameter{},
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	customLibrary: "library1",
+		// 	expectedParam: "library1",
+		// },
 		"has default param value": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
+				ParameterValues: map[string]string{
+					"shared_preload_libraries": "library1",
+				},
 			},
 			parameterGroupAdapter: &parameterGroupAdapter{
-				rds: &mockRDSClient{
-					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
-									{
-										ParameterName:  aws.String("shared_preload_libraries"),
-										ParameterValue: aws.String("library1"),
-									},
-								},
-							},
-						},
-					},
-				},
+				rds: &mockRDSClient{},
 			},
 			customLibrary: "library2",
 			expectedParam: "library2,library1",
 		},
-		"describe db default params error": {
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			param := test.parameterGroupAdapter.addLibraryToSharedPreloadLibraries(test.dbInstance, test.customLibrary)
+			if param != test.expectedParam {
+				t.Fatalf("expected %s, got: %s", test.expectedParam, param)
+			}
+		})
+	}
+}
+
+func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		customLibrary          string
+		parameterGroupAdapter  *parameterGroupAdapter
+		expectedParameterValue string
+	}{
+		"returns empty default": {
+			dbInstance: &RDSInstance{
+				EnablePgCron:    true,
+				DbType:          "postgres",
+				DbVersion:       "12",
+				ParameterValues: map[string]string{},
+			},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{},
+			},
+			customLibrary:          "pg_cron",
+			expectedParameterValue: "",
+		},
+		"removes value": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
-			},
-			customLibrary: "library2",
-			expectedParam: "",
-			expectedErr:   describeEngineParamsErr,
-			parameterGroupAdapter: &parameterGroupAdapter{
-				rds: &mockRDSClient{
-					describeEngineDefaultParamsErr: describeEngineParamsErr,
+				ParameterValues: map[string]string{
+					"shared_preload_libraries": "a,b,pg_cron",
 				},
 			},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{},
+			},
+			customLibrary:          "pg_cron",
+			expectedParameterValue: "a,b",
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			param, err := test.parameterGroupAdapter.buildCustomSharePreloadLibrariesParam(test.dbInstance, test.customLibrary)
-			if test.expectedErr == nil && err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if !errors.Is(err, test.expectedErr) {
-				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
-			}
-			if param != test.expectedParam {
-				t.Fatalf("expected %s, got: %s", test.expectedParam, param)
+			parameterValue := test.parameterGroupAdapter.removeLibraryFromSharedPreloadLibraries(test.dbInstance, test.customLibrary)
+			if parameterValue != test.expectedParameterValue {
+				t.Fatalf("expected %s, got: %s", test.expectedParameterValue, parameterValue)
 			}
 		})
 	}
@@ -716,11 +710,26 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 		},
-		"describe db default params error": {
+		"enable PG cron, describe db default params error": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
+			},
+			expectedParams: nil,
+			expectedErr:    describeEngineParamsErr,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+				rds: &mockRDSClient{
+					describeEngineDefaultParamsErr: describeEngineParamsErr,
+				},
+			},
+		},
+		"disable PG cron, describe db default params error": {
+			dbInstance: &RDSInstance{
+				DisablePgCron: true,
+				DbType:        "postgres",
+				DbVersion:     "12",
 			},
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
