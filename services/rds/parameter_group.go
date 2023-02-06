@@ -42,18 +42,20 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSI
 	if !p.needCustomParameters(i) {
 		return nil
 	}
+
+	p.setParameterGroupName(i)
+
 	customRDSParameters, err := p.getCustomParameters(i)
 	if err != nil {
 		return fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
 
 	// apply parameter group
-	parameterGroupName, err := p.createOrModifyCustomParameterGroup(i, customRDSParameters)
+	err = p.createOrModifyCustomParameterGroup(i, customRDSParameters)
 	if err != nil {
 		log.Println(err.Error())
 		return fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
-	i.ParameterGroupName = parameterGroupName
 	return nil
 }
 
@@ -126,9 +128,9 @@ func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
 	return nil
 }
 
-func (p *parameterGroupAdapter) checkIfParameterGroupExists(pgroupName string) bool {
+func (p *parameterGroupAdapter) checkIfParameterGroupExists(i *RDSInstance) bool {
 	dbParametersInput := &rds.DescribeDBParametersInput{
-		DBParameterGroupName: aws.String(pgroupName),
+		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		MaxRecords:           aws.Int64(20),
 		Source:               aws.String("system"),
 	}
@@ -137,9 +139,22 @@ func (p *parameterGroupAdapter) checkIfParameterGroupExists(pgroupName string) b
 	_, err := p.rds.DescribeDBParameters(dbParametersInput)
 	parameterGroupExists := (err == nil)
 	if parameterGroupExists {
-		log.Printf("%s parameter group already exists", pgroupName)
+		log.Printf("%s parameter group already exists", i.ParameterGroupName)
 	}
 	return parameterGroupExists
+}
+
+func (p *parameterGroupAdapter) getParameterGroupName(i *RDSInstance) string {
+	// i.FormatDBName() should always return the same value for the same database name,
+	// so the parameter group name should remain consistent
+	return p.parameterGroupPrefix + i.FormatDBName()
+}
+
+func (p *parameterGroupAdapter) setParameterGroupName(i *RDSInstance) {
+	if i.ParameterGroupName != "" {
+		return
+	}
+	i.ParameterGroupName = p.getParameterGroupName(i)
 }
 
 // This function will return the a custom parameter group with whatever custom
@@ -148,29 +163,25 @@ func (p *parameterGroupAdapter) checkIfParameterGroupExists(pgroupName string) b
 func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
 	customparams map[string]map[string]paramDetails,
-) (string, error) {
-	// i.FormatDBName() should always return the same value for the same database name,
-	// so the parameter group name should remain consistent
-	pgroupName := p.parameterGroupPrefix + i.FormatDBName()
-
-	parameterGroupExists := p.checkIfParameterGroupExists(pgroupName)
+) error {
+	parameterGroupExists := p.checkIfParameterGroupExists(i)
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
 		err := p.getParameterGroupFamily(i)
 		if err != nil {
-			return "", fmt.Errorf("encounted error getting parameter group family: %w", err)
+			return fmt.Errorf("encounted error getting parameter group family: %w", err)
 		}
 
-		log.Printf("creating a parameter group named %s in the family of %s", pgroupName, i.ParameterGroupFamily)
+		log.Printf("creating a parameter group named %s in the family of %s", i.ParameterGroupName, i.ParameterGroupFamily)
 		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
-			DBParameterGroupName:   aws.String(pgroupName),
+			DBParameterGroupName:   aws.String(i.ParameterGroupName),
 			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
 		}
 
 		_, err = p.rds.CreateDBParameterGroup(createInput)
 		if err != nil {
-			return "", fmt.Errorf("encountered error when creating parameter group: %w", err)
+			return fmt.Errorf("encountered error when creating parameter group: %w", err)
 		}
 	}
 
@@ -186,15 +197,15 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 
 	// modify the parameter group we just created with the parameter list
 	modifyinput := &rds.ModifyDBParameterGroupInput{
-		DBParameterGroupName: aws.String(pgroupName),
+		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		Parameters:           parameters,
 	}
 	_, err := p.rds.ModifyDBParameterGroup(modifyinput)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return pgroupName, nil
+	return nil
 }
 
 func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
@@ -207,7 +218,7 @@ func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
 		(i.DbType == "mysql") {
 		return true
 	}
-	if i.EnablePgCron &&
+	if (i.EnablePgCron || i.DisablePgCron) &&
 		(i.DbType == "postgres") {
 		return true
 	}
@@ -259,6 +270,41 @@ func (p *parameterGroupAdapter) buildCustomSharePreloadLibrariesParam(
 	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
 	log.Printf("generated custom share_preload_libraries param: %s", customSharePreloadLibrariesParam)
 	return customSharePreloadLibrariesParam, nil
+}
+
+func (p *parameterGroupAdapter) findParameterValueInResults(
+	i *RDSInstance,
+	parameters []*rds.Parameter,
+	parameterName string,
+) bool {
+	if i.ParameterValues == nil {
+		i.ParameterValues = make(map[string]string)
+	}
+	for _, param := range parameters {
+		if *param.ParameterName == parameterName {
+			log.Printf("found parameter value %s for parameter %s", *param.ParameterValue, parameterName)
+			i.ParameterValues[parameterName] = *param.ParameterValue
+		}
+	}
+	return i.ParameterValues[parameterName] == ""
+}
+
+func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, parameterName string) (string, error) {
+	err := p.getParameterGroupFamily(i)
+	if err != nil {
+		return "", err
+	}
+	dbParametersInput := &rds.DescribeDBParametersInput{
+		DBParameterGroupName: aws.String(i.ParameterGroupName),
+		Source:               aws.String("user"),
+	}
+	err = p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
+		return p.findParameterValueInResults(i, result.Parameters, parameterName)
+	})
+	if err != nil {
+		return "", err
+	}
+	return i.ParameterValues[parameterName], nil
 }
 
 func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {

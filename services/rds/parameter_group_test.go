@@ -22,6 +22,7 @@ type mockRDSClient struct {
 	describeEngineDefaultParamsResults []*rds.DescribeEngineDefaultParametersOutput
 	describeEngineDefaultParamsErr     error
 	describeEngineDefaultParamsCallNum int
+	describeDbParamsResult             *rds.DescribeDBParametersOutput
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -67,6 +68,14 @@ func (m *mockRDSClient) DescribeEngineDefaultParameters(*rds.DescribeEngineDefau
 		return res, nil
 	}
 	return nil, nil
+}
+
+func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParametersInput, fn func(*rds.DescribeDBParametersOutput, bool) bool) error {
+	if m.describeDbParamsErr != nil {
+		return m.describeDbParamsErr
+	}
+	fn(m.describeDbParamsResult, true)
+	return nil
 }
 
 func TestNewParameterGroupAdapter(t *testing.T) {
@@ -164,6 +173,16 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
+			},
+			expectedOk: true,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+			},
+		},
+		"disable PG cron": {
+			dbInstance: &RDSInstance{
+				DisablePgCron: true,
+				DbType:        "postgres",
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &parameterGroupAdapter{
@@ -356,6 +375,139 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				if mockClient.describeEngineDefaultParamsCallNum != test.expectedGetDefaultEngineParamsCalls {
 					t.Fatalf("expected %v, got %v", test.expectedGetDefaultEngineParamsCalls, mockClient.describeEngineDefaultParamsCallNum)
 				}
+			}
+		})
+	}
+}
+
+func TestFindParameterValueInResults(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		parameterGroupAdapter  *parameterGroupAdapter
+		parameters             []*rds.Parameter
+		parameterName          string
+		expectedParameterValue string
+		expectedShouldContinue bool
+	}{
+		"finds value": {
+			parameters: []*rds.Parameter{
+				{
+					ParameterName:  aws.String("foo"),
+					ParameterValue: aws.String("bar"),
+				},
+			},
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			parameterName:          "foo",
+			expectedParameterValue: "bar",
+			expectedShouldContinue: false,
+		},
+		"does not find value": {
+			parameters: []*rds.Parameter{
+				{
+					ParameterName:  aws.String("moo"),
+					ParameterValue: aws.String("cow"),
+				},
+			},
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			parameterName:          "foo",
+			expectedParameterValue: "",
+			expectedShouldContinue: true,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			ok := test.parameterGroupAdapter.findParameterValueInResults(test.dbInstance, test.parameters, test.parameterName)
+			if ok != test.expectedShouldContinue {
+				t.Errorf("expected: %t, got: %t", test.expectedShouldContinue, ok)
+			}
+			if test.dbInstance.ParameterValues[test.parameterName] != test.expectedParameterValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, test.dbInstance.ParameterValues[test.parameterName])
+			}
+		})
+	}
+}
+
+func TestGetCustomParameterValue(t *testing.T) {
+	describeDbParamsError := errors.New("describe db params error")
+	describeEngVersionsErr := errors.New("describe eng versions error")
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		parameterGroupAdapter  *parameterGroupAdapter
+		parameterName          string
+		expectedParameterValue string
+		expectedErr            error
+	}{
+		"gets value": {
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{
+					describeDbParamsResult: &rds.DescribeDBParametersOutput{
+						Parameters: []*rds.Parameter{
+							{
+								ParameterName:  aws.String("foo"),
+								ParameterValue: aws.String("bar"),
+							},
+						},
+					},
+				},
+			},
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			parameterName:          "foo",
+			expectedParameterValue: "bar",
+		},
+		"error getting DB params": {
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{
+					describeDbParamsErr: describeDbParamsError,
+				},
+			},
+			dbInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "12",
+			},
+			parameterName: "foo",
+			expectedErr:   describeDbParamsError,
+		},
+		"describe db engine versions error": {
+			dbInstance: &RDSInstance{
+				EnablePgCron: true,
+				DbType:       "postgres",
+			},
+			expectedErr:   describeEngVersionsErr,
+			parameterName: "foo",
+			parameterGroupAdapter: &parameterGroupAdapter{
+				rds: &mockRDSClient{
+					describeEngVersionsErr: describeEngVersionsErr,
+					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+						{
+							EngineDefaults: &rds.EngineDefaults{
+								Parameters: []*rds.Parameter{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			_, err := test.parameterGroupAdapter.getCustomParameterValue(test.dbInstance, test.parameterName)
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if test.dbInstance.ParameterValues[test.parameterName] != test.expectedParameterValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, test.dbInstance.ParameterValues[test.parameterName])
 			}
 		})
 	}
@@ -669,12 +821,14 @@ func TestGetParameterGroupFamily(t *testing.T) {
 func TestCheckIfParameterGroupExists(t *testing.T) {
 	dbParamsErr := errors.New("fail")
 	testCases := map[string]struct {
-		pGroupName            string
+		dbInstance            *RDSInstance
 		expectedExists        bool
 		parameterGroupAdapter *parameterGroupAdapter
 	}{
 		"error, return false": {
-			pGroupName:     "group1",
+			dbInstance: &RDSInstance{
+				ParameterGroupName: "group1",
+			},
 			expectedExists: false,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
@@ -683,7 +837,9 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 			},
 		},
 		"no error, return true": {
-			pGroupName:     "group2",
+			dbInstance: &RDSInstance{
+				ParameterGroupName: "group2",
+			},
 			expectedExists: true,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{},
@@ -692,7 +848,7 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			exists := test.parameterGroupAdapter.checkIfParameterGroupExists(test.pGroupName)
+			exists := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance)
 			if exists != test.expectedExists {
 				t.Fatalf("expected: %t, got: %t", test.expectedExists, exists)
 			}
@@ -700,7 +856,7 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 	}
 }
 
-func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
+func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 	createDbParamGroupErr := errors.New("create DB params err")
 	describeEngVersionsErr := errors.New("describe DB engine versions err")
 	modifyDbParamGroupErr := errors.New("modify DB params err")
@@ -770,15 +926,15 @@ func TestCreateOrModifyCustomParameterGroupFunc(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			pGroupName, err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(test.dbInstance, nil)
+			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(test.dbInstance, nil)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if pGroupName != test.expectedPGroupName {
-				t.Errorf("expected parameter group name: %s, got: %s", test.expectedPGroupName, pGroupName)
+			if test.dbInstance.ParameterGroupName != test.expectedPGroupName {
+				t.Errorf("expected parameter group name: %s, got: %s", test.expectedPGroupName, test.dbInstance.ParameterGroupName)
 			}
 		})
 	}

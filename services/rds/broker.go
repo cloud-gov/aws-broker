@@ -239,6 +239,9 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
+	if !options.EnablePgCron && existingInstance.EnablePgCron {
+		existingInstance.DisablePgCron = true
+	}
 	existingInstance.EnablePgCron = options.EnablePgCron
 
 	// Fetch the new plan that has been requested.
