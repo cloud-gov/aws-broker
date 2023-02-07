@@ -44,12 +44,12 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSI
 		return nil
 	}
 
-	p.setParameterGroupName(i)
-
 	customRDSParameters, err := p.getCustomParameters(i)
 	if err != nil {
 		return fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
+
+	p.setParameterGroupName(i)
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, customRDSParameters)
@@ -227,7 +227,7 @@ func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
 	return false
 }
 
-func (p *parameterGroupAdapter) getDefaultEngineParameterValue(parameterName string, i *RDSInstance) error {
+func (p *parameterGroupAdapter) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) error {
 	err := p.getParameterGroupFamily(i)
 	if err != nil {
 		return err
@@ -315,6 +315,14 @@ func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, paramete
 	return err
 }
 
+func (p *parameterGroupAdapter) getExistingParameterValue(i *RDSInstance, parameterName string) error {
+	fmt.Println(i.ParameterGroupName)
+	if i.ParameterGroupName != "" {
+		return p.getCustomParameterValue(i, parameterName)
+	}
+	return p.getDefaultEngineParameterValue(i, parameterName)
+}
+
 func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
 	customRDSParameters := make(map[string]map[string]paramDetails)
 
@@ -346,7 +354,7 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]paramDetails)
 		if i.EnablePgCron {
-			err := p.getDefaultEngineParameterValue(sharedPreloadLibrariesParameterName, i)
+			err := p.getExistingParameterValue(i, sharedPreloadLibrariesParameterName)
 			if err != nil {
 				return nil, err
 			}
@@ -358,7 +366,7 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 		}
 
 		if i.DisablePgCron {
-			err := p.getCustomParameterValue(i, sharedPreloadLibrariesParameterName)
+			err := p.getExistingParameterValue(i, sharedPreloadLibrariesParameterName)
 			if err != nil {
 				return nil, err
 			}

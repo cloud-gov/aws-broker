@@ -396,7 +396,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.paramName, test.dbInstance)
+			err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.dbInstance, test.paramName)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1125,17 +1125,29 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 		},
 		"needs custom params, error": {
 			dbInstance: &RDSInstance{
-				DbType:          "mysql",
-				BinaryLogFormat: "ROW",
-				Database:        "database1",
+				DbType:             "mysql",
+				BinaryLogFormat:    "ROW",
+				Database:           "database1",
+				ParameterGroupName: "group1",
 			},
 			expectedErr: modifyDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []*rds.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+					describeDbParamsNumPages: 1,
 				},
 			},
-			expectedPGroupName: "database1",
+			expectedPGroupName: "group1",
 		},
 	}
 
