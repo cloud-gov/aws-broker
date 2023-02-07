@@ -802,7 +802,7 @@ func TestGetCustomParameters(t *testing.T) {
 				settings: config.Settings{},
 			},
 		},
-		"enable PG cron": {
+		"enable PG cron, no existing parameter group": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
@@ -830,6 +830,98 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 		},
+		"enable PG cron, existing parameter group": {
+			dbInstance: &RDSInstance{
+				EnablePgCron:       true,
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "group1",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"postgres": {
+					"shared_preload_libraries": paramDetails{
+						value:       "pg_cron",
+						applyMethod: "pending-reboot",
+					},
+				},
+			},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []*rds.Parameter{},
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+		},
+		"disable PG cron, no existing parameter group": {
+			dbInstance: &RDSInstance{
+				DisablePgCron: true,
+				DbType:        "postgres",
+				DbVersion:     "12",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"postgres": {
+					"shared_preload_libraries": paramDetails{
+						value:       "foo,bar",
+						applyMethod: "pending-reboot",
+					},
+				},
+			},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+				rds: &mockRDSClient{
+					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
+						{
+							EngineDefaults: &rds.EngineDefaults{
+								Parameters: []*rds.Parameter{
+									{
+										ParameterName:  aws.String("shared_preload_libraries"),
+										ParameterValue: aws.String("foo,bar"),
+									},
+								},
+							},
+						},
+					},
+					describeEngineDefaultParamsNumPages: 1,
+				},
+			},
+		},
+		"disable PG cron, existing parameter group": {
+			dbInstance: &RDSInstance{
+				DisablePgCron:      true,
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "group1",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"postgres": {
+					"shared_preload_libraries": paramDetails{
+						value:       "foo,bar",
+						applyMethod: "pending-reboot",
+					},
+				},
+			},
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []*rds.Parameter{
+								{
+									ParameterName:  aws.String("shared_preload_libraries"),
+									ParameterValue: aws.String("pg_cron,foo,bar"),
+								},
+							},
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+		},
 		"enable PG cron, describe db default params error": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
@@ -845,11 +937,43 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 		},
+		"enable PG cron, describe db params error": {
+			dbInstance: &RDSInstance{
+				EnablePgCron:       true,
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "group1",
+			},
+			expectedParams: nil,
+			expectedErr:    describeDbParamsErr,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+				rds: &mockRDSClient{
+					describeDbParamsErr: describeDbParamsErr,
+				},
+			},
+		},
 		"disable PG cron, describe db default params error": {
 			dbInstance: &RDSInstance{
 				DisablePgCron: true,
 				DbType:        "postgres",
 				DbVersion:     "12",
+			},
+			expectedParams: nil,
+			expectedErr:    describeEngineParamsErr,
+			parameterGroupAdapter: &parameterGroupAdapter{
+				settings: config.Settings{},
+				rds: &mockRDSClient{
+					describeEngineDefaultParamsErr: describeEngineParamsErr,
+				},
+			},
+		},
+		"disable PG cron, describe db params error": {
+			dbInstance: &RDSInstance{
+				DisablePgCron:      true,
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "group1",
 			},
 			expectedParams: nil,
 			expectedErr:    describeDbParamsErr,
