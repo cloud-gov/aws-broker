@@ -99,6 +99,54 @@ func TestNewParameterGroupAdapter(t *testing.T) {
 	}
 }
 
+func TestGetParameterGroupName(t *testing.T) {
+	p := &parameterGroupAdapter{
+		parameterGroupPrefix: "prefix-",
+	}
+	i := &RDSInstance{
+		Database: "db1234",
+	}
+	parameterGroupName := p.getParameterGroupName(i)
+	expectedParameterGroupName := "prefix-db1234"
+	if parameterGroupName != expectedParameterGroupName {
+		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
+	}
+}
+
+func TestSetParameterGroupName(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance                 *RDSInstance
+		expectedParameterGroupName string
+		parameterGroupAdapter      *parameterGroupAdapter
+	}{
+		"no existing value": {
+			parameterGroupAdapter: &parameterGroupAdapter{
+				parameterGroupPrefix: "prefix-",
+			},
+			dbInstance: &RDSInstance{
+				Database: "db1234",
+			},
+			expectedParameterGroupName: "prefix-db1234",
+		},
+		"has existing value": {
+			parameterGroupAdapter: &parameterGroupAdapter{},
+			dbInstance: &RDSInstance{
+				ParameterGroupName: "param-group-1234",
+			},
+			expectedParameterGroupName: "param-group-1234",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			test.parameterGroupAdapter.setParameterGroupName(test.dbInstance)
+			if test.dbInstance.ParameterGroupName != test.expectedParameterGroupName {
+				t.Errorf("got parameter group name: %s, expected %s", test.dbInstance.ParameterGroupName, test.expectedParameterGroupName)
+			}
+		})
+	}
+}
+
 func TestNeedCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
