@@ -193,28 +193,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
-
-	options := Options{}
-	if len(modifyRequest.RawParameters) > 0 {
-		err := json.Unmarshal(modifyRequest.RawParameters, &options)
-		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
-		}
-		err = options.Validate(broker.settings)
-		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
-		}
-	}
-
-	// Load the existing instance provided.
-	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
-	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
-	}
-
+func (broker *rdsBroker) ParseModifyOptions(options Options, existingInstance *RDSInstance) response.Response {
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
@@ -243,6 +222,35 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		existingInstance.DisablePgCron = true
 	}
 	existingInstance.EnablePgCron = options.EnablePgCron
+	return nil
+}
+
+func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
+	existingInstance := RDSInstance{}
+
+	options := Options{}
+	if len(modifyRequest.RawParameters) > 0 {
+		err := json.Unmarshal(modifyRequest.RawParameters, &options)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		}
+	}
+
+	// Load the existing instance provided.
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
+	}
+
+	resp := broker.ParseModifyOptions(options, &existingInstance)
+	if resp != nil {
+		return resp
+	}
 
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
