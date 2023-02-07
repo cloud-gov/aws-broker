@@ -266,6 +266,7 @@ func (p *parameterGroupAdapter) removeLibraryFromSharedPreloadLibraries(
 	customLibrary string,
 ) string {
 	if i.ParameterValues[sharedPreloadLibrariesParameterName] == "" {
+		fmt.Printf("Parameter value for %s is required\n, none found", sharedPreloadLibrariesParameterName)
 		return i.ParameterValues[sharedPreloadLibrariesParameterName]
 	}
 	libraries := strings.Split(i.ParameterValues[sharedPreloadLibrariesParameterName], ",")
