@@ -26,6 +26,7 @@ type Options struct {
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
 	BinaryLogFormat       string `json:"binary_log_format"`
 	EnablePgCron          bool   `json:"enable_pg_cron"`
+	DisablePgCron         bool   `json:"disable_pg_cron"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -218,9 +219,7 @@ func (broker *rdsBroker) ParseModifyOptions(options Options, existingInstance *R
 		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
-	if !options.EnablePgCron && existingInstance.EnablePgCron {
-		existingInstance.DisablePgCron = true
-	}
+	existingInstance.DisablePgCron = options.DisablePgCron
 	existingInstance.EnablePgCron = options.EnablePgCron
 	return nil
 }

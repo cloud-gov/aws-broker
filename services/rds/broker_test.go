@@ -121,18 +121,9 @@ func TestParseModifyOptions(t *testing.T) {
 				EnablePgCron: true,
 			},
 		},
-		"disable PG cron, not currently enabled": {
+		"disable PG cron": {
 			options: Options{
-				EnablePgCron: false,
-			},
-			existingInstance: &RDSInstance{},
-			expectedInstance: &RDSInstance{
-				EnablePgCron: false,
-			},
-		},
-		"disable PG cron, currently enabled": {
-			options: Options{
-				EnablePgCron: false,
+				DisablePgCron: true,
 			},
 			existingInstance: &RDSInstance{
 				EnablePgCron: true,
