@@ -297,15 +297,11 @@ func (p *parameterGroupAdapter) findParameterValueInResults(
 }
 
 func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, parameterName string) error {
-	err := p.getParameterGroupFamily(i)
-	if err != nil {
-		return err
-	}
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		Source:               aws.String("user"),
 	}
-	err = p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
+	err := p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
 		foundValue := p.findParameterValueInResults(i, result.Parameters, parameterName)
 		if lastPage {
 			return false
@@ -316,7 +312,6 @@ func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, paramete
 }
 
 func (p *parameterGroupAdapter) getExistingParameterValue(i *RDSInstance, parameterName string) error {
-	fmt.Println(i.ParameterGroupName)
 	if i.ParameterGroupName != "" {
 		return p.getCustomParameterValue(i, parameterName)
 	}

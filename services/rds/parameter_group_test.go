@@ -471,7 +471,6 @@ func TestFindParameterValueInResults(t *testing.T) {
 
 func TestGetCustomParameterValue(t *testing.T) {
 	describeDbParamsError := errors.New("describe db params error")
-	describeEngVersionsErr := errors.New("describe eng versions error")
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		parameterGroupAdapter  *parameterGroupAdapter
@@ -567,26 +566,6 @@ func TestGetCustomParameterValue(t *testing.T) {
 			},
 			parameterName: "foo",
 			expectedErr:   describeDbParamsError,
-		},
-		"describe db engine versions error": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: true,
-				DbType:       "postgres",
-			},
-			expectedErr:   describeEngVersionsErr,
-			parameterName: "foo",
-			parameterGroupAdapter: &parameterGroupAdapter{
-				rds: &mockRDSClient{
-					describeEngVersionsErr: describeEngVersionsErr,
-					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{},
-							},
-						},
-					},
-				},
-			},
 		},
 	}
 	for name, test := range testCases {
