@@ -944,17 +944,16 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
-		expectedPGroupName    string
 		expectedErr           error
 		parameterGroupAdapter *parameterGroupAdapter
 	}{
 		"error getting parameter group family": {
 			dbInstance: &RDSInstance{
-				Database: "foobar",
-				DbType:   "postgres",
+				Database:           "foobar",
+				DbType:             "postgres",
+				ParameterGroupName: "foobar",
 			},
-			expectedPGroupName: "",
-			expectedErr:        describeEngVersionsErr,
+			expectedErr: describeEngVersionsErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
 					describeDbParamsErr:    errors.New("describe DB params err"),
@@ -964,12 +963,12 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 		},
 		"error creating database parameter group": {
 			dbInstance: &RDSInstance{
-				Database:  "foobar",
-				DbType:    "postgres",
-				DbVersion: "12",
+				Database:           "foobar",
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "foobar",
 			},
-			expectedPGroupName: "",
-			expectedErr:        createDbParamGroupErr,
+			expectedErr: createDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
 					describeDbParamsErr:   errors.New("describe DB params err"),
@@ -979,12 +978,12 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 		},
 		"error modifying database parameter group": {
 			dbInstance: &RDSInstance{
-				Database:  "foobar",
-				DbType:    "postgres",
-				DbVersion: "12",
+				Database:           "foobar",
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "foobar",
 			},
-			expectedPGroupName: "",
-			expectedErr:        modifyDbParamGroupErr,
+			expectedErr: modifyDbParamGroupErr,
 			parameterGroupAdapter: &parameterGroupAdapter{
 				rds: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
@@ -993,14 +992,13 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 		},
 		"success": {
 			dbInstance: &RDSInstance{
-				Database:  "foobar",
-				DbType:    "postgres",
-				DbVersion: "12",
+				Database:           "foobar",
+				DbType:             "postgres",
+				DbVersion:          "12",
+				ParameterGroupName: "foobar",
 			},
-			expectedPGroupName: "foobar",
 			parameterGroupAdapter: &parameterGroupAdapter{
-				rds:                  &mockRDSClient{},
-				parameterGroupPrefix: "",
+				rds: &mockRDSClient{},
 			},
 		},
 	}
@@ -1013,9 +1011,6 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
-			}
-			if test.dbInstance.ParameterGroupName != test.expectedPGroupName {
-				t.Errorf("expected parameter group name: %s, got: %s", test.expectedPGroupName, test.dbInstance.ParameterGroupName)
 			}
 		})
 	}
