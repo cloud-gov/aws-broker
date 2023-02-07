@@ -266,7 +266,7 @@ func (p *parameterGroupAdapter) removeLibraryFromSharedPreloadLibraries(
 	customLibrary string,
 ) string {
 	if i.ParameterValues[sharedPreloadLibrariesParameterName] == "" {
-		fmt.Printf("Parameter value for %s is required\n, none found", sharedPreloadLibrariesParameterName)
+		log.Printf("Parameter value for %s is required\n, none found", sharedPreloadLibrariesParameterName)
 		return i.ParameterValues[sharedPreloadLibrariesParameterName]
 	}
 	libraries := strings.Split(i.ParameterValues[sharedPreloadLibrariesParameterName], ",")
@@ -314,8 +314,10 @@ func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, paramete
 
 func (p *parameterGroupAdapter) getExistingParameterValue(i *RDSInstance, parameterName string) error {
 	if i.ParameterGroupName != "" {
+		log.Printf("fetching parameter %s from group %s", parameterName, i.ParameterGroupName)
 		return p.getCustomParameterValue(i, parameterName)
 	}
+	log.Printf("fetching parameter %s from engine defaults", parameterName)
 	return p.getDefaultEngineParameterValue(i, parameterName)
 }
 
@@ -349,24 +351,17 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]paramDetails)
-		if i.EnablePgCron {
+		if i.EnablePgCron || i.DisablePgCron {
 			err := p.getExistingParameterValue(i, sharedPreloadLibrariesParameterName)
 			if err != nil {
 				return nil, err
 			}
-			preloadLibrariesParam := p.addLibraryToSharedPreloadLibraries(i, pgCronLibraryName)
-			customRDSParameters["postgres"][sharedPreloadLibrariesParameterName] = paramDetails{
-				value:       preloadLibrariesParam,
-				applyMethod: "pending-reboot",
+			var preloadLibrariesParam string
+			if i.EnablePgCron {
+				preloadLibrariesParam = p.addLibraryToSharedPreloadLibraries(i, pgCronLibraryName)
+			} else {
+				preloadLibrariesParam = p.removeLibraryFromSharedPreloadLibraries(i, pgCronLibraryName)
 			}
-		}
-
-		if i.DisablePgCron {
-			err := p.getExistingParameterValue(i, sharedPreloadLibrariesParameterName)
-			if err != nil {
-				return nil, err
-			}
-			preloadLibrariesParam := p.removeLibraryFromSharedPreloadLibraries(i, pgCronLibraryName)
 			customRDSParameters["postgres"][sharedPreloadLibrariesParameterName] = paramDetails{
 				value:       preloadLibrariesParam,
 				applyMethod: "pending-reboot",
