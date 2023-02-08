@@ -219,6 +219,12 @@ func (broker *rdsBroker) ParseModifyOptions(options Options, existingInstance *R
 		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
+	if options.EnablePgCron && options.DisablePgCron {
+		return response.NewErrorResponse(
+			http.StatusBadRequest,
+			"Cannot enable and disable pg_cron extension at the same time",
+		)
+	}
 	existingInstance.DisablePgCron = options.DisablePgCron
 	existingInstance.EnablePgCron = options.EnablePgCron
 	return nil

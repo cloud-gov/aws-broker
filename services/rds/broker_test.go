@@ -133,6 +133,15 @@ func TestParseModifyOptions(t *testing.T) {
 				DisablePgCron: true,
 			},
 		},
+		"enable & disable PG cron, error": {
+			options: Options{
+				EnablePgCron:  true,
+				DisablePgCron: true,
+			},
+			existingInstance:   &RDSInstance{},
+			expectedInstance:   &RDSInstance{},
+			expectResponseCode: http.StatusBadRequest,
+		},
 	}
 
 	for name, test := range testCases {
