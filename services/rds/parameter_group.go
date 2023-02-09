@@ -129,9 +129,9 @@ func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
 	return nil
 }
 
-func (p *parameterGroupAdapter) checkIfParameterGroupExists(i *RDSInstance) bool {
+func (p *parameterGroupAdapter) checkIfParameterGroupExists(parameterGroupName string) bool {
 	dbParametersInput := &rds.DescribeDBParametersInput{
-		DBParameterGroupName: aws.String(i.ParameterGroupName),
+		DBParameterGroupName: aws.String(parameterGroupName),
 		MaxRecords:           aws.Int64(20),
 		Source:               aws.String("system"),
 	}
@@ -140,7 +140,7 @@ func (p *parameterGroupAdapter) checkIfParameterGroupExists(i *RDSInstance) bool
 	_, err := p.rds.DescribeDBParameters(dbParametersInput)
 	parameterGroupExists := (err == nil)
 	if parameterGroupExists {
-		log.Printf("%s parameter group already exists", i.ParameterGroupName)
+		log.Printf("%s parameter group already exists", parameterGroupName)
 	}
 	return parameterGroupExists
 }
@@ -164,7 +164,7 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
 	customparams map[string]map[string]paramDetails,
 ) error {
-	parameterGroupExists := p.checkIfParameterGroupExists(i)
+	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
 		err := p.getParameterGroupFamily(i)

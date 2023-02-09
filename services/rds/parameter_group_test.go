@@ -1080,7 +1080,7 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			exists := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance)
+			exists := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance.ParameterGroupName)
 			if exists != test.expectedExists {
 				t.Fatalf("expected: %t, got: %t", test.expectedExists, exists)
 			}
