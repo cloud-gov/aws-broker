@@ -106,7 +106,7 @@ func TestGetParameterGroupName(t *testing.T) {
 	i := &RDSInstance{
 		Database: "db1234",
 	}
-	parameterGroupName := p.getParameterGroupName(i)
+	parameterGroupName := getParameterGroupName(p, i)
 	expectedParameterGroupName := "prefix-db1234"
 	if parameterGroupName != expectedParameterGroupName {
 		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
@@ -139,7 +139,7 @@ func TestSetParameterGroupName(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.parameterGroupAdapter.setParameterGroupName(test.dbInstance)
+			setParameterGroupName(test.parameterGroupAdapter, test.dbInstance)
 			if test.dbInstance.ParameterGroupName != test.expectedParameterGroupName {
 				t.Errorf("got parameter group name: %s, expected %s", test.dbInstance.ParameterGroupName, test.expectedParameterGroupName)
 			}

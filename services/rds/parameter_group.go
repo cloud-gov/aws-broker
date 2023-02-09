@@ -49,7 +49,7 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSI
 		return fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
 
-	p.setParameterGroupName(i)
+	setParameterGroupName(p, i)
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, customRDSParameters)
@@ -145,22 +145,21 @@ func (p *parameterGroupAdapter) checkIfParameterGroupExists(i *RDSInstance) bool
 	return parameterGroupExists
 }
 
-func (p *parameterGroupAdapter) getParameterGroupName(i *RDSInstance) string {
+func getParameterGroupName(p *parameterGroupAdapter, i *RDSInstance) string {
 	// i.FormatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
 	return p.parameterGroupPrefix + i.FormatDBName()
 }
 
-func (p *parameterGroupAdapter) setParameterGroupName(i *RDSInstance) {
+func setParameterGroupName(p *parameterGroupAdapter, i *RDSInstance) {
 	if i.ParameterGroupName != "" {
 		return
 	}
-	i.ParameterGroupName = p.getParameterGroupName(i)
+	i.ParameterGroupName = getParameterGroupName(p, i)
 }
 
-// This function will return the a custom parameter group with whatever custom
-// parameters have been requested.  If there is no custom parameter group, it
-// will be created.
+// This function will either modify or create a custom parameter group with whatever custom
+// parameters have been requested.
 func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
 	customparams map[string]map[string]paramDetails,
