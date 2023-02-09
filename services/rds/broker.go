@@ -194,7 +194,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) ParseModifyOptions(options Options, existingInstance *RDSInstance) response.Response {
+func (broker *rdsBroker) parseModifyOptions(options Options, existingInstance *RDSInstance) response.Response {
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
@@ -252,7 +252,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
 
-	resp := broker.ParseModifyOptions(options, &existingInstance)
+	resp := broker.parseModifyOptions(options, &existingInstance)
 	if resp != nil {
 		return resp
 	}

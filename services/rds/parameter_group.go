@@ -16,11 +16,12 @@ import (
 const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
-type parameterGroupAdapterInterface interface {
+type parameterGroupClient interface {
 	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error
 }
 
-type parameterGroupAdapter struct {
+// awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
+type awsParameterGroupClient struct {
 	rds                  rdsiface.RDSAPI
 	settings             config.Settings
 	parameterGroupPrefix string
@@ -31,15 +32,19 @@ type paramDetails struct {
 	applyMethod string
 }
 
-func NewParameterGroupAdapter(rds rdsiface.RDSAPI, settings config.Settings) *parameterGroupAdapter {
-	return &parameterGroupAdapter{
+func NewAwsParameterGroupClient(rds rdsiface.RDSAPI, settings config.Settings) *awsParameterGroupClient {
+	return &awsParameterGroupClient{
 		rds:                  rds,
 		settings:             settings,
 		parameterGroupPrefix: "cg-aws-broker-",
 	}
 }
 
-func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
+// ProvisionCustomParameterGroupIfNecessary determines from the RDS instance struct whether
+// there needs to be a custom parameter group for the instance. If so, the method will either
+// create a new parameter group or modify an existing one with the correct parameters for the
+// instance
+func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
 	if !p.needCustomParameters(i) {
 		return nil
 	}
@@ -49,7 +54,7 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSI
 		return fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
 
-	setParameterGroupName(p, i)
+	setParameterGroupName(i, p)
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, customRDSParameters)
@@ -61,7 +66,7 @@ func (p *parameterGroupAdapter) ProvisionCustomParameterGroupIfNecessary(i *RDSI
 }
 
 // CleanupCustomParameterGroups searches out all the parameter groups that we created and tries to clean them up
-func (p *parameterGroupAdapter) CleanupCustomParameterGroups() {
+func (p *awsParameterGroupClient) CleanupCustomParameterGroups() {
 	input := &rds.DescribeDBParameterGroupsInput{}
 	err := p.rds.DescribeDBParameterGroupsPages(input, func(pgroups *rds.DescribeDBParameterGroupsOutput, lastPage bool) bool {
 		// If the pgroup matches the prefix, then try to delete it.
@@ -94,7 +99,7 @@ func (p *parameterGroupAdapter) CleanupCustomParameterGroups() {
 	}
 }
 
-func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
+func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error {
 	if i.ParameterGroupFamily != "" {
 		return nil
 	}
@@ -129,7 +134,7 @@ func (p *parameterGroupAdapter) getParameterGroupFamily(i *RDSInstance) error {
 	return nil
 }
 
-func (p *parameterGroupAdapter) checkIfParameterGroupExists(parameterGroupName string) bool {
+func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName string) bool {
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(parameterGroupName),
 		MaxRecords:           aws.Int64(20),
@@ -145,29 +150,16 @@ func (p *parameterGroupAdapter) checkIfParameterGroupExists(parameterGroupName s
 	return parameterGroupExists
 }
 
-func getParameterGroupName(p *parameterGroupAdapter, i *RDSInstance) string {
-	// i.FormatDBName() should always return the same value for the same database name,
-	// so the parameter group name should remain consistent
-	return p.parameterGroupPrefix + i.FormatDBName()
-}
-
-func setParameterGroupName(p *parameterGroupAdapter, i *RDSInstance) {
-	if i.ParameterGroupName != "" {
-		return
-	}
-	i.ParameterGroupName = getParameterGroupName(p, i)
-}
-
 // This function will either modify or create a custom parameter group with whatever custom
 // parameters have been requested.
-func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
+func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
 	customparams map[string]map[string]paramDetails,
 ) error {
 	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
-		err := p.getParameterGroupFamily(i)
+		family, err := p.getParameterGroupFamily(i)
 		if err != nil {
 			return fmt.Errorf("encounted error getting parameter group family: %w", err)
 		}
@@ -208,7 +200,7 @@ func (p *parameterGroupAdapter) createOrModifyCustomParameterGroup(
 	return nil
 }
 
-func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
+func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 	if i.EnableFunctions &&
 		p.settings.EnableFunctionsFeature &&
 		(i.DbType == "mysql") {
@@ -226,49 +218,51 @@ func (p *parameterGroupAdapter) needCustomParameters(i *RDSInstance) bool {
 	return false
 }
 
-func (p *parameterGroupAdapter) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) error {
+func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) (string, error) {
 	err := p.getParameterGroupFamily(i)
 	if err != nil {
-		return err
+		return "", err
 	}
 	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
 		DBParameterGroupFamily: &i.ParameterGroupFamily,
 	}
+	var parameterValue string
 	err = p.rds.DescribeEngineDefaultParametersPages(describeEngDefaultParamsInput, func(result *rds.DescribeEngineDefaultParametersOutput, lastPage bool) bool {
 		foundValue := p.findParameterValueInResults(i, result.EngineDefaults.Parameters, parameterName)
 		if lastPage {
 			return false
 		}
-		return foundValue
+		parameterValue = foundValue
+		return parameterValue == ""
 	})
-	return err
+	return parameterValue, err
 }
 
-func (p *parameterGroupAdapter) addLibraryToSharedPreloadLibraries(
-	i *RDSInstance,
+func (p *awsParameterGroupClient) addLibraryToSharedPreloadLibraries(
+	currentParameterValue string,
 	customLibrary string,
 ) string {
 	libraries := []string{}
 	if customLibrary != "" {
 		libraries = append(libraries, customLibrary)
 	}
-	if i.ParameterValues[sharedPreloadLibrariesParameterName] != "" {
-		libraries = append(libraries, i.ParameterValues[sharedPreloadLibrariesParameterName])
+	if currentParameterValue != "" {
+		libraries = append(libraries, currentParameterValue)
 	}
 	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
 	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
 	return customSharePreloadLibrariesParam
 }
 
-func (p *parameterGroupAdapter) removeLibraryFromSharedPreloadLibraries(
-	i *RDSInstance,
+func (p *awsParameterGroupClient) removeLibraryFromSharedPreloadLibraries(
+	currentParameterValue,
 	customLibrary string,
 ) string {
-	if i.ParameterValues[sharedPreloadLibrariesParameterName] == "" {
+	if currentParameterValue == "" {
 		log.Printf("Parameter value for %s is required\n, none found", sharedPreloadLibrariesParameterName)
-		return i.ParameterValues[sharedPreloadLibrariesParameterName]
+		return currentParameterValue
 	}
-	libraries := strings.Split(i.ParameterValues[sharedPreloadLibrariesParameterName], ",")
+	libraries := strings.Split(currentParameterValue, ",")
 	for idx, library := range libraries {
 		if library == customLibrary {
 			libraries = append(libraries[:idx], libraries[idx+1:]...)
@@ -279,39 +273,45 @@ func (p *parameterGroupAdapter) removeLibraryFromSharedPreloadLibraries(
 	return customSharePreloadLibrariesParam
 }
 
-func (p *parameterGroupAdapter) findParameterValueInResults(
+func (p *awsParameterGroupClient) findParameterValueInResults(
 	i *RDSInstance,
 	parameters []*rds.Parameter,
 	parameterName string,
-) bool {
-	if i.ParameterValues == nil {
-		i.ParameterValues = make(map[string]string)
-	}
+) string {
+	// if i.ParameterValues == nil {
+	// 	i.ParameterValues = make(map[string]string)
+	// }
+	var parameterValue string
 	for _, param := range parameters {
 		if *param.ParameterName == parameterName {
 			log.Printf("found parameter value %s for parameter %s", *param.ParameterValue, parameterName)
-			i.ParameterValues[parameterName] = *param.ParameterValue
+			parameterValue = *param.ParameterValue
+			// i.ParameterValues[parameterName] = *param.ParameterValue
 		}
 	}
-	return i.ParameterValues[parameterName] == ""
+	return parameterValue
 }
 
-func (p *parameterGroupAdapter) getCustomParameterValue(i *RDSInstance, parameterName string) error {
+func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parameterName string) (string, error) {
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		Source:               aws.String("user"),
 	}
+	var parameterValue string
 	err := p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
 		foundValue := p.findParameterValueInResults(i, result.Parameters, parameterName)
 		if lastPage {
 			return false
 		}
-		return foundValue
+		parameterValue = foundValue
+		return foundValue == ""
 	})
-	return err
+	return parameterValue, err
 }
 
-func (p *parameterGroupAdapter) getExistingParameterValue(i *RDSInstance, parameterName string) error {
+// getParameterValue will get the value of a parameter from the instance's custom parameter group if one exists
+// or from the engine default parameter group if not
+func (p *awsParameterGroupClient) getParameterValue(i *RDSInstance, parameterName string) (string, error) {
 	if i.ParameterGroupName != "" {
 		log.Printf("fetching parameter %s from group %s", parameterName, i.ParameterGroupName)
 		return p.getCustomParameterValue(i, parameterName)
@@ -320,7 +320,7 @@ func (p *parameterGroupAdapter) getExistingParameterValue(i *RDSInstance, parame
 	return p.getDefaultEngineParameterValue(i, parameterName)
 }
 
-func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
+func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
 	customRDSParameters := make(map[string]map[string]paramDetails)
 
 	if i.DbType == "mysql" {
@@ -351,15 +351,15 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]paramDetails)
 		if i.EnablePgCron || i.DisablePgCron {
-			err := p.getExistingParameterValue(i, sharedPreloadLibrariesParameterName)
+			parameterValue, err := p.getParameterValue(i, sharedPreloadLibrariesParameterName)
 			if err != nil {
 				return nil, err
 			}
 			var preloadLibrariesParam string
 			if i.EnablePgCron {
-				preloadLibrariesParam = p.addLibraryToSharedPreloadLibraries(i, pgCronLibraryName)
+				preloadLibrariesParam = p.addLibraryToSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			} else {
-				preloadLibrariesParam = p.removeLibraryFromSharedPreloadLibraries(i, pgCronLibraryName)
+				preloadLibrariesParam = p.removeLibraryFromSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			}
 			customRDSParameters["postgres"][sharedPreloadLibrariesParameterName] = paramDetails{
 				value:       preloadLibrariesParam,
@@ -369,4 +369,19 @@ func (p *parameterGroupAdapter) getCustomParameters(i *RDSInstance) (map[string]
 	}
 
 	return customRDSParameters, nil
+}
+
+// getParameterGroupName gets a parameter group name for the instance
+func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
+	// i.FormatDBName() should always return the same value for the same database name,
+	// so the parameter group name should remain consistent
+	return p.parameterGroupPrefix + i.FormatDBName()
+}
+
+// setParameterGroupName sets the parameter group name on the instance struct
+func setParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) {
+	if i.ParameterGroupName != "" {
+		return
+	}
+	i.ParameterGroupName = getParameterGroupName(p, i)
 }

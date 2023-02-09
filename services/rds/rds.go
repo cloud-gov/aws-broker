@@ -127,7 +127,7 @@ type dedicatedDBAdapter struct {
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
 	password string,
-	parameterGroupAdapter parameterGroupAdapterInterface,
+	parameterGroupAdapter parameterGroupClient,
 ) (*rds.CreateDBInstanceInput, error) {
 	var rdsTags []*rds.Tag
 
@@ -184,7 +184,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 	i *RDSInstance,
-	parameterGroupAdapter parameterGroupAdapterInterface,
+	parameterGroupAdapter parameterGroupClient,
 ) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// NOTE:  Only the following actions are allowed at this point:
@@ -217,7 +217,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	parameterGroupAdapter := NewParameterGroupAdapter(svc, d.settings)
+	parameterGroupAdapter := NewAwsParameterGroupClient(svc, d.settings)
 	params, err := d.prepareCreateDbInput(i, password, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
@@ -238,7 +238,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
 	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	parameterGroupAdapter := NewParameterGroupAdapter(svc, d.settings)
+	parameterGroupAdapter := NewAwsParameterGroupClient(svc, d.settings)
 	params, err := d.prepareModifyDbInstanceInput(i, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
@@ -390,7 +390,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		// clean up custom parameter groups
-		parameterGroupAdapter := NewParameterGroupAdapter(svc, d.settings)
+		parameterGroupAdapter := NewAwsParameterGroupClient(svc, d.settings)
 		parameterGroupAdapter.CleanupCustomParameterGroups()
 		return base.InstanceGone, nil
 	}

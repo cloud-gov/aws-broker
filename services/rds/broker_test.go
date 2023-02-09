@@ -147,7 +147,7 @@ func TestParseModifyOptions(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			broker := &rdsBroker{}
-			resp := broker.ParseModifyOptions(test.options, test.existingInstance)
+			resp := broker.parseModifyOptions(test.options, test.existingInstance)
 			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
 				t.Fatalf("expected instance and updated instance were not equal")
 			}
