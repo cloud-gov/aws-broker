@@ -41,8 +41,7 @@ type RDSInstance struct {
 	LicenseModel string `sql:"size(255)"`
 
 	BinaryLogFormat      string `sql:"size(255)"`
-	EnablePgCron         bool   `sql:"size(255)"`
-	DisablePgCron        bool   `sql:"-"`
+	EnablePgCron         *bool  `sql:"size(255)"`
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 }

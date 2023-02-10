@@ -210,7 +210,7 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 		(i.DbType == "mysql") {
 		return true
 	}
-	if (i.EnablePgCron || i.DisablePgCron) &&
+	if i.EnablePgCron != nil &&
 		(i.DbType == "postgres") {
 		return true
 	}
@@ -298,13 +298,13 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 
 	if i.DbType == "postgres" {
 		customRDSParameters["postgres"] = make(map[string]paramDetails)
-		if i.EnablePgCron || i.DisablePgCron {
+		if i.EnablePgCron != nil {
 			parameterValue, err := p.getParameterValue(i, sharedPreloadLibrariesParameterName)
 			if err != nil {
 				return nil, err
 			}
 			var sharedPreloadLibsParamValue string
-			if i.EnablePgCron {
+			if *i.EnablePgCron {
 				sharedPreloadLibsParamValue = addLibraryToSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			} else {
 				sharedPreloadLibsParamValue = removeLibraryFromSharedPreloadLibraries(parameterValue, pgCronLibraryName)

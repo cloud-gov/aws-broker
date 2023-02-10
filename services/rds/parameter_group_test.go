@@ -230,7 +230,7 @@ func TestNeedCustomParameters(t *testing.T) {
 		},
 		"enable PG cron": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 			},
 			expectedOk: true,
@@ -240,10 +240,19 @@ func TestNeedCustomParameters(t *testing.T) {
 		},
 		"disable PG cron": {
 			dbInstance: &RDSInstance{
-				DisablePgCron: true,
-				DbType:        "postgres",
+				EnablePgCron: aws.Bool(false),
+				DbType:       "postgres",
 			},
 			expectedOk: true,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: config.Settings{},
+			},
+		},
+		"enable PG cron not specified": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			expectedOk: false,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{},
 			},
@@ -272,7 +281,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 	}{
 		"no default param value": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -294,7 +303,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 		},
 		"default param value": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -321,7 +330,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 		},
 		"default param value, with paging": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -359,7 +368,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 		},
 		"describe db engine params error": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -374,7 +383,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 		},
 		"describe db engine versions error": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 			},
 			paramName:          "shared_preload_libraries",
@@ -584,7 +593,7 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 	}{
 		"no default param value": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -594,7 +603,7 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 		},
 		"has default param value": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -622,7 +631,7 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 	}{
 		"returns empty default": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -632,7 +641,7 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 		},
 		"removes value": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -744,7 +753,7 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"enable PG cron, no existing parameter group": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -772,7 +781,7 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"enable PG cron, existing parameter group": {
 			dbInstance: &RDSInstance{
-				EnablePgCron:       true,
+				EnablePgCron:       aws.Bool(true),
 				DbType:             "postgres",
 				DbVersion:          "12",
 				ParameterGroupName: "group1",
@@ -799,9 +808,9 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"disable PG cron, no existing parameter group": {
 			dbInstance: &RDSInstance{
-				DisablePgCron: true,
-				DbType:        "postgres",
-				DbVersion:     "12",
+				EnablePgCron: aws.Bool(false),
+				DbType:       "postgres",
+				DbVersion:    "12",
 			},
 			expectedParams: map[string]map[string]paramDetails{
 				"postgres": {
@@ -842,7 +851,7 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"disable PG cron, existing parameter group": {
 			dbInstance: &RDSInstance{
-				DisablePgCron:      true,
+				EnablePgCron:       aws.Bool(false),
 				DbType:             "postgres",
 				DbVersion:          "12",
 				ParameterGroupName: "group1",
@@ -874,7 +883,7 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"enable PG cron, describe db default params error": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
@@ -889,7 +898,7 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"enable PG cron, describe db params error": {
 			dbInstance: &RDSInstance{
-				EnablePgCron:       true,
+				EnablePgCron:       aws.Bool(true),
 				DbType:             "postgres",
 				DbVersion:          "12",
 				ParameterGroupName: "group1",
@@ -905,9 +914,9 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"disable PG cron, describe db default params error": {
 			dbInstance: &RDSInstance{
-				DisablePgCron: true,
-				DbType:        "postgres",
-				DbVersion:     "12",
+				EnablePgCron: aws.Bool(false),
+				DbType:       "postgres",
+				DbVersion:    "12",
 			},
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
@@ -920,7 +929,7 @@ func TestGetCustomParameters(t *testing.T) {
 		},
 		"disable PG cron, describe db params error": {
 			dbInstance: &RDSInstance{
-				DisablePgCron:      true,
+				EnablePgCron:       aws.Bool(false),
 				DbType:             "postgres",
 				DbVersion:          "12",
 				ParameterGroupName: "group1",
@@ -1140,7 +1149,6 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 	modifyDbParamGroupErr := errors.New("create DB param group error")
-
 	testCases := map[string]struct {
 		customParams          map[string]map[string]string
 		dbInstance            *RDSInstance
@@ -1174,7 +1182,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			dbInstance: &RDSInstance{
 				DbType:       "postgres",
 				DbVersion:    "12",
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 				Database:     "database2",
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{

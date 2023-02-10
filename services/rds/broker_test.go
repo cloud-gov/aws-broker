@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/config"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 func TestOptionsBinaryLogFormatValidation(t *testing.T) {
@@ -114,33 +115,17 @@ func TestParseModifyOptions(t *testing.T) {
 		},
 		"enable PG cron": {
 			options: Options{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 			},
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{
-				EnablePgCron: true,
+				EnablePgCron: aws.Bool(true),
 			},
 		},
-		"disable PG cron": {
-			options: Options{
-				DisablePgCron: true,
-			},
-			existingInstance: &RDSInstance{
-				EnablePgCron: true,
-			},
-			expectedInstance: &RDSInstance{
-				EnablePgCron:  false,
-				DisablePgCron: true,
-			},
-		},
-		"enable & disable PG cron, error": {
-			options: Options{
-				EnablePgCron:  true,
-				DisablePgCron: true,
-			},
-			existingInstance:   &RDSInstance{},
-			expectedInstance:   &RDSInstance{},
-			expectResponseCode: http.StatusBadRequest,
+		"enable PG cron not specified": {
+			options:          Options{},
+			existingInstance: &RDSInstance{},
+			expectedInstance: &RDSInstance{},
 		},
 	}
 

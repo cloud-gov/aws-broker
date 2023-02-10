@@ -446,7 +446,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 		t.Error("The instance should have metadata")
 	}
 
-	if !i.EnablePgCron {
+	if !*i.EnablePgCron {
 		t.Error("EnablePgCron should be true")
 	}
 }
@@ -764,7 +764,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if !i.EnablePgCron {
+	if !*i.EnablePgCron {
 		t.Error("EnablePgCron should be true")
 	}
 }
