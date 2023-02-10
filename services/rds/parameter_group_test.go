@@ -581,7 +581,6 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 		expectedParam         string
 		currentParameterValue string
 		expectedErr           error
-		parameterGroupAdapter *awsParameterGroupClient
 	}{
 		"no default param value": {
 			dbInstance: &RDSInstance{
@@ -599,9 +598,6 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{},
-			},
 			currentParameterValue: "library1",
 			customLibrary:         "library2",
 			expectedParam:         "library2,library1",
@@ -609,7 +605,7 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			param := test.parameterGroupAdapter.addLibraryToSharedPreloadLibraries(test.currentParameterValue, test.customLibrary)
+			param := addLibraryToSharedPreloadLibraries(test.currentParameterValue, test.customLibrary)
 			if param != test.expectedParam {
 				t.Fatalf("expected %s, got: %s", test.expectedParam, param)
 			}
@@ -621,7 +617,6 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		customLibrary          string
-		parameterGroupAdapter  *awsParameterGroupClient
 		currentParameterValue  string
 		expectedParameterValue string
 	}{
@@ -630,9 +625,6 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
-			},
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{},
 			},
 			currentParameterValue:  "",
 			customLibrary:          "pg_cron",
@@ -644,9 +636,6 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{},
-			},
 			currentParameterValue:  "a,b,pg_cron",
 			customLibrary:          "pg_cron",
 			expectedParameterValue: "a,b",
@@ -654,7 +643,7 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			parameterValue := test.parameterGroupAdapter.removeLibraryFromSharedPreloadLibraries(test.currentParameterValue, test.customLibrary)
+			parameterValue := removeLibraryFromSharedPreloadLibraries(test.currentParameterValue, test.customLibrary)
 			if parameterValue != test.expectedParameterValue {
 				t.Fatalf("expected %s, got: %s", test.expectedParameterValue, parameterValue)
 			}

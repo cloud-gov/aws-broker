@@ -218,41 +218,6 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 	return false
 }
 
-func (p *awsParameterGroupClient) addLibraryToSharedPreloadLibraries(
-	currentParameterValue string,
-	customLibrary string,
-) string {
-	libraries := []string{}
-	if customLibrary != "" {
-		libraries = append(libraries, customLibrary)
-	}
-	if currentParameterValue != "" {
-		libraries = append(libraries, currentParameterValue)
-	}
-	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
-	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
-	return customSharePreloadLibrariesParam
-}
-
-func (p *awsParameterGroupClient) removeLibraryFromSharedPreloadLibraries(
-	currentParameterValue,
-	customLibrary string,
-) string {
-	if currentParameterValue == "" {
-		log.Printf("Parameter value for %s is required\n, none found", sharedPreloadLibrariesParameterName)
-		return currentParameterValue
-	}
-	libraries := strings.Split(currentParameterValue, ",")
-	for idx, library := range libraries {
-		if library == customLibrary {
-			libraries = append(libraries[:idx], libraries[idx+1:]...)
-		}
-	}
-	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
-	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
-	return customSharePreloadLibrariesParam
-}
-
 func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) (string, error) {
 	err := p.getParameterGroupFamily(i)
 	if err != nil {
@@ -338,12 +303,11 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 			if err != nil {
 				return nil, err
 			}
-
 			var sharedPreloadLibsParamValue string
 			if i.EnablePgCron {
-				sharedPreloadLibsParamValue = p.addLibraryToSharedPreloadLibraries(parameterValue, pgCronLibraryName)
+				sharedPreloadLibsParamValue = addLibraryToSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			} else {
-				sharedPreloadLibsParamValue = p.removeLibraryFromSharedPreloadLibraries(parameterValue, pgCronLibraryName)
+				sharedPreloadLibsParamValue = removeLibraryFromSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			}
 			customRDSParameters["postgres"][sharedPreloadLibrariesParameterName] = paramDetails{
 				value:       sharedPreloadLibsParamValue,
@@ -395,4 +359,39 @@ func handleParameterPage(parameterValueChannel chan<- string, lastPage bool, par
 		sendParameterValueToResultChannel(parameterValueChannel, foundValue)
 	}
 	return shouldContinue
+}
+
+func addLibraryToSharedPreloadLibraries(
+	currentParameterValue string,
+	customLibrary string,
+) string {
+	libraries := []string{}
+	if customLibrary != "" {
+		libraries = append(libraries, customLibrary)
+	}
+	if currentParameterValue != "" {
+		libraries = append(libraries, currentParameterValue)
+	}
+	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
+	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
+	return customSharePreloadLibrariesParam
+}
+
+func removeLibraryFromSharedPreloadLibraries(
+	currentParameterValue,
+	customLibrary string,
+) string {
+	if currentParameterValue == "" {
+		log.Printf("Parameter value for %s is required\n, none found", sharedPreloadLibrariesParameterName)
+		return currentParameterValue
+	}
+	libraries := strings.Split(currentParameterValue, ",")
+	for idx, library := range libraries {
+		if library == customLibrary {
+			libraries = append(libraries[:idx], libraries[idx+1:]...)
+		}
+	}
+	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
+	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
+	return customSharePreloadLibrariesParam
 }
