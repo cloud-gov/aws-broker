@@ -334,6 +334,7 @@ func setParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) {
 	i.ParameterGroupName = getParameterGroupName(i, p)
 }
 
+// findParameterValueInResults finds the parameter value in a set of parameters, if any
 func findParameterValueInResults(
 	parameters []*rds.Parameter,
 	parameterName string,
@@ -348,19 +349,21 @@ func findParameterValueInResults(
 	return parameterValue
 }
 
-func sendParameterValueToResultChannel(parameterValueChannel chan<- string, foundValue string) {
-	parameterValueChannel <- foundValue
-}
-
+// handleParameterPage handles a page of parameter results from RDS SDK functions like DescribeEngineDefaultParametersPages.
+//
+// If a parameter value is found, it is sent to a result channel. A result channel is used to allow the caller context to wait on the result.
+//
+// If no result is found, a boolean is returned indicating whether to continue to the next page of results or not.
 func handleParameterPage(parameterValueChannel chan<- string, lastPage bool, parameters []*rds.Parameter, parameterName string) bool {
 	foundValue := findParameterValueInResults(parameters, parameterName)
 	shouldContinue := !lastPage && foundValue == ""
 	if !shouldContinue {
-		sendParameterValueToResultChannel(parameterValueChannel, foundValue)
+		parameterValueChannel <- foundValue
 	}
 	return shouldContinue
 }
 
+// addLibraryToSharedPreloadLibraries adds the specified custom library name to the current value of the shared_preload_libraries parameter.
 func addLibraryToSharedPreloadLibraries(
 	currentParameterValue string,
 	customLibrary string,
@@ -377,6 +380,7 @@ func addLibraryToSharedPreloadLibraries(
 	return customSharePreloadLibrariesParam
 }
 
+// removeLibraryFromSharedPreloadLibraries removes the specified custom library name from the current value of the shared_preload_libraries parameter.
 func removeLibraryFromSharedPreloadLibraries(
 	currentParameterValue,
 	customLibrary string,
