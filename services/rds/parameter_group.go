@@ -159,7 +159,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
-		family, err := p.getParameterGroupFamily(i)
+		err := p.getParameterGroupFamily(i)
 		if err != nil {
 			return fmt.Errorf("encounted error getting parameter group family: %w", err)
 		}
@@ -218,26 +218,6 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 	return false
 }
 
-func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) (string, error) {
-	err := p.getParameterGroupFamily(i)
-	if err != nil {
-		return "", err
-	}
-	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
-		DBParameterGroupFamily: &i.ParameterGroupFamily,
-	}
-	var parameterValue string
-	err = p.rds.DescribeEngineDefaultParametersPages(describeEngDefaultParamsInput, func(result *rds.DescribeEngineDefaultParametersOutput, lastPage bool) bool {
-		foundValue := p.findParameterValueInResults(i, result.EngineDefaults.Parameters, parameterName)
-		if lastPage {
-			return false
-		}
-		parameterValue = foundValue
-		return parameterValue == ""
-	})
-	return parameterValue, err
-}
-
 func (p *awsParameterGroupClient) addLibraryToSharedPreloadLibraries(
 	currentParameterValue string,
 	customLibrary string,
@@ -273,23 +253,25 @@ func (p *awsParameterGroupClient) removeLibraryFromSharedPreloadLibraries(
 	return customSharePreloadLibrariesParam
 }
 
-func (p *awsParameterGroupClient) findParameterValueInResults(
-	i *RDSInstance,
-	parameters []*rds.Parameter,
-	parameterName string,
-) string {
-	// if i.ParameterValues == nil {
-	// 	i.ParameterValues = make(map[string]string)
-	// }
-	var parameterValue string
-	for _, param := range parameters {
-		if *param.ParameterName == parameterName {
-			log.Printf("found parameter value %s for parameter %s", *param.ParameterValue, parameterName)
-			parameterValue = *param.ParameterValue
-			// i.ParameterValues[parameterName] = *param.ParameterValue
-		}
+func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) (string, error) {
+	err := p.getParameterGroupFamily(i)
+	if err != nil {
+		return "", err
 	}
-	return parameterValue
+	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
+		DBParameterGroupFamily: &i.ParameterGroupFamily,
+	}
+	// We have to use a channel to get the parameter value from the anonymous function to DescribeEngineDefaultParametersPages
+	// because the code is executed asychronously
+	var parameterValueChannel = make(chan string, 1)
+	err = p.rds.DescribeEngineDefaultParametersPages(describeEngDefaultParamsInput, func(result *rds.DescribeEngineDefaultParametersOutput, lastPage bool) bool {
+		return handleParameterPage(parameterValueChannel, lastPage, result.EngineDefaults.Parameters, parameterName)
+	})
+	if err != nil {
+		return "", err
+	}
+	parameterValue := <-parameterValueChannel
+	return parameterValue, err
 }
 
 func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parameterName string) (string, error) {
@@ -297,15 +279,16 @@ func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parame
 		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		Source:               aws.String("user"),
 	}
-	var parameterValue string
+	// We have to use a channel to get the parameter value from the anonymous function to DescribeDBParametersPages
+	// because the code is executed asychronously
+	var parameterValueChannel = make(chan string, 1)
 	err := p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
-		foundValue := p.findParameterValueInResults(i, result.Parameters, parameterName)
-		if lastPage {
-			return false
-		}
-		parameterValue = foundValue
-		return foundValue == ""
+		return handleParameterPage(parameterValueChannel, lastPage, result.Parameters, parameterName)
 	})
+	if err != nil {
+		return "", err
+	}
+	parameterValue := <-parameterValueChannel
 	return parameterValue, err
 }
 
@@ -355,14 +338,15 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 			if err != nil {
 				return nil, err
 			}
-			var preloadLibrariesParam string
+
+			var sharedPreloadLibsParamValue string
 			if i.EnablePgCron {
-				preloadLibrariesParam = p.addLibraryToSharedPreloadLibraries(parameterValue, pgCronLibraryName)
+				sharedPreloadLibsParamValue = p.addLibraryToSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			} else {
-				preloadLibrariesParam = p.removeLibraryFromSharedPreloadLibraries(parameterValue, pgCronLibraryName)
+				sharedPreloadLibsParamValue = p.removeLibraryFromSharedPreloadLibraries(parameterValue, pgCronLibraryName)
 			}
 			customRDSParameters["postgres"][sharedPreloadLibrariesParameterName] = paramDetails{
-				value:       preloadLibrariesParam,
+				value:       sharedPreloadLibsParamValue,
 				applyMethod: "pending-reboot",
 			}
 		}
@@ -383,5 +367,32 @@ func setParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) {
 	if i.ParameterGroupName != "" {
 		return
 	}
-	i.ParameterGroupName = getParameterGroupName(p, i)
+	i.ParameterGroupName = getParameterGroupName(i, p)
+}
+
+func findParameterValueInResults(
+	parameters []*rds.Parameter,
+	parameterName string,
+) string {
+	var parameterValue string
+	for _, param := range parameters {
+		if *param.ParameterName == parameterName {
+			log.Printf("found parameter value %s for parameter %s", *param.ParameterValue, parameterName)
+			parameterValue = *param.ParameterValue
+		}
+	}
+	return parameterValue
+}
+
+func sendParameterValueToResultChannel(parameterValueChannel chan<- string, foundValue string) {
+	parameterValueChannel <- foundValue
+}
+
+func handleParameterPage(parameterValueChannel chan<- string, lastPage bool, parameters []*rds.Parameter, parameterName string) bool {
+	foundValue := findParameterValueInResults(parameters, parameterName)
+	shouldContinue := !lastPage && foundValue == ""
+	if !shouldContinue {
+		sendParameterValueToResultChannel(parameterValueChannel, foundValue)
+	}
+	return shouldContinue
 }

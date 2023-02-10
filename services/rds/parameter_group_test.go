@@ -106,7 +106,7 @@ func TestGetParameterGroupName(t *testing.T) {
 	i := &RDSInstance{
 		Database: "db1234",
 	}
-	parameterGroupName := getParameterGroupName(p, i)
+	parameterGroupName := getParameterGroupName(i, p)
 	expectedParameterGroupName := "prefix-db1234"
 	if parameterGroupName != expectedParameterGroupName {
 		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
@@ -139,7 +139,7 @@ func TestSetParameterGroupName(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			setParameterGroupName(test.parameterGroupAdapter, test.dbInstance)
+			setParameterGroupName(test.dbInstance, test.parameterGroupAdapter)
 			if test.dbInstance.ParameterGroupName != test.expectedParameterGroupName {
 				t.Errorf("got parameter group name: %s, expected %s", test.dbInstance.ParameterGroupName, test.expectedParameterGroupName)
 			}
@@ -396,15 +396,15 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.dbInstance, test.paramName)
+			parameterValue, err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.dbInstance, test.paramName)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if test.dbInstance.ParameterValues[test.paramName] != test.expectedParamValue {
-				t.Errorf("expected: %s, got: %s", test.expectedParamValue, test.dbInstance.ParameterValues[test.paramName])
+			if parameterValue != test.expectedParamValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParamValue, parameterValue)
 			}
 			mockClient, ok := test.parameterGroupAdapter.rds.(*mockRDSClient)
 			if ok {
@@ -418,12 +418,9 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 
 func TestFindParameterValueInResults(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		parameterGroupAdapter  *awsParameterGroupClient
 		parameters             []*rds.Parameter
 		parameterName          string
 		expectedParameterValue string
-		expectedShouldContinue bool
 	}{
 		"finds value": {
 			parameters: []*rds.Parameter{
@@ -432,13 +429,8 @@ func TestFindParameterValueInResults(t *testing.T) {
 					ParameterValue: aws.String("bar"),
 				},
 			},
-			dbInstance: &RDSInstance{
-				DbType:    "postgres",
-				DbVersion: "12",
-			},
 			parameterName:          "foo",
 			expectedParameterValue: "bar",
-			expectedShouldContinue: false,
 		},
 		"does not find value": {
 			parameters: []*rds.Parameter{
@@ -447,23 +439,15 @@ func TestFindParameterValueInResults(t *testing.T) {
 					ParameterValue: aws.String("cow"),
 				},
 			},
-			dbInstance: &RDSInstance{
-				DbType:    "postgres",
-				DbVersion: "12",
-			},
 			parameterName:          "foo",
 			expectedParameterValue: "",
-			expectedShouldContinue: true,
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			ok := test.parameterGroupAdapter.findParameterValueInResults(test.dbInstance, test.parameters, test.parameterName)
-			if ok != test.expectedShouldContinue {
-				t.Errorf("expected: %t, got: %t", test.expectedShouldContinue, ok)
-			}
-			if test.dbInstance.ParameterValues[test.parameterName] != test.expectedParameterValue {
-				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, test.dbInstance.ParameterValues[test.parameterName])
+			parameterValue := findParameterValueInResults(test.parameters, test.parameterName)
+			if parameterValue != test.expectedParameterValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, parameterValue)
 			}
 		})
 	}
@@ -570,15 +554,15 @@ func TestGetCustomParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.getCustomParameterValue(test.dbInstance, test.parameterName)
+			parameterValue, err := test.parameterGroupAdapter.getCustomParameterValue(test.dbInstance, test.parameterName)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if test.dbInstance.ParameterValues[test.parameterName] != test.expectedParameterValue {
-				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, test.dbInstance.ParameterValues[test.parameterName])
+			if parameterValue != test.expectedParameterValue {
+				t.Errorf("expected: %s, got: %s", test.expectedParameterValue, parameterValue)
 			}
 			mockClient, ok := test.parameterGroupAdapter.rds.(*mockRDSClient)
 			if ok {
@@ -595,6 +579,7 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 		dbInstance            *RDSInstance
 		customLibrary         string
 		expectedParam         string
+		currentParameterValue string
 		expectedErr           error
 		parameterGroupAdapter *awsParameterGroupClient
 	}{
@@ -604,39 +589,27 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 				DbType:       "postgres",
 				DbVersion:    "12",
 			},
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{
-					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
-						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{},
-							},
-						},
-					},
-				},
-			},
-			customLibrary: "library1",
-			expectedParam: "library1",
+			currentParameterValue: "",
+			customLibrary:         "library1",
+			expectedParam:         "library1",
 		},
 		"has default param value": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
-				ParameterValues: map[string]string{
-					"shared_preload_libraries": "library1",
-				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
 			},
-			customLibrary: "library2",
-			expectedParam: "library2,library1",
+			currentParameterValue: "library1",
+			customLibrary:         "library2",
+			expectedParam:         "library2,library1",
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			param := test.parameterGroupAdapter.addLibraryToSharedPreloadLibraries(test.dbInstance, test.customLibrary)
+			param := test.parameterGroupAdapter.addLibraryToSharedPreloadLibraries(test.currentParameterValue, test.customLibrary)
 			if param != test.expectedParam {
 				t.Fatalf("expected %s, got: %s", test.expectedParam, param)
 			}
@@ -649,18 +622,19 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 		dbInstance             *RDSInstance
 		customLibrary          string
 		parameterGroupAdapter  *awsParameterGroupClient
+		currentParameterValue  string
 		expectedParameterValue string
 	}{
 		"returns empty default": {
 			dbInstance: &RDSInstance{
-				EnablePgCron:    true,
-				DbType:          "postgres",
-				DbVersion:       "12",
-				ParameterValues: map[string]string{},
+				EnablePgCron: true,
+				DbType:       "postgres",
+				DbVersion:    "12",
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
 			},
+			currentParameterValue:  "",
 			customLibrary:          "pg_cron",
 			expectedParameterValue: "",
 		},
@@ -669,20 +643,18 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 				EnablePgCron: true,
 				DbType:       "postgres",
 				DbVersion:    "12",
-				ParameterValues: map[string]string{
-					"shared_preload_libraries": "a,b,pg_cron",
-				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
 			},
+			currentParameterValue:  "a,b,pg_cron",
 			customLibrary:          "pg_cron",
 			expectedParameterValue: "a,b",
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			parameterValue := test.parameterGroupAdapter.removeLibraryFromSharedPreloadLibraries(test.dbInstance, test.customLibrary)
+			parameterValue := test.parameterGroupAdapter.removeLibraryFromSharedPreloadLibraries(test.currentParameterValue, test.customLibrary)
 			if parameterValue != test.expectedParameterValue {
 				t.Fatalf("expected %s, got: %s", test.expectedParameterValue, parameterValue)
 			}
@@ -858,6 +830,16 @@ func TestGetCustomParameters(t *testing.T) {
 							EngineDefaults: &rds.EngineDefaults{
 								Parameters: []*rds.Parameter{
 									{
+										ParameterName:  aws.String("test"),
+										ParameterValue: aws.String("moo"),
+									},
+								},
+							},
+						},
+						{
+							EngineDefaults: &rds.EngineDefaults{
+								Parameters: []*rds.Parameter{
+									{
 										ParameterName:  aws.String("shared_preload_libraries"),
 										ParameterValue: aws.String("foo,bar"),
 									},
@@ -865,7 +847,7 @@ func TestGetCustomParameters(t *testing.T) {
 							},
 						},
 					},
-					describeEngineDefaultParamsNumPages: 1,
+					describeEngineDefaultParamsNumPages: 2,
 				},
 			},
 		},
