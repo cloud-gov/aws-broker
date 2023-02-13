@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/catalog"
@@ -122,6 +123,7 @@ func (d *sharedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 type dedicatedDBAdapter struct {
 	Plan     catalog.RDSPlan
 	settings config.Settings
+	rds      rdsiface.RDSAPI
 }
 
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
@@ -215,15 +217,17 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-	parameterGroupAdapter := NewAwsParameterGroupClient(svc, d.settings)
+	parameterGroupAdapter := NewAwsParameterGroupClient(d.rds, d.settings)
 	params, err := d.prepareCreateDbInput(i, password, parameterGroupAdapter)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
 
-	resp, err := svc.CreateDBInstance(params)
+	resp, err := d.rds.CreateDBInstance(params)
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
 	// Pretty-print the response data.
 	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
@@ -236,15 +240,16 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 // This should ultimately get exposed as part of the "update-service" method for the broker:
 // cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-	parameterGroupAdapter := NewAwsParameterGroupClient(svc, d.settings)
+	parameterGroupAdapter := NewAwsParameterGroupClient(d.rds, d.settings)
 	params, err := d.prepareModifyDbInstanceInput(i, parameterGroupAdapter)
 	if err != nil {
-		return base.InstanceNotCreated, err
+		return base.InstanceNotModified, err
 	}
 
-	resp, err := svc.ModifyDBInstance(params)
+	resp, err := d.rds.ModifyDBInstance(params)
+	if err != nil {
+		return base.InstanceNotModified, err
+	}
 	// Pretty-print the response data.
 	fmt.Println(awsutil.StringValue(resp))
 
@@ -376,21 +381,20 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 }
 
 func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
-	svc := rds.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	params := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(i.Database), // Required
 		// FinalDBSnapshotIdentifier: aws.String("String"),
 		DeleteAutomatedBackups: aws.Bool(false),
 		SkipFinalSnapshot:      aws.Bool(true),
 	}
-	resp, err := svc.DeleteDBInstance(params)
+	resp, err := d.rds.DeleteDBInstance(params)
 	// Pretty-print the response data.
 	fmt.Println(awsutil.StringValue(resp))
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		// clean up custom parameter groups
-		parameterGroupAdapter := NewAwsParameterGroupClient(svc, d.settings)
+		parameterGroupAdapter := NewAwsParameterGroupClient(d.rds, d.settings)
 		parameterGroupAdapter.CleanupCustomParameterGroups()
 		return base.InstanceGone, nil
 	}

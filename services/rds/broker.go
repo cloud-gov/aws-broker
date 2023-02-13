@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -81,9 +84,11 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 			SharedDbConn: setting.DB,
 		}
 	case "dedicated":
+		rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
 		dbAdapter = &dedicatedDBAdapter{
 			Plan:     plan,
 			settings: *s,
+			rds:      rdsClient,
 		}
 	default:
 		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
@@ -315,7 +320,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	// Modify the database instance.
 	status, err := adapter.modifyDB(&existingInstance, existingInstance.ClearPassword)
-
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
