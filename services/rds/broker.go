@@ -85,10 +85,12 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 		}
 	case "dedicated":
 		rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
+		parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
 		dbAdapter = &dedicatedDBAdapter{
-			Plan:     plan,
-			settings: *s,
-			rds:      rdsClient,
+			Plan:                 plan,
+			settings:             *s,
+			rds:                  rdsClient,
+			parameterGroupClient: parameterGroupClient,
 		}
 	default:
 		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")

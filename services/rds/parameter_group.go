@@ -18,6 +18,7 @@ const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
 	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error
+	CleanupCustomParameterGroups()
 }
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups

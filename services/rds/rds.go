@@ -121,15 +121,15 @@ func (d *sharedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 }
 
 type dedicatedDBAdapter struct {
-	Plan     catalog.RDSPlan
-	settings config.Settings
-	rds      rdsiface.RDSAPI
+	Plan                 catalog.RDSPlan
+	settings             config.Settings
+	rds                  rdsiface.RDSAPI
+	parameterGroupClient parameterGroupClient
 }
 
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
 	password string,
-	parameterGroupAdapter parameterGroupClient,
 ) (*rds.CreateDBInstanceInput, error) {
 	var rdsTags []*rds.Tag
 
@@ -173,7 +173,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
+	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
@@ -184,10 +184,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
-	i *RDSInstance,
-	parameterGroupAdapter parameterGroupClient,
-) (*rds.ModifyDBInstanceInput, error) {
+func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// NOTE:  Only the following actions are allowed at this point:
 	// - Instance class modification (change of plan)
@@ -206,7 +203,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(i)
+	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i)
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +214,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	parameterGroupAdapter := NewAwsParameterGroupClient(d.rds, d.settings)
-	params, err := d.prepareCreateDbInput(i, password, parameterGroupAdapter)
+	params, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -240,8 +236,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 // This should ultimately get exposed as part of the "update-service" method for the broker:
 // cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	parameterGroupAdapter := NewAwsParameterGroupClient(d.rds, d.settings)
-	params, err := d.prepareModifyDbInstanceInput(i, parameterGroupAdapter)
+	params, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
 		return base.InstanceNotModified, err
 	}
@@ -394,8 +389,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		// clean up custom parameter groups
-		parameterGroupAdapter := NewAwsParameterGroupClient(d.rds, d.settings)
-		parameterGroupAdapter.CleanupCustomParameterGroups()
+		d.parameterGroupClient.CleanupCustomParameterGroups()
 		return base.InstanceGone, nil
 	}
 	return base.InstanceNotGone, nil
