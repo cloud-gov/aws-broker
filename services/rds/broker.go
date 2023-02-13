@@ -236,7 +236,9 @@ func modifyInstanceFromOptions(
 		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
-	existingInstance.EnablePgCron = options.EnablePgCron
+	if options.EnablePgCron != existingInstance.EnablePgCron {
+		existingInstance.EnablePgCron = options.EnablePgCron
+	}
 
 	return nil
 }
@@ -250,7 +252,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
-	fmt.Printf("loaded instance from database: %+v\n", existingInstance)
+	fmt.Printf("modified instance: %+v\n", existingInstance)
 
 	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
 	if err != nil {
