@@ -2,6 +2,7 @@ package rds
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -193,15 +194,32 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) parseModifyOptions(options Options, existingInstance *RDSInstance) response.Response {
+func (broker *rdsBroker) parseModifyOptionsFromRequest(
+	modifyRequest request.Request,
+) (Options, error) {
+	options := Options{}
+	if len(modifyRequest.RawParameters) > 0 {
+		err := json.Unmarshal(modifyRequest.RawParameters, &options)
+		if err != nil {
+			return options, err
+		}
+		err = options.Validate(broker.settings)
+		if err != nil {
+			return options, err
+		}
+	}
+	return options, nil
+}
+
+func modifyInstanceFromOptions(
+	options Options,
+	existingInstance *RDSInstance,
+) error {
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
 		if options.AllocatedStorage < existingInstance.AllocatedStorage {
-			return response.NewErrorResponse(
-				http.StatusBadRequest,
-				"Cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance.",
-			)
+			return errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
 		}
 
 		// Update the existing instance with the new allocated storage.
@@ -228,18 +246,6 @@ func (broker *rdsBroker) parseModifyOptions(options Options, existingInstance *R
 func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
-	options := Options{}
-	if len(modifyRequest.RawParameters) > 0 {
-		err := json.Unmarshal(modifyRequest.RawParameters, &options)
-		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
-		}
-		err = options.Validate(broker.settings)
-		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
-		}
-	}
-
 	// Load the existing instance provided.
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
@@ -247,9 +253,14 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
 
-	resp := broker.parseModifyOptions(options, &existingInstance)
-	if resp != nil {
-		return resp
+	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+	}
+
+	err = modifyInstanceFromOptions(options, &existingInstance)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
 
 	// Fetch the new plan that has been requested.

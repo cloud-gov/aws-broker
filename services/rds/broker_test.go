@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/config"
+	"github.com/18F/aws-broker/helpers/request"
 	"github.com/aws/aws-sdk-go/aws"
 )
 
@@ -40,7 +41,77 @@ func TestOptionsBinaryLogFormatValidation(t *testing.T) {
 	}
 }
 
-func TestParseModifyOptions(t *testing.T) {
+func TestParseModifyOptionsFromRequest(t *testing.T) {
+	testCases := map[string]struct {
+		broker          *rdsBroker
+		modifyRequest   request.Request
+		expectedOptions Options
+	}{
+		"enable PG cron not specified": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(``),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:      0,
+				BackupRetentionPeriod: 0,
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+			},
+		},
+		"enable PG cron true": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{ "enable_pg_cron": true }`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:      0,
+				BackupRetentionPeriod: 0,
+				EnablePgCron:          aws.Bool(true),
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+			},
+		},
+		"enable PG cron false": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{ "enable_pg_cron": false }`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:      0,
+				BackupRetentionPeriod: 0,
+				EnablePgCron:          aws.Bool(false),
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			options, err := test.broker.parseModifyOptionsFromRequest(test.modifyRequest)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if !reflect.DeepEqual(test.expectedOptions, options) {
+				t.Errorf("expected: %+v, got %+v", test.expectedOptions, options)
+			}
+		})
+	}
+}
+
+func TestModifyInstanceFromOptions(t *testing.T) {
 	testCases := map[string]struct {
 		options            Options
 		existingInstance   *RDSInstance
@@ -131,13 +202,12 @@ func TestParseModifyOptions(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			broker := &rdsBroker{}
-			resp := broker.parseModifyOptions(test.options, test.existingInstance)
+			err := modifyInstanceFromOptions(test.options, test.existingInstance)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
 			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
 				t.Fatalf("expected instance and updated instance were not equal")
-			}
-			if resp != nil && resp.GetStatusCode() != test.expectResponseCode {
-				t.Fatalf("expected status code: %d, got %d", test.expectResponseCode, resp.GetStatusCode())
 			}
 		})
 	}

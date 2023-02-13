@@ -212,6 +212,7 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 	}
 	if i.EnablePgCron != nil &&
 		(i.DbType == "postgres") {
+		fmt.Printf("enable PG cron: %t\n", *i.EnablePgCron)
 		return true
 	}
 
@@ -261,10 +262,10 @@ func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parame
 // or from the engine default parameter group if not
 func (p *awsParameterGroupClient) getParameterValue(i *RDSInstance, parameterName string) (string, error) {
 	if i.ParameterGroupName != "" {
-		log.Printf("fetching parameter %s from group %s", parameterName, i.ParameterGroupName)
+		log.Printf("getting parameter %s from group %s", parameterName, i.ParameterGroupName)
 		return p.getCustomParameterValue(i, parameterName)
 	}
-	log.Printf("fetching parameter %s from engine defaults", parameterName)
+	log.Printf("getting parameter %s from engine defaults", parameterName)
 	return p.getDefaultEngineParameterValue(i, parameterName)
 }
 
