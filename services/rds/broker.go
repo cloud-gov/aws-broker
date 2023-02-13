@@ -2,7 +2,6 @@ package rds
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -218,38 +217,6 @@ func (broker *rdsBroker) parseModifyOptionsFromRequest(
 	return options, nil
 }
 
-func modifyInstanceFromOptions(
-	options Options,
-	existingInstance *RDSInstance,
-) error {
-	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
-	if options.AllocatedStorage > 0 {
-		// Check that we are not decreasing the size of the instance.
-		if options.AllocatedStorage < existingInstance.AllocatedStorage {
-			return errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
-		}
-
-		// Update the existing instance with the new allocated storage.
-		existingInstance.AllocatedStorage = options.AllocatedStorage
-	}
-
-	// Check if there is a backup retention change:
-	if options.BackupRetentionPeriod > 0 {
-		existingInstance.BackupRetentionPeriod = options.BackupRetentionPeriod
-	}
-
-	// Check if there is a binary log format change and if so, apply it
-	if options.BinaryLogFormat != "" {
-		existingInstance.BinaryLogFormat = options.BinaryLogFormat
-	}
-
-	if options.EnablePgCron != existingInstance.EnablePgCron {
-		existingInstance.EnablePgCron = options.EnablePgCron
-	}
-
-	return nil
-}
-
 func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
 	existingInstance := RDSInstance{}
 
@@ -267,7 +234,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 	fmt.Printf("options: %+v\n", options)
 
-	err = modifyInstanceFromOptions(options, &existingInstance)
+	err = existingInstance.modifyFromOptions(options)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}

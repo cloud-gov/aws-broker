@@ -120,6 +120,35 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 	return credentials, nil
 }
 
+func (i *RDSInstance) modifyFromOptions(options Options) error {
+	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
+	if options.AllocatedStorage > 0 {
+		// Check that we are not decreasing the size of the instance.
+		if options.AllocatedStorage < i.AllocatedStorage {
+			return errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
+		}
+
+		// Update the existing instance with the new allocated storage.
+		i.AllocatedStorage = options.AllocatedStorage
+	}
+
+	// Check if there is a backup retention change:
+	if options.BackupRetentionPeriod > 0 {
+		i.BackupRetentionPeriod = options.BackupRetentionPeriod
+	}
+
+	// Check if there is a binary log format change and if so, apply it
+	if options.BinaryLogFormat != "" {
+		i.BinaryLogFormat = options.BinaryLogFormat
+	}
+
+	if options.EnablePgCron != i.EnablePgCron {
+		i.EnablePgCron = options.EnablePgCron
+	}
+
+	return nil
+}
+
 func (i *RDSInstance) init(uuid string,
 	orgGUID string,
 	spaceGUID string,
