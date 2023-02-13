@@ -1,7 +1,6 @@
 package rds
 
 import (
-	"net/http"
 	"reflect"
 	"testing"
 
@@ -113,10 +112,10 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 
 func TestModifyInstanceFromOptions(t *testing.T) {
 	testCases := map[string]struct {
-		options            Options
-		existingInstance   *RDSInstance
-		expectedInstance   *RDSInstance
-		expectResponseCode int
+		options          Options
+		existingInstance *RDSInstance
+		expectedInstance *RDSInstance
+		expectErr        bool
 	}{
 		"update allocated storage": {
 			options: Options{
@@ -139,7 +138,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
-			expectResponseCode: http.StatusBadRequest,
+			expectErr: true,
 		},
 		"allocated storage empty, does not update": {
 			options: Options{
@@ -151,7 +150,6 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
-			expectResponseCode: http.StatusBadRequest,
 		},
 		"update backup retention period": {
 			options: Options{
@@ -203,7 +201,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			err := modifyInstanceFromOptions(test.options, test.existingInstance)
-			if err != nil {
+			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
