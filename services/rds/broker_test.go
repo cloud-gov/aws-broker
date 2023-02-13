@@ -196,6 +196,13 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{},
 		},
+		"enable PG cron not specified on options, true on existing instance": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				EnablePgCron: aws.Bool(true),
+			},
+			expectedInstance: &RDSInstance{},
+		},
 	}
 
 	for name, test := range testCases {
@@ -205,7 +212,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
-				t.Fatalf("expected instance and updated instance were not equal")
+				t.Fatalf("expected instance: %+v, got instance: %+v", test.expectedInstance, test.existingInstance)
 			}
 		})
 	}

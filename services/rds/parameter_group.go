@@ -212,7 +212,6 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 	}
 	if i.EnablePgCron != nil &&
 		(i.DbType == "postgres") {
-		fmt.Printf("enable PG cron: %t\n", *i.EnablePgCron)
 		return true
 	}
 

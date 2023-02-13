@@ -236,9 +236,7 @@ func modifyInstanceFromOptions(
 		existingInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
-	if options.EnablePgCron != nil {
-		existingInstance.EnablePgCron = options.EnablePgCron
-	}
+	existingInstance.EnablePgCron = options.EnablePgCron
 
 	return nil
 }
