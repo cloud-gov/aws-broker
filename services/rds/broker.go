@@ -252,6 +252,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
+	fmt.Printf("loaded instance from database: %+v\n", existingInstance)
 
 	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
 	if err != nil {
