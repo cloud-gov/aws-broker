@@ -72,6 +72,17 @@ var createRDSMySQLWithBinaryLogFormat = []byte(
 	"space_guid":"a-space"
 }`)
 
+var createRDSPostgreSQLWithEnablePgCron = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"enable_pg_cron": true
+	},
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
 // micro-psql plan but with parameters
 var modifyRDSInstanceReqStorage = []byte(
 	`{
@@ -90,6 +101,17 @@ var modifyRDSInstanceBinaryLogFormat = []byte(
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
 		"binary_log_format": "MIXED"
+	},
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
+var modifyRDSInstanceEnablePgCron = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"enable_pg_cron": true
 	},
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
@@ -385,6 +407,50 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	}
 }
 
+func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
+
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(res.Body.String(), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	}
+	// Is it in the database and has a username and password?
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.Username == "" || i.Password == "" {
+		t.Error("The instance should have a username and password")
+	}
+
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata")
+	}
+
+	if i.EnablePgCron != nil && !*i.EnablePgCron {
+		t.Error("EnablePgCron should be true")
+	}
+}
+
 func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
@@ -583,7 +649,6 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		println(i.AllocatedStorage)
 		t.Error("The Allocated Storage for the instance should be 15")
 	}
-
 }
 
 func TestModifyBinaryLogFormat(t *testing.T) {
@@ -642,6 +707,65 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 
 	if i.BinaryLogFormat != "MIXED" {
 		t.Error("The binary log format for the instance should be MIXED")
+	}
+}
+
+func TestModifyEnablePgCron(t *testing.T) {
+	// We need to create an instance first before we can try to modify it.
+	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalRDSPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
+
+	// Pull in AllocatedStorage and increase the storage
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+	}
+
+	// Check to make sure storage size actually increased
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(res.Body.String(), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	}
+	// Is it in the database and does it have correct storage?
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.EnablePgCron != nil && !*i.EnablePgCron {
+		t.Error("EnablePgCron should be true")
 	}
 }
 

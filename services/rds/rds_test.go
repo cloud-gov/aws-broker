@@ -4,19 +4,46 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/18F/aws-broker/base"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
 
-type mockParameterGroupAdapter struct {
+type mockParameterGroupClient struct {
+	rds              rdsiface.RDSAPI
 	customPgroupName string
 	returnErr        error
 }
 
-func (m *mockParameterGroupAdapter) provisionCustomParameterGroupIfNecessary(i *RDSInstance, d *dedicatedDBAdapter, svc rdsiface.RDSAPI) (string, error) {
+func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
 	if m.returnErr != nil {
-		return "", m.returnErr
+		return m.returnErr
 	}
-	return m.customPgroupName, nil
+	i.ParameterGroupName = m.customPgroupName
+	return nil
+}
+
+func (m *mockParameterGroupClient) CleanupCustomParameterGroups() {}
+
+type mockRdsClientForAdapterTests struct {
+	rdsiface.RDSAPI
+
+	createDbErr error
+	modifyDbErr error
+}
+
+func (m mockRdsClientForAdapterTests) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
+	if m.createDbErr != nil {
+		return nil, m.createDbErr
+	}
+	return nil, nil
+}
+
+func (m mockRdsClientForAdapterTests) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
+	if m.modifyDbErr != nil {
+		return nil, m.modifyDbErr
+	}
+	return nil, nil
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
@@ -24,21 +51,21 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance        *RDSInstance
 		dbAdapter         *dedicatedDBAdapter
-		pGroupAdapter     *mockParameterGroupAdapter
-		svc               *mockRDSClient
 		expectedGroupName string
 		expectedErr       error
+		password          string
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			dbAdapter: &dedicatedDBAdapter{},
-			pGroupAdapter: &mockParameterGroupAdapter{
-				customPgroupName: "foobar",
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					customPgroupName: "foobar",
+					rds:              &mockRDSClient{},
+				},
 			},
-			svc:               &mockRDSClient{},
 			expectedGroupName: "foobar",
 		},
 		"expect error": {
@@ -46,18 +73,19 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			dbAdapter: &dedicatedDBAdapter{},
-			pGroupAdapter: &mockParameterGroupAdapter{
-				returnErr: testErr,
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					returnErr: testErr,
+					rds:       &mockRDSClient{},
+				},
 			},
-			svc:         &mockRDSClient{},
 			expectedErr: testErr,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := prepareCreateDbInput(test.dbInstance, test.dbAdapter, test.svc, "foobar", test.pGroupAdapter)
+			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.password)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -68,13 +96,87 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 	}
 }
 
+func TestCreateDb(t *testing.T) {
+	createDbErr := errors.New("create DB error")
+	testCases := map[string]struct {
+		dbInstance           *RDSInstance
+		dbAdapter            dbAdapter
+		expectedErr          error
+		expectedResponseCode base.InstanceState
+		password             string
+	}{
+		"create DB error": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					createDbErr: createDbErr,
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance:           &RDSInstance{},
+			expectedErr:          createDbErr,
+			expectedResponseCode: base.InstanceNotCreated,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password)
+			if err != nil && test.expectedErr == nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(test.expectedErr, err) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if responseCode != test.expectedResponseCode {
+				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+			}
+		})
+	}
+}
+
+func TestModifyDb(t *testing.T) {
+	modifyDbErr := errors.New("modify DB error")
+	testCases := map[string]struct {
+		dbInstance           *RDSInstance
+		dbAdapter            dbAdapter
+		expectedErr          error
+		expectedResponseCode base.InstanceState
+		password             string
+	}{
+		"create DB error": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					modifyDbErr: modifyDbErr,
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance:           &RDSInstance{},
+			expectedErr:          modifyDbErr,
+			expectedResponseCode: base.InstanceNotModified,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password)
+			if err != nil && test.expectedErr == nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(test.expectedErr, err) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if responseCode != test.expectedResponseCode {
+				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+			}
+		})
+	}
+}
+
 func TestPrepareModifyDbInstanceInput(t *testing.T) {
 	testErr := errors.New("fail")
 	testCases := map[string]struct {
 		dbInstance        *RDSInstance
 		dbAdapter         *dedicatedDBAdapter
-		pGroupAdapter     *mockParameterGroupAdapter
-		svc               *mockRDSClient
 		expectedGroupName string
 		expectedErr       error
 	}{
@@ -83,11 +185,12 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			dbAdapter: &dedicatedDBAdapter{},
-			pGroupAdapter: &mockParameterGroupAdapter{
-				customPgroupName: "foobar",
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					customPgroupName: "foobar",
+					rds:              &mockRDSClient{},
+				},
 			},
-			svc:               &mockRDSClient{},
 			expectedGroupName: "foobar",
 		},
 		"expect error": {
@@ -95,18 +198,19 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 			},
-			dbAdapter: &dedicatedDBAdapter{},
-			pGroupAdapter: &mockParameterGroupAdapter{
-				returnErr: testErr,
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					rds:       &mockRDSClient{},
+					returnErr: testErr,
+				},
 			},
-			svc:         &mockRDSClient{},
 			expectedErr: testErr,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := prepareModifyDbInstanceInput(test.dbInstance, test.dbAdapter, test.svc, test.pGroupAdapter)
+			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}

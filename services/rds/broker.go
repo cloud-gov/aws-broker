@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -25,7 +28,7 @@ type Options struct {
 	Version               string `json:"version"`
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
 	BinaryLogFormat       string `json:"binary_log_format"`
-	EnablePgCron          bool   `json:"enable_pg_cron"`
+	EnablePgCron          *bool  `json:"enable_pg_cron"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -80,9 +83,13 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 			SharedDbConn: setting.DB,
 		}
 	case "dedicated":
+		rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
+		parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
 		dbAdapter = &dedicatedDBAdapter{
-			Plan:     plan,
-			settings: *s,
+			Plan:                 plan,
+			settings:             *s,
+			rds:                  rdsClient,
+			parameterGroupClient: parameterGroupClient,
 		}
 	default:
 		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
@@ -193,20 +200,25 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	return response.SuccessAcceptedResponse
 }
 
-func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
-
+func (broker *rdsBroker) parseModifyOptionsFromRequest(
+	modifyRequest request.Request,
+) (Options, error) {
 	options := Options{}
 	if len(modifyRequest.RawParameters) > 0 {
 		err := json.Unmarshal(modifyRequest.RawParameters, &options)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return options, err
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return options, err
 		}
 	}
+	return options, nil
+}
+
+func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
+	existingInstance := RDSInstance{}
 
 	// Load the existing instance provided.
 	var count int64
@@ -214,30 +226,19 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
+	fmt.Printf("modified instance: %+v\n", existingInstance)
 
-	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
-	if options.AllocatedStorage > 0 {
-		// Check that we are not decreasing the size of the instance.
-		if options.AllocatedStorage < existingInstance.AllocatedStorage {
-			return response.NewErrorResponse(
-				http.StatusBadRequest,
-				"Cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance.",
-			)
-		}
-
-		// Update the existing instance with the new allocated storage.
-		existingInstance.AllocatedStorage = options.AllocatedStorage
+	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
+	fmt.Printf("options: %+v\n", options)
 
-	// Check if there is a backup retention change:
-	if options.BackupRetentionPeriod > 0 {
-		existingInstance.BackupRetentionPeriod = options.BackupRetentionPeriod
+	err = existingInstance.modifyFromOptions(options)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
-
-	// Check if there is a binary log format change and if so, apply it
-	if options.BinaryLogFormat != "" {
-		existingInstance.BinaryLogFormat = options.BinaryLogFormat
-	}
+	fmt.Printf("modified instance: %+v\n", existingInstance)
 
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
@@ -288,7 +289,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	// Modify the database instance.
 	status, err := adapter.modifyDB(&existingInstance, existingInstance.ClearPassword)
-
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
