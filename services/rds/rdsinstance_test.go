@@ -123,6 +123,16 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{},
 			plan:             catalog.RDSPlan{},
 		},
+		"set DB version from plan": {
+			options:          Options{},
+			existingInstance: &RDSInstance{},
+			expectedInstance: &RDSInstance{
+				DbVersion: "12",
+			},
+			plan: catalog.RDSPlan{
+				DbVersion: "12",
+			},
+		},
 	}
 
 	for name, test := range testCases {

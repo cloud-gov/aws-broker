@@ -148,7 +148,7 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan) error {
 
 	// Set the DB Version if it is not already set
 	// Currently only supported for MySQL and PostgreSQL instances.
-	if i.DbVersion == "" && options.Version != "" {
+	if i.DbVersion == "" && options.Version == "" {
 		// Default to the version provided by the plan chosen in catalog.
 		i.DbVersion = plan.DbVersion
 	}
