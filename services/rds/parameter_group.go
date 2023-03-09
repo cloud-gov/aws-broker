@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -105,31 +106,26 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 		return nil
 	}
 	parameterGroupFamily := ""
-	// If the DB version is not set (e.g., creating a new instance without
-	// providing a specific version), determine the default parameter group
-	// name from the default engine that will be chosen.
+
 	if i.DbVersion == "" {
-		dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
-			DefaultOnly: aws.Bool(true),
-			Engine:      aws.String(i.DbType),
-		}
-
-		// This call requires that the broker have permissions to make it.
-		defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(dbEngineVersionsInput)
-		if err != nil {
-			return err
-		}
-
-		// The value from the engine info is a string pointer, so we must
-		// retrieve its actual value.
-		parameterGroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
-	} else {
-		// The DB instance has a version, therefore we can derive the
-		// parameter group family directly.
-		re := regexp.MustCompile(`^\d+\.*\d*`)
-		dbversion := re.Find([]byte(i.DbVersion))
-		parameterGroupFamily = i.DbType + string(dbversion)
+		return errors.New("DB version must be set to determine parameter group family")
 	}
+
+	dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
+		Engine:        aws.String(i.DbType),
+		EngineVersion: aws.String(i.DbVersion),
+	}
+
+	// This call requires that the broker have permissions to make it.
+	defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(dbEngineVersionsInput)
+	if err != nil {
+		return err
+	}
+
+	// The value from the engine info is a string pointer, so we must
+	// retrieve its actual value.
+	parameterGroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
+
 	log.Printf("got parameter group family: %s", parameterGroupFamily)
 	i.ParameterGroupFamily = parameterGroupFamily
 	return nil
@@ -162,7 +158,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		// Otherwise, create a new parameter group in the proper family.
 		err := p.getParameterGroupFamily(i)
 		if err != nil {
-			return fmt.Errorf("encounted error getting parameter group family: %w", err)
+			return fmt.Errorf("encountered error getting parameter group family: %w", err)
 		}
 
 		log.Printf("creating a parameter group named %s in the family of %s", i.ParameterGroupName, i.ParameterGroupFamily)

@@ -961,10 +961,9 @@ func TestGetCustomParameters(t *testing.T) {
 }
 
 func TestGetParameterGroupFamily(t *testing.T) {
-	serviceErr := errors.New("fail")
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
-		expectedErr           error
+		expectedErr           string
 		expectedPGroupFamily  string
 		parameterGroupAdapter *awsParameterGroupClient
 	}{
@@ -972,15 +971,10 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			dbInstance: &RDSInstance{
 				DbType: "postgres",
 			},
-			expectedPGroupFamily: "postgres12",
+			expectedPGroupFamily: "",
+			expectedErr:          "DB version must be set to determine parameter group family",
 			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{
-					dbEngineVersions: []*rds.DBEngineVersion{
-						{
-							DBParameterGroupFamily: aws.String("postgres12"),
-						},
-					},
-				},
+				rds: &mockRDSClient{},
 			},
 		},
 		"has db version": {
@@ -990,17 +984,24 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			},
 			expectedPGroupFamily: "postgres13",
 			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{},
+				rds: &mockRDSClient{
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres13"),
+						},
+					},
+				},
 			},
 		},
 		"RDS service returns error": {
 			dbInstance: &RDSInstance{
-				DbType: "postgres",
+				DbType:    "postgres",
+				DbVersion: "12",
 			},
-			expectedErr: serviceErr,
+			expectedErr: "fail",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeEngVersionsErr: serviceErr,
+					describeEngVersionsErr: errors.New("fail"),
 				},
 			},
 		},
@@ -1017,10 +1018,10 @@ func TestGetParameterGroupFamily(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			err := test.parameterGroupAdapter.getParameterGroupFamily(test.dbInstance)
-			if test.expectedErr == nil && err != nil {
+			if test.expectedErr == "" && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if !errors.Is(err, test.expectedErr) {
+			if err != nil && test.expectedErr != "" && test.expectedErr != err.Error() {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 			if test.dbInstance.ParameterGroupFamily != test.expectedPGroupFamily {
