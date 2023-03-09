@@ -226,7 +226,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
-	fmt.Printf("modified instance: %+v\n", existingInstance)
+	fmt.Printf("existing instance: %+v\n", existingInstance)
 
 	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
 	if err != nil {
@@ -234,17 +234,17 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 	fmt.Printf("options: %+v\n", options)
 
-	err = existingInstance.modifyFromOptions(options)
-	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
-	}
-	fmt.Printf("modified instance: %+v\n", existingInstance)
-
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
 	if newPlanErr != nil {
 		return newPlanErr
 	}
+
+	err = existingInstance.modify(options, newPlan)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+	}
+	fmt.Printf("modified instance: %+v\n", existingInstance)
 
 	// Check to make sure that we're not switching database engines; this is not
 	// allowed.

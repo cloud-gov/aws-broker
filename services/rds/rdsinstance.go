@@ -120,7 +120,7 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 	return credentials, nil
 }
 
-func (i *RDSInstance) modifyFromOptions(options Options) error {
+func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan) error {
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
@@ -144,6 +144,13 @@ func (i *RDSInstance) modifyFromOptions(options Options) error {
 
 	if options.EnablePgCron != i.EnablePgCron {
 		i.EnablePgCron = options.EnablePgCron
+	}
+
+	// Set the DB Version if it is not already set
+	// Currently only supported for MySQL and PostgreSQL instances.
+	if i.DbVersion == "" && options.Version != "" {
+		// Default to the version provided by the plan chosen in catalog.
+		i.DbVersion = plan.DbVersion
 	}
 
 	return nil
