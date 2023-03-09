@@ -36,13 +36,13 @@ func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rd
 }
 
 func (m mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInput) (*rds.DescribeDBEngineVersionsOutput, error) {
+	if m.describeEngVersionsErr != nil {
+		return nil, m.describeEngVersionsErr
+	}
 	if m.dbEngineVersions != nil {
 		return &rds.DescribeDBEngineVersionsOutput{
 			DBEngineVersions: m.dbEngineVersions,
 		}, nil
-	}
-	if m.describeEngVersionsErr != nil {
-		return nil, m.describeEngVersionsErr
 	}
 	return nil, nil
 }
@@ -296,6 +296,11 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 					describeEngineDefaultParamsNumPages: 1,
 				},
 			},
@@ -321,6 +326,11 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 									},
 								},
 							},
+						},
+					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 1,
@@ -360,6 +370,11 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 					describeEngineDefaultParamsNumPages: 2,
 				},
 			},
@@ -378,6 +393,11 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineDefaultParamsErr,
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 				},
 			},
 		},
@@ -385,6 +405,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
+				DbVersion:    "12",
 			},
 			paramName:          "shared_preload_libraries",
 			expectedErr:        describeEngVersionsErr,
@@ -775,6 +796,11 @@ func TestGetCustomParameters(t *testing.T) {
 							},
 						},
 					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 					describeEngineDefaultParamsNumPages: 1,
 				},
 			},
@@ -845,6 +871,11 @@ func TestGetCustomParameters(t *testing.T) {
 							},
 						},
 					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 					describeEngineDefaultParamsNumPages: 2,
 				},
 			},
@@ -893,6 +924,11 @@ func TestGetCustomParameters(t *testing.T) {
 				settings: config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 				},
 			},
 		},
@@ -924,6 +960,11 @@ func TestGetCustomParameters(t *testing.T) {
 				settings: config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 				},
 			},
 		},
@@ -1084,6 +1125,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 				Database:           "foobar",
 				DbType:             "postgres",
 				ParameterGroupName: "foobar",
+				DbVersion:          "12",
 			},
 			expectedErr: describeEngVersionsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -1105,6 +1147,11 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsErr:   errors.New("describe DB params err"),
 					createDbParamGroupErr: createDbParamGroupErr,
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 				},
 			},
 		},
@@ -1119,6 +1166,11 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
 				},
 			},
 		},
@@ -1130,7 +1182,13 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 				ParameterGroupName: "foobar",
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{},
+				rds: &mockRDSClient{
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
+						},
+					},
+				},
 			},
 		},
 	}
@@ -1198,6 +1256,11 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 									},
 								},
 							},
+						},
+					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres12"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 1,
