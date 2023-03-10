@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/helpers"
 	"github.com/aws/aws-sdk-go/aws"
 )
@@ -19,12 +20,13 @@ func TestFormatDBName(t *testing.T) {
 	}
 }
 
-func TestModifyInstanceFromOptions(t *testing.T) {
+func TestModifyInstance(t *testing.T) {
 	testCases := map[string]struct {
 		options          Options
 		existingInstance *RDSInstance
 		expectedInstance *RDSInstance
 		expectErr        bool
+		plan             catalog.RDSPlan
 	}{
 		"update allocated storage": {
 			options: Options{
@@ -36,6 +38,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
+			plan: catalog.RDSPlan{},
 		},
 		"allocated storage option less than existing, does not update": {
 			options: Options{
@@ -48,6 +51,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 				AllocatedStorage: 20,
 			},
 			expectErr: true,
+			plan:      catalog.RDSPlan{},
 		},
 		"allocated storage empty, does not update": {
 			options: Options{
@@ -59,6 +63,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
+			plan: catalog.RDSPlan{},
 		},
 		"update backup retention period": {
 			options: Options{
@@ -70,6 +75,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
 			},
+			plan: catalog.RDSPlan{},
 		},
 		"does not update backup retention period": {
 			options: Options{
@@ -81,6 +87,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
 			},
+			plan: catalog.RDSPlan{},
 		},
 		"update binary log format": {
 			options: Options{
@@ -90,6 +97,7 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 			},
+			plan: catalog.RDSPlan{},
 		},
 		"enable PG cron": {
 			options: Options{
@@ -99,11 +107,13 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 			},
+			plan: catalog.RDSPlan{},
 		},
 		"enable PG cron not specified": {
 			options:          Options{},
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{},
+			plan:             catalog.RDSPlan{},
 		},
 		"enable PG cron not specified on options, true on existing instance": {
 			options: Options{},
@@ -111,12 +121,23 @@ func TestModifyInstanceFromOptions(t *testing.T) {
 				EnablePgCron: aws.Bool(true),
 			},
 			expectedInstance: &RDSInstance{},
+			plan:             catalog.RDSPlan{},
+		},
+		"set DB version from plan": {
+			options:          Options{},
+			existingInstance: &RDSInstance{},
+			expectedInstance: &RDSInstance{
+				DbVersion: "12",
+			},
+			plan: catalog.RDSPlan{
+				DbVersion: "12",
+			},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.existingInstance.modifyFromOptions(test.options)
+			err := test.existingInstance.modify(test.options, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
