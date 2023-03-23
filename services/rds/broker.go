@@ -231,7 +231,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
-	fmt.Printf("options: %+v\n", options)
 
 	// Fetch the new plan that has been requested.
 	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
