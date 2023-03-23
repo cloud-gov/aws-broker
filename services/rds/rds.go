@@ -4,7 +4,6 @@ import (
 	"github.com/18F/aws-broker/base"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/jinzhu/gorm"
@@ -218,13 +217,11 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceNotCreated, err
 	}
 
-	resp, err := d.rds.CreateDBInstance(params)
+	_, err = d.rds.CreateDBInstance(params)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
 
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		return base.InstanceInProgress, nil
@@ -240,12 +237,10 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceNotModified, err
 	}
 
-	resp, err := d.rds.ModifyDBInstance(params)
+	_, err = d.rds.ModifyDBInstance(params)
 	if err != nil {
 		return base.InstanceNotModified, err
 	}
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
@@ -279,9 +274,6 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 			}
 			return base.InstanceNotCreated, err
 		}
-
-		// Pretty-print the response data.
-		fmt.Println(awsutil.StringValue(resp))
 
 		// Get the details (host and port) for the instance.
 		numOfInstances := len(resp.DBInstances)
@@ -338,9 +330,6 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 			return nil, err
 		}
 
-		// Pretty-print the response data.
-		fmt.Println(awsutil.StringValue(resp))
-
 		// Get the details (host and port) for the instance.
 		numOfInstances := len(resp.DBInstances)
 		if numOfInstances > 0 {
@@ -379,9 +368,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 		DeleteAutomatedBackups: aws.Bool(false),
 		SkipFinalSnapshot:      aws.Bool(true),
 	}
-	resp, err := d.rds.DeleteDBInstance(params)
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
+	_, err := d.rds.DeleteDBInstance(params)
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {

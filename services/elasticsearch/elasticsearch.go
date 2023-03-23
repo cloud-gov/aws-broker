@@ -234,8 +234,6 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	params.SetAccessPolicies(accessControlPolicy)
 
 	resp, err := svc.CreateDomain(params)
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		i.ARN = *(resp.DomainStatus.ARN)
@@ -289,8 +287,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
 	}
-	resp, err := svc.UpdateDomainConfig(params)
-	fmt.Println(awsutil.StringValue(resp))
+	_, err := svc.UpdateDomainConfig(params)
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
 	}
@@ -322,9 +319,6 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			}
 			return nil, err
 		}
-
-		// Pretty-print the response data.
-		fmt.Println(awsutil.StringValue(resp))
 
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
@@ -426,9 +420,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			}
 			return base.InstanceNotCreated, err
 		}
-
-		// Pretty-print the response data.
-		fmt.Println(awsutil.StringValue(resp))
 
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {
@@ -688,7 +679,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	return nil
 }
 
-//in which we clean up all the roles and policies for the ES domain
+// in which we clean up all the roles and policies for the ES domain
 func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
 	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	logger := lager.NewLogger("aws-broker")
