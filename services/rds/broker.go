@@ -226,7 +226,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
-	fmt.Printf("existing instance: %+v\n", existingInstance)
 
 	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
 	if err != nil {
@@ -244,7 +243,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
-	fmt.Printf("modified instance: %+v\n", existingInstance)
 
 	// Check to make sure that we're not switching database engines; this is not
 	// allowed.
