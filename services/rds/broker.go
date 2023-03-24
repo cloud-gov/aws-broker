@@ -29,6 +29,7 @@ type Options struct {
 	BackupRetentionPeriod int64  `json:"backup_retention_period"`
 	BinaryLogFormat       string `json:"binary_log_format"`
 	EnablePgCron          *bool  `json:"enable_pg_cron"`
+	RotateCredentials     *bool  `json:"rotate_credentials"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -238,7 +239,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return newPlanErr
 	}
 
-	err = existingInstance.modify(options, newPlan)
+	err = existingInstance.modify(options, newPlan, broker.settings)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
