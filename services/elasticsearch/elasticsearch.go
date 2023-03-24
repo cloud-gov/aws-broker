@@ -235,8 +235,8 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	resp, err := svc.CreateDomain(params)
 	if isInvalidTypeException(err) {
-		// IAM is eventually consistent, meaning new IAM users may not be immediately available for
-		// attachment when Opensearch goes to validate the IAM user as the AWS principal in the access
+		// IAM is eventually consistent, meaning new IAM users may not be immediately available for read, such as when
+		// Opensearch goes to validate the IAM user specified as the AWS principal in the access
 		// policy. The error returned in this case is an "InvalidTypeException", so if we catch that specific error,
 		// we wait for 5 seconds to retry the domain creation to hopefully allow IAM to become consistent.
 		//
