@@ -133,7 +133,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	accountID := result.Account
 
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUserArn + "\"]},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	var elasticsearchTags []*opensearchservice.Tag
 	time.Sleep(5 * time.Second)
 
@@ -234,6 +234,18 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	params.SetAccessPolicies(accessControlPolicy)
 
 	resp, err := svc.CreateDomain(params)
+	if isInvalidTypeException(err) {
+		// IAM is eventually consistent, meaning new IAM users may not be immediately available for read, such as when
+		// Opensearch goes to validate the IAM user specified as the AWS principal in the access
+		// policy. The error returned in this case is an "InvalidTypeException", so if we catch that specific error,
+		// we wait for 5 seconds to retry the domain creation to hopefully allow IAM to become consistent.
+		//
+		// see https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency
+		log.Println("Retrying domain creation because of possible IAM eventual consistency issue")
+		time.Sleep(5 * time.Second)
+		resp, err = svc.CreateDomain(params)
+	}
+
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
 		i.ARN = *(resp.DomainStatus.ARN)
@@ -820,4 +832,12 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 		return err
 	}
 	return nil
+}
+
+// determine whether the error is an opensearchservice.InvalidTypeException
+func isInvalidTypeException(createErr error) bool {
+	if aerr, ok := createErr.(awserr.Error); ok {
+		return aerr.Code() == "InvalidTypeException"
+	}
+	return false
 }
