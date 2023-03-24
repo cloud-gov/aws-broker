@@ -114,7 +114,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		UserName: aws.String(i.Domain),
 	}
 	userResp, _ := iamsvc.GetUser(userParams)
-	uniqueUser := *(userResp.User.UserId)
+	uniqueUserArn := *(userResp.User.Arn)
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := stssvc.GetCallerIdentity(stsInput)
 	if err != nil {
@@ -133,7 +133,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	accountID := result.Account
 
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": [\"" + uniqueUser + "\"]},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	var elasticsearchTags []*opensearchservice.Tag
 	time.Sleep(5 * time.Second)
 
