@@ -597,6 +597,30 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-postgres-rotate-creds
+        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-mysql-rotate-creds
+        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        params:
+          BROKER_NAME: ((staging-broker-name))
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          SERVICE_PLAN: micro-mysql
+          DB_TYPE: mysql
   on_failure:
     params:
       channel: '#cg-platform-news'
@@ -1276,6 +1300,30 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-postgres-rotate-creds
+        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        params:
+          BROKER_NAME: ((prod-broker-name))
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-mysql-rotate-creds
+        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        params:
+          BROKER_NAME: ((prod-broker-name))
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          SERVICE_PLAN: micro-mysql
+          DB_TYPE: mysql
 
       - task: smoke-tests-redis
         file: aws-broker-app/ci/run-smoke-test-task.yml
