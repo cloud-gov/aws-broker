@@ -241,7 +241,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	err = existingInstance.modify(options, newPlan, broker.settings)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		return response.NewErrorResponse(http.StatusBadRequest, "Failed to modify instance. Error: "+err.Error())
 	}
 
 	// Check to make sure that we're not switching database engines; this is not
