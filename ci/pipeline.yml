@@ -430,6 +430,30 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: medium-oracle-se2
           DB_TYPE: oracle-se2
+
+      - task: smoke-tests-postgres-rotate-creds
+        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        params:
+          BROKER_NAME: ((development-broker-name))
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: micro-psql
+          DB_TYPE: postgres
+
+      - task: smoke-tests-mysql-rotate-creds
+        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        params:
+          BROKER_NAME: ((development-broker-name))
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          SERVICE_PLAN: micro-mysql
+          DB_TYPE: mysql
   on_success:
     put: slack
     params:

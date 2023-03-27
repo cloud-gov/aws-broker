@@ -1,0 +1,14 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: 18fgsa/sql-clients
+
+inputs:
+- name: aws-broker-app
+- name: aws-db-test
+
+run:
+  path: aws-broker-app/ci/run-smoke-tests-rotate-creds.sh
