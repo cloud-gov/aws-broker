@@ -11,4 +11,4 @@ inputs:
 - name: aws-db-test
 
 run:
-  path: aws-broker-app/ci/run-smoke-tests-rotate-creds.sh
+  path: aws-broker-app/ci/run-smoke-test-rotate-creds.sh

@@ -432,7 +432,7 @@ jobs:
           DB_TYPE: oracle-se2
 
       - task: smoke-tests-postgres-rotate-creds
-        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -444,7 +444,7 @@ jobs:
           DB_TYPE: postgres
 
       - task: smoke-tests-mysql-rotate-creds
-        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -599,7 +599,7 @@ jobs:
           DB_TYPE: oracle-se2
 
       - task: smoke-tests-postgres-rotate-creds
-        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -611,7 +611,7 @@ jobs:
           DB_TYPE: postgres
 
       - task: smoke-tests-mysql-rotate-creds
-        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -1302,7 +1302,7 @@ jobs:
           DB_TYPE: oracle-se2
 
       - task: smoke-tests-postgres-rotate-creds
-        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1314,7 +1314,7 @@ jobs:
           DB_TYPE: postgres
 
       - task: smoke-tests-mysql-rotate-creds
-        file: aws-broker-app/ci/run-smoke-tests-rotate-creds.yml
+        file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
