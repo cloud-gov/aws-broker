@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/helpers"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
@@ -143,7 +144,7 @@ func TestModifyDb(t *testing.T) {
 		expectedResponseCode base.InstanceState
 		password             string
 	}{
-		"create DB error": {
+		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRdsClientForAdapterTests{
 					modifyDbErr: modifyDbErr,
@@ -175,10 +176,12 @@ func TestModifyDb(t *testing.T) {
 func TestPrepareModifyDbInstanceInput(t *testing.T) {
 	testErr := errors.New("fail")
 	testCases := map[string]struct {
-		dbInstance        *RDSInstance
-		dbAdapter         *dedicatedDBAdapter
-		expectedGroupName string
-		expectedErr       error
+		dbInstance                 *RDSInstance
+		dbAdapter                  *dedicatedDBAdapter
+		expectedGroupName          string
+		expectedErr                error
+		shouldUpdateParameterGroup bool
+		shouldUpdatePassword       bool
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
@@ -191,7 +194,9 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					rds:              &mockRDSClient{},
 				},
 			},
-			expectedGroupName: "foobar",
+			expectedGroupName:          "foobar",
+			shouldUpdateParameterGroup: true,
+			shouldUpdatePassword:       false,
 		},
 		"expect error": {
 			dbInstance: &RDSInstance{
@@ -204,18 +209,40 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					returnErr: testErr,
 				},
 			},
-			expectedErr: testErr,
+			expectedErr:                testErr,
+			shouldUpdateParameterGroup: false,
+			shouldUpdatePassword:       false,
+		},
+		"update password": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat: "ROW",
+				DbType:          "mysql",
+				ClearPassword:   helpers.RandStr(10),
+			},
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				rds: &mockRDSClient{},
+			},
+			shouldUpdateParameterGroup: false,
+			shouldUpdatePassword:       true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance)
-			if err != nil && test.expectedErr == nil {
+			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if test.expectedErr == nil && *params.DBParameterGroupName != test.expectedGroupName {
-				t.Fatalf("expected group name: %s, got: %s", test.expectedGroupName, *params.DBParameterGroupName)
+			if test.expectedErr == nil {
+				if test.shouldUpdateParameterGroup && *params.DBParameterGroupName != test.expectedGroupName {
+					t.Fatalf("expected group name: %s, got: %s", test.expectedGroupName, *params.DBParameterGroupName)
+				}
+				if test.shouldUpdatePassword && *params.MasterUserPassword != test.dbInstance.ClearPassword {
+					t.Fatalf("expected password: %s, got: %s", test.dbInstance.ClearPassword, *params.MasterUserPassword)
+				}
 			}
 		})
 	}
