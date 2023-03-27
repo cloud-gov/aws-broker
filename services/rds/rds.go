@@ -199,6 +199,10 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
 	}
 
+	if i.ClearPassword != "" {
+		params.MasterUserPassword = aws.String(i.ClearPassword)
+	}
+
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
 	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i)
