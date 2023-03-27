@@ -121,7 +121,6 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 }
 
 func (i *RDSInstance) setCredentials(settings *config.Settings) error {
-	i.Username = "u" + helpers.RandStrNoCaps(15)
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
 	password := helpers.RandStrNoCaps(25)
 	err := i.setPassword(password, settings.EncryptionKey)
@@ -209,6 +208,7 @@ func (i *RDSInstance) init(uuid string,
 
 	// Build random values
 	i.Database = s.DbNamePrefix + helpers.RandStrNoCaps(15)
+	i.Username = "u" + helpers.RandStrNoCaps(15)
 	if err := i.setCredentials(s); err != nil {
 		return err
 	}

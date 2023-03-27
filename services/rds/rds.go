@@ -197,6 +197,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 		DBInstanceIdentifier:     &i.Database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
 		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
+		MasterUserPassword:       aws.String(i.ClearPassword),
 	}
 
 	// If a custom parameter has been requested, and the feature is enabled,
