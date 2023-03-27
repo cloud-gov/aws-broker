@@ -53,7 +53,15 @@ wait_for_service_instance "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
 
 # Unbind and re-bind service to get new credentials
 cf unbind-service "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
-cf bind-service "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
+while true; do
+  if out=$(cf bind-service "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"); then
+    break
+  fi
+  if [[ $out =~ "Instance not available yet" ]]; then
+    echo "${out}"
+  fi
+  sleep 90
+done
 
 # Restage app with new credentials
 cf restage "smoke-tests-db-rotate-creds-${SERVICE_PLAN}"
