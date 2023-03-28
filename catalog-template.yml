@@ -15,28 +15,6 @@ rds:
     supportUrl:
     shareable: true
   plans:
-    - id: "1bbd9c4f-adb8-43dc-bbec-ab0315bcb14e"
-      name: "shared-psql"
-      description: "Shared PostgreSQL database for prototyping (no sensitive or production data)"
-      metadata:
-        bullets:
-          - "Shared RDS instance"
-          - "PostgreSQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "MONTHLY"
-        displayName: "Free shared plan"
-      free: true
-      backup_retention_period: 14
-      adapter: shared
-      dbType: postgres
-      securityGroup: (( grab meta.aws_broker.postgres_security_group ))
-      subnetGroup: (( grab meta.aws_broker.subnet_group ))
-      tags:
-        environment: (( grab meta.environment ))
-        client: "paas-cf"
-        service: "aws-broker"
     - id: "da91e15c-98c9-46a9-b114-02b8d28062c6"
       name: &micro-psql-name "micro-psql"
       description: "Single-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 1 GiB memory"
@@ -615,28 +593,6 @@ rds:
         client: "paas-cf"
         service: "aws-broker"
 # Mysql plans
-    - id: "57dd4bf0-465b-4e11-838d-2142caa6d763"
-      name: "shared-mysql"
-      description: "Shared MySQL database for prototyping (no sensitive or production data)"
-      metadata:
-        bullets:
-          - "Shared RDS instance"
-          - "MySQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "MONTHLY"
-        displayName: "Free shared plan"
-      free: true
-      backup_retention_period: 14
-      adapter: shared
-      dbType: mysql
-      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
-      subnetGroup: (( grab meta.aws_broker.subnet_group ))
-      tags:
-        environment: (( grab meta.environment ))
-        client: "paas-cf"
-        service: "aws-broker"
     - id: "8f776a56-4b08-11ed-b878-0242ac120002"
       name: &micro-mysql-name "micro-mysql"
       description: "Single-AZ RDS instance of MySQL, minimum 1 core, minimum 1 GiB memory"
@@ -1211,7 +1167,6 @@ redis:
     - id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
       name: "redis-5node"
       description: "AWS Elasticache Redis Five node"
-      description: "AWS Elasticache Redis 6.2 Five node"
       metadata:
         bullets:
           - "Elasticache"
