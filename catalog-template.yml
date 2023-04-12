@@ -1495,7 +1495,7 @@ elasticsearch:
       service: "aws-broker"
   - id: "31d9abdc-424b-4e75-a43f-a09cd64216e9"
     name: "es-xlarge"
-    description: "AWS Large Elasticsearch 7.4 - 3 node master with 2 data nodes"
+    description: "AWS X-Large Elasticsearch 7.4 - 3 node master with 2 data nodes"
     metadata:
       bullets:
       - "elasticsearch"
@@ -1531,7 +1531,7 @@ elasticsearch:
       service: "aws-broker"
   - id: "a40344fc-73ec-461d-952e-5601fec173b1"
     name: "es-xlarge-ha"
-    description: "AWS Large Elasticsearch 7.4 - 3 node master with 4 data nodes"
+    description: "AWS X-Large Elasticsearch 7.4 - 3 node master with 4 data nodes"
     metadata:
       bullets:
       - "elasticsearch"
@@ -1552,6 +1552,150 @@ elasticsearch:
     dataCount: 4
     instanceType: c5.2xlarge.search
     masterInstanceType: c5.2xlarge.search
+    volumeSize: 30
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
+  - id: "4a286fc7-e6f5-4c73-9d4f-65d899354abd"
+    name: "es-2xlarge-gp"
+    description: "AWS 2X-Large General-Purpose Elasticsearch 7.4 - 3 node master with 2 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "2 data nodes"
+      costs:
+      - amount:
+          usd: 4000.00
+        unit: "MONTHLY"
+      displayName: "es 2xlarge general-purpose cluster 3 master 2 data based on elasticsearch 7.4"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.4
+    approvedMajorVersions:
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
+    masterCount: 3
+    dataCount: 2
+    instanceType: m5.2xlarge.search
+    masterInstanceType: m5.2xlarge.search
+    volumeSize: 30
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
+  - id: "e7d1f1b3-f539-4573-a4f9-ff3db9de1550"
+    name: "es-2xlarge-gp-ha"
+    description: "AWS 2X-Large General-Purpose Elasticsearch 7.4 - 3 node master with 4 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "4 data nodes"
+      costs:
+      - amount:
+          usd: 5600.00
+        unit: "MONTHLY"
+      displayName: "es 2xlarge general-purpose cluster 3 master 4 data based on elasticsearch 7.4"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.4
+    approvedMajorVersions:
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
+    masterCount: 3
+    dataCount: 4
+    instanceType: m5.2xlarge.search
+    masterInstanceType: m5.2xlarge.search
+    volumeSize: 30
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
+  - id: "7e005210-a5f5-41bf-9ada-d0fce8c49f00"
+    name: "es-4xlarge-gp"
+    description: "AWS 4X-Large General-Purpose Elasticsearch 7.4 - 3 node master with 2 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "2 data nodes"
+      costs:
+      - amount:
+          usd: 8000.00
+        unit: "MONTHLY"
+      displayName: "es 4xlarge general-purpose cluster 3 master 2 data based on elasticsearch 7.4"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.4
+    approvedMajorVersions:
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
+    masterCount: 3
+    dataCount: 2
+    instanceType: m5.4xlarge.search
+    masterInstanceType: m5.4xlarge.search
+    volumeSize: 30
+    volumeType: gp2
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
+    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      service: "aws-broker"
+  - id: "20209473-6fab-44ed-93f2-46cc29c1ca00"
+    name: "es-4xlarge-gp-ha"
+    description: "AWS 4X-Large General-Purpose Elasticsearch 7.4 - 3 node master with 4 data nodes"
+    metadata:
+      bullets:
+      - "elasticsearch"
+      - "es 7.4"
+      - "4 data nodes"
+      costs:
+      - amount:
+          usd: 11200.00
+        unit: "MONTHLY"
+      displayName: "es 4xlarge general-purpose cluster 3 master 4 data based on elasticsearch 7.4"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.4
+    approvedMajorVersions:
+    - "OpenSearch_2.3"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.4"
+    masterCount: 3
+    dataCount: 4
+    instanceType: m5.4xlarge.search
+    masterInstanceType: m5.4xlarge.search
     volumeSize: 30
     volumeType: gp2
     masterEnabled: true
