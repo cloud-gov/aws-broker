@@ -178,6 +178,10 @@ jobs:
         aws-elasticsearch:es-large-ha
         aws-elasticsearch:es-xlarge
         aws-elasticsearch:es-xlarge-ha
+        aws-elasticsearch:es-2xlarge-gp
+        aws-elasticsearch:es-2xlarge-gp-ha
+        aws-elasticsearch:es-4xlarge-gp
+        aws-elasticsearch:es-4xlarge-gp-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -928,6 +932,10 @@ jobs:
         aws-elasticsearch:es-large-ha
         aws-elasticsearch:es-xlarge
         aws-elasticsearch:es-xlarge-ha
+        aws-elasticsearch:es-2xlarge-gp
+        aws-elasticsearch:es-2xlarge-gp-ha
+        aws-elasticsearch:es-4xlarge-gp
+        aws-elasticsearch:es-4xlarge-gp-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
@@ -942,8 +950,6 @@ jobs:
       AUTH_PASS: ((staging-auth-pass))
       SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
       SERVICE_ORGANIZATION: cloud-gov
-
-
 
 - name: terraform-plan-aws-broker-prod
   plan:
@@ -1151,6 +1157,10 @@ jobs:
         aws-elasticsearch:es-large-ha
         aws-elasticsearch:es-xlarge
         aws-elasticsearch:es-xlarge-ha
+        aws-elasticsearch:es-2xlarge-gp
+        aws-elasticsearch:es-2xlarge-gp-ha
+        aws-elasticsearch:es-4xlarge-gp
+        aws-elasticsearch:es-4xlarge-gp-ha
 
   - task: update-broker-enterprise
     file: pipeline-tasks/register-service-broker.yml
