@@ -57,6 +57,8 @@ type ElasticsearchInstance struct {
 	Tags        map[string]string `sql:"-"`
 	SubnetIDAZ1 string            `sql:"-"`
 	SubnetIDAZ2 string            `sql:"-"`
+	SubnetIDAZ3 string            `sql:"-"`
+	SubnetIDAZ4 string            `sql:"-"`
 	SecGroup    string            `sql:"-"`
 }
 
@@ -165,6 +167,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.SecGroup = plan.SecurityGroup
 	i.SubnetIDAZ1 = plan.SubnetIDAZ1
 	i.SubnetIDAZ2 = plan.SubnetIDAZ2
+	i.SubnetIDAZ3 = plan.SubnetIDAZ3
+	i.SubnetIDAZ4 = plan.SubnetIDAZ4
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid

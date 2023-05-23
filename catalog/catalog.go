@@ -200,6 +200,8 @@ type ElasticsearchPlan struct {
 	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
 	SubnetIDAZ1                string            `yaml:"subnetIDaz1" json:"-" validate:"required"`
 	SubnetIDAZ2                string            `yaml:"subnetIDaz2" json:"-" validate:"required"`
+	SubnetIDAZ3                string            `yaml:"subnetIDaz3" json:"-" validate:"required"`
+	SubnetIDAZ4                string            `yaml:"subnetIDaz4" json:"-" validate:"required"`
 	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
 	ApprovedMajorVersions     []string           `yaml:"approvedMajorVersions" json:"-"`
 }
