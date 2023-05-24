@@ -214,7 +214,8 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		})
 	} else {
 		VPCOptions.SetSubnetIds([]*string{
-			&i.SubnetIDAZ1,
+			&i.SubnetIDAZ3,
+			&i.SubnetIDAZ4,
 		})
 	}
 
