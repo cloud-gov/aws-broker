@@ -40,6 +40,8 @@ elasticsearch:
     securityGroup: sec-group
     subnetIDaz1: subnet-1
     subnetIDaz2: subnet-2
+    subnetIDaz3: subnet-3
+    subnetIDaz4: subnet-4
     tags:
       environment: "cf-env-dev"
       client: "the client"
@@ -67,6 +69,8 @@ elasticsearch:
     securityGroup: sec-group
     subnetIDaz1: subnet-1
     subnetIDaz2: subnet-2
+    subnetIDaz3: subnet-3
+    subnetIDaz4: subnet-4
     tags:
       environment: "cf-env-dev"
       client: "the client"

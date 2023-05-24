@@ -47,6 +47,9 @@ meta:
   elasticsearch:
     subnet_id_az1: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az1`
     subnet_id_az2: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az2`
+    subnet_id_az3: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az3`
+    subnet_id_az4: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az4`
+
     security_group: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_security_group`
 EOF
 
