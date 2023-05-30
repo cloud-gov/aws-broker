@@ -613,7 +613,6 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -648,7 +647,6 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -683,7 +681,6 @@ rds:
       instanceClass: db.t2.small
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -718,7 +715,6 @@ rds:
       instanceClass: db.t2.small
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbType: mysql
       dbVersion: "8.0"
@@ -753,7 +749,6 @@ rds:
       instanceClass: db.t2.medium
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -788,7 +783,6 @@ rds:
       instanceClass: db.t2.medium
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -823,7 +817,6 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -858,7 +851,6 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -893,7 +885,6 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -928,7 +919,6 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -963,7 +953,6 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -998,7 +987,6 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       dbVersion: "8.0"
       dbType: mysql
@@ -1300,7 +1288,7 @@ elasticsearch:
     free: false
     elasticsearchVersion: Elasticsearch_6.8
     approvedMajorVersions:
-    - "Opensearch_2.3" 
+    - "Opensearch_2.3"
     - "Opensearch_1.3"
     - "Elasticsearch_7.4"
     dataCount: 1
