@@ -325,7 +325,6 @@ rds:
       dbType: mysql
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       plan_updateable: true
       securityGroup: sg-123456
@@ -354,7 +353,6 @@ rds:
       dbType: mysql
       allocatedStorage: 10
       approvedMajorVersions:
-        - "5.7"
         - "8.0"
       plan_updateable: true
       securityGroup: sg-123456
