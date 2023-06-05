@@ -49,8 +49,8 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.38
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_db_engine_version: 8.0.32
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql8.0
       TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
@@ -409,7 +409,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
-          DB_VERSION: 5.7
+          DB_VERSION: 8.0
 
       - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
@@ -575,7 +575,7 @@ jobs:
           CF_SPACE: ((staging-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
-          DB_VERSION: 5.7
+          DB_VERSION: 8.0
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -804,8 +804,8 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.38
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_db_engine_version: 8.0.32
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql8.0
       TF_VAR_rds_shared_mysql_multi_az: false
       TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
@@ -999,8 +999,8 @@ jobs:
       TF_VAR_rds_shared_mysql_db_size: 100
       TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
       TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 5.7.38
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql5.7
+      TF_VAR_rds_shared_mysql_db_engine_version: 8.0.32
+      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql8.0
       TF_VAR_rds_shared_mysql_multi_az: true
       TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
       TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
@@ -1284,7 +1284,7 @@ jobs:
           CF_SPACE: ((prod-cf-space))
           SERVICE_PLAN: small-mysql
           DB_TYPE: mysql
-          DB_VERSION: 5.7
+          DB_VERSION: 8.0
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
