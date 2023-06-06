@@ -201,7 +201,7 @@ func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindReque
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	// Get the correct database logic depending on the type of plan.
+	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
