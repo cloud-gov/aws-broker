@@ -95,12 +95,12 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 	if planErr != nil {
 		return planErr
 	}
-        if options.EngineVersion != "" {
+	if options.EngineVersion != "" {
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.EngineVersion) {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
-				options.EngineVersion +" is not a supported major version; major version must be one of: 7.0, 6.2, 6.0, 5.0.6 "+".",
+				options.EngineVersion+" is not a supported major version; major version must be one of: 7.0, 6.2, 6.0, 5.0.6 "+".",
 			)
 		}
 	}
@@ -201,7 +201,7 @@ func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindReque
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
+	// Get the correct database logic depending on the type of plan.
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr

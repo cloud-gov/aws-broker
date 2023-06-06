@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
-	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
@@ -56,67 +55,6 @@ func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 }
 
 // END MockDBAdpater
-
-type sharedDBAdapter struct {
-	SharedDbConn *gorm.DB
-}
-
-func (d *sharedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	dbName := i.FormatDBName()
-	switch i.DbType {
-	case "postgres":
-		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", dbName)); db.Error != nil {
-			return base.InstanceNotCreated, db.Error
-		}
-		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s';", i.Username, password)); db.Error != nil {
-			// TODO. Revert CREATE DATABASE.
-			return base.InstanceNotCreated, db.Error
-		}
-		if db := d.SharedDbConn.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON DATABASE %s TO %s;", dbName, i.Username)); db.Error != nil {
-			// TODO. Revert CREATE DATABASE and CREATE USER.
-			return base.InstanceNotCreated, db.Error
-		}
-	case "mysql":
-		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE DATABASE %s;", dbName)); db.Error != nil {
-			return base.InstanceNotCreated, db.Error
-		}
-		// Double % escapes to one %.
-		if db := d.SharedDbConn.Exec(fmt.Sprintf("CREATE USER '%s'@'%%' IDENTIFIED BY '%s';", i.Username, password)); db.Error != nil {
-			// TODO. Revert CREATE DATABASE.
-			return base.InstanceNotCreated, db.Error
-		}
-		// Double % escapes to one %.
-		if db := d.SharedDbConn.Exec(fmt.Sprintf("GRANT ALL ON %s.* TO '%s'@'%%';", dbName, i.Username)); db.Error != nil {
-			// TODO. Revert CREATE DATABASE and CREATE USER.
-			return base.InstanceNotCreated, db.Error
-		}
-	default:
-		return base.InstanceNotCreated, fmt.Errorf("Unsupported database type: %s, cannot create shared database", i.DbType)
-	}
-	return base.InstanceReady, nil
-}
-
-func (d *sharedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	return base.InstanceNotModified, nil
-}
-
-func (d *sharedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
-	return base.InstanceReady, nil
-}
-
-func (d *sharedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
-	return i.getCredentials(password)
-}
-
-func (d *sharedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
-	if db := d.SharedDbConn.Exec(fmt.Sprintf("DROP DATABASE %s;", i.FormatDBName())); db.Error != nil {
-		return base.InstanceNotGone, db.Error
-	}
-	if db := d.SharedDbConn.Exec(fmt.Sprintf("DROP USER %s;", i.Username)); db.Error != nil {
-		return base.InstanceNotGone, db.Error
-	}
-	return base.InstanceGone, nil
-}
 
 type dedicatedDBAdapter struct {
 	Plan                 catalog.RDSPlan

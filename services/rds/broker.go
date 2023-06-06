@@ -72,17 +72,6 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 	}
 
 	switch plan.Adapter {
-	case "shared":
-		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
-		if err != nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
-		}
-		if setting.DB == nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, "An internal error occurred setting up shared databases.")
-		}
-		dbAdapter = &sharedDBAdapter{
-			SharedDbConn: setting.DB,
-		}
 	case "dedicated":
 		rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
 		parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
@@ -185,14 +174,6 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 
 	newInstance.State = status
 
-	if newInstance.Adapter == "shared" {
-		setting, err := c.GetResources().RdsSettings.GetRDSSettingByPlan(plan.ID)
-		if err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
-		}
-		newInstance.Host = setting.Config.URL
-		newInstance.Port = setting.Config.Port
-	}
 	broker.brokerDB.NewRecord(newInstance)
 	err = broker.brokerDB.Create(&newInstance).Error
 	if err != nil {
@@ -250,24 +231,6 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(
 			http.StatusBadRequest,
 			"Cannot switch between database engines/types. Please select a plan with the same database engine/type.",
-		)
-	}
-
-	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
-	// are not allowed or enabled, but in case we do, explicitly error out.
-	if existingInstance.Adapter == "shared" {
-		return response.NewErrorResponse(
-			http.StatusBadRequest,
-			"Cannot switch from a shared database instance. Please migrate your database to a dedicated instance plan instead.",
-		)
-	}
-
-	// We shouldn't ever be able to do this as upgrades on the shared DB adapter
-	// are not allowed or enabled, but in case we do, explicitly error out.
-	if newPlan.Adapter == "shared" {
-		return response.NewErrorResponse(
-			http.StatusBadRequest,
-			"Cannot switch to a shared database instance. Please choose a dedicated instance plan instead.",
 		)
 	}
 
@@ -366,7 +329,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
+	// Get the correct database logic depending on the type of plan.
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
 	if adapterErr != nil {
 		return adapterErr
