@@ -45,39 +45,8 @@ jobs:
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
-      TF_VAR_rds_shared_mysql_instance_type: db.t3.small
-      TF_VAR_rds_shared_mysql_db_size: 100
-      TF_VAR_rds_shared_mysql_db_name: ((development-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 8.0.32
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql8.0
-      TF_VAR_rds_shared_mysql_multi_az: false
-      TF_VAR_rds_shared_mysql_username: ((development-rds-shared-mysql-username))
-      TF_VAR_rds_shared_mysql_password: ((development-rds-shared-mysql-password))
-      TF_VAR_rds_shared_mysql_apply_immediately: "true"
-      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_postgres_instance_type: db.t3.micro
-      TF_VAR_rds_shared_postgres_db_size: 100
-      TF_VAR_rds_shared_postgres_db_name: ((development-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 12
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
-      TF_VAR_rds_shared_postgres_multi_az: false
-      TF_VAR_rds_shared_postgres_username: ((development-rds-shared-postgres-username))
-      TF_VAR_rds_shared_postgres_password: ((development-rds-shared-postgres-password))
-      TF_VAR_rds_shared_postgres_apply_immediately: "true"
-      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
-
       TF_VAR_snapshot_expiration: 1
       TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
-
-  - task: init-shared-db
-    file: aws-broker-app/ci/init-shared-db.yml
-    params:
-      STATE_FILE: terraform-state/terraform.tfstate
-      POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
-      POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
 
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
@@ -87,12 +56,6 @@ jobs:
       AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((development-environment))
-      RDS_SHARED_MYSQL_NAME: ((development-rds-shared-mysql-db-name))
-      RDS_SHARED_MYSQL_USERNAME: ((development-rds-shared-mysql-username))
-      RDS_SHARED_MYSQL_PASSWORD: ((development-rds-shared-mysql-password))
-      RDS_SHARED_POSTGRES_NAME: ((development-rds-shared-postgres-db-name))
-      RDS_SHARED_POSTGRES_USERNAME: ((development-rds-shared-postgres-username))
-      RDS_SHARED_POSTGRES_PASSWORD: ((development-rds-shared-postgres-password))
 
   - put: deploy-aws-broker-development
     params:
@@ -799,40 +762,9 @@ jobs:
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_mysql_instance_type: ((prod-mysql-instance-class))
-      TF_VAR_rds_shared_mysql_db_size: 100
-      TF_VAR_rds_shared_mysql_db_name: ((staging-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 8.0.32
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql8.0
-      TF_VAR_rds_shared_mysql_multi_az: false
-      TF_VAR_rds_shared_mysql_username: ((staging-rds-shared-mysql-username))
-      TF_VAR_rds_shared_mysql_password: ((staging-rds-shared-mysql-password))
-      TF_VAR_rds_shared_mysql_apply_immediately: "true"
-      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_postgres_instance_type: ((prod-pgsql-instance-class))
-      TF_VAR_rds_shared_postgres_db_size: 100
-      TF_VAR_rds_shared_postgres_db_name: ((staging-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 12
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
-      TF_VAR_rds_shared_postgres_multi_az: false
-      TF_VAR_rds_shared_postgres_username: ((staging-rds-shared-postgres-username))
-      TF_VAR_rds_shared_postgres_password: ((staging-rds-shared-postgres-password))
-      TF_VAR_rds_shared_postgres_apply_immediately: "true"
-      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
       
       TF_VAR_snapshot_expiration: 7
       TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
-      
-  - task: init-shared-db
-    file: aws-broker-app/ci/init-shared-db.yml
-    params:
-      STATE_FILE: terraform-state/terraform.tfstate
-      POSTGRES_USERNAME: ((staging-rds-shared-postgres-username))
-      POSTGRES_PASSWORD: ((staging-rds-shared-postgres-password))
 
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
@@ -842,12 +774,6 @@ jobs:
       AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((staging-environment))
-      RDS_SHARED_MYSQL_NAME: ((staging-rds-shared-mysql-db-name))
-      RDS_SHARED_MYSQL_USERNAME: ((staging-rds-shared-mysql-username))
-      RDS_SHARED_MYSQL_PASSWORD: ((staging-rds-shared-mysql-password))
-      RDS_SHARED_POSTGRES_NAME: ((staging-rds-shared-postgres-db-name))
-      RDS_SHARED_POSTGRES_USERNAME: ((staging-rds-shared-postgres-username))
-      RDS_SHARED_POSTGRES_PASSWORD: ((staging-rds-shared-postgres-password))
 
   - put: deploy-aws-broker-staging
     params:
@@ -994,30 +920,6 @@ jobs:
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_mysql_instance_type: ((prod-mysql-instance-class))
-      TF_VAR_rds_shared_mysql_db_size: 100
-      TF_VAR_rds_shared_mysql_db_name: ((prod-rds-shared-mysql-db-name))
-      TF_VAR_rds_shared_mysql_db_engine: mysql
-      TF_VAR_rds_shared_mysql_db_engine_version: 8.0.32
-      TF_VAR_rds_shared_mysql_db_parameter_group_family: mysql8.0
-      TF_VAR_rds_shared_mysql_multi_az: true
-      TF_VAR_rds_shared_mysql_username: ((prod-rds-shared-mysql-username))
-      TF_VAR_rds_shared_mysql_password: ((prod-rds-shared-mysql-password))
-      TF_VAR_rds_shared_mysql_apply_immediately: "true"
-      TF_VAR_rds_shared_mysql_allow_major_version_upgrade: "true"
-
-      TF_VAR_rds_shared_postgres_instance_type: db.m4.large #needs upgrade to new instance type
-      TF_VAR_rds_shared_postgres_db_size: 100
-      TF_VAR_rds_shared_postgres_db_name: ((prod-rds-shared-postgres-db-name))
-      TF_VAR_rds_shared_postgres_db_engine: postgres
-      TF_VAR_rds_shared_postgres_db_engine_version: 12
-      TF_VAR_rds_shared_postgres_db_parameter_group_family: postgres12
-      TF_VAR_rds_shared_postgres_multi_az: true
-      TF_VAR_rds_shared_postgres_username: ((prod-rds-shared-postgres-username))
-      TF_VAR_rds_shared_postgres_password: ((prod-rds-shared-postgres-password))
-      TF_VAR_rds_shared_postgres_apply_immediately: "true"
-      TF_VAR_rds_shared_postgres_allow_major_version_upgrade: "true"
       
       TF_VAR_snapshot_expiration: 14
       TF_VAR_platform_access_role_arn: ((prod-platform-role-arn))
@@ -1052,13 +954,6 @@ jobs:
       <<: *plan-params
       TERRAFORM_ACTION: apply
 
-  - task: init-shared-db
-    file: aws-broker-app/ci/init-shared-db.yml
-    params:
-      STATE_FILE: terraform-state/terraform.tfstate
-      POSTGRES_USERNAME: ((prod-rds-shared-postgres-username))
-      POSTGRES_PASSWORD: ((prod-rds-shared-postgres-password))
-
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
     params:
@@ -1067,12 +962,6 @@ jobs:
       AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
       ENVIRONMENT: ((prod-environment))
-      RDS_SHARED_MYSQL_NAME: ((prod-rds-shared-mysql-db-name))
-      RDS_SHARED_MYSQL_USERNAME: ((prod-rds-shared-mysql-username))
-      RDS_SHARED_MYSQL_PASSWORD: ((prod-rds-shared-mysql-password))
-      RDS_SHARED_POSTGRES_NAME: ((prod-rds-shared-postgres-db-name))
-      RDS_SHARED_POSTGRES_USERNAME: ((prod-rds-shared-postgres-username))
-      RDS_SHARED_POSTGRES_PASSWORD: ((prod-rds-shared-postgres-password))
 
   - put: deploy-aws-broker-prod
     params:
