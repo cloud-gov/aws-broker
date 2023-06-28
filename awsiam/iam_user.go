@@ -10,15 +10,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
 
 type IAMUser struct {
-	iamsvc *iam.IAM
+	iamsvc iamiface.IAMAPI
 	logger lager.Logger
 }
 
 func NewIAMUser(
-	iamsvc *iam.IAM,
+	iamsvc iamiface.IAMAPI,
 	logger lager.Logger,
 ) *IAMUser {
 	return &IAMUser{

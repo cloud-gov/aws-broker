@@ -6,7 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/cloudfoundry-community/s3-broker/awsiam"
+	// . "github.com/cloudfoundry-community/s3-broker/awsiam"
+	. "github.com/18F/aws-broker/awsiam"
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -15,7 +16,41 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
+
+type mockIAMClient struct {
+	iamiface.IAMAPI
+
+	listPolicyVersionsOutput iam.ListPolicyVersionsOutput
+	listPolicyVersionsErr    error
+
+	deletePolicyOutput iam.DeletePolicyOutput
+	deletePolicyErr    error
+
+	deletePolicyVersionOutput  iam.DeletePolicyVersionOutput
+	deletePolicyVersionErr     error
+	deletedPolicyVersionInputs []*iam.DeletePolicyVersionInput
+}
+
+func (m *mockIAMClient) ListPolicyVersions(input *iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
+	return &m.listPolicyVersionsOutput, m.listPolicyVersionsErr
+}
+
+func (m *mockIAMClient) DeletePolicyVersion(input *iam.DeletePolicyVersionInput) (
+	*iam.DeletePolicyVersionOutput,
+	error,
+) {
+	if m.deletePolicyVersionErr != nil {
+		return nil, m.deletePolicyVersionErr
+	}
+	m.deletedPolicyVersionInputs = append(m.deletedPolicyVersionInputs, input)
+	return &m.deletePolicyVersionOutput, nil
+}
+
+func (m *mockIAMClient) DeletePolicy(input *iam.DeletePolicyInput) (*iam.DeletePolicyOutput, error) {
+	return &m.deletePolicyOutput, m.deletePolicyErr
+}
 
 var _ = Describe("IAM User", func() {
 	var (
@@ -546,10 +581,12 @@ var _ = Describe("IAM User", func() {
 			iamsvc.Handlers.Clear()
 
 			iamCall = func(r *request.Request) {
-				Expect(r.Operation.Name).To(Equal("DeletePolicy"))
-				Expect(r.Params).To(BeAssignableToTypeOf(&iam.DeletePolicyInput{}))
-				Expect(r.Params).To(Equal(deletePolicyInput))
-				r.Error = deletePolicyError
+				Expect(r.Operation.Name).To(BeElementOf([]string{"DeletePolicy", "ListPolicyVersions"}))
+				if r.Operation.Name == "DeletePolicy" {
+					Expect(r.Params).To(BeAssignableToTypeOf(&iam.DeletePolicyInput{}))
+					Expect(r.Params).To(Equal(deletePolicyInput))
+					r.Error = deletePolicyError
+				}
 			}
 			iamsvc.Handlers.Send.PushBack(iamCall)
 		})
@@ -557,6 +594,51 @@ var _ = Describe("IAM User", func() {
 		It("deletes the Policy", func() {
 			err := user.DeletePolicy(policyARN)
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("when there are policy versions", func() {
+			var (
+				fakeIAMClient     mockIAMClient
+				fakeIAMUserClient *IAMUser
+			)
+
+			BeforeEach(func() {
+				policyARN = "policy-arn2"
+			})
+
+			It("deletes the policy versions", func() {
+				err := fakeIAMUserClient.DeletePolicy(policyARN)
+				fakeIAMClient = mockIAMClient{
+					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+						Versions: []*iam.PolicyVersion{
+							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+							{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
+						},
+					},
+				}
+				fakeIAMUserClient = NewIAMUser(&fakeIAMClient, logger)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeIAMClient.deletedPolicyVersionInputs).To(Equal([]*iam.DeletePolicyVersionInput{
+					{
+						VersionId: aws.String("2"),
+						PolicyArn: &policyARN,
+					},
+				}))
+			})
+
+			It("returns delete policy error", func() {
+				err := fakeIAMUserClient.DeletePolicy(policyARN)
+				fakeIAMClient = mockIAMClient{
+					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+						Versions: []*iam.PolicyVersion{
+							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+							{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
+						},
+					},
+				}
+				fakeIAMUserClient = NewIAMUser(&fakeIAMClient, logger)
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 
 		Context("when deleting the Policy fails", func() {
