@@ -14,7 +14,41 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
+
+type mockIAMClient struct {
+	iamiface.IAMAPI
+
+	listPolicyVersionsOutput iam.ListPolicyVersionsOutput
+	listPolicyVersionsErr    error
+
+	deletePolicyOutput iam.DeletePolicyOutput
+	deletePolicyErr    error
+
+	deletePolicyVersionOutput  iam.DeletePolicyVersionOutput
+	deletePolicyVersionErr     error
+	deletedPolicyVersionInputs []*iam.DeletePolicyVersionInput
+}
+
+func (m *mockIAMClient) ListPolicyVersions(input *iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
+	return &m.listPolicyVersionsOutput, m.listPolicyVersionsErr
+}
+
+func (m *mockIAMClient) DeletePolicyVersion(input *iam.DeletePolicyVersionInput) (
+	*iam.DeletePolicyVersionOutput,
+	error,
+) {
+	if m.deletePolicyVersionErr != nil {
+		return nil, m.deletePolicyVersionErr
+	}
+	m.deletedPolicyVersionInputs = append(m.deletedPolicyVersionInputs, input)
+	return &m.deletePolicyVersionOutput, nil
+}
+
+func (m *mockIAMClient) DeletePolicy(input *iam.DeletePolicyInput) (*iam.DeletePolicyOutput, error) {
+	return &m.deletePolicyOutput, m.deletePolicyErr
+}
 
 var _ = Describe("IAM User", func() {
 	var (
