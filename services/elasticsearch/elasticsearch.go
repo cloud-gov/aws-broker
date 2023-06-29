@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"os"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -454,10 +453,7 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 // utility to create roles and policies to enable snapshots in an s3 bucket
 // we pass bucket-name separately to enable reuse for client and broker buckets
 func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
-	logger := lager.NewLogger("aws-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	ip := awsiam.NewIAMPolicyClient(d.settings.Region, logger)
+	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 	var snapshotRole *iam.Role
 
 	// create snapshotrole if not done yet
@@ -676,11 +672,8 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 // in which we clean up all the roles and policies for the ES domain
 func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
-	logger := lager.NewLogger("aws-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	user := awsiam.NewIAMUserClient(d.iam, logger)
-	policyHandler := awsiam.NewIAMPolicyClient(d.settings.Region, logger)
+	user := awsiam.NewIAMUserClient(d.iam, d.logger)
+	policyHandler := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
@@ -740,12 +733,10 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 
 // in which we finally delete the ES Domain and wait for it to complete
 func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *ElasticsearchInstance) error {
-	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
 	params := &opensearchservice.DeleteDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	resp, err := svc.DeleteDomain(params)
+	resp, err := d.opensearch.DeleteDomain(params)
 
 	// Pretty-print the response data.
 	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
@@ -758,12 +749,11 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 	// TODO - don't allow polling forever
 	for {
 		time.Sleep(time.Minute)
-		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		_, err := svc.DescribeDomain(params)
+		_, err := d.opensearch.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Instance no longer exists, this is success
