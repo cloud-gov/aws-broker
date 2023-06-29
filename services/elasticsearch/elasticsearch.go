@@ -79,13 +79,8 @@ type dedicatedElasticsearchAdapter struct {
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	// svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-	// iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
 	user := awsiam.NewIAMUserClient(d.iam, d.logger)
-	ip := awsiam.NewIamPolicyHandler(d.settings.Region, d.logger)
-
-	// stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	_, err := user.Create(i.Domain, "")
@@ -462,7 +457,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
-	ip := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
+	ip := awsiam.NewIAMPolicyClient(d.settings.Region, logger)
 	var snapshotRole *iam.Role
 
 	// create snapshotrole if not done yet
@@ -685,7 +680,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
 	user := awsiam.NewIAMUserClient(d.iam, logger)
-	policyHandler := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
+	policyHandler := awsiam.NewIAMPolicyClient(d.settings.Region, logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
