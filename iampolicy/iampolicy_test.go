@@ -140,20 +140,6 @@ func (m *mockIamClient) CreatePolicyVersion(input *iam.CreatePolicyVersionInput)
 	}, nil
 }
 
-// func (m *mockIamClient) ListPolicyVersions(*iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
-// 	return &iam.ListPolicyVersionsOutput{
-// 		IsTruncated: aws.Bool(false),
-// 		Marker:      aws.String("foobar"),
-// 		Versions: []*iam.PolicyVersion{
-// 			{
-// 				VersionId:        aws.String("old"),
-// 				Document:         aws.String(mockPolDoc),
-// 				IsDefaultVersion: aws.Bool(true),
-// 			},
-// 		},
-// 	}, nil
-// }
-
 func (m *mockIamClient) ListPolicyVersions(input *iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
 	return &m.listPolicyVersionsOutput, m.listPolicyVersionsErr
 }
@@ -325,7 +311,14 @@ func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
 
 func TestUpdateExistingPolicy(t *testing.T) {
 	ip := &IamPolicyHandler{
-		iamsvc: &mockIamClient{},
+		iamsvc: &mockIamClient{
+			listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+				Versions: []*iam.PolicyVersion{
+					{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+				},
+			},
+		},
+		logger: logger,
 	}
 	ps := []PolicyStatementEntry{listStatement, existStatement, objectStatement}
 	arn := "arn:aws:iam::123456789012:policy/test-pol"
@@ -478,5 +471,34 @@ func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
 				t.Errorf("expected: %s, got: %s", test.expectedDeletePolicyVersionInputs, test.fakeIAMClient.deletedPolicyVersionInputs)
 			}
 		})
+	}
+}
+
+func TestCreatePolicyFromTemplate(t *testing.T) {
+	policyName := "policy-name"
+	template := `{
+		"Version": "2012-10-17",
+		"Id": "policy-name",
+		"Statement": [
+			{
+				"Effect": "effect",
+				"Action": "action",
+				"Resource": {{resources "/*"}}
+			}
+		]
+	}`
+	resources := []string{"resource"}
+	iamPath := "/path/"
+
+	policyHandler := &IamPolicyHandler{
+		iamsvc: &mockIamClient{},
+		logger: logger,
+	}
+	policyARN, err := policyHandler.CreatePolicyFromTemplate(policyName, iamPath, template, resources)
+	if policyARN != "arn:aws:iam::123456789012:policy/policy-name" {
+		t.Fatalf("unexpected policy ARN: %s", policyARN)
+	}
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
 	}
 }

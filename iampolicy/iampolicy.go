@@ -1,9 +1,11 @@
 package iampolicy
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/url"
 	"sort"
 
@@ -124,7 +126,59 @@ func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*i
 	}
 
 	return resp.Role, nil
+}
 
+func (ip *IamPolicyHandler) CreatePolicyFromTemplate(
+	policyName,
+	iamPath,
+	policyTemplate string,
+	resources []string,
+) (string, error) {
+	tmpl, err := template.New("policy").Funcs(template.FuncMap{
+		"resources": func(suffix string) string {
+			resourcePaths := make([]string, len(resources))
+			for idx, resource := range resources {
+				resourcePaths[idx] = resource + suffix
+			}
+			marshaled, err := json.Marshal(resourcePaths)
+			if err != nil {
+				panic(err)
+			}
+			return string(marshaled)
+		},
+	}).Parse(policyTemplate)
+	if err != nil {
+		ip.logger.Error("aws-iam-error", err)
+		return "", err
+	}
+	policy := bytes.Buffer{}
+	err = tmpl.Execute(&policy, map[string]interface{}{
+		"Resource":  resources[0],
+		"Resources": resources,
+	})
+	if err != nil {
+		ip.logger.Error("aws-iam-error", err)
+		return "", err
+	}
+
+	createPolicyInput := &iam.CreatePolicyInput{
+		PolicyName:     aws.String(policyName),
+		PolicyDocument: aws.String(policy.String()),
+		Path:           stringOrNil(iamPath),
+	}
+	ip.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
+
+	createPolicyOutput, err := ip.iamsvc.CreatePolicy(createPolicyInput)
+	if err != nil {
+		ip.logger.Error("aws-iam-error", err)
+		if awsErr, ok := err.(awserr.Error); ok {
+			return "", errors.New(awsErr.Code() + ": " + awsErr.Message())
+		}
+		return "", err
+	}
+	ip.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
+
+	return aws.StringValue(createPolicyOutput.Policy.Arn), nil
 }
 
 // create a policy and attach to a user, return the policy ARN
@@ -391,6 +445,13 @@ func (ip IamPolicyHandler) trimPolicyVersions(policyARN string, maxVersions int)
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func stringOrNil(v string) *string {
+	if v != "" {
+		return &v
 	}
 	return nil
 }

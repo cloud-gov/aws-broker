@@ -476,7 +476,10 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 // utility to create roles and policies to enable snapshots in an s3 bucket
 // we pass bucket-name separately to enable reuse for client and broker buckets
 func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
-	ip := iampolicy.NewIamPolicyHandler(d.settings.Region)
+	logger := lager.NewLogger("aws-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+
+	ip := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
 	var snapshotRole *iam.Role
 
 	// create snapshotrole if not done yet
@@ -696,9 +699,12 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 // in which we clean up all the roles and policies for the ES domain
 func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
 	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+
 	user := awsiam.NewIAMUser(iamsvc, logger)
+	policyHandler := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
@@ -725,7 +731,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
-	if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
+	if err := policyHandler.DeletePolicy(i.SnapshotPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
@@ -739,7 +745,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
-	if err := user.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
+	if err := policyHandler.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
@@ -749,7 +755,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
-	if err := user.DeletePolicy(i.IamPolicyARN); err != nil {
+	if err := policyHandler.DeletePolicy(i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
