@@ -5,4 +5,5 @@ set -e -x
 cp secrets-test.yml secrets.yml
 cp catalog-test.yml catalog.yml
 
-go test
+# Run all _test.go files in main directory and subdirectories
+go test ./...
