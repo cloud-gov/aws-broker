@@ -475,30 +475,99 @@ func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
 }
 
 func TestCreatePolicyFromTemplate(t *testing.T) {
-	policyName := "policy-name"
-	template := `{
-		"Version": "2012-10-17",
-		"Id": "policy-name",
-		"Statement": [
-			{
-				"Effect": "effect",
-				"Action": "action",
-				"Resource": {{resources "/*"}}
-			}
-		]
-	}`
-	resources := []string{"resource"}
-	iamPath := "/path/"
+	testCases := map[string]struct {
+		policyArn          string
+		expectedErrMessage string
+		policyHandler      *IamPolicyHandler
+		policyName         string
+		policyTemplate     string
+		resources          []string
+		iamPath            string
+		expectedPolicyArn  string
+	}{
+		"creates policy": {
+			policyHandler: &IamPolicyHandler{
+				iamsvc: &mockIamClient{},
+				logger: logger,
+			},
+			policyName: "policy-name",
+			policyTemplate: `{
+				"Version": "2012-10-17",
+				"Id": "policy-name",
+				"Statement": [
+					{
+						"Effect": "effect",
+						"Action": "action",
+						"Resource": {{resources "/*"}}
+					}
+				]
+			}`,
+			resources:         []string{"resource"},
+			iamPath:           "/path/",
+			expectedPolicyArn: "arn:aws:iam::123456789012:policy/policy-name",
+		},
+		"returns error": {
+			policyHandler: &IamPolicyHandler{
+				iamsvc: &mockIamClient{
+					createPolicyErr: errors.New("create policy error"),
+				},
+				logger: logger,
+			},
+			policyName: "policy-name",
+			policyTemplate: `{
+				"Version": "2012-10-17",
+				"Id": "policy-name",
+				"Statement": [
+					{
+						"Effect": "effect",
+						"Action": "action",
+						"Resource": {{resources "/*"}}
+					}
+				]
+			}`,
+			resources:          []string{"resource"},
+			iamPath:            "/path/",
+			expectedErrMessage: "create policy error",
+		},
+		"returns AWS error": {
+			policyHandler: &IamPolicyHandler{
+				iamsvc: &mockIamClient{
+					createPolicyErr: awserr.New("code", "message", errors.New("operation failed")),
+				},
+				logger: logger,
+			},
+			policyName: "policy-name",
+			policyTemplate: `{
+				"Version": "2012-10-17",
+				"Id": "policy-name",
+				"Statement": [
+					{
+						"Effect": "effect",
+						"Action": "action",
+						"Resource": {{resources "/*"}}
+					}
+				]
+			}`,
+			resources:          []string{"resource"},
+			iamPath:            "/path/",
+			expectedErrMessage: "code: message",
+		},
+	}
 
-	policyHandler := &IamPolicyHandler{
-		iamsvc: &mockIamClient{},
-		logger: logger,
-	}
-	policyARN, err := policyHandler.CreatePolicyFromTemplate(policyName, iamPath, template, resources)
-	if policyARN != "arn:aws:iam::123456789012:policy/policy-name" {
-		t.Fatalf("unexpected policy ARN: %s", policyARN)
-	}
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			policyARN, err := test.policyHandler.CreatePolicyFromTemplate(
+				test.policyName,
+				test.iamPath,
+				test.policyTemplate,
+				test.resources,
+			)
+			if test.expectedErrMessage != "" && err.Error() != test.expectedErrMessage {
+				t.Fatalf("expeced error message: %s, got: %s", test.expectedErrMessage, err.Error())
+			}
+			if policyARN != test.expectedPolicyArn {
+				t.Fatalf("unexpected policy ARN: %s", policyARN)
+			}
+		})
 	}
 }
