@@ -1,4 +1,4 @@
-package iampolicy
+package awsiam
 
 import (
 	"errors"

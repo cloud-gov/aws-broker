@@ -1,4 +1,4 @@
-package iampolicy
+package awsiam
 
 import (
 	"bytes"
@@ -445,13 +445,6 @@ func (ip IamPolicyHandler) trimPolicyVersions(policyARN string, maxVersions int)
 				}
 			}
 		}
-	}
-	return nil
-}
-
-func stringOrNil(v string) *string {
-	if v != "" {
-		return &v
 	}
 	return nil
 }

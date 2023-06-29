@@ -23,7 +23,6 @@ import (
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/iampolicy"
 
 	"fmt"
 )
@@ -80,7 +79,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
 	user := awsiam.NewIAMUser(iamsvc, logger)
-	ip := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
+	ip := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
 
 	stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
@@ -464,7 +463,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
-	ip := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
+	ip := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
 	var snapshotRole *iam.Role
 
 	// create snapshotrole if not done yet
@@ -498,7 +497,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	// Create PolicyDoc Statements
 	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
 	bucketArn := "arn:aws-us-gov:s3:::" + bucket
-	listStatement := iampolicy.PolicyStatementEntry{
+	listStatement := awsiam.PolicyStatementEntry{
 		Action:   []string{"s3:ListBucket"},
 		Effect:   "Allow",
 		Resource: []string{bucketArn},
@@ -507,7 +506,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	// using path will now limit access to the specific path provided
 	path += "/*"
 	// Looks like: {"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}
-	objectStatement := iampolicy.PolicyStatementEntry{
+	objectStatement := awsiam.PolicyStatementEntry{
 		Action:   []string{"s3:GetObject", "s3:PutObject", "s3:DeleteObject"},
 		Effect:   "Allow",
 		Resource: []string{bucketArn + path},
@@ -516,9 +515,9 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
 	if i.SnapshotPolicyARN == "" {
 
-		policyDoc := iampolicy.PolicyDocument{
+		policyDoc := awsiam.PolicyDocument{
 			Version:   "2012-10-17",
-			Statement: []iampolicy.PolicyStatementEntry{listStatement, objectStatement},
+			Statement: []awsiam.PolicyStatementEntry{listStatement, objectStatement},
 		}
 
 		policyname := i.Domain + "-to-S3-RolePolicy"
@@ -537,7 +536,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	} else {
 		// snaphost policy has already been created so we need to add the new statements for this new bucket
 		// to the existing policy version.
-		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
+		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
 			return err
@@ -689,7 +688,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
 	user := awsiam.NewIAMUser(iamsvc, logger)
-	policyHandler := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
+	policyHandler := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
