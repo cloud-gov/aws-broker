@@ -563,7 +563,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 				test.resources,
 			)
 			if test.expectedErrMessage != "" && err.Error() != test.expectedErrMessage {
-				t.Fatalf("expeced error message: %s, got: %s", test.expectedErrMessage, err.Error())
+				t.Fatalf("expected error message: %s, got: %s", test.expectedErrMessage, err.Error())
 			}
 			if policyARN != test.expectedPolicyArn {
 				t.Fatalf("unexpected policy ARN: %s", policyARN)
