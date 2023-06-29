@@ -607,7 +607,6 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("deletes the policy versions", func() {
-				err := fakeIAMUserClient.DeletePolicy(policyARN)
 				fakeIAMClient = mockIAMClient{
 					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
 						Versions: []*iam.PolicyVersion{
@@ -617,6 +616,7 @@ var _ = Describe("IAM User", func() {
 					},
 				}
 				fakeIAMUserClient = NewIAMUser(&fakeIAMClient, logger)
+				err := fakeIAMUserClient.DeletePolicy(policyARN)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeIAMClient.deletedPolicyVersionInputs).To(Equal([]*iam.DeletePolicyVersionInput{
 					{
@@ -626,8 +626,18 @@ var _ = Describe("IAM User", func() {
 				}))
 			})
 
-			It("returns delete policy error", func() {
+			It("returns the list policy versions error", func() {
+				listPolicyVersionsErr := errors.New("list policy versions err")
+				fakeIAMClient = mockIAMClient{
+					listPolicyVersionsErr: listPolicyVersionsErr,
+				}
+				fakeIAMUserClient = NewIAMUser(&fakeIAMClient, logger)
 				err := fakeIAMUserClient.DeletePolicy(policyARN)
+				Expect(err).To(Equal(listPolicyVersionsErr))
+			})
+
+			It("returns the delete policy version error", func() {
+				deletePolicyVersionError := errors.New("delete policy err")
 				fakeIAMClient = mockIAMClient{
 					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
 						Versions: []*iam.PolicyVersion{
@@ -635,9 +645,11 @@ var _ = Describe("IAM User", func() {
 							{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
 						},
 					},
+					deletePolicyVersionErr: deletePolicyVersionError,
 				}
 				fakeIAMUserClient = NewIAMUser(&fakeIAMClient, logger)
-				Expect(err).NotTo(HaveOccurred())
+				err := fakeIAMUserClient.DeletePolicy(policyARN)
+				Expect(err).To(Equal(deletePolicyVersionError))
 			})
 		})
 
