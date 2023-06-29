@@ -28,7 +28,7 @@ var _ = Describe("IAM User", func() {
 		testSink *lagertest.TestSink
 		logger   lager.Logger
 
-		iamUserClient *IAMUser
+		iamUserClient *IAMUserClient
 	)
 
 	BeforeEach(func() {
@@ -44,7 +44,7 @@ var _ = Describe("IAM User", func() {
 		testSink = lagertest.NewTestSink()
 		logger.RegisterSink(testSink)
 
-		iamUserClient = NewIAMUser(iamsvc, logger)
+		iamUserClient = NewIAMUserClient(iamsvc, logger)
 	})
 
 	var _ = Describe("Describe", func() {

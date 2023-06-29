@@ -17,9 +17,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
+	"github.com/aws/aws-sdk-go/service/opensearchservice/opensearchserviceiface"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
@@ -64,24 +67,25 @@ func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance,
 }
 
 type dedicatedElasticsearchAdapter struct {
-	Plan     catalog.ElasticsearchPlan
-	settings config.Settings
-	logger   lager.Logger
+	Plan       catalog.ElasticsearchPlan
+	settings   config.Settings
+	logger     lager.Logger
+	iam        iamiface.IAMAPI
+	sts        stsiface.STSAPI
+	opensearch opensearchserviceiface.OpenSearchServiceAPI
 }
 
 // This is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-	logger := lager.NewLogger("aws-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	// svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	// iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
-	user := awsiam.NewIAMUser(iamsvc, logger)
-	ip := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
+	user := awsiam.NewIAMUserClient(d.iam, d.logger)
+	ip := awsiam.NewIamPolicyHandler(d.settings.Region, d.logger)
 
-	stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
+	// stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	_, err := user.Create(i.Domain, "")
@@ -99,10 +103,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	userParams := &iam.GetUserInput{
 		UserName: aws.String(i.Domain),
 	}
-	userResp, _ := iamsvc.GetUser(userParams)
+	userResp, _ := d.iam.GetUser(userParams)
 	uniqueUserArn := *(userResp.User.Arn)
 	stsInput := &sts.GetCallerIdentityInput{}
-	result, err := stssvc.GetCallerIdentity(stsInput)
+	result, err := d.sts.GetCallerIdentity(stsInput)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -219,7 +223,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 	params.SetAccessPolicies(accessControlPolicy)
 
-	resp, err := svc.CreateDomain(params)
+	resp, err := d.opensearch.CreateDomain(params)
 	if isInvalidTypeException(err) {
 		// IAM is eventually consistent, meaning new IAM users may not be immediately available for read, such as when
 		// Opensearch goes to validate the IAM user specified as the AWS principal in the access
@@ -229,7 +233,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		// see https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency
 		log.Println("Retrying domain creation because of possible IAM eventual consistency issue")
 		time.Sleep(5 * time.Second)
-		resp, err = svc.CreateDomain(params)
+		resp, err = d.opensearch.CreateDomain(params)
 	}
 
 	// Decide if AWS service call was successful
@@ -252,7 +256,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 			TagList: elasticsearchTags,
 			ARN:     resp.DomainStatus.ARN,
 		}
-		resp1, err := svc.AddTags(paramsTags)
+		resp1, err := d.opensearch.AddTags(paramsTags)
 		fmt.Println(awsutil.StringValue(resp1))
 		if !d.didAwsCallSucceed(err) {
 			return base.InstanceNotCreated, nil
@@ -269,8 +273,6 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 }
 
 func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
 	AdvancedOptions := make(map[string]*string)
 
 	if i.IndicesFieldDataCacheSize != "" {
@@ -285,7 +287,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		DomainName:      aws.String(i.Domain),
 		AdvancedOptions: AdvancedOptions,
 	}
-	_, err := svc.UpdateDomainConfig(params)
+	_, err := d.opensearch.UpdateDomainConfig(params)
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
 	}
@@ -296,12 +298,11 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := svc.DescribeDomain(params)
+		resp, err := d.opensearch.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -364,11 +365,10 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 // we make the deletion async, set status to in-progress and rollup to return a 202
 func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	//check for backing resource and do async otherwise remove from db
-	svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	params := &opensearchservice.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	_, err := svc.DescribeDomain(params)
+	_, err := d.opensearch.DescribeDomain(params)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			// Generic AWS error with Code, Message, and original error (if any)
@@ -397,12 +397,11 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	// First, we need to check if the instance state
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := svc.DescribeDomain(params)
+		resp, err := d.opensearch.DescribeDomain(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -682,12 +681,10 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 // in which we clean up all the roles and policies for the ES domain
 func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
-	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
-	user := awsiam.NewIAMUser(iamsvc, logger)
+	user := awsiam.NewIAMUserClient(d.iam, logger)
 	policyHandler := awsiam.NewIamPolicyHandler(d.settings.Region, logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
@@ -710,7 +707,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
 	}
 
-	if _, err := iamsvc.DetachRolePolicy(roleDetachPolicyInput); err != nil {
+	if _, err := d.iam.DetachRolePolicy(roleDetachPolicyInput); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
@@ -724,7 +721,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
 	}
 
-	if _, err := iamsvc.DeleteRole(rolePolicyDeleteInput); err != nil {
+	if _, err := d.iam.DeleteRole(rolePolicyDeleteInput); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
