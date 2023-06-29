@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/18F/aws-broker/awsiam"
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/taskqueue"
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,7 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/cloudfoundry-community/s3-broker/awsiam"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
@@ -547,8 +547,8 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		i.SnapshotPolicyARN = policyarn
 
 	} else {
-		//snaphostpolicy has already be created so we need to add the new statements for this new bucket
-		//to the existing policy version.
+		// snaphost policy has already been created so we need to add the new statements for this new bucket
+		// to the existing policy version.
 		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []iampolicy.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
@@ -700,13 +700,11 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 	user := awsiam.NewIAMUser(iamsvc, logger)
 
-	// should accept ErrCodeNoSuchEntityException ?
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
 
-	// should accept 404?
 	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -727,7 +725,6 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
-	// need to handle old policy version deletion
 	if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err

@@ -2,8 +2,10 @@ package iampolicy
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -13,6 +15,8 @@ import (
 var mockPolDoc string = `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": ["some:action"],"Resource": ["some:resource"]}]}`
 
 var bucketArn string = "arn:aws-us-gov:s3:::test"
+
+var logger lager.Logger = lager.NewLogger("aws-broker")
 
 var existStatement PolicyStatementEntry = PolicyStatementEntry{
 	Action:   []string{"some:action"},
@@ -38,6 +42,16 @@ type mockIamClient struct {
 	createPolicyErr      error
 	attachedUserPolicies []*iam.AttachedPolicy
 	attachedRolePolicies []*iam.AttachedPolicy
+
+	listPolicyVersionsOutput iam.ListPolicyVersionsOutput
+	listPolicyVersionsErr    error
+
+	deletePolicyOutput iam.DeletePolicyOutput
+	deletePolicyErr    error
+
+	deletePolicyVersionOutput  iam.DeletePolicyVersionOutput
+	deletePolicyVersionErr     error
+	deletedPolicyVersionInputs []*iam.DeletePolicyVersionInput
 }
 
 func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleOutput, error) {
@@ -126,18 +140,37 @@ func (m *mockIamClient) CreatePolicyVersion(input *iam.CreatePolicyVersionInput)
 	}, nil
 }
 
-func (m *mockIamClient) ListPolicyVersions(*iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
-	return &iam.ListPolicyVersionsOutput{
-		IsTruncated: aws.Bool(false),
-		Marker:      aws.String("foobar"),
-		Versions: []*iam.PolicyVersion{
-			{
-				VersionId:        aws.String("old"),
-				Document:         aws.String(mockPolDoc),
-				IsDefaultVersion: aws.Bool(true),
-			},
-		},
-	}, nil
+// func (m *mockIamClient) ListPolicyVersions(*iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
+// 	return &iam.ListPolicyVersionsOutput{
+// 		IsTruncated: aws.Bool(false),
+// 		Marker:      aws.String("foobar"),
+// 		Versions: []*iam.PolicyVersion{
+// 			{
+// 				VersionId:        aws.String("old"),
+// 				Document:         aws.String(mockPolDoc),
+// 				IsDefaultVersion: aws.Bool(true),
+// 			},
+// 		},
+// 	}, nil
+// }
+
+func (m *mockIamClient) ListPolicyVersions(input *iam.ListPolicyVersionsInput) (*iam.ListPolicyVersionsOutput, error) {
+	return &m.listPolicyVersionsOutput, m.listPolicyVersionsErr
+}
+
+func (m *mockIamClient) DeletePolicyVersion(input *iam.DeletePolicyVersionInput) (
+	*iam.DeletePolicyVersionOutput,
+	error,
+) {
+	if m.deletePolicyVersionErr != nil {
+		return nil, m.deletePolicyVersionErr
+	}
+	m.deletedPolicyVersionInputs = append(m.deletedPolicyVersionInputs, input)
+	return &m.deletePolicyVersionOutput, nil
+}
+
+func (m *mockIamClient) DeletePolicy(input *iam.DeletePolicyInput) (*iam.DeletePolicyOutput, error) {
+	return &m.deletePolicyOutput, m.deletePolicyErr
 }
 
 func TestCreateAssumeRole(t *testing.T) {
@@ -257,7 +290,6 @@ func TestCreatePolicyAttachRole(t *testing.T) {
 	} else {
 		t.Error("policy arn is nil")
 	}
-
 }
 
 func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
@@ -315,5 +347,136 @@ func TestUpdateExistingPolicy(t *testing.T) {
 	} else {
 		t.Error("policy version is nil")
 	}
+}
 
+func TestDeletePolicy(t *testing.T) {
+	testCases := map[string]struct {
+		policyArn          string
+		policyHandler      *IamPolicyHandler
+		expectedErr        error
+		expectedErrMessage string
+	}{
+		"success": {
+			policyArn: "arn1",
+			policyHandler: &IamPolicyHandler{
+				iamsvc: &mockIamClient{
+					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+						Versions: []*iam.PolicyVersion{
+							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+						},
+					},
+				},
+				logger: logger,
+			},
+		},
+		"returns delete policy error": {
+			policyArn: "arn2",
+			policyHandler: &IamPolicyHandler{
+				iamsvc: &mockIamClient{
+					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+						Versions: []*iam.PolicyVersion{
+							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+						},
+					},
+					deletePolicyErr: errors.New("delete policy version error"),
+				},
+				logger: logger,
+			},
+			expectedErrMessage: "delete policy version error",
+		},
+		"returns an AWS error": {
+			policyArn: "arn2",
+			policyHandler: &IamPolicyHandler{
+				iamsvc: &mockIamClient{
+					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+						Versions: []*iam.PolicyVersion{
+							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+						},
+					},
+					deletePolicyErr: awserr.New("code", "message", errors.New("operation failed")),
+				},
+				logger: logger,
+			},
+			expectedErrMessage: "code: message",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := test.policyHandler.DeletePolicy(test.policyArn)
+			if test.expectedErrMessage != "" && err.Error() != test.expectedErrMessage {
+				t.Errorf("expected error: %s, got: %s", test.expectedErrMessage, err.Error())
+			}
+		})
+	}
+}
+
+func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
+	policyArn := "arn1"
+	listPolicyVersionsErr := errors.New("list policy versions err")
+	deletePolicyVersionErr := errors.New("delete policy version err")
+
+	testCases := map[string]struct {
+		policyArn                         string
+		fakeIAMClient                     *mockIamClient
+		expectedErr                       error
+		expectedDeletePolicyVersionInputs []*iam.DeletePolicyVersionInput
+	}{
+		"deletes non-default policy versions": {
+			policyArn: policyArn,
+			fakeIAMClient: &mockIamClient{
+				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+					Versions: []*iam.PolicyVersion{
+						{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+						{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
+					},
+				},
+			},
+			expectedDeletePolicyVersionInputs: []*iam.DeletePolicyVersionInput{
+				{
+					VersionId: aws.String("2"),
+					PolicyArn: &policyArn,
+				},
+			},
+		},
+		"error on listing policy versions": {
+			policyArn: policyArn,
+			fakeIAMClient: &mockIamClient{
+				listPolicyVersionsErr: listPolicyVersionsErr,
+			},
+			expectedErr: listPolicyVersionsErr,
+		},
+		"error deleting policy version": {
+			policyArn: policyArn,
+			fakeIAMClient: &mockIamClient{
+				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
+					Versions: []*iam.PolicyVersion{
+						{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
+						{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
+					},
+				},
+				deletePolicyVersionErr: deletePolicyVersionErr,
+			},
+			expectedErr: deletePolicyVersionErr,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			policyHandler := &IamPolicyHandler{
+				iamsvc: test.fakeIAMClient,
+				logger: logger,
+			}
+			err := policyHandler.deleteNonDefaultPolicyVersions(test.policyArn)
+			if !errors.Is(test.expectedErr, err) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if !reflect.DeepEqual(
+				test.fakeIAMClient.deletedPolicyVersionInputs,
+				test.expectedDeletePolicyVersionInputs,
+			) {
+				t.Errorf("expected: %s, got: %s", test.expectedDeletePolicyVersionInputs, test.fakeIAMClient.deletedPolicyVersionInputs)
+			}
+		})
+	}
 }
