@@ -1,10 +1,7 @@
 package awsiam
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"text/template"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go/aws"
@@ -155,54 +152,6 @@ func (i *IAMUser) DeleteAccessKey(userName, accessKeyID string) error {
 	i.logger.Debug("delete-access-key", lager.Data{"output": deleteAccessKeyOutput})
 
 	return nil
-}
-
-func (i *IAMUser) CreatePolicy(policyName, iamPath, policyTemplate string, resources []string) (string, error) {
-	tmpl, err := template.New("policy").Funcs(template.FuncMap{
-		"resources": func(suffix string) string {
-			resourcePaths := make([]string, len(resources))
-			for idx, resource := range resources {
-				resourcePaths[idx] = resource + suffix
-			}
-			marshaled, err := json.Marshal(resourcePaths)
-			if err != nil {
-				panic(err)
-			}
-			return string(marshaled)
-		},
-	}).Parse(policyTemplate)
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		return "", err
-	}
-	policy := bytes.Buffer{}
-	err = tmpl.Execute(&policy, map[string]interface{}{
-		"Resource":  resources[0],
-		"Resources": resources,
-	})
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		return "", err
-	}
-
-	createPolicyInput := &iam.CreatePolicyInput{
-		PolicyName:     aws.String(policyName),
-		PolicyDocument: aws.String(policy.String()),
-		Path:           stringOrNil(iamPath),
-	}
-	i.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
-
-	createPolicyOutput, err := i.iamsvc.CreatePolicy(createPolicyInput)
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		if awsErr, ok := err.(awserr.Error); ok {
-			return "", errors.New(awsErr.Code() + ": " + awsErr.Message())
-		}
-		return "", err
-	}
-	i.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
-
-	return aws.StringValue(createPolicyOutput.Policy.Arn), nil
 }
 
 func (i *IAMUser) ListAttachedUserPolicies(userName, iamPath string) ([]string, error) {

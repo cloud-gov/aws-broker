@@ -11,7 +11,6 @@ type User interface {
 	ListAccessKeys(userName string) ([]string, error)
 	CreateAccessKey(userName string) (string, string, error)
 	DeleteAccessKey(userName, accessKeyID string) error
-	CreatePolicy(policyName, iamPath, policyTemplate string, resources []string) (string, error)
 	ListAttachedUserPolicies(userName, iamPath string) ([]string, error)
 	AttachUserPolicy(userName, policyARN string) error
 	DetachUserPolicy(userName, policyARN string) error

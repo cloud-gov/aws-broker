@@ -64,22 +64,6 @@ func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance,
 	return base.InstanceGone, nil
 }
 
-/* type sharedElasticsearchAdapter struct {
-	SharedElasticsearchConn *gorm.DB
-}
-
-func (d *sharedElasticsearchAdapter) createDB(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	return base.InstanceReady, nil
-}
-
-func (d *sharedElasticsearchAdapter) bindDBToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
-	return i.getCredentials(password)
-}
-
-func (d *sharedElasticsearchAdapter) deleteRedis(i *ElasticsearchInstance) (base.InstanceState, error) {
-	return base.InstanceGone, nil
-} */
-
 type dedicatedElasticsearchAdapter struct {
 	Plan     catalog.ElasticsearchPlan
 	settings config.Settings
@@ -94,7 +78,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	iamsvc := iam.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	logger := lager.NewLogger("aws-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+
 	user := awsiam.NewIAMUser(iamsvc, logger)
+	ip := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
+
 	stssvc := sts.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
@@ -254,7 +241,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		esARNs := make([]string, 0)
 		esARNs = append(esARNs, i.ARN)
 		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-		policyARN, err := user.CreatePolicy(i.Domain, "/", policy, esARNs)
+		policyARN, err := ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs)
 		if err != nil {
 			return base.InstanceNotCreated, err
 		}
