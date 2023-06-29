@@ -700,11 +700,13 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 	user := awsiam.NewIAMUser(iamsvc, logger)
 
+	// should accept ErrCodeNoSuchEntityException ?
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
 
+	// should accept 404?
 	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -725,6 +727,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 		return err
 	}
 
+	// need to handle old policy version deletion
 	if err := user.DeletePolicy(i.SnapshotPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -773,6 +776,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 		return err
 	}
 	// now we poll for completion
+	// TODO - don't allow polling forever
 	for {
 		time.Sleep(time.Minute)
 		svc := opensearchservice.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
@@ -798,6 +802,9 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 			return err
 		}
 	}
+
+	d.logger.Info(fmt.Sprintf("%s domain has been deleted", i.Domain))
+	return nil
 }
 
 // in which we Marshall the instance into Json and dump to a manifest file in the snapshot bucket
