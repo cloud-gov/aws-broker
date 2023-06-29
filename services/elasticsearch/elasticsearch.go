@@ -691,11 +691,13 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	user := awsiam.NewIAMUser(iamsvc, logger)
 	policyHandler := iampolicy.NewIamPolicyHandler(d.settings.Region, logger)
 
+	// should accept ErrCodeNoSuchEntityException ?
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
 
+	// should accept 404?
 	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
 		fmt.Println(err.Error())
 		return err
