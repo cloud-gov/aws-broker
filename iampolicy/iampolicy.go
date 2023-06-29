@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"net/url"
 	"sort"
+	"text/template"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go/aws"
@@ -144,7 +144,6 @@ func (ip *IamPolicyHandler) CreatePolicyFromTemplate(
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println(string(marshaled))
 			return string(marshaled)
 		},
 	}).Parse(policyTemplate)
@@ -157,7 +156,6 @@ func (ip *IamPolicyHandler) CreatePolicyFromTemplate(
 		"Resource":  resources[0],
 		"Resources": resources,
 	})
-	fmt.Println(policy.String())
 	if err != nil {
 		ip.logger.Error("aws-iam-error", err)
 		return "", err
