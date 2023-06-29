@@ -758,6 +758,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Instance no longer exists, this is success
 				if awsErr.Code() == opensearchservice.ErrCodeResourceNotFoundException {
+					d.logger.Info(fmt.Sprintf("%s domain has been deleted", i.Domain))
 					return nil
 				}
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -771,9 +772,6 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 			return err
 		}
 	}
-
-	d.logger.Info(fmt.Sprintf("%s domain has been deleted", i.Domain))
-	return nil
 }
 
 // in which we Marshall the instance into Json and dump to a manifest file in the snapshot bucket
