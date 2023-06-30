@@ -82,7 +82,7 @@ jobs:
         text: |
           :x: FAILED to deploy aws-broker on development
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
+        channel: ((slack-failure-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
     on_success:
@@ -91,7 +91,7 @@ jobs:
         text: |
           :white_check_mark: Successfully deployed aws-broker on development
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
+        channel: ((slack-success-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
@@ -188,8 +188,8 @@ jobs:
           REGION: ((development-aws-default-region))
   on_failure:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-failure-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :x: Acceptance Tests for aws-broker on development FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -197,8 +197,8 @@ jobs:
     put: slack
   on_success:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-success-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on development PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -258,8 +258,8 @@ jobs:
           REGION: ((development-aws-default-region))
   on_failure:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-failure-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :x: Acceptance Tests for aws-broker on development FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -267,8 +267,8 @@ jobs:
     put: slack
   on_success:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-success-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on development PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -428,7 +428,7 @@ jobs:
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on development PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform-news'
+      channel: ((slack-success-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
   on_failure:
@@ -437,7 +437,7 @@ jobs:
       text: |
         :x: Acceptance Tests for aws-broker on development FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform-news'
+      channel: ((slack-failure-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
@@ -531,7 +531,7 @@ jobs:
         text: |
           :x: FAILED to deploy aws-broker on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
+        channel: ((slack-failure-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
     on_success:
@@ -540,7 +540,7 @@ jobs:
         text: |
           :white_check_mark: Successfully deployed aws-broker on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
+        channel: ((slack-success-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
@@ -759,8 +759,8 @@ jobs:
           DB_TYPE: mysql
   on_failure:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-failure-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -768,8 +768,8 @@ jobs:
     put: slack
   on_success:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-success-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -802,8 +802,8 @@ jobs:
           REGION: ((staging-aws-default-region))
   on_failure:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-failure-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -811,8 +811,8 @@ jobs:
     put: slack
   on_success:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-success-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -871,8 +871,8 @@ jobs:
           REGION: ((staging-aws-default-region))
   on_failure:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-failure-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -880,8 +880,8 @@ jobs:
     put: slack
   on_success:
     params:
-      channel: '#cg-platform-news'
-      icon_url: https://avatars1.githubusercontent.com/u/7809479?v=3&s=40
+      channel: ((slack-success-channel))
+      icon_url: ((slack-icon-url))
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -940,7 +940,7 @@ jobs:
       text:  |
         :terraform: $BUILD_JOB_NAME needs review
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform'
+      channel: ((slack-notify-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
@@ -998,7 +998,7 @@ jobs:
         text: |
           :x: FAILED to deploy aws-broker on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform'
+        channel: ((slack-failure-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
     on_success:
@@ -1007,7 +1007,7 @@ jobs:
         text: |
           :white_check_mark: Successfully deployed aws-broker on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
+        channel: ((slack-success-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
@@ -1293,7 +1293,7 @@ jobs:
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on production PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform-news'
+      channel: ((slack-success-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
   on_failure:
@@ -1302,7 +1302,7 @@ jobs:
       text: |
         :x: Acceptance Tests for aws-broker on production FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: '#cg-platform'
+      channel: ((slack-failure-channel))
       username: ((slack-username))
       icon_url: ((slack-icon-url))
       
