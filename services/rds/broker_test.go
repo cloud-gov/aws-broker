@@ -96,6 +96,56 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				BinaryLogFormat:       "",
 			},
 		},
+		"rotate creds true": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{ "rotate_credentials": true }`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:      0,
+				BackupRetentionPeriod: 0,
+				RotateCredentials:     aws.Bool(true),
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+			},
+		},
+		"rotate creds false": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{ "rotate_credentials": false }`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:      0,
+				BackupRetentionPeriod: 0,
+				RotateCredentials:     aws.Bool(false),
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+			},
+		},
+		"rotate creds not specified": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{}`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:      0,
+				BackupRetentionPeriod: 0,
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
