@@ -545,52 +545,6 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 			iamPath:            "/path/",
 			expectedErrMessage: "code: message",
 		},
-		// "returns error": {
-		// 	policyHandler: &IamPolicyHandler{
-		// 		iamsvc: &mockIamClient{
-		// 			createPolicyErr: errors.New("create policy error"),
-		// 		},
-		// 		logger: logger,
-		// 	},
-		// 	policyName: "policy-name",
-		// 	policyTemplate: `{
-		// 		"Version": "2012-10-17",
-		// 		"Id": "policy-name",
-		// 		"Statement": [
-		// 			{
-		// 				"Effect": "effect",
-		// 				"Action": "action",
-		// 				"Resource": {{resources "/*"}}
-		// 			}
-		// 		]
-		// 	}`,
-		// 	resources:          []string{"resource"},
-		// 	iamPath:            "/path/",
-		// 	expectedErrMessage: "create policy error",
-		// },
-		// "returns AWS error": {
-		// 	policyHandler: &IamPolicyHandler{
-		// 		iamsvc: &mockIamClient{
-		// 			createPolicyErr: awserr.New("code", "message", errors.New("operation failed")),
-		// 		},
-		// 		logger: logger,
-		// 	},
-		// 	policyName: "policy-name",
-		// 	policyTemplate: `{
-		// 		"Version": "2012-10-17",
-		// 		"Id": "policy-name",
-		// 		"Statement": [
-		// 			{
-		// 				"Effect": "effect",
-		// 				"Action": "action",
-		// 				"Resource": {{resources "/*"}}
-		// 			}
-		// 		]
-		// 	}`,
-		// 	resources:          []string{"resource"},
-		// 	iamPath:            "/path/",
-		// 	expectedErrMessage: "code: message",
-		// },
 	}
 
 	for name, test := range testCases {
