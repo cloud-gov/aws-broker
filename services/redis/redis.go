@@ -129,9 +129,9 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      aws.Int64(int64(i.SnapshotRetentionLimit)),
 	}
-        if i.EngineVersion != ""{
-          params.EngineVersion = aws.String(i.EngineVersion)
-         }
+	if i.EngineVersion != "" {
+		params.EngineVersion = aws.String(i.EngineVersion)
+	}
 
 	resp, err := svc.CreateReplicationGroup(params)
 	// Pretty-print the response data.
@@ -172,9 +172,6 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 			}
 			return base.InstanceNotCreated, err
 		}
-
-		// Pretty-print the response data.
-		fmt.Println(awsutil.StringValue(resp))
 
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
@@ -228,9 +225,6 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 			return nil, err
 		}
 
-		// Pretty-print the response data.
-		fmt.Println(awsutil.StringValue(resp))
-
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
 			for _, value := range resp.ReplicationGroups {
@@ -264,9 +258,7 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 		ReplicationGroupId:      aws.String(i.ClusterID), // Required
 		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
 	}
-	resp, err := svc.DeleteReplicationGroup(params)
-	// Pretty-print the response data.
-	fmt.Println(awsutil.StringValue(resp))
+	_, err := svc.DeleteReplicationGroup(params)
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {

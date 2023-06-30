@@ -144,7 +144,7 @@ type RedisPlan struct {
 	SnapshotWindow             string            `yaml:"snapshotWindow" json:"-" validate:"required"`
 	SnapshotRetentionLimit     int               `yaml:"snapshotRetentionLimit" json:"-"`
 	AutomaticFailoverEnabled   bool              `yaml:"automaticFailoverEnabled" json:"-"`
-        ApprovedMajorVersions     []string          `yaml:"approvedMajorVersions" json:"-"`
+	ApprovedMajorVersions      []string          `yaml:"approvedMajorVersions" json:"-"`
 }
 
 // CheckVersion verifies that a specific version chosen by the user for a new
@@ -165,7 +165,6 @@ func (p RedisPlan) CheckVersion(version string) bool {
 
 	return false
 }
-
 
 // ElasticsearchService describes the Elasticsearch Service. It contains the basic Service details as well as a list of Elasticsearch Plans
 type ElasticsearchService struct {
@@ -200,8 +199,10 @@ type ElasticsearchPlan struct {
 	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
 	SubnetIDAZ1                string            `yaml:"subnetIDaz1" json:"-" validate:"required"`
 	SubnetIDAZ2                string            `yaml:"subnetIDaz2" json:"-" validate:"required"`
+	SubnetIDAZ3                string            `yaml:"subnetIDaz3" json:"-" validate:"required"`
+	SubnetIDAZ4                string            `yaml:"subnetIDaz4" json:"-" validate:"required"`
 	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
-	ApprovedMajorVersions     []string           `yaml:"approvedMajorVersions" json:"-"`
+	ApprovedMajorVersions      []string          `yaml:"approvedMajorVersions" json:"-"`
 }
 
 // CheckVersion verifies that a specific version chosen by the user for a new
@@ -222,6 +223,7 @@ func (p ElasticsearchPlan) CheckVersion(version string) bool {
 
 	return false
 }
+
 // Catalog struct holds a collections of services
 type Catalog struct {
 	// Instances of Services
@@ -266,7 +268,7 @@ func (c *Catalog) GetServices() []interface{} {
 	return services
 }
 
-// GetResources returns the resources wrapper for all the resources generated from the secrets. (e.g. Connection to shared dbs)
+// GetResources returns the resources wrapper for all the resources generated from the secrets.
 func (c *Catalog) GetResources() Resources {
 	return c.resources
 }

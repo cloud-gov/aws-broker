@@ -2,7 +2,6 @@
 applications:
   - buildpacks:
       - python_buildpack
-    stack: cflinuxfs3
     disk_quota: 256mb
     memory: 112MB
     command: (echo SUCCESS || echo FAIL) && sleep infinity

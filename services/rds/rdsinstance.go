@@ -120,7 +120,14 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 	return credentials, nil
 }
 
-func (i *RDSInstance) modifyFromOptions(options Options) error {
+func (i *RDSInstance) setCredentials(settings *config.Settings) error {
+	i.Salt = helpers.GenerateSalt(aes.BlockSize)
+	password := helpers.RandStrNoCaps(25)
+	err := i.setPassword(password, settings.EncryptionKey)
+	return err
+}
+
+func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) error {
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
@@ -144,6 +151,19 @@ func (i *RDSInstance) modifyFromOptions(options Options) error {
 
 	if options.EnablePgCron != i.EnablePgCron {
 		i.EnablePgCron = options.EnablePgCron
+	}
+
+	// Set the DB Version if it is not already set
+	// Currently only supported for MySQL and PostgreSQL instances.
+	if i.DbVersion == "" && options.Version == "" {
+		// Default to the version provided by the plan chosen in catalog.
+		i.DbVersion = plan.DbVersion
+	}
+
+	if options.RotateCredentials != nil && *options.RotateCredentials {
+		if err := i.setCredentials(settings); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -189,9 +209,7 @@ func (i *RDSInstance) init(uuid string,
 	// Build random values
 	i.Database = s.DbNamePrefix + helpers.RandStrNoCaps(15)
 	i.Username = "u" + helpers.RandStrNoCaps(15)
-	i.Salt = helpers.GenerateSalt(aes.BlockSize)
-	password := helpers.RandStrNoCaps(25)
-	if err := i.setPassword(password, s.EncryptionKey); err != nil {
+	if err := i.setCredentials(s); err != nil {
 		return err
 	}
 

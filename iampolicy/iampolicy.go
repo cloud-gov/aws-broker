@@ -1,11 +1,15 @@
 package iampolicy
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"sort"
+	"text/template"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -33,6 +37,7 @@ func (ps *PolicyStatementEntry) ToString() (string, error) {
 
 type IamPolicyHandler struct {
 	iamsvc iamiface.IAMAPI // *iam.IAM interface, doing this allows for test mocking
+	logger lager.Logger
 }
 
 func (pd *PolicyDocument) ToString() (string, error) {
@@ -51,8 +56,8 @@ func (pd *PolicyDocument) FromString(docstring string) error {
 	return err
 }
 
-// adds any policystatemententries that dont already exist in the policydoc
-// uses string comparison
+// adds any policy statement entries that dont already exist in the policy doc
+// using string comparison
 func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry) bool {
 	var modified bool = false
 	searchkeys := map[string]string{}
@@ -70,11 +75,12 @@ func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry)
 	return modified
 }
 
-func NewIamPolicyHandler(region string) *IamPolicyHandler {
-	ip := IamPolicyHandler{}
+func NewIamPolicyHandler(region string, logger lager.Logger) *IamPolicyHandler {
 	newsession := session.Must(session.NewSession())
-	ip.iamsvc = iam.New(newsession, aws.NewConfig().WithRegion(region))
-	return &ip
+	return &IamPolicyHandler{
+		iamsvc: iam.New(newsession, aws.NewConfig().WithRegion(region)),
+		logger: logger.Session("iam-policy"),
+	}
 }
 
 func logAWSError(err error) {
@@ -120,7 +126,59 @@ func (ip *IamPolicyHandler) CreateAssumeRole(policy string, rolename string) (*i
 	}
 
 	return resp.Role, nil
+}
 
+func (ip *IamPolicyHandler) CreatePolicyFromTemplate(
+	policyName,
+	iamPath,
+	policyTemplate string,
+	resources []string,
+) (string, error) {
+	tmpl, err := template.New("policy").Funcs(template.FuncMap{
+		"resources": func(suffix string) string {
+			resourcePaths := make([]string, len(resources))
+			for idx, resource := range resources {
+				resourcePaths[idx] = resource + suffix
+			}
+			marshaled, err := json.Marshal(resourcePaths)
+			if err != nil {
+				panic(err)
+			}
+			return string(marshaled)
+		},
+	}).Parse(policyTemplate)
+	if err != nil {
+		ip.logger.Error("aws-iam-error", err)
+		return "", err
+	}
+	policy := bytes.Buffer{}
+	err = tmpl.Execute(&policy, map[string]interface{}{
+		"Resource":  resources[0],
+		"Resources": resources,
+	})
+	if err != nil {
+		ip.logger.Error("aws-iam-error", err)
+		return "", err
+	}
+
+	createPolicyInput := &iam.CreatePolicyInput{
+		PolicyName:     aws.String(policyName),
+		PolicyDocument: aws.String(policy.String()),
+		Path:           stringOrNil(iamPath),
+	}
+	ip.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
+
+	createPolicyOutput, err := ip.iamsvc.CreatePolicy(createPolicyInput)
+	if err != nil {
+		ip.logger.Error("aws-iam-error", err)
+		if awsErr, ok := err.(awserr.Error); ok {
+			return "", errors.New(awsErr.Code() + ": " + awsErr.Message())
+		}
+		return "", err
+	}
+	ip.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
+
+	return aws.StringValue(createPolicyOutput.Policy.Arn), nil
 }
 
 // create a policy and attach to a user, return the policy ARN
@@ -300,6 +358,60 @@ func (ip IamPolicyHandler) UpdateExistingPolicy(policyARN string, policyStatemen
 	return respPolVer, nil
 }
 
+func (ip *IamPolicyHandler) DeletePolicy(policyARN string) error {
+	deletePolicyInput := &iam.DeletePolicyInput{
+		PolicyArn: aws.String(policyARN),
+	}
+
+	// list and remove all versions but default first
+	ip.deleteNonDefaultPolicyVersions(policyARN)
+
+	ip.logger.Debug("delete-policy", lager.Data{"input": deletePolicyInput})
+	deletePolicyOutput, err := ip.iamsvc.DeletePolicy(deletePolicyInput)
+	if err != nil {
+		ip.logger.Error("delete-policy error", err)
+		if awsErr, ok := err.(awserr.Error); ok {
+			return errors.New(awsErr.Code() + ": " + awsErr.Message())
+		}
+		return err
+	}
+	ip.logger.Debug("delete-policy", lager.Data{"output": deletePolicyOutput})
+
+	return nil
+}
+
+func (ip IamPolicyHandler) deleteNonDefaultPolicyVersions(policyARN string) error {
+	input := &iam.ListPolicyVersionsInput{
+		PolicyArn: &policyARN,
+	}
+
+	listPolicyVersionsOutput, err := ip.iamsvc.ListPolicyVersions(input)
+	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": listPolicyVersionsOutput})
+	if err != nil {
+		ip.logger.Error("list-policy-versions error", err)
+		return err
+	}
+
+	for _, version := range listPolicyVersionsOutput.Versions {
+		if !(*version.IsDefaultVersion) {
+			ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
+			_, err := ip.iamsvc.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+				VersionId: version.VersionId,
+				PolicyArn: aws.String(policyARN),
+			})
+			if err != nil {
+				ip.logger.Error("aws-iam-error", err)
+				if awsErr, ok := err.(awserr.Error); ok {
+					return errors.New(awsErr.Code() + ": " + awsErr.Message())
+				}
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // we make sure we have space to create a new version by deleting the oldest.
 func (ip IamPolicyHandler) trimPolicyVersions(policyARN string, maxVersions int) error {
 	input := &iam.ListPolicyVersionsInput{
@@ -307,7 +419,9 @@ func (ip IamPolicyHandler) trimPolicyVersions(policyARN string, maxVersions int)
 	}
 
 	resPolVers, err := ip.iamsvc.ListPolicyVersions(input)
+	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": resPolVers})
 	if err != nil {
+		ip.logger.Error("list-policy-versions error", err)
 		return err
 	}
 
@@ -316,19 +430,28 @@ func (ip IamPolicyHandler) trimPolicyVersions(policyARN string, maxVersions int)
 		sort.Slice(resPolVers.Versions, func(i, j int) bool {
 			return *(resPolVers.Versions[i].VersionId) < *(resPolVers.Versions[j].VersionId)
 		})
-		for i := 0; i <= len(resPolVers.Versions)-maxVersions+1; i++ {
+		for i := 0; i <= len(resPolVers.Versions)-(maxVersions+1); i++ {
 			version := resPolVers.Versions[i]
 			if !*(version.IsDefaultVersion) {
 				input := &iam.DeletePolicyVersionInput{
 					PolicyArn: &policyARN,
 					VersionId: version.VersionId,
 				}
+				ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
 				_, err := ip.iamsvc.DeletePolicyVersion(input)
 				if err != nil {
+					ip.logger.Error("delete-policy-version error", err)
 					return err
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func stringOrNil(v string) *string {
+	if v != "" {
+		return &v
 	}
 	return nil
 }
