@@ -447,7 +447,7 @@ jobs:
     trigger: true
   - set_pipeline: deploy-aws-broker
     file: aws-broker-app/ci/pipeline.yml
-    vars_files:
+    var_files:
       - aws-broker-app/ci/config.yml
 
 - name: deploy-aws-broker-staging
