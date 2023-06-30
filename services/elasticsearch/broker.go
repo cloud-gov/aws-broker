@@ -7,6 +7,11 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/opensearchservice"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -48,18 +53,22 @@ func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskq
 
 // initializeAdapter is the main function to create database instances
 func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, c *catalog.Catalog, logger lager.Logger) (ElasticsearchAdapter, response.Response) {
-
 	var elasticsearchAdapter ElasticsearchAdapter
+
 	if s.Environment == "test" {
 		elasticsearchAdapter = &mockElasticsearchAdapter{}
 		return elasticsearchAdapter, nil
 	}
 
 	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
-		Plan:     plan,
-		settings: *s,
-		logger:   logger,
+		Plan:       plan,
+		settings:   *s,
+		logger:     logger,
+		opensearch: opensearchservice.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
+		iam:        iam.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
+		sts:        sts.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
 	}
+
 	return elasticsearchAdapter, nil
 }
 
@@ -299,7 +308,6 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 
 	var credentials map[string]string
 	// Bind the database instance to the application.
-	//originalInstanceState := existingInstance.State
 	existingInstance.setBucket(options.Bucket)
 	if credentials, err = adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
@@ -309,13 +317,6 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
 
-	// if len(existingInstance.Bucket) > 0 {
-	// 	broker.brokerDB.Save(&existingInstance)
-	// }
-	// // If the state of the instance has changed, update it.
-	// if existingInstance.State != originalInstanceState {
-	// 	broker.brokerDB.Save(&existingInstance)
-	// }
 	broker.brokerDB.Save(&existingInstance)
 	return response.NewSuccessBindResponse(credentials)
 }

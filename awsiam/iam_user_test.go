@@ -28,7 +28,7 @@ var _ = Describe("IAM User", func() {
 		testSink *lagertest.TestSink
 		logger   lager.Logger
 
-		user User
+		iamUserClient *IAMUserClient
 	)
 
 	BeforeEach(func() {
@@ -44,7 +44,7 @@ var _ = Describe("IAM User", func() {
 		testSink = lagertest.NewTestSink()
 		logger.RegisterSink(testSink)
 
-		user = NewIAMUser(iamsvc, logger)
+		iamUserClient = NewIAMUserClient(iamsvc, logger)
 	})
 
 	var _ = Describe("Describe", func() {
@@ -88,7 +88,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("returns the proper User Details", func() {
-			userDetails, err := user.Describe(userName)
+			userDetails, err := iamUserClient.Describe(userName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(userDetails).To(Equal(properUserDetails))
 		})
@@ -99,7 +99,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, err := user.Describe(userName)
+				_, err := iamUserClient.Describe(userName)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -110,7 +110,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, err := user.Describe(userName)
+					_, err := iamUserClient.Describe(userName)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -149,7 +149,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("creates the User", func() {
-			userARN, err := user.Create(userName, iamPath)
+			userARN, err := iamUserClient.Create(userName, iamPath)
 			Expect(userARN).To(Equal("user-arn"))
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -160,7 +160,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, err := user.Create(userName, iamPath)
+				_, err := iamUserClient.Create(userName, iamPath)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -171,7 +171,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, err := user.Create(userName, iamPath)
+					_, err := iamUserClient.Create(userName, iamPath)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -205,7 +205,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("deletes the User", func() {
-			err := user.Delete(userName)
+			err := iamUserClient.Delete(userName)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -215,7 +215,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				err := user.Delete(userName)
+				err := iamUserClient.Delete(userName)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -226,7 +226,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					err := user.Delete(userName)
+					err := iamUserClient.Delete(userName)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -273,7 +273,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("lists the User Access Key", func() {
-			accessKeys, err := user.ListAccessKeys(userName)
+			accessKeys, err := iamUserClient.ListAccessKeys(userName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(accessKeys).To(Equal([]string{"access-key-id-1", "access-key-id-2"}))
 		})
@@ -284,7 +284,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, err := user.ListAccessKeys(userName)
+				_, err := iamUserClient.ListAccessKeys(userName)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -295,7 +295,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, err := user.ListAccessKeys(userName)
+					_, err := iamUserClient.ListAccessKeys(userName)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -339,7 +339,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("creates the Access Key", func() {
-			accessKeyID, secretAccessKey, err := user.CreateAccessKey(userName)
+			accessKeyID, secretAccessKey, err := iamUserClient.CreateAccessKey(userName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(accessKeyID).To(Equal("access-key-id"))
 			Expect(secretAccessKey).To(Equal("secret-access-key"))
@@ -351,7 +351,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, _, err := user.CreateAccessKey(userName)
+				_, _, err := iamUserClient.CreateAccessKey(userName)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -362,7 +362,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, _, err := user.CreateAccessKey(userName)
+					_, _, err := iamUserClient.CreateAccessKey(userName)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -401,7 +401,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("deletes the Access Key", func() {
-			err := user.DeleteAccessKey(userName, accessKeyID)
+			err := iamUserClient.DeleteAccessKey(userName, accessKeyID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -411,7 +411,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				err := user.DeleteAccessKey(userName, accessKeyID)
+				err := iamUserClient.DeleteAccessKey(userName, accessKeyID)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -422,7 +422,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					err := user.DeleteAccessKey(userName, accessKeyID)
+					err := iamUserClient.DeleteAccessKey(userName, accessKeyID)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -470,7 +470,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("lists the Attached User Policies", func() {
-			attachedUserPolicies, err := user.ListAttachedUserPolicies(userName, iamPath)
+			attachedUserPolicies, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(attachedUserPolicies).To(Equal([]string{"user-policy-1", "user-policy-2"}))
 		})
@@ -481,7 +481,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, err := user.ListAttachedUserPolicies(userName, iamPath)
+				_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -492,7 +492,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, err := user.ListAttachedUserPolicies(userName, iamPath)
+					_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -531,7 +531,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("attaches the Policy to the User", func() {
-			err := user.AttachUserPolicy(userName, policyARN)
+			err := iamUserClient.AttachUserPolicy(userName, policyARN)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -541,7 +541,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				err := user.AttachUserPolicy(userName, policyARN)
+				err := iamUserClient.AttachUserPolicy(userName, policyARN)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -552,7 +552,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					err := user.AttachUserPolicy(userName, policyARN)
+					err := iamUserClient.AttachUserPolicy(userName, policyARN)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
@@ -591,7 +591,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("detaches the Policy from the User", func() {
-			err := user.DetachUserPolicy(userName, policyARN)
+			err := iamUserClient.DetachUserPolicy(userName, policyARN)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -601,7 +601,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				err := user.DetachUserPolicy(userName, policyARN)
+				err := iamUserClient.DetachUserPolicy(userName, policyARN)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -612,7 +612,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					err := user.DetachUserPolicy(userName, policyARN)
+					err := iamUserClient.DetachUserPolicy(userName, policyARN)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})

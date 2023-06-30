@@ -10,22 +10,22 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
 
-type IAMUser struct {
+type IAMUserClient struct {
 	iamsvc iamiface.IAMAPI
 	logger lager.Logger
 }
 
-func NewIAMUser(
+func NewIAMUserClient(
 	iamsvc iamiface.IAMAPI,
 	logger lager.Logger,
-) *IAMUser {
-	return &IAMUser{
+) *IAMUserClient {
+	return &IAMUserClient{
 		iamsvc: iamsvc,
 		logger: logger.Session("iam-user"),
 	}
 }
 
-func (i *IAMUser) Describe(userName string) (UserDetails, error) {
+func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {
 	userDetails := UserDetails{
 		UserName: userName,
 	}
@@ -51,7 +51,7 @@ func (i *IAMUser) Describe(userName string) (UserDetails, error) {
 	return userDetails, nil
 }
 
-func (i *IAMUser) Create(userName, iamPath string) (string, error) {
+func (i *IAMUserClient) Create(userName, iamPath string) (string, error) {
 	createUserInput := &iam.CreateUserInput{
 		UserName: aws.String(userName),
 		Path:     stringOrNil(iamPath),
@@ -71,7 +71,7 @@ func (i *IAMUser) Create(userName, iamPath string) (string, error) {
 	return aws.StringValue(createUserOutput.User.Arn), nil
 }
 
-func (i *IAMUser) Delete(userName string) error {
+func (i *IAMUserClient) Delete(userName string) error {
 	deleteUserInput := &iam.DeleteUserInput{
 		UserName: aws.String(userName),
 	}
@@ -90,7 +90,7 @@ func (i *IAMUser) Delete(userName string) error {
 	return nil
 }
 
-func (i *IAMUser) ListAccessKeys(userName string) ([]string, error) {
+func (i *IAMUserClient) ListAccessKeys(userName string) ([]string, error) {
 	var accessKeys []string
 
 	listAccessKeysInput := &iam.ListAccessKeysInput{
@@ -115,7 +115,7 @@ func (i *IAMUser) ListAccessKeys(userName string) ([]string, error) {
 	return accessKeys, nil
 }
 
-func (i *IAMUser) CreateAccessKey(userName string) (string, string, error) {
+func (i *IAMUserClient) CreateAccessKey(userName string) (string, string, error) {
 	createAccessKeyInput := &iam.CreateAccessKeyInput{
 		UserName: aws.String(userName),
 	}
@@ -134,7 +134,7 @@ func (i *IAMUser) CreateAccessKey(userName string) (string, string, error) {
 	return aws.StringValue(createAccessKeyOutput.AccessKey.AccessKeyId), aws.StringValue(createAccessKeyOutput.AccessKey.SecretAccessKey), nil
 }
 
-func (i *IAMUser) DeleteAccessKey(userName, accessKeyID string) error {
+func (i *IAMUserClient) DeleteAccessKey(userName, accessKeyID string) error {
 	deleteAccessKeyInput := &iam.DeleteAccessKeyInput{
 		UserName:    aws.String(userName),
 		AccessKeyId: aws.String(accessKeyID),
@@ -154,7 +154,7 @@ func (i *IAMUser) DeleteAccessKey(userName, accessKeyID string) error {
 	return nil
 }
 
-func (i *IAMUser) ListAttachedUserPolicies(userName, iamPath string) ([]string, error) {
+func (i *IAMUserClient) ListAttachedUserPolicies(userName, iamPath string) ([]string, error) {
 	var userPolicies []string
 
 	listAttachedUserPoliciesInput := &iam.ListAttachedUserPoliciesInput{
@@ -180,7 +180,7 @@ func (i *IAMUser) ListAttachedUserPolicies(userName, iamPath string) ([]string, 
 	return userPolicies, nil
 }
 
-func (i *IAMUser) AttachUserPolicy(userName string, policyARN string) error {
+func (i *IAMUserClient) AttachUserPolicy(userName string, policyARN string) error {
 	attachUserPolicyInput := &iam.AttachUserPolicyInput{
 		PolicyArn: aws.String(policyARN),
 		UserName:  aws.String(userName),
@@ -200,7 +200,7 @@ func (i *IAMUser) AttachUserPolicy(userName string, policyARN string) error {
 	return nil
 }
 
-func (i *IAMUser) DetachUserPolicy(userName string, policyARN string) error {
+func (i *IAMUserClient) DetachUserPolicy(userName string, policyARN string) error {
 	detachUserPolicyInput := &iam.DetachUserPolicyInput{
 		PolicyArn: aws.String(policyARN),
 		UserName:  aws.String(userName),
