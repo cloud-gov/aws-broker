@@ -16,17 +16,17 @@ import (
 
 // DBConfig holds configuration information to connect to a database.
 // Parameters for the config.
-// * dbname - The name of the database to connect to
-// * user - The user to sign in as
-// * password - The user's password
-// * host - The host to connect to. Values that start with / are for unix domain sockets.
-//   (default is localhost)
-// * port - The port to bind to. (default is 5432)
-// * sslmode - Whether or not to use SSL (default is require, this is not the default for libpq)
-//   Valid SSL modes:
-//    * disable - No SSL
-//    * require - Always SSL (skip verification)
-//    * verify-full - Always SSL (require verification)
+//   - dbname - The name of the database to connect to
+//   - user - The user to sign in as
+//   - password - The user's password
+//   - host - The host to connect to. Values that start with / are for unix domain sockets.
+//     (default is localhost)
+//   - port - The port to bind to. (default is 5432)
+//   - sslmode - Whether or not to use SSL (default is require, this is not the default for libpq)
+//     Valid SSL modes:
+//   - disable - No SSL
+//   - require - Always SSL (skip verification)
+//   - verify-full - Always SSL (require verification)
 type DBConfig struct {
 	DbType   string `yaml:"db_type" validate:"required"`
 	URL      string `yaml:"url" validate:"required"`
@@ -64,35 +64,6 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			dbConfig.Port)
 		DB, err = gorm.Open(dbConfig.DbType, conn)
 	case "mysql":
-		/*
-			sslmode := "skip-verify"
-			if dbConfig.Sslmode == "true" {
-				sslmode = "tls-on"
-				certFile := filepath.Join("resources", "rds-ca-2015-root.pem")
-				certData, err := ioutil.ReadFile(certFile)
-				if err != nil {
-					log.Fatalf("error: %v", err)
-				}
-				block, _ := pem.Decode(certData)
-				cert, err := x509.ParseCertificate(block.Bytes)
-				if err != nil {
-					log.Fatalf("error: %v", err)
-				}
-				roots := x509.NewCertPool()
-				roots.AddCert(cert)
-				mysql.RegisterTLSConfig(sslmode, &tls.Config{ServerName: dbConfig.URL, RootCAs: roots})
-			}
-			//conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
-			conn := "%s:%s@%s(%s:%d)/%s?tls=%s&charset=utf8&parseTime=True"
-			conn = fmt.Sprintf(conn,
-				dbConfig.Username,
-				dbConfig.Password,
-				"tcp",
-				dbConfig.URL,
-				dbConfig.Port,
-				dbConfig.DbName,
-				sslmode)
-		*/
 		conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
 		conn = fmt.Sprintf(conn,
 			dbConfig.Username,

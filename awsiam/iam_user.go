@@ -1,24 +1,22 @@
 package awsiam
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"text/template"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 )
 
 type IAMUser struct {
-	iamsvc *iam.IAM
+	iamsvc iamiface.IAMAPI
 	logger lager.Logger
 }
 
 func NewIAMUser(
-	iamsvc *iam.IAM,
+	iamsvc iamiface.IAMAPI,
 	logger lager.Logger,
 ) *IAMUser {
 	return &IAMUser{
@@ -152,101 +150,6 @@ func (i *IAMUser) DeleteAccessKey(userName, accessKeyID string) error {
 		return err
 	}
 	i.logger.Debug("delete-access-key", lager.Data{"output": deleteAccessKeyOutput})
-
-	return nil
-}
-
-func (i *IAMUser) CreatePolicy(policyName, iamPath, policyTemplate string, resources []string) (string, error) {
-	tmpl, err := template.New("policy").Funcs(template.FuncMap{
-		"resources": func(suffix string) string {
-			resourcePaths := make([]string, len(resources))
-			for idx, resource := range resources {
-				resourcePaths[idx] = resource + suffix
-			}
-			marshaled, err := json.Marshal(resourcePaths)
-			if err != nil {
-				panic(err)
-			}
-			return string(marshaled)
-		},
-	}).Parse(policyTemplate)
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		return "", err
-	}
-	policy := bytes.Buffer{}
-	err = tmpl.Execute(&policy, map[string]interface{}{
-		"Resource":  resources[0],
-		"Resources": resources,
-	})
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		return "", err
-	}
-
-	createPolicyInput := &iam.CreatePolicyInput{
-		PolicyName:     aws.String(policyName),
-		PolicyDocument: aws.String(policy.String()),
-		Path:           stringOrNil(iamPath),
-	}
-	i.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
-
-	createPolicyOutput, err := i.iamsvc.CreatePolicy(createPolicyInput)
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		if awsErr, ok := err.(awserr.Error); ok {
-			return "", errors.New(awsErr.Code() + ": " + awsErr.Message())
-		}
-		return "", err
-	}
-	i.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
-
-	return aws.StringValue(createPolicyOutput.Policy.Arn), nil
-}
-
-func (i *IAMUser) DeletePolicy(policyARN string) error {
-	deletePolicyInput := &iam.DeletePolicyInput{
-		PolicyArn: aws.String(policyARN),
-	}
-	// list and remove all versions but default first
-	listPolicyVersionsOutput, err := i.iamsvc.ListPolicyVersions(&iam.ListPolicyVersionsInput{
-		PolicyArn: aws.String(policyARN),
-	})
-	i.logger.Debug("delete-policy", lager.Data{"listVersions": listPolicyVersionsOutput})
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		if awsErr, ok := err.(awserr.Error); ok {
-			return errors.New(awsErr.Code() + ": " + awsErr.Message())
-		}
-		return err
-	}
-	for _, version := range listPolicyVersionsOutput.Versions {
-		if !(*version.IsDefaultVersion) {
-			i.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
-			_, err := i.iamsvc.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
-				VersionId: version.VersionId,
-				PolicyArn: aws.String(policyARN),
-			})
-			if err != nil {
-				i.logger.Error("aws-iam-error", err)
-				if awsErr, ok := err.(awserr.Error); ok {
-					return errors.New(awsErr.Code() + ": " + awsErr.Message())
-				}
-				return err
-			}
-		}
-	}
-
-	i.logger.Debug("delete-policy", lager.Data{"input": deletePolicyInput})
-	deletePolicyOutput, err := i.iamsvc.DeletePolicy(deletePolicyInput)
-	if err != nil {
-		i.logger.Error("aws-iam-error", err)
-		if awsErr, ok := err.(awserr.Error); ok {
-			return errors.New(awsErr.Code() + ": " + awsErr.Message())
-		}
-		return err
-	}
-	i.logger.Debug("delete-policy", lager.Data{"output": deletePolicyOutput})
 
 	return nil
 }

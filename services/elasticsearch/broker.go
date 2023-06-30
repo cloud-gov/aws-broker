@@ -104,13 +104,13 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	if planErr != nil {
 		return planErr
 	}
-    
+
 	if options.ElasticsearchVersion != "" {
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.ElasticsearchVersion) {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
-				options.ElasticsearchVersion +" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4 "+".",
+				options.ElasticsearchVersion+" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4 "+".",
 			)
 		}
 	}
@@ -291,7 +291,7 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
+	// Get the correct database logic depending on the type of plan
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
 	if adapterErr != nil {
 		return adapterErr

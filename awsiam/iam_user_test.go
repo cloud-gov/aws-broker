@@ -3,10 +3,9 @@ package awsiam_test
 import (
 	"errors"
 
+	. "github.com/18F/aws-broker/awsiam"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	. "github.com/cloudfoundry-community/s3-broker/awsiam"
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -38,7 +37,7 @@ var _ = Describe("IAM User", func() {
 	})
 
 	JustBeforeEach(func() {
-		awsSession = session.New(nil)
+		awsSession, _ = session.NewSession()
 		iamsvc = iam.New(awsSession)
 
 		logger = lager.NewLogger("iamuser_test")
@@ -245,10 +244,10 @@ var _ = Describe("IAM User", func() {
 
 		BeforeEach(func() {
 			listAccessKeysMetadata = []*iam.AccessKeyMetadata{
-				&iam.AccessKeyMetadata{
+				{
 					AccessKeyId: aws.String("access-key-id-1"),
 				},
-				&iam.AccessKeyMetadata{
+				{
 					AccessKeyId: aws.String("access-key-id-2"),
 				},
 			}
@@ -431,159 +430,6 @@ var _ = Describe("IAM User", func() {
 		})
 	})
 
-	var _ = Describe("CreatePolicy", func() {
-		var (
-			policyName string
-			template   string
-			resources  []string
-
-			createPolicy *iam.Policy
-
-			createPolicyInput *iam.CreatePolicyInput
-			createPolicyError error
-		)
-
-		BeforeEach(func() {
-			policyName = "policy-name"
-			template = `{
-	"Version": "2012-10-17",
-	"Id": "policy-name",
-	"Statement": [
-		{
-			"Effect": "effect",
-			"Action": "action",
-			"Resource": {{resources "/*"}}
-		}
-	]
-}`
-			resources = []string{"resource"}
-
-			createPolicy = &iam.Policy{
-				Arn: aws.String("policy-arn"),
-			}
-
-			createPolicyInput = &iam.CreatePolicyInput{
-				Path:       aws.String(iamPath),
-				PolicyName: aws.String(policyName),
-				PolicyDocument: aws.String(`{
-	"Version": "2012-10-17",
-	"Id": "policy-name",
-	"Statement": [
-		{
-			"Effect": "effect",
-			"Action": "action",
-			"Resource": ["resource/*"]
-		}
-	]
-}`),
-			}
-			createPolicyError = nil
-		})
-
-		JustBeforeEach(func() {
-			iamsvc.Handlers.Clear()
-
-			iamCall = func(r *request.Request) {
-				Expect(r.Operation.Name).To(Equal("CreatePolicy"))
-				Expect(r.Params).To(BeAssignableToTypeOf(&iam.CreatePolicyInput{}))
-				Expect(*r.Params.(*iam.CreatePolicyInput).PolicyDocument).To(MatchJSON(*createPolicyInput.PolicyDocument))
-				data := r.Data.(*iam.CreatePolicyOutput)
-				data.Policy = createPolicy
-				r.Error = createPolicyError
-			}
-			iamsvc.Handlers.Send.PushBack(iamCall)
-		})
-
-		It("creates the Access Key", func() {
-			policyARN, err := user.CreatePolicy(policyName, iamPath, template, resources)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(policyARN).To(Equal("policy-arn"))
-		})
-
-		Context("when creating the Policy fails", func() {
-			BeforeEach(func() {
-				createPolicyError = errors.New("operation failed")
-			})
-
-			It("returns the proper error", func() {
-				_, err := user.CreatePolicy(policyName, iamPath, template, resources)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("operation failed"))
-			})
-
-			Context("and it is an AWS error", func() {
-				BeforeEach(func() {
-					createPolicyError = awserr.New("code", "message", errors.New("operation failed"))
-				})
-
-				It("returns the proper error", func() {
-					_, err := user.CreatePolicy(policyName, iamPath, template, resources)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("code: message"))
-				})
-			})
-		})
-	})
-
-	var _ = Describe("DeletePolicy", func() {
-		var (
-			policyARN string
-
-			deletePolicyInput *iam.DeletePolicyInput
-			deletePolicyError error
-		)
-
-		BeforeEach(func() {
-			policyARN = "policy-arn"
-
-			deletePolicyInput = &iam.DeletePolicyInput{
-				PolicyArn: aws.String(policyARN),
-			}
-			deletePolicyError = nil
-		})
-
-		JustBeforeEach(func() {
-			iamsvc.Handlers.Clear()
-
-			iamCall = func(r *request.Request) {
-				Expect(r.Operation.Name).To(Equal("DeletePolicy"))
-				Expect(r.Params).To(BeAssignableToTypeOf(&iam.DeletePolicyInput{}))
-				Expect(r.Params).To(Equal(deletePolicyInput))
-				r.Error = deletePolicyError
-			}
-			iamsvc.Handlers.Send.PushBack(iamCall)
-		})
-
-		It("deletes the Policy", func() {
-			err := user.DeletePolicy(policyARN)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		Context("when deleting the Policy fails", func() {
-			BeforeEach(func() {
-				deletePolicyError = errors.New("operation failed")
-			})
-
-			It("returns the proper error", func() {
-				err := user.DeletePolicy(policyARN)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("operation failed"))
-			})
-
-			Context("and it is an AWS error", func() {
-				BeforeEach(func() {
-					deletePolicyError = awserr.New("code", "message", errors.New("operation failed"))
-				})
-
-				It("returns the proper error", func() {
-					err := user.DeletePolicy(policyARN)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("code: message"))
-				})
-			})
-		})
-	})
-
 	var _ = Describe("ListAttachedUserPolicies", func() {
 		var (
 			listAttachedUserPoliciesAttachedPolicies []*iam.AttachedPolicy
@@ -594,10 +440,10 @@ var _ = Describe("IAM User", func() {
 
 		BeforeEach(func() {
 			listAttachedUserPoliciesAttachedPolicies = []*iam.AttachedPolicy{
-				&iam.AttachedPolicy{
+				{
 					PolicyArn: aws.String("user-policy-1"),
 				},
-				&iam.AttachedPolicy{
+				{
 					PolicyArn: aws.String("user-policy-2"),
 				},
 			}
