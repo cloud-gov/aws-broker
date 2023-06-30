@@ -1,5 +1,6 @@
 ---
 jobs:
+
 - name: deploy-aws-broker-development
   plan:
   - in_parallel:
@@ -440,6 +441,174 @@ jobs:
       username: ((slack-username))
       icon_url: ((slack-icon-url))
 
+- name: reconfigure
+  plan:
+  - get: aws-broker-app
+    trigger: true
+  - set_pipeline: deploy-aws-broker
+    file: aws-broker-app/ci/pipeline.yml
+    vars_files:
+      - aws-broker-app/ci/config.yml
+
+- name: deploy-aws-broker-staging
+  plan:
+  - in_parallel:
+    - get: aws-broker-app
+      trigger: true
+      passed: [reconfigure]
+    - get: pipeline-tasks
+    - get: db-app-staging
+    - get: redis-app-staging
+    - get: search-app-staging
+  - task: run_tests
+    file: aws-broker-app/ci/run_tests.yml
+
+  - task: provision-rds
+    tags:
+    - iaas
+    file: pipeline-tasks/terraform-apply.yml
+    input_mapping:
+      terraform-templates: aws-broker-app
+    params:
+      TERRAFORM_ACTION: apply
+      TEMPLATE_SUBDIR: ci/terraform
+      STACK_NAME: ((staging-stack-name))
+      S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
+      AWS_DEFAULT_REGION: us-gov-west-1
+      
+      TF_VAR_base_stack: ((staging-stack-base))
+      TF_VAR_stack_description: ((staging-stack-name))
+      TF_VAR_remote_state_bucket: ((staging-s3-tfstate-bucket))
+
+      TF_VAR_aws_deploy_region: ((staging-aws-default-region))
+      TF_VAR_aws_deploy_role_arn: ((staging-aws-deploy-role-arn))
+
+      TF_VAR_rds_internal_instance_type: ((prod-pgsql-instance-class))
+      TF_VAR_rds_internal_db_size: 10
+      TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
+      TF_VAR_rds_internal_db_engine: postgres
+      TF_VAR_rds_internal_db_engine_version: 12
+      TF_VAR_rds_internal_db_parameter_group_family: postgres12
+      TF_VAR_rds_internal_multi_az: false
+      TF_VAR_rds_internal_username: ((staging-rds-internal-username))
+      TF_VAR_rds_internal_password: ((staging-rds-internal-password))
+      TF_VAR_rds_internal_apply_immediately: "true"
+      TF_VAR_rds_internal_allow_major_version_upgrade: "true"
+      
+      TF_VAR_snapshot_expiration: 7
+      TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
+
+  - task: build-manifest
+    file: aws-broker-app/ci/build-manifest.yml
+    params:
+      S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
+      BASE_STACK_NAME: ((staging-stack-base))
+      AWS_DEFAULT_REGION: us-gov-west-1
+      STATE_FILE: terraform-state/terraform.tfstate
+      ENVIRONMENT: ((staging-environment))
+
+  - put: deploy-aws-broker-staging
+    params:
+      manifest: built/manifest.yml
+      path: built
+      current_app_name: aws-broker
+      environment_variables:
+        DB_PREFIX: ((staging-db-name-prefix))
+        DB_SHORTHAND_PREFIX: stg
+        AUTH_PASS: ((staging-auth-pass))
+        AUTH_USER: ((staging-auth-user))
+        AWS_DEFAULT_REGION: ((staging-aws-default-region))
+        DB_SSLMODE: require
+        DB_USER: ((staging-rds-internal-username))
+        DB_PASS: ((staging-rds-internal-password))
+        DB_TYPE: postgres
+        DB_NAME: ((staging-rds-internal-db-name))
+        ENC_KEY: ((staging-enc-key))
+
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy aws-broker on staging
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: '#cg-platform-news'
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+    on_success:
+      put: slack
+      params:
+        text: |
+          :white_check_mark: Successfully deployed aws-broker on staging
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: '#cg-platform-news'
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+
+  - task: update-broker
+    file: pipeline-tasks/register-service-broker.yml
+    params:
+      CF_API_URL: ((staging-cf-api-url))
+      CF_USERNAME: ((staging-cf-deploy-username))
+      CF_PASSWORD: ((staging-cf-deploy-password))
+      CF_ORGANIZATION: ((staging-cf-organization))
+      CF_SPACE: ((staging-cf-space))
+      BROKER_NAME: ((staging-broker-name))
+      AUTH_USER: ((staging-auth-user))
+      AUTH_PASS: ((staging-auth-pass))
+      SERVICES: >-
+        aws-rds:micro-psql
+        aws-rds:medium-psql
+        aws-rds:medium-psql-redundant
+        aws-rds:large-gp-psql
+        aws-rds:large-gp-psql-redundant
+        aws-rds:xlarge-gp-psql
+        aws-rds:xlarge-gp-psql-redundant
+        aws-rds:micro-mysql
+        aws-rds:micro-mysql-redundant
+        aws-rds:small-mysql
+        aws-rds:small-mysql-redundant
+        aws-rds:medium-mysql
+        aws-rds:medium-mysql-redundant
+        aws-rds:medium-gp-mysql-redundant
+        aws-rds:large-gp-mysql
+        aws-rds:large-gp-mysql-redundant
+        aws-rds:xlarge-gp-mysql
+        aws-rds:xlarge-gp-mysql-redundant
+        aws-rds:micro-psql-redundant
+        aws-rds:small-psql
+        aws-rds:small-psql-redundant
+        aws-rds:medium-oracle-se2
+        aws-elasticache-redis:redis-dev
+        aws-elasticache-redis:redis-3node
+        aws-elasticache-redis:redis-5node
+        aws-elasticache-redis:redis-3node-large
+        aws-elasticache-redis:redis-5node-large
+        aws-elasticsearch:es-dev
+        aws-elasticsearch:es-medium
+        aws-elasticsearch:es-medium-ha
+        aws-elasticsearch:es-large
+        aws-elasticsearch:es-large-ha
+        aws-elasticsearch:es-xlarge
+        aws-elasticsearch:es-xlarge-ha
+        aws-elasticsearch:es-2xlarge-gp
+        aws-elasticsearch:es-2xlarge-gp-ha
+        aws-elasticsearch:es-4xlarge-gp
+        aws-elasticsearch:es-4xlarge-gp-ha
+
+  - task: update-broker-enterprise
+    file: pipeline-tasks/register-service-broker.yml
+    params:
+      CF_API_URL: ((staging-cf-api-url))
+      CF_USERNAME: ((staging-cf-deploy-username))
+      CF_PASSWORD: ((staging-cf-deploy-password))
+      CF_ORGANIZATION: ((staging-cf-organization))
+      CF_SPACE: ((staging-cf-space))
+      BROKER_NAME: ((staging-broker-name))
+      AUTH_USER: ((staging-auth-user))
+      AUTH_PASS: ((staging-auth-pass))
+      SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+      SERVICE_ORGANIZATION: cloud-gov
+
 - name: acceptance-tests-db-staging
   plan:
   - in_parallel:
@@ -718,164 +887,6 @@ jobs:
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
       username: concourse
     put: slack
-
-- name: deploy-aws-broker-staging
-  plan:
-  - in_parallel:
-    - get: aws-broker-app
-      trigger: true
-    - get: pipeline-tasks
-    - get: db-app-staging
-    - get: redis-app-staging
-    - get: search-app-staging
-  - task: run_tests
-    file: aws-broker-app/ci/run_tests.yml
-
-  - task: provision-rds
-    tags:
-    - iaas
-    file: pipeline-tasks/terraform-apply.yml
-    input_mapping:
-      terraform-templates: aws-broker-app
-    params:
-      TERRAFORM_ACTION: apply
-      TEMPLATE_SUBDIR: ci/terraform
-      STACK_NAME: ((staging-stack-name))
-      S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
-      AWS_DEFAULT_REGION: us-gov-west-1
-      
-      TF_VAR_base_stack: ((staging-stack-base))
-      TF_VAR_stack_description: ((staging-stack-name))
-      TF_VAR_remote_state_bucket: ((staging-s3-tfstate-bucket))
-
-      TF_VAR_aws_deploy_region: ((staging-aws-default-region))
-      TF_VAR_aws_deploy_role_arn: ((staging-aws-deploy-role-arn))
-
-      TF_VAR_rds_internal_instance_type: ((prod-pgsql-instance-class))
-      TF_VAR_rds_internal_db_size: 10
-      TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
-      TF_VAR_rds_internal_db_engine: postgres
-      TF_VAR_rds_internal_db_engine_version: 12
-      TF_VAR_rds_internal_db_parameter_group_family: postgres12
-      TF_VAR_rds_internal_multi_az: false
-      TF_VAR_rds_internal_username: ((staging-rds-internal-username))
-      TF_VAR_rds_internal_password: ((staging-rds-internal-password))
-      TF_VAR_rds_internal_apply_immediately: "true"
-      TF_VAR_rds_internal_allow_major_version_upgrade: "true"
-      
-      TF_VAR_snapshot_expiration: 7
-      TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
-
-  - task: build-manifest
-    file: aws-broker-app/ci/build-manifest.yml
-    params:
-      S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
-      BASE_STACK_NAME: ((staging-stack-base))
-      AWS_DEFAULT_REGION: us-gov-west-1
-      STATE_FILE: terraform-state/terraform.tfstate
-      ENVIRONMENT: ((staging-environment))
-
-  - put: deploy-aws-broker-staging
-    params:
-      manifest: built/manifest.yml
-      path: built
-      current_app_name: aws-broker
-      environment_variables:
-        DB_PREFIX: ((staging-db-name-prefix))
-        DB_SHORTHAND_PREFIX: stg
-        AUTH_PASS: ((staging-auth-pass))
-        AUTH_USER: ((staging-auth-user))
-        AWS_DEFAULT_REGION: ((staging-aws-default-region))
-        DB_SSLMODE: require
-        DB_USER: ((staging-rds-internal-username))
-        DB_PASS: ((staging-rds-internal-password))
-        DB_TYPE: postgres
-        DB_NAME: ((staging-rds-internal-db-name))
-        ENC_KEY: ((staging-enc-key))
-
-    on_failure:
-      put: slack
-      params:
-        text: |
-          :x: FAILED to deploy aws-broker on staging
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-    on_success:
-      put: slack
-      params:
-        text: |
-          :white_check_mark: Successfully deployed aws-broker on staging
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: '#cg-platform-news'
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-
-  - task: update-broker
-    file: pipeline-tasks/register-service-broker.yml
-    params:
-      CF_API_URL: ((staging-cf-api-url))
-      CF_USERNAME: ((staging-cf-deploy-username))
-      CF_PASSWORD: ((staging-cf-deploy-password))
-      CF_ORGANIZATION: ((staging-cf-organization))
-      CF_SPACE: ((staging-cf-space))
-      BROKER_NAME: ((staging-broker-name))
-      AUTH_USER: ((staging-auth-user))
-      AUTH_PASS: ((staging-auth-pass))
-      SERVICES: >-
-        aws-rds:micro-psql
-        aws-rds:medium-psql
-        aws-rds:medium-psql-redundant
-        aws-rds:large-gp-psql
-        aws-rds:large-gp-psql-redundant
-        aws-rds:xlarge-gp-psql
-        aws-rds:xlarge-gp-psql-redundant
-        aws-rds:micro-mysql
-        aws-rds:micro-mysql-redundant
-        aws-rds:small-mysql
-        aws-rds:small-mysql-redundant
-        aws-rds:medium-mysql
-        aws-rds:medium-mysql-redundant
-        aws-rds:medium-gp-mysql-redundant
-        aws-rds:large-gp-mysql
-        aws-rds:large-gp-mysql-redundant
-        aws-rds:xlarge-gp-mysql
-        aws-rds:xlarge-gp-mysql-redundant
-        aws-rds:micro-psql-redundant
-        aws-rds:small-psql
-        aws-rds:small-psql-redundant
-        aws-rds:medium-oracle-se2
-        aws-elasticache-redis:redis-dev
-        aws-elasticache-redis:redis-3node
-        aws-elasticache-redis:redis-5node
-        aws-elasticache-redis:redis-3node-large
-        aws-elasticache-redis:redis-5node-large
-        aws-elasticsearch:es-dev
-        aws-elasticsearch:es-medium
-        aws-elasticsearch:es-medium-ha
-        aws-elasticsearch:es-large
-        aws-elasticsearch:es-large-ha
-        aws-elasticsearch:es-xlarge
-        aws-elasticsearch:es-xlarge-ha
-        aws-elasticsearch:es-2xlarge-gp
-        aws-elasticsearch:es-2xlarge-gp-ha
-        aws-elasticsearch:es-4xlarge-gp
-        aws-elasticsearch:es-4xlarge-gp-ha
-
-  - task: update-broker-enterprise
-    file: pipeline-tasks/register-service-broker.yml
-    params:
-      CF_API_URL: ((staging-cf-api-url))
-      CF_USERNAME: ((staging-cf-deploy-username))
-      CF_PASSWORD: ((staging-cf-deploy-password))
-      CF_ORGANIZATION: ((staging-cf-organization))
-      CF_SPACE: ((staging-cf-space))
-      BROKER_NAME: ((staging-broker-name))
-      AUTH_USER: ((staging-auth-user))
-      AUTH_PASS: ((staging-auth-pass))
-      SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
-      SERVICE_ORGANIZATION: cloud-gov
 
 - name: terraform-plan-aws-broker-prod
   plan:
@@ -1300,8 +1311,8 @@ resources:
   type: git
   source:
     commit_verification_keys: ((cloud-gov-pgp-keys))
-    uri: ((pipeline-tasks-git-url))
-    branch: ((pipeline-tasks-git-branch))
+    uri: https://github.com/18F/cg-pipeline-tasks
+    branch: main
 
 - name: aws-broker-app
   type: git
@@ -1314,7 +1325,7 @@ resources:
   type: git
   source:
     commit_verification_keys: ((cloud-gov-pgp-keys))
-    uri: ((aws-broker-url-development))
+    uri: ((aws-broker-url))
     branch: ((aws-broker-branch-development))
 
 - name: db-app-development
@@ -1341,7 +1352,7 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     paths:
     - services/redis/*
-    uri: ((aws-broker-url-development))
+    uri: ((aws-broker-url))
   type: git
 
 - name: redis-app-staging
@@ -1350,7 +1361,7 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     paths:
     - services/redis/*
-    uri: ((aws-broker-url-development))
+    uri: ((aws-broker-url))
   type: git
 
 - name: search-app-development
@@ -1359,7 +1370,7 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     paths:
     - services/elasticsearch/*
-    uri: ((aws-broker-url-development))
+    uri: ((aws-broker-url))
   type: git
 
 - name: search-app-staging
@@ -1374,8 +1385,8 @@ resources:
 - name: aws-db-test
   type: git
   source:
-    uri: ((aws-db-test-git-url))
-    branch: ((aws-db-test-git-branch))
+    uri: https://github.com/18F/cg-labratory
+    branch: main
     commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: deploy-aws-broker-development

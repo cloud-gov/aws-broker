@@ -1,0 +1,4 @@
+# Git sources
+aws-broker-url: https://github.com/18F/aws-broker
+aws-broker-branch: main
+aws-broker-branch-development: update-pipeline
