@@ -424,7 +424,7 @@ jobs:
           DB_TYPE: mysql
   on_success:
     put: slack
-    params:
+    params: &slack-success-config
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on development PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -433,7 +433,7 @@ jobs:
       icon_url: ((slack-icon-url))
   on_failure:
     put: slack
-    params:
+    params: &slack-failure-config
       text: |
         :x: Acceptance Tests for aws-broker on development FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
@@ -528,21 +528,17 @@ jobs:
     on_failure:
       put: slack
       params:
+        <<: *slack-failure-config
         text: |
           :x: FAILED to deploy aws-broker on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-failure-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
     on_success:
       put: slack
       params:
+        <<: *slack-success-config
         text: |
           :white_check_mark: Successfully deployed aws-broker on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-success-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
 
   - task: update-broker
     file: pipeline-tasks/register-service-broker.yml
@@ -759,21 +755,17 @@ jobs:
           DB_TYPE: mysql
   on_failure:
     params:
-      channel: ((slack-failure-channel))
-      icon_url: ((slack-icon-url))
+      <<: *slack-failure-config
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      username: concourse
     put: slack
   on_success:
     params:
-      channel: ((slack-success-channel))
-      icon_url: ((slack-icon-url))
+      <<: *slack-success-config
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      username: concourse
     put: slack
 
 - name: acceptance-tests-redis-staging
@@ -802,21 +794,17 @@ jobs:
           REGION: ((staging-aws-default-region))
   on_failure:
     params:
-      channel: ((slack-failure-channel))
-      icon_url: ((slack-icon-url))
+      <<: *slack-failure-config
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      username: concourse
     put: slack
   on_success:
     params:
-      channel: ((slack-success-channel))
-      icon_url: ((slack-icon-url))
+      <<: *slack-success-config
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      username: concourse
     put: slack
 
 - name: acceptance-tests-search-staging
@@ -871,21 +859,17 @@ jobs:
           REGION: ((staging-aws-default-region))
   on_failure:
     params:
-      channel: ((slack-failure-channel))
-      icon_url: ((slack-icon-url))
+      <<: *slack-failure-config
       text: |
         :x: Acceptance Tests for aws-broker on staging FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      username: concourse
     put: slack
   on_success:
     params:
-      channel: ((slack-success-channel))
-      icon_url: ((slack-icon-url))
+      <<: *slack-success-config
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on staging PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      username: concourse
     put: slack
 
 - name: terraform-plan-aws-broker-prod
@@ -937,12 +921,11 @@ jobs:
 
   - put: slack
     params:
+      <<: *slack-success-config
       text:  |
         :terraform: $BUILD_JOB_NAME needs review
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
       channel: ((slack-notify-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
 
 - name: deploy-aws-broker-prod
   plan:
@@ -995,21 +978,17 @@ jobs:
     on_failure:
       put: slack
       params:
+        <<: *slack-failure-config
         text: |
           :x: FAILED to deploy aws-broker on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-failure-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
     on_success:
       put: slack
       params:
+        <<: *slack-success-config
         text: |
           :white_check_mark: Successfully deployed aws-broker on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-success-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
 
   - task: update-broker
     file: pipeline-tasks/register-service-broker.yml
@@ -1290,21 +1269,17 @@ jobs:
   on_success:
     put: slack
     params:
+      <<: *slack-success-config
       text: |
         :white_check_mark: Acceptance Tests for aws-broker on production PASSED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-success-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
   on_failure:
     put: slack
     params:
+      <<: *slack-failure-config
       text: |
         :x: Acceptance Tests for aws-broker on production FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((slack-failure-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
       
 resources:
 - name: pipeline-tasks
