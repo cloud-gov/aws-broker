@@ -86,7 +86,7 @@ done
 cf restage $TEST_APP
 
 # Run task
-cf run-task $TEST_APP "python run.py -s $TEST_SERVICE -r $REGION"
+cf run-task $TEST_APP --command "python run.py -s $TEST_SERVICE -r $REGION"
 
 # Get finished task state with app guid
 test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
