@@ -1298,10 +1298,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1333,10 +1333,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1371,10 +1371,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1409,10 +1409,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1447,10 +1447,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1485,10 +1485,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1523,10 +1523,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1561,10 +1561,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1599,10 +1599,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1637,10 +1637,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1675,10 +1675,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"
@@ -1713,10 +1713,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetIDaz1: (( grab meta.elasticsearch.subnet_id_az1 ))
-    subnetIDaz2: (( grab meta.elasticsearch.subnet_id_az2 ))
-    subnetIDaz3: (( grab meta.elasticsearch.subnet_id_az3 ))
-    subnetIDaz4: (( grab meta.elasticsearch.subnet_id_az4 ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
     tags:
       environment: (( grab meta.environment ))
       client: "the client"

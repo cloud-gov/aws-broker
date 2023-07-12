@@ -33,10 +33,10 @@ meta:
     subnet_group: `${TERRAFORM} output -raw -state stack.tfstate elasticache_subnet_group`
     security_group: `${TERRAFORM} output -raw -state stack.tfstate elasticache_redis_security_group`
   elasticsearch:
-    subnet_id_az1: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az1`
-    subnet_id_az2: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az2`
-    subnet_id_az3: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az3`
-    subnet_id_az4: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet_az4`
+    subnet_id1_az1: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet1_az1`
+    subnet_id2_az2: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet2_az2`
+    subnet_id3_az1: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet3_az1`
+    subnet_id4_az2: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_subnet4_az2`
 
     security_group: `${TERRAFORM} output -raw -state stack.tfstate elasticsearch_security_group`
 EOF

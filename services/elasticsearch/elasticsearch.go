@@ -117,105 +117,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	accountID := result.Account
 
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
-	var elasticsearchTags []*opensearchservice.Tag
 	time.Sleep(5 * time.Second)
 
-	for k, v := range i.Tags {
-		tag := opensearchservice.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		elasticsearchTags = append(elasticsearchTags, &tag)
-	}
-
-	ebsoptions := &opensearchservice.EBSOptions{
-		EBSEnabled: aws.Bool(true),
-		VolumeSize: aws.Int64(int64(i.VolumeSize)),
-		VolumeType: aws.String(i.VolumeType),
-	}
-
-	zoneAwarenessConfig := &opensearchservice.ZoneAwarenessConfig{
-		AvailabilityZoneCount: aws.Int64(2),
-	}
-
-	esclusterconfig := &opensearchservice.ClusterConfig{
-		InstanceType:  aws.String(i.InstanceType),
-		InstanceCount: aws.Int64(int64(i.DataCount)),
-	}
-	if i.MasterEnabled {
-		esclusterconfig.SetDedicatedMasterEnabled(i.MasterEnabled)
-		esclusterconfig.SetDedicatedMasterCount(int64(i.MasterCount))
-		esclusterconfig.SetDedicatedMasterType(i.MasterInstanceType)
-	}
-
-	if i.DataCount > 1 {
-		esclusterconfig.SetZoneAwarenessEnabled(true)
-		esclusterconfig.SetZoneAwarenessConfig(zoneAwarenessConfig)
-	}
-
-	snapshotOptions := &opensearchservice.SnapshotOptions{
-		AutomatedSnapshotStartHour: aws.Int64(int64(i.AutomatedSnapshotStartHour)),
-	}
-
-	nodeOptions := &opensearchservice.NodeToNodeEncryptionOptions{
-		Enabled: aws.Bool(i.NodeToNodeEncryption),
-	}
-
-	domainOptions := &opensearchservice.DomainEndpointOptions{
-		EnforceHTTPS: aws.Bool(true),
-	}
-
-	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
-		Enabled: aws.Bool(i.EncryptAtRest),
-	}
-
-	VPCOptions := &opensearchservice.VPCOptions{
-		SecurityGroupIds: []*string{
-			&i.SecGroup,
-		},
-	}
-
-	AdvancedOptions := make(map[string]*string)
-
-	if i.IndicesFieldDataCacheSize != "" {
-		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
-	}
-
-	if i.IndicesQueryBoolMaxClauseCount != "" {
-		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
-	}
-
-	if i.DataCount > 1 {
-		VPCOptions.SetSubnetIds([]*string{
-			&i.SubnetIDAZ1,
-			&i.SubnetIDAZ2,
-			&i.SubnetIDAZ3,
-			&i.SubnetIDAZ4,
-		})
-	} else {
-		VPCOptions.SetSubnetIds([]*string{
-			&i.SubnetIDAZ3,
-		})
-	}
-
-	// Standard Parameters
-	params := &opensearchservice.CreateDomainInput{
-		DomainName:                  aws.String(i.Domain),
-		EBSOptions:                  ebsoptions,
-		ClusterConfig:               esclusterconfig,
-		SnapshotOptions:             snapshotOptions,
-		NodeToNodeEncryptionOptions: nodeOptions,
-		DomainEndpointOptions:       domainOptions,
-		EncryptionAtRestOptions:     encryptionAtRestOptions,
-		VPCOptions:                  VPCOptions,
-		AdvancedOptions:             AdvancedOptions,
-	}
-	if i.ElasticsearchVersion != "" {
-		params.EngineVersion = aws.String(i.ElasticsearchVersion)
-	}
-	params.SetAccessPolicies(accessControlPolicy)
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
+	params := getCreateDomainInput(i, accessControlPolicy)
 
 	resp, err := d.opensearch.CreateDomain(params)
 	if isInvalidTypeException(err) {
@@ -246,15 +151,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		}
 		i.IamPolicy = policy
 		i.IamPolicyARN = policyARN
-		paramsTags := &opensearchservice.AddTagsInput{
-			TagList: elasticsearchTags,
-			ARN:     resp.DomainStatus.ARN,
-		}
-		resp1, err := d.opensearch.AddTags(paramsTags)
-		fmt.Println(awsutil.StringValue(resp1))
-		if !d.didAwsCallSucceed(err) {
-			return base.InstanceNotCreated, nil
-		}
+
 		//try setup of roles and policies on create
 		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
 		if err != nil {
@@ -816,4 +713,109 @@ func isInvalidTypeException(createErr error) bool {
 		return aerr.Code() == "InvalidTypeException"
 	}
 	return false
+}
+
+func getCreateDomainInput(
+	i *ElasticsearchInstance,
+	accessControlPolicy string,
+) *opensearchservice.CreateDomainInput {
+	var elasticsearchTags []*opensearchservice.Tag
+
+	for k, v := range i.Tags {
+		tag := opensearchservice.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		}
+
+		elasticsearchTags = append(elasticsearchTags, &tag)
+	}
+
+	ebsoptions := &opensearchservice.EBSOptions{
+		EBSEnabled: aws.Bool(true),
+		VolumeSize: aws.Int64(int64(i.VolumeSize)),
+		VolumeType: aws.String(i.VolumeType),
+	}
+
+	esclusterconfig := &opensearchservice.ClusterConfig{
+		InstanceType:  aws.String(i.InstanceType),
+		InstanceCount: aws.Int64(int64(i.DataCount)),
+	}
+	if i.MasterEnabled {
+		esclusterconfig.SetDedicatedMasterEnabled(i.MasterEnabled)
+		esclusterconfig.SetDedicatedMasterCount(int64(i.MasterCount))
+		esclusterconfig.SetDedicatedMasterType(i.MasterInstanceType)
+	}
+
+	snapshotOptions := &opensearchservice.SnapshotOptions{
+		AutomatedSnapshotStartHour: aws.Int64(int64(i.AutomatedSnapshotStartHour)),
+	}
+
+	nodeOptions := &opensearchservice.NodeToNodeEncryptionOptions{
+		Enabled: aws.Bool(i.NodeToNodeEncryption),
+	}
+
+	domainOptions := &opensearchservice.DomainEndpointOptions{
+		EnforceHTTPS: aws.Bool(true),
+	}
+
+	encryptionAtRestOptions := &opensearchservice.EncryptionAtRestOptions{
+		Enabled: aws.Bool(i.EncryptAtRest),
+	}
+
+	VPCOptions := &opensearchservice.VPCOptions{
+		SecurityGroupIds: []*string{
+			&i.SecGroup,
+		},
+	}
+
+	AdvancedOptions := make(map[string]*string)
+
+	if i.IndicesFieldDataCacheSize != "" {
+		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "" {
+		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
+	}
+
+	if i.DataCount > 1 {
+		VPCOptions.SetSubnetIds([]*string{
+			&i.SubnetID3AZ1,
+			&i.SubnetID4AZ2,
+		})
+		esclusterconfig.SetZoneAwarenessEnabled(true)
+		azCount := 2 // AZ count MUST match number of subnets, max value is 3
+		zoneAwarenessConfig := &opensearchservice.ZoneAwarenessConfig{
+			AvailabilityZoneCount: aws.Int64(int64(azCount)),
+		}
+		esclusterconfig.SetZoneAwarenessConfig(zoneAwarenessConfig)
+	} else {
+		VPCOptions.SetSubnetIds([]*string{
+			&i.SubnetID2AZ2,
+		})
+	}
+
+	// Standard Parameters
+	params := &opensearchservice.CreateDomainInput{
+		DomainName:                  aws.String(i.Domain),
+		EBSOptions:                  ebsoptions,
+		ClusterConfig:               esclusterconfig,
+		SnapshotOptions:             snapshotOptions,
+		NodeToNodeEncryptionOptions: nodeOptions,
+		DomainEndpointOptions:       domainOptions,
+		EncryptionAtRestOptions:     encryptionAtRestOptions,
+		VPCOptions:                  VPCOptions,
+		TagList:                     elasticsearchTags,
+	}
+
+	if len(AdvancedOptions) > 0 {
+		params.AdvancedOptions = AdvancedOptions
+	}
+
+	if i.ElasticsearchVersion != "" {
+		params.EngineVersion = aws.String(i.ElasticsearchVersion)
+	}
+
+	params.SetAccessPolicies(accessControlPolicy)
+	return params
 }
