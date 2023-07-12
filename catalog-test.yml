@@ -38,10 +38,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 6
     securityGroup: sec-group
-    subnetIDaz1: subnet-1
-    subnetIDaz2: subnet-2
-    subnetIDaz3: subnet-3
-    subnetIDaz4: subnet-4
+    subnetID1az1: subnet-1
+    subnetID2az2: subnet-2
+    subnetID3az1: subnet-3
+    subnetID4az2: subnet-4
     tags:
       environment: "cf-env-dev"
       client: "the client"
@@ -67,10 +67,10 @@ elasticsearch:
     encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: sec-group
-    subnetIDaz1: subnet-1
-    subnetIDaz2: subnet-2
-    subnetIDaz3: subnet-3
-    subnetIDaz4: subnet-4
+    subnetID1az1: subnet-1
+    subnetID2az2: subnet-2
+    subnetID3az1: subnet-3
+    subnetID4az2: subnet-4
     tags:
       environment: "cf-env-dev"
       client: "the client"

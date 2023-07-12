@@ -197,10 +197,10 @@ type ElasticsearchPlan struct {
 	NodeToNodeEncryption       bool              `yaml:"nodeToNodeEncryption" json:"-"`
 	EncryptAtRest              bool              `yaml:"encryptAtRest" json:"-"`
 	AutomatedSnapshotStartHour string            `yaml:"automatedSnapshotStartHour" json:"-"`
-	SubnetIDAZ1                string            `yaml:"subnetIDaz1" json:"-" validate:"required"`
-	SubnetIDAZ2                string            `yaml:"subnetIDaz2" json:"-" validate:"required"`
-	SubnetIDAZ3                string            `yaml:"subnetIDaz3" json:"-" validate:"required"`
-	SubnetIDAZ4                string            `yaml:"subnetIDaz4" json:"-" validate:"required"`
+	SubnetID1AZ1               string            `yaml:"subnetID1az1" json:"-" validate:"required"`
+	SubnetID2AZ2               string            `yaml:"subnetID2az2" json:"-" validate:"required"`
+	SubnetID3AZ1               string            `yaml:"subnetID3az1" json:"-" validate:"required"`
+	SubnetID4AZ2               string            `yaml:"subnetID4az2" json:"-" validate:"required"`
 	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
 	ApprovedMajorVersions      []string          `yaml:"approvedMajorVersions" json:"-"`
 }

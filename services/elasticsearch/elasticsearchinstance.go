@@ -54,12 +54,12 @@ type ElasticsearchInstance struct {
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
 
-	Tags        map[string]string `sql:"-"`
-	SubnetIDAZ1 string            `sql:"-"`
-	SubnetIDAZ2 string            `sql:"-"`
-	SubnetIDAZ3 string            `sql:"-"`
-	SubnetIDAZ4 string            `sql:"-"`
-	SecGroup    string            `sql:"-"`
+	Tags         map[string]string `sql:"-"`
+	SubnetID1AZ1 string            `sql:"-"`
+	SubnetID2AZ2 string            `sql:"-"`
+	SubnetID3AZ1 string            `sql:"-"`
+	SubnetID4AZ2 string            `sql:"-"`
+	SecGroup     string            `sql:"-"`
 }
 
 func (i *ElasticsearchInstance) setPassword(password, key string) error {
@@ -165,15 +165,15 @@ func (i *ElasticsearchInstance) init(uuid string,
 	i.EncryptAtRest = plan.EncryptAtRest
 	i.AutomatedSnapshotStartHour, _ = strconv.Atoi(plan.AutomatedSnapshotStartHour)
 	i.SecGroup = plan.SecurityGroup
-	i.SubnetIDAZ1 = plan.SubnetIDAZ1
-	i.SubnetIDAZ2 = plan.SubnetIDAZ2
-	i.SubnetIDAZ3 = plan.SubnetIDAZ3
-	i.SubnetIDAZ4 = plan.SubnetIDAZ4
+	i.SubnetID1AZ1 = plan.SubnetID1AZ1
+	i.SubnetID2AZ2 = plan.SubnetID2AZ2
+	i.SubnetID3AZ1 = plan.SubnetID3AZ1
+	i.SubnetID4AZ2 = plan.SubnetID4AZ2
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	i.BrokerSnapshotsEnabled = false
-    if options.ElasticsearchVersion != "" {
+	if options.ElasticsearchVersion != "" {
 		i.ElasticsearchVersion = options.ElasticsearchVersion
 	} else {
 		// Default to the version provided by the plan chosen in catalog.

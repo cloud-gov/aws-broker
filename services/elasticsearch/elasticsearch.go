@@ -780,8 +780,8 @@ func getCreateDomainInput(
 
 	if i.DataCount > 1 {
 		VPCOptions.SetSubnetIds([]*string{
-			&i.SubnetIDAZ3,
-			&i.SubnetIDAZ4,
+			&i.SubnetID3AZ1,
+			&i.SubnetID4AZ2,
 		})
 		esclusterconfig.SetZoneAwarenessEnabled(true)
 		azCount := 2 // AZ count MUST match number of subnets, max value is 3
@@ -791,7 +791,7 @@ func getCreateDomainInput(
 		esclusterconfig.SetZoneAwarenessConfig(zoneAwarenessConfig)
 	} else {
 		VPCOptions.SetSubnetIds([]*string{
-			&i.SubnetIDAZ2,
+			&i.SubnetID2AZ2,
 		})
 	}
 

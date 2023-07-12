@@ -25,7 +25,7 @@ func TestGetCreateDomainInput(t *testing.T) {
 			esInstance: &ElasticsearchInstance{
 				Domain:                     "test-domain",
 				DataCount:                  1,
-				SubnetIDAZ2:                "az-2",
+				SubnetID2AZ2:               "az-2",
 				SecGroup:                   "group-1",
 				EncryptAtRest:              false,
 				VolumeSize:                 10,
@@ -69,8 +69,8 @@ func TestGetCreateDomainInput(t *testing.T) {
 			esInstance: &ElasticsearchInstance{
 				Domain:                     "test-domain",
 				DataCount:                  2,
-				SubnetIDAZ3:                "az-3",
-				SubnetIDAZ4:                "az-4",
+				SubnetID3AZ1:               "az-3",
+				SubnetID4AZ2:               "az-4",
 				SecGroup:                   "group-1",
 				EncryptAtRest:              false,
 				VolumeSize:                 10,
