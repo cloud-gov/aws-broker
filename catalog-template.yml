@@ -21,7 +21,7 @@ rds:
       metadata:
         bullets:
           - &single-az-rds "Single-AZ RDS instance"
-          - &default-postgresql-v12 "Default PostgreSQL v12"
+          - &default-postgresql-v15 "Default PostgreSQL v15"
           - &minimum-1-core "minimum 1 core"
           - &minimum-1-gib-memory "minimum 1 GiB memory"
           - &default-10-gb-storage "Default 10 GB storage"
@@ -38,7 +38,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
