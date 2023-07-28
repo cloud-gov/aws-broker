@@ -60,7 +60,7 @@ rds:
       metadata:
         bullets:
           - &multi-az-rds "Multi-AZ RDS instance"
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
@@ -77,7 +77,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -96,7 +99,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - &minimum-2-gib-memory "minimum 2 GiB memory"
           - *default-10-gb-storage
@@ -113,7 +116,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -132,7 +138,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -149,7 +155,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"  
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -168,7 +177,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - &minimum-4-gib-memory "minimum 4 GiB memory"
           - *default-10-gb-storage
@@ -185,7 +194,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -204,7 +216,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - *minimum-4-gib-memory
           - *default-10-gb-storage
@@ -221,7 +233,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -240,7 +255,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - &minimum-8-gib-memory "minimum 8 GiB memory"
           - *default-10-gb-storage
@@ -257,7 +272,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -276,7 +294,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -293,7 +311,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -312,7 +333,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -329,7 +350,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -348,7 +372,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -365,7 +389,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -384,7 +411,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - &minimum-2-cores "minimum 2 cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
           - *default-10-gb-storage
@@ -402,7 +429,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -421,7 +451,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
@@ -438,7 +468,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -458,7 +491,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - &minimum-4-cores "minimum 4 cores"
           - &minimum-32-gib-memory "minimum 32 GiB memory"
           - *default-10-gb-storage
@@ -476,7 +509,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -495,7 +531,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-4-cores
           - *minimum-32-gib-memory
           - *default-10-gb-storage
@@ -512,7 +548,10 @@ rds:
         - "10"
         - "11"
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -532,7 +571,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - &minimum-4-cores "minimum 4 graviton cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
           - *default-10-gb-storage
@@ -548,7 +587,10 @@ rds:
       allocatedStorage: 10
       approvedMajorVersions:
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -567,7 +609,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-postgresql-v12
+          - *default-postgresql-v15
           - *minimum-4-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
@@ -582,7 +624,10 @@ rds:
       allocatedStorage: 10
       approvedMajorVersions:
         - "12"
-      dbVersion: "12"
+        - "13"
+        - "14"
+        - "15"
+      dbVersion: "15"
       dbType: postgres
       plan_updateable: true
       redundant: true
