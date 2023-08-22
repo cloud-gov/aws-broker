@@ -53,7 +53,7 @@ func TestNewSnapShotRepo(t *testing.T) {
 		}
 		fmt.Printf("%+v", snaprepo)
 	} else {
-		t.Error("Snapreop is nil")
+		t.Error("Snaprepo is nil")
 	}
 }
 

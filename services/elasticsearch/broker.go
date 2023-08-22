@@ -52,15 +52,8 @@ func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskq
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, c *catalog.Catalog, logger lager.Logger) (ElasticsearchAdapter, response.Response) {
-	var elasticsearchAdapter ElasticsearchAdapter
-
-	if s.Environment == "test" {
-		elasticsearchAdapter = &mockElasticsearchAdapter{}
-		return elasticsearchAdapter, nil
-	}
-
-	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
+func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, response.Response) {
+	elasticsearchAdapter := &dedicatedElasticsearchAdapter{
 		Plan:       plan,
 		settings:   *s,
 		logger:     logger,
@@ -136,7 +129,7 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -179,7 +172,7 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	if planErr != nil {
 		return planErr
 	}
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -225,7 +218,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -301,7 +294,7 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 	}
 
 	// Get the correct database logic depending on the type of plan
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -338,7 +331,7 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
 	}

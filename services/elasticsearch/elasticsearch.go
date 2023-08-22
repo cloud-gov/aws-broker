@@ -37,34 +37,6 @@ type ElasticsearchAdapter interface {
 	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *taskqueue.QueueManager) (base.InstanceState, error)
 }
 
-type mockElasticsearchAdapter struct {
-}
-
-func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
-}
-
-func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
-}
-
-func (d *mockElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
-}
-
-func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
-	// TODO
-	return i.getCredentials(password)
-}
-
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceGone, nil
-}
-
 type dedicatedElasticsearchAdapter struct {
 	Plan       catalog.ElasticsearchPlan
 	settings   config.Settings
