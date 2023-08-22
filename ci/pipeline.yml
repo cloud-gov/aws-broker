@@ -75,6 +75,7 @@ jobs:
         DB_TYPE: postgres
         DB_NAME: ((development-rds-internal-db-name))
         ENC_KEY: ((development-enc-key))
+        AWS_USE_FIPS_ENDPOINT: true
 
     on_failure:
       put: slack
@@ -524,6 +525,7 @@ jobs:
         DB_TYPE: postgres
         DB_NAME: ((staging-rds-internal-db-name))
         ENC_KEY: ((staging-enc-key))
+        AWS_USE_FIPS_ENDPOINT: true
 
     on_failure:
       put: slack
@@ -974,6 +976,7 @@ jobs:
         DB_TYPE: postgres
         DB_NAME: ((prod-rds-internal-db-name))
         ENC_KEY: ((prod-enc-key))
+        AWS_USE_FIPS_ENDPOINT: true
 
     on_failure:
       put: slack
