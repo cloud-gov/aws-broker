@@ -21,8 +21,10 @@ jobs:
       trigger: false
     - get: monthly
       trigger: true
+    - get: general-task
   - task: prep-email
     file: config-source/ci/audit/service-instances.yml
+    image: general-task
     params:
       CF_API_URL: ((prod-cf-api-url))
       CF_USERNAME: ((prod-cf-broker-user.username))
@@ -50,8 +52,10 @@ jobs:
       trigger: false
     - get: monthly
       trigger: true
+    - get: general-task
   - task: prep-email
     file: config-source/ci/audit/service-instances.yml
+    image: general-task
     params:
       CF_API_URL: ((prod-cf-api-url))
       CF_USERNAME: ((prod-cf-broker-user.username))
@@ -110,6 +114,15 @@ resources:
     expression: "0 6 1 * *"
     location: "America/New_York"
     fire_immediately: true
+
+- name: general-task
+  type: registry-image
+  source:
+    aws_access_key_id: ((aws-key))
+    aws_secret_access_key: ((aws-secret))
+    repository: general-task
+    aws_region: us-gov-west-1
+    tag: latest
 
 resource_types:
 - name: email-resource

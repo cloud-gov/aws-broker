@@ -11,8 +11,10 @@ jobs:
     - get: db-app-development
     - get: redis-app-development
     - get: search-app-development
+    - get: general-task
   - task: run_tests
     file: aws-broker-app/ci/run_tests.yml
+    image: general-task
 
   - task: provision-rds
     tags:
@@ -51,6 +53,7 @@ jobs:
 
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
+    image: general-task
     params:
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
       BASE_STACK_NAME: ((development-stack-base))
@@ -173,10 +176,12 @@ jobs:
         passed:
         - deploy-aws-broker-development
         trigger: true
+      - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-redis
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -217,10 +222,12 @@ jobs:
         passed:
         - deploy-aws-broker-development
         trigger: true
+      - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-unbound-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -234,6 +241,7 @@ jobs:
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -247,6 +255,7 @@ jobs:
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -286,10 +295,12 @@ jobs:
       passed:
       - deploy-aws-broker-development
       trigger: true
+    - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-postgres
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -302,6 +313,7 @@ jobs:
 
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -315,6 +327,7 @@ jobs:
 
       - task: smoke-tests-postgres-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -328,6 +341,7 @@ jobs:
 
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -340,6 +354,7 @@ jobs:
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -352,6 +367,7 @@ jobs:
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -365,6 +381,7 @@ jobs:
 
       - task: smoke-tests-mysql-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -378,6 +395,7 @@ jobs:
 
       - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -390,6 +408,7 @@ jobs:
 
       - task: smoke-tests-oracle
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -402,6 +421,7 @@ jobs:
 
       - task: smoke-tests-postgres-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -414,6 +434,7 @@ jobs:
 
       - task: smoke-tests-mysql-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+        image: general-task
         params:
           BROKER_NAME: ((development-broker-name))
           CF_API_URL: ((development-cf-api-url))
@@ -461,8 +482,10 @@ jobs:
     - get: db-app-staging
     - get: redis-app-staging
     - get: search-app-staging
+    - get: general-task
   - task: run_tests
     file: aws-broker-app/ci/run_tests.yml
+    image: general-task
 
   - task: provision-rds
     tags:
@@ -501,6 +524,7 @@ jobs:
 
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
+    image: general-task
     params:
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
       BASE_STACK_NAME: ((staging-stack-base))
@@ -617,10 +641,12 @@ jobs:
         - deploy-aws-broker-staging
         trigger: true
       - get: aws-db-test
+      - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-postgres
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -633,6 +659,7 @@ jobs:
 
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -646,6 +673,7 @@ jobs:
 
       - task: smoke-tests-postgres-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -659,6 +687,7 @@ jobs:
 
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -672,6 +701,7 @@ jobs:
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -684,6 +714,7 @@ jobs:
 
       - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -696,6 +727,7 @@ jobs:
 
       - task: smoke-tests-mysql-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -709,6 +741,7 @@ jobs:
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -722,6 +755,7 @@ jobs:
 
       - task: smoke-tests-oracle
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -734,6 +768,7 @@ jobs:
 
       - task: smoke-tests-postgres-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -746,6 +781,7 @@ jobs:
 
       - task: smoke-tests-mysql-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -780,10 +816,12 @@ jobs:
         - deploy-aws-broker-staging
         trigger: true
       - get: aws-db-test
+      - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-redis
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -819,10 +857,12 @@ jobs:
         - deploy-aws-broker-staging
         trigger: true
       - get: aws-db-test
+      - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-unbound-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -836,6 +876,7 @@ jobs:
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -849,6 +890,7 @@ jobs:
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        image: general-task
         params:
           BROKER_NAME: ((staging-broker-name))
           CF_API_URL: ((staging-cf-api-url))
@@ -939,6 +981,7 @@ jobs:
       - acceptance-tests-search-staging
       - terraform-plan-aws-broker-prod
     - get: pipeline-tasks
+    - get: general-task
 
   - task: provision-rds
     tags:
@@ -952,6 +995,7 @@ jobs:
 
   - task: build-manifest
     file: aws-broker-app/ci/build-manifest.yml
+    image: general-task
     params:
       S3_TFSTATE_BUCKET: ((prod-s3-tfstate-bucket))
       BASE_STACK_NAME: ((prod-stack-base))
@@ -1079,10 +1123,12 @@ jobs:
       passed: [deploy-aws-broker-prod]
       trigger: true
     - get: aws-db-test
+    - get: general-task
   - in_parallel:
       steps:
       - task: smoke-tests-postgres
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1095,6 +1141,7 @@ jobs:
 
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1107,6 +1154,7 @@ jobs:
 
       - task: smoke-tests-postgres-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1120,6 +1168,7 @@ jobs:
 
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1133,6 +1182,7 @@ jobs:
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1145,6 +1195,7 @@ jobs:
 
       - task: smoke-tests-mysql-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1157,6 +1208,7 @@ jobs:
 
       - task: smoke-tests-mysql-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1170,6 +1222,7 @@ jobs:
 
       - task: smoke-tests-mysql-update-small-to-medium
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1183,6 +1236,7 @@ jobs:
 
       - task: smoke-tests-oracle
         file: aws-broker-app/ci/run-smoke-tests.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1195,6 +1249,7 @@ jobs:
 
       - task: smoke-tests-postgres-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1207,6 +1262,7 @@ jobs:
 
       - task: smoke-tests-mysql-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1219,6 +1275,7 @@ jobs:
 
       - task: smoke-tests-redis
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1232,6 +1289,7 @@ jobs:
 
       - task: smoke-tests-unbound-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-unbound.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1245,6 +1303,7 @@ jobs:
 
       - task: smoke-tests-elasticsearch
         file: aws-broker-app/ci/run-smoke-test-task.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1258,6 +1317,7 @@ jobs:
 
       - task: smoke-tests-elasticsearch-advanced-options
         file: aws-broker-app/ci/run-smoke-test-es-advanced-options.yml
+        image: general-task
         params:
           BROKER_NAME: ((prod-broker-name))
           CF_API_URL: ((prod-cf-api-url))
@@ -1401,6 +1461,15 @@ resources:
   type: slack-notification
   source:
     url: ((slack-webhook-url))
+
+- name: general-task
+  type: registry-image
+  source:
+    aws_access_key_id: ((aws-key))
+    aws_secret_access_key: ((aws-secret))
+    repository: general-task
+    aws_region: us-gov-west-1
+    tag: latest
 
 resource_types:
 - name: slack-notification
