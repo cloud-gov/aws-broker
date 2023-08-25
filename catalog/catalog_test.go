@@ -7,7 +7,7 @@ import (
 )
 
 var rdsPGTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c6"
-var rdsPGValidVersion = "10"
+var rdsPGValidVersion = "15"
 var rdsPGInvalidVersion = "9.6"
 
 var rdsMySQLTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c7"
