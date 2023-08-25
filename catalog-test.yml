@@ -185,8 +185,6 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 10
       approvedMajorVersions:
-        - "10"
-        - "11"
         - "12"
         - "13"
         - "14"
@@ -220,8 +218,6 @@ rds:
       instanceClass: db.m3.medium
       allocatedStorage: 10
       approvedMajorVersions:
-        - "10"
-        - "11"
         - "12"
         - "13"
         - "14"
@@ -255,8 +251,6 @@ rds:
       instanceClass: db.m3.medium
       allocatedStorage: 10
       approvedMajorVersions:
-        - "10"
-        - "11"
         - "12"
         - "13"
         - "14"
