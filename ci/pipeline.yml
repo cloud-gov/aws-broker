@@ -1498,3 +1498,12 @@ resource_types:
     repository: git-resource
     aws_region: us-gov-west-1
     tag: latest
+
+- name: registry-image
+  type: registry-image
+  source:
+    aws_access_key_id: ((aws-key))
+    aws_secret_access_key: ((aws-secret))
+    repository: registry-image-resource
+    aws_region: us-gov-west-1
+    tag: latest
