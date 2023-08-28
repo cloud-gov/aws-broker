@@ -1472,6 +1472,15 @@ resources:
     tag: latest
 
 resource_types:
+- name: registry-image
+  type: registry-image
+  source:
+    aws_access_key_id: ((aws-key))
+    aws_secret_access_key: ((aws-secret))
+    repository: registry-image-resource
+    aws_region: us-gov-west-1
+    tag: latest
+
 - name: slack-notification
   type: registry-image
   source:
@@ -1496,14 +1505,5 @@ resource_types:
     aws_access_key_id: ((aws-key))
     aws_secret_access_key: ((aws-secret))
     repository: git-resource
-    aws_region: us-gov-west-1
-    tag: latest
-
-- name: registry-image
-  type: registry-image
-  source:
-    aws_access_key_id: ((aws-key))
-    aws_secret_access_key: ((aws-secret))
-    repository: registry-image-resource
     aws_region: us-gov-west-1
     tag: latest
