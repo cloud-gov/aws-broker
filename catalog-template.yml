@@ -1314,7 +1314,7 @@ elasticsearch:
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
-    volumeType: gp2
+    volumeType: gp3
     encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
@@ -1349,7 +1349,7 @@ elasticsearch:
     dataCount: 1
     instanceType: t3.small.search
     volumeSize: 15
-    volumeType: gp2
+    volumeType: gp3
     encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: (( grab meta.elasticsearch.security_group ))
@@ -1385,7 +1385,7 @@ elasticsearch:
     instanceType: c5.large.search
     masterInstanceType: c5.large.search
     volumeSize: 15
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1423,7 +1423,7 @@ elasticsearch:
     instanceType: c5.large.search
     masterInstanceType: c5.large.search
     volumeSize: 15
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1461,7 +1461,7 @@ elasticsearch:
     instanceType: c5.xlarge.search
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1499,7 +1499,7 @@ elasticsearch:
     instanceType: c5.xlarge.search
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1537,7 +1537,7 @@ elasticsearch:
     instanceType: c5.2xlarge.search
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1575,7 +1575,7 @@ elasticsearch:
     instanceType: c5.2xlarge.search
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1613,7 +1613,7 @@ elasticsearch:
     instanceType: m5.2xlarge.search
     masterInstanceType: m5.2xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1651,7 +1651,7 @@ elasticsearch:
     instanceType: m5.2xlarge.search
     masterInstanceType: m5.2xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1689,7 +1689,7 @@ elasticsearch:
     instanceType: m5.4xlarge.search
     masterInstanceType: m5.4xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -1727,7 +1727,7 @@ elasticsearch:
     instanceType: m5.4xlarge.search
     masterInstanceType: m5.4xlarge.search
     volumeSize: 30
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true

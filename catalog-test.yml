@@ -32,7 +32,7 @@ elasticsearch:
     instanceType: c5.large.elasticsearch
     masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
-    volumeType: gp2
+    volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true
     encryptAtRest: true
@@ -63,7 +63,7 @@ elasticsearch:
     dataCount: 1
     instanceType: t3.small.elasticsearch
     volumeSize: 10
-    volumeType: gp2
+    volumeType: gp3
     encryptAtRest: true
     automatedSnapshotStartHour: 7
     securityGroup: sec-group
