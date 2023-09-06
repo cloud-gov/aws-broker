@@ -1507,3 +1507,12 @@ resource_types:
     repository: git-resource
     aws_region: us-gov-west-1
     tag: latest
+
+- name: cf
+  type: registry-image
+  source:
+    aws_access_key_id: ((ecr_aws_key))
+    aws_secret_access_key: ((ecr_aws_secret))
+    repository: cf-resource
+    aws_region: us-gov-west-1
+    tag: latest

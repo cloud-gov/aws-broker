@@ -135,15 +135,22 @@ resource_types:
     tag: latest
 
 - name: email-resource
-  type: docker-image
+  type: registry-image
   source:
-    repository: pcfseceng/email-resource
+    aws_access_key_id: ((ecr_aws_key))
+    aws_secret_access_key: ((ecr_aws_secret))
+    repository: email-resource
+    aws_region: us-gov-west-1
     tag: latest
 
 - name: cron-resource
-  type: docker-image
+  type: registry-image
   source:
-    repository: cftoolsmiths/cron-resource
+    aws_access_key_id: ((ecr_aws_key))
+    aws_secret_access_key: ((ecr_aws_secret))
+    repository: cron-resource
+    aws_region: us-gov-west-1
+    tag: latest
 
 - name: git
   type: registry-image
