@@ -17,10 +17,10 @@ resource "aws_db_instance" "rds_database" {
 
   auto_minor_version_upgrade = true
 
-  name              = var.rds_db_name
+  db_name              = var.rds_db_name
   allocated_storage = var.rds_db_size
   storage_type      = var.rds_db_storage_type
-  iops              = var.rds_db_iops
+  iops              = var.rds_db_size < 400 && var.rds_db_engine == "postgres" ? null : var.rds_db_iops
   instance_class    = var.rds_instance_type
 
   username = var.rds_username
