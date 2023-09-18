@@ -53,7 +53,7 @@ done
 cf push "smoke-tests-db-update-storage-${SERVICE_PLAN}"
 
 # Update storage size
-cf update-service "rds-smoke-tests-db-update-storage-$SERVICE_PLAN" -c '{"storage": 15}'
+cf update-service "rds-smoke-tests-db-update-storage-$SERVICE_PLAN" -c '{"storage": 25}'
 
 # Wait to make sure that the service instance has been successfully updated.
 wait_for_service_instance "rds-smoke-tests-db-update-storage-$SERVICE_PLAN"
