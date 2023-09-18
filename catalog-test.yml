@@ -183,7 +183,7 @@ rds:
       free: true
       adapter: dedicated
       instanceClass: db.t3.micro
-      allocatedStorage: 10
+      allocatedStorage: 20
       approvedMajorVersions:
         - "12"
         - "13"
@@ -216,7 +216,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
-      allocatedStorage: 10
+      allocatedStorage: 20
       approvedMajorVersions:
         - "12"
         - "13"
@@ -249,7 +249,7 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.m3.medium
-      allocatedStorage: 10
+      allocatedStorage: 20
       approvedMajorVersions:
         - "12"
         - "13"
@@ -282,7 +282,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t2.small
       dbType: mysql
-      allocatedStorage: 10
+      allocatedStorage: 20
       approvedMajorVersions:
         - "8.0"
       plan_updateable: true
@@ -310,7 +310,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
-      allocatedStorage: 10
+      allocatedStorage: 20
       approvedMajorVersions:
         - "8.0"
       plan_updateable: true

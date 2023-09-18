@@ -508,7 +508,7 @@ jobs:
       TF_VAR_aws_deploy_role_arn: ((staging-aws-deploy-role-arn))
 
       TF_VAR_rds_internal_instance_type: ((prod-pgsql-instance-class))
-      TF_VAR_rds_internal_db_size: 10
+      TF_VAR_rds_internal_db_size: 20
       TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 12
@@ -949,7 +949,7 @@ jobs:
       TF_VAR_aws_deploy_role_arn: ((prod-aws-deploy-role-arn))
 
       TF_VAR_rds_internal_instance_type: ((prod-pgsql-instance-class))
-      TF_VAR_rds_internal_db_size: 10
+      TF_VAR_rds_internal_db_size: 20
       TF_VAR_rds_internal_db_name: ((prod-rds-internal-db-name))
       TF_VAR_rds_internal_db_engine: postgres
       TF_VAR_rds_internal_db_engine_version: 12

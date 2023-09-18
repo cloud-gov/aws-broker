@@ -89,7 +89,7 @@ var modifyRDSInstanceReqStorage = []byte(
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"parameters": {
-		"storage": 15
+		"storage": 25
 	  },
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
@@ -281,7 +281,7 @@ func TestCatalog(t *testing.T) {
 }
 
 /*
-	Testing RDS
+Testing RDS
 */
 func TestCreateRDSInstance(t *testing.T) {
 	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
@@ -645,9 +645,9 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.AllocatedStorage != 15 {
+	if i.AllocatedStorage != 25 {
 		println(i.AllocatedStorage)
-		t.Error("The Allocated Storage for the instance should be 15")
+		t.Error("The Allocated Storage for the instance should be 25")
 	}
 }
 
