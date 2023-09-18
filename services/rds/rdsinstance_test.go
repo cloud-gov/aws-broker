@@ -35,7 +35,7 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 20,
 			},
 			existingInstance: &RDSInstance{
-				AllocatedStorage: 10,
+				AllocatedStorage: 20,
 			},
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
@@ -45,7 +45,7 @@ func TestModifyInstance(t *testing.T) {
 		},
 		"allocated storage option less than existing, does not update": {
 			options: Options{
-				AllocatedStorage: 10,
+				AllocatedStorage: 20,
 			},
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 20,
