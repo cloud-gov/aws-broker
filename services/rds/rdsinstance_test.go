@@ -145,6 +145,19 @@ func TestModifyInstance(t *testing.T) {
 			},
 			settings: &config.Settings{},
 		},
+		"enable functions": {
+			options: Options{
+				EnableFunctions: true,
+			},
+			existingInstance: &RDSInstance{
+				EnableFunctions: false,
+			},
+			expectedInstance: &RDSInstance{
+				EnableFunctions: true,
+			},
+			plan:     catalog.RDSPlan{},
+			settings: &config.Settings{},
+		},
 	}
 
 	for name, test := range testCases {

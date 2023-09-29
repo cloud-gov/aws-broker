@@ -153,6 +153,10 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 		i.EnablePgCron = options.EnablePgCron
 	}
 
+	if options.EnableFunctions != i.EnableFunctions {
+		i.EnableFunctions = options.EnableFunctions
+	}
+
 	// Set the DB Version if it is not already set
 	// Currently only supported for MySQL and PostgreSQL instances.
 	if i.DbVersion == "" && options.Version == "" {
