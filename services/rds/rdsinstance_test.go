@@ -29,6 +29,7 @@ func TestModifyInstance(t *testing.T) {
 		expectErr        bool
 		plan             catalog.RDSPlan
 		settings         *config.Settings
+		expectedErr      error
 	}{
 		"update allocated storage": {
 			options: Options{
@@ -45,7 +46,7 @@ func TestModifyInstance(t *testing.T) {
 		},
 		"allocated storage option less than existing, does not update": {
 			options: Options{
-				AllocatedStorage: 20,
+				AllocatedStorage: 10,
 			},
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 20,
@@ -145,15 +146,31 @@ func TestModifyInstance(t *testing.T) {
 			},
 			settings: &config.Settings{},
 		},
-		"enable functions": {
+		"gp3 fails for allocated storage < 20": {
 			options: Options{
-				EnableFunctions: true,
+				StorageType: "gp3",
 			},
 			existingInstance: &RDSInstance{
-				EnableFunctions: false,
+				AllocatedStorage: 10,
 			},
 			expectedInstance: &RDSInstance{
-				EnableFunctions: true,
+				AllocatedStorage: 10,
+			},
+			plan:      catalog.RDSPlan{},
+			settings:  &config.Settings{},
+			expectErr: true,
+		},
+		"gp3 upgrade succeeds": {
+			options: Options{
+				StorageType: "gp3",
+			},
+			existingInstance: &RDSInstance{
+				AllocatedStorage: 20,
+				StorageType:      "gp3",
+			},
+			expectedInstance: &RDSInstance{
+				AllocatedStorage: 20,
+				StorageType:      "gp3",
 			},
 			plan:     catalog.RDSPlan{},
 			settings: &config.Settings{},
@@ -165,6 +182,9 @@ func TestModifyInstance(t *testing.T) {
 			err := test.existingInstance.modify(test.options, test.plan, test.settings)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.expectErr && err == nil {
+				t.Errorf("expected error, got nil")
 			}
 			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
 				t.Fatalf("expected instance: %+v, got instance: %+v", test.expectedInstance, test.existingInstance)

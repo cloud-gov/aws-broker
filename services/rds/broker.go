@@ -30,6 +30,7 @@ type Options struct {
 	BinaryLogFormat       string `json:"binary_log_format"`
 	EnablePgCron          *bool  `json:"enable_pg_cron"`
 	RotateCredentials     *bool  `json:"rotate_credentials"`
+	StorageType           string `json:"storage_type"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"

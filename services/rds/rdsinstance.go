@@ -44,6 +44,8 @@ type RDSInstance struct {
 	EnablePgCron         *bool  `sql:"size(255)"`
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
+
+	StorageType string `sql:"size(255)"`
 }
 
 func (i *RDSInstance) FormatDBName() string {
@@ -137,6 +139,13 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 
 		// Update the existing instance with the new allocated storage.
 		i.AllocatedStorage = options.AllocatedStorage
+	}
+
+	if options.StorageType != "" {
+		if options.StorageType == "gp3" && i.AllocatedStorage < 20 {
+			return errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+		}
+		i.StorageType = options.StorageType
 	}
 
 	// Check if there is a backup retention change:
