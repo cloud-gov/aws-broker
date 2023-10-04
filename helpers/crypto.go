@@ -8,16 +8,6 @@ import (
 	"math/big"
 )
 
-type CryptoUtils interface {
-	RandStr(strSize int) string
-	RandStrNoCaps(strSize int) string
-	StringWithCharset(length int, charset string) string
-	Encrypt(msg, key string, iv []byte) (string, error)
-	Decrypt(msg, key string, iv []byte) (string, error)
-	generateIv(size int) []byte
-	GenerateSalt(size int) string
-}
-
 // RandStr will generate a random alphanumeric string of the specified length.
 func RandStr(strSize int) string {
 	dictionary := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
