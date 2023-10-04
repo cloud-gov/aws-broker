@@ -42,7 +42,7 @@ func (m *MockDbUtils) getPassword(salt string, password string, key string) (str
 	return m.mockClearPassword, nil
 }
 
-func (m *MockDbUtils) buildDatabaseName(settings *config.Settings) string {
+func (m *MockDbUtils) generateDatabaseName(settings *config.Settings) string {
 	return m.mockDbName
 }
 

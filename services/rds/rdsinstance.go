@@ -21,7 +21,7 @@ type DatabaseUtils interface {
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
 	generateCredentials(settings *config.Settings) (string, string, string, error)
-	buildDatabaseName(settings *config.Settings) string
+	generateDatabaseName(settings *config.Settings) string
 	buildUsername() string
 }
 
@@ -151,7 +151,7 @@ func (u *RDSDatabaseUtils) generateCredentials(
 	return salt, encrypted, password, err
 }
 
-func (u *RDSDatabaseUtils) buildDatabaseName(
+func (u *RDSDatabaseUtils) generateDatabaseName(
 	settings *config.Settings,
 ) string {
 	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
@@ -279,7 +279,7 @@ func (i *RDSInstance) init(
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = i.dbUtils.buildDatabaseName(settings)
+	i.Database = i.dbUtils.generateDatabaseName(settings)
 	i.Username = i.dbUtils.buildUsername()
 
 	err := i.generateCredentials(settings)
