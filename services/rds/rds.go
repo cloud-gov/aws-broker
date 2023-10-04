@@ -91,7 +91,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		AutoMinorVersionUpgrade: aws.Bool(true),
 		MultiAZ:                 aws.Bool(d.Plan.Redundant),
 		StorageEncrypted:        aws.Bool(d.Plan.Encrypted),
-		StorageType:             aws.String(d.Plan.StorageType),
+		StorageType:             aws.String(i.StorageType),
 		Tags:                    rdsTags,
 		PubliclyAccessible:      aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
 		BackupRetentionPeriod:   aws.Int64(i.BackupRetentionPeriod),
@@ -122,10 +122,6 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
-	// NOTE:  Only the following actions are allowed at this point:
-	// - Instance class modification (change of plan)
-	// - Multi AZ (redundancy)
-	// - Allocated storage
 	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
 		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
@@ -135,6 +131,10 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 		DBInstanceIdentifier:     &i.Database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
 		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
+	}
+
+	if i.StorageType != "" {
+		params.StorageType = aws.String(i.StorageType)
 	}
 
 	if i.ClearPassword != "" {

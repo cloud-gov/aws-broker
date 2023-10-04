@@ -325,7 +325,11 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		return planErr
 	}
 
-	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	password, err := existingInstance.dbUtils.getPassword(
+		existingInstance.Salt,
+		existingInstance.Password,
+		broker.settings.EncryptionKey,
+	)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
