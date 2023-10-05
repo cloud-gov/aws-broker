@@ -495,7 +495,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 20,
-				StorageType:      "gp3",
+				StorageType:      "gp2",
 			},
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,

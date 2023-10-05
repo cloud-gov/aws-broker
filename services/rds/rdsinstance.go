@@ -198,10 +198,11 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 		i.AllocatedStorage = options.AllocatedStorage
 	}
 
-	if options.StorageType != "" {
-		if options.StorageType == "gp3" && i.AllocatedStorage < 20 {
-			return errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
-		}
+	if options.StorageType == "gp3" && i.AllocatedStorage < 20 {
+		return errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+	}
+
+	if options.StorageType != i.StorageType {
 		i.StorageType = options.StorageType
 	}
 
