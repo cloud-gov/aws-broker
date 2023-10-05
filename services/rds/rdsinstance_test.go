@@ -82,22 +82,23 @@ func TestInit(t *testing.T) {
 		expectedErr      error
 		testDbName       string
 	}{
-		"sets expected properties with plan defaults": {
-			options: Options{},
+		"sets expected properties": {
+			options: Options{
+				BackupRetentionPeriod: 14,
+			},
 			plan: catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
-				Adapter:               "adapter-1",
-				DbType:                "postgres",
-				DbVersion:             "15",
-				BackupRetentionPeriod: 14,
-				SubnetGroup:           "subnet-1",
-				SecurityGroup:         "security-group-1",
-				LicenseModel:          "license-model",
-				StorageType:           "gp3",
-				AllocatedStorage:      20,
-				Tags:                  map[string]string{},
+				Adapter:          "adapter-1",
+				DbType:           "postgres",
+				DbVersion:        "15",
+				SubnetGroup:      "subnet-1",
+				SecurityGroup:    "security-group-1",
+				LicenseModel:     "license-model",
+				StorageType:      "gp3",
+				AllocatedStorage: 20,
+				Tags:             map[string]string{},
 			},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
@@ -149,6 +150,178 @@ func TestInit(t *testing.T) {
 				Salt:               "salt",
 				Password:           "encrypted-pw",
 				ClearPassword:      "clear-pw",
+			},
+		},
+		"MySQL sets db version from plan": {
+			options: Options{},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
+				},
+				DbType:                "mysql",
+				DbVersion:             "8.0",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 14,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                "mysql",
+				DbVersion:             "8.0",
+				BackupRetentionPeriod: 14,
+				AllocatedStorage:      20,
+				Tags: map[string]string{
+					"Instance GUID":     "uuid-1",
+					"Organization GUID": "org-1",
+					"Space GUID":        "space-1",
+					"Plan GUID":         "plan-1",
+					"Service GUID":      "service-1",
+				},
+			},
+		},
+		"MySQL sets db version from options": {
+			options: Options{
+				Version: "9.0",
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
+				},
+				DbType:                "mysql",
+				DbVersion:             "8.0",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 14,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                "mysql",
+				DbVersion:             "9.0",
+				BackupRetentionPeriod: 14,
+				AllocatedStorage:      20,
+				Tags: map[string]string{
+					"Instance GUID":     "uuid-1",
+					"Organization GUID": "org-1",
+					"Space GUID":        "space-1",
+					"Plan GUID":         "plan-1",
+					"Service GUID":      "service-1",
+				},
+			},
+		},
+		"PostgreSQL sets db version from options": {
+			options: Options{
+				Version: "15",
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
+				},
+				DbType:                "postgres",
+				DbVersion:             "12",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 14,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                "postgres",
+				DbVersion:             "15",
+				BackupRetentionPeriod: 14,
+				AllocatedStorage:      20,
+				Tags: map[string]string{
+					"Instance GUID":     "uuid-1",
+					"Organization GUID": "org-1",
+					"Space GUID":        "space-1",
+					"Plan GUID":         "plan-1",
+					"Service GUID":      "service-1",
+				},
+			},
+		},
+		"sets backup retention period from plan": {
+			options: Options{},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
+				},
+				DbType:                "postgres",
+				DbVersion:             "15",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 23,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                "postgres",
+				DbVersion:             "15",
+				BackupRetentionPeriod: 23,
+				AllocatedStorage:      20,
+				Tags: map[string]string{
+					"Instance GUID":     "uuid-1",
+					"Organization GUID": "org-1",
+					"Space GUID":        "space-1",
+					"Plan GUID":         "plan-1",
+					"Service GUID":      "service-1",
+				},
 			},
 		},
 	}

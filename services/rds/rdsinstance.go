@@ -289,6 +289,9 @@ func (i *RDSInstance) init(
 
 	// Load tags
 	i.Tags = plan.Tags
+	if i.Tags == nil {
+		i.Tags = make(map[string]string)
+	}
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid
