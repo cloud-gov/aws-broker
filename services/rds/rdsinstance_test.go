@@ -577,6 +577,7 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 				Username:      test.username,
 				ClearPassword: test.originalPassword,
 				Salt:          test.originalSalt,
+				dbUtils:       &RDSDatabaseUtils{},
 			}
 			err := existingInstance.modify(test.options, test.plan, test.settings)
 			if err != nil {
