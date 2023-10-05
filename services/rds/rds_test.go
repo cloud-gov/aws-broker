@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/base"
+	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/helpers"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"github.com/go-test/deep"
 )
 
 type mockParameterGroupClient struct {
@@ -184,6 +187,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		expectedErr                error
 		shouldUpdateParameterGroup bool
 		shouldUpdatePassword       bool
+		expectedParams             *rds.ModifyDBInstanceInput
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
@@ -233,6 +237,38 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			shouldUpdateParameterGroup: false,
 			shouldUpdatePassword:       true,
 		},
+		"update storage type": {
+			dbInstance: &RDSInstance{
+				dbUtils:               &RDSDatabaseUtils{},
+				DbType:                "mysql",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+			},
+			dbAdapter: &dedicatedDBAdapter{
+				Plan: catalog.RDSPlan{
+					InstanceClass: "class",
+					Redundant:     true,
+				},
+				parameterGroupClient: &mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				rds: &mockRDSClient{},
+			},
+			shouldUpdateParameterGroup: false,
+			shouldUpdatePassword:       false,
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int64(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int64(14),
+				StorageType:              aws.String("gp3"),
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -247,6 +283,11 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				}
 				if test.shouldUpdatePassword && *params.MasterUserPassword != test.dbInstance.ClearPassword {
 					t.Fatalf("expected password: %s, got: %s", test.dbInstance.ClearPassword, *params.MasterUserPassword)
+				}
+			}
+			if test.expectedParams != nil {
+				if diff := deep.Equal(params, test.expectedParams); diff != nil {
+					t.Error(diff)
 				}
 			}
 		})
