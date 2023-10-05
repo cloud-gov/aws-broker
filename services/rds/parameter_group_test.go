@@ -89,6 +89,11 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 	return nil
 }
 
+func createTestRdsInstance(i *RDSInstance) *RDSInstance {
+	i.dbUtils = &RDSDatabaseUtils{}
+	return i
+}
+
 func TestNewParameterGroupAdapter(t *testing.T) {
 	parameterGroupAdapter := NewAwsParameterGroupClient(
 		&mockRDSClient{},
@@ -103,9 +108,9 @@ func TestGetParameterGroupName(t *testing.T) {
 	p := &awsParameterGroupClient{
 		parameterGroupPrefix: "prefix-",
 	}
-	i := &RDSInstance{
+	i := createTestRdsInstance(&RDSInstance{
 		Database: "db1234",
-	}
+	})
 	parameterGroupName := getParameterGroupName(i, p)
 	expectedParameterGroupName := "prefix-db1234"
 	if parameterGroupName != expectedParameterGroupName {
@@ -125,6 +130,7 @@ func TestSetParameterGroupName(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Database: "db1234",
+				dbUtils:  &RDSDatabaseUtils{},
 			},
 			expectedParameterGroupName: "prefix-db1234",
 		},
@@ -132,6 +138,7 @@ func TestSetParameterGroupName(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{},
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "param-group-1234",
+				dbUtils:            &RDSDatabaseUtils{},
 			},
 			expectedParameterGroupName: "param-group-1234",
 		},
@@ -139,7 +146,7 @@ func TestSetParameterGroupName(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			setParameterGroupName(test.dbInstance, test.parameterGroupAdapter)
+			setParameterGroupName(createTestRdsInstance(test.dbInstance), test.parameterGroupAdapter)
 			if test.dbInstance.ParameterGroupName != test.expectedParameterGroupName {
 				t.Errorf("got parameter group name: %s, expected %s", test.dbInstance.ParameterGroupName, test.expectedParameterGroupName)
 			}
@@ -154,7 +161,9 @@ func TestNeedCustomParameters(t *testing.T) {
 		parameterGroupAdapter *awsParameterGroupClient
 	}{
 		"default": {
-			dbInstance: &RDSInstance{},
+			dbInstance: &RDSInstance{
+				dbUtils: &RDSDatabaseUtils{},
+			},
 			expectedOk: false,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{},
@@ -164,6 +173,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{},
@@ -174,6 +184,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "psql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{},
@@ -184,6 +195,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{
@@ -196,6 +208,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: false,
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{
@@ -208,6 +221,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "psql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{
@@ -220,6 +234,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: config.Settings{
@@ -232,6 +247,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
+				dbUtils:      &RDSDatabaseUtils{},
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -242,6 +258,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(false),
 				DbType:       "postgres",
+				dbUtils:      &RDSDatabaseUtils{},
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -261,7 +278,7 @@ func TestNeedCustomParameters(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			if test.parameterGroupAdapter.needCustomParameters(test.dbInstance) != test.expectedOk {
+			if test.parameterGroupAdapter.needCustomParameters(createTestRdsInstance(test.dbInstance)) != test.expectedOk {
 				t.Fatalf("should be %v", test.expectedOk)
 			}
 		})
@@ -426,7 +443,10 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			parameterValue, err := test.parameterGroupAdapter.getDefaultEngineParameterValue(test.dbInstance, test.paramName)
+			parameterValue, err := test.parameterGroupAdapter.getDefaultEngineParameterValue(
+				createTestRdsInstance(test.dbInstance),
+				test.paramName,
+			)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -584,7 +604,10 @@ func TestGetCustomParameterValue(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			parameterValue, err := test.parameterGroupAdapter.getCustomParameterValue(test.dbInstance, test.parameterName)
+			parameterValue, err := test.parameterGroupAdapter.getCustomParameterValue(
+				createTestRdsInstance(test.dbInstance),
+				test.parameterName,
+			)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -606,28 +629,17 @@ func TestGetCustomParameterValue(t *testing.T) {
 
 func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
 		customLibrary         string
 		expectedParam         string
 		currentParameterValue string
 		expectedErr           error
 	}{
 		"no default param value": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: aws.Bool(true),
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
 			currentParameterValue: "",
 			customLibrary:         "library1",
 			expectedParam:         "library1",
 		},
 		"has default param value": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: aws.Bool(true),
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
 			currentParameterValue: "library1",
 			customLibrary:         "library2",
 			expectedParam:         "library2,library1",
@@ -645,27 +657,16 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 
 func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
 		customLibrary          string
 		currentParameterValue  string
 		expectedParameterValue string
 	}{
 		"returns empty default": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: aws.Bool(true),
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
 			currentParameterValue:  "",
 			customLibrary:          "pg_cron",
 			expectedParameterValue: "",
 		},
 		"removes value": {
-			dbInstance: &RDSInstance{
-				EnablePgCron: aws.Bool(true),
-				DbType:       "postgres",
-				DbVersion:    "12",
-			},
 			currentParameterValue:  "a,b,pg_cron",
 			customLibrary:          "pg_cron",
 			expectedParameterValue: "a,b",
@@ -987,7 +988,7 @@ func TestGetCustomParameters(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.parameterGroupAdapter.getCustomParameters(test.dbInstance)
+			params, err := test.parameterGroupAdapter.getCustomParameters(createTestRdsInstance(test.dbInstance))
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1058,7 +1059,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.getParameterGroupFamily(test.dbInstance)
+			err := test.parameterGroupAdapter.getParameterGroupFamily(createTestRdsInstance(test.dbInstance))
 			if test.expectedErr == "" && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1195,7 +1196,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(test.dbInstance, nil)
+			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1300,7 +1301,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
-				test.dbInstance,
+				createTestRdsInstance(test.dbInstance),
 			)
 
 			if test.expectedErr == nil && err != nil {

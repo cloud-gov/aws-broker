@@ -60,6 +60,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
@@ -73,6 +74,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
@@ -113,7 +115,7 @@ func TestCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:           &RDSInstance{},
+			dbInstance:           NewRDSInstance(),
 			expectedErr:          createDbErr,
 			expectedResponseCode: base.InstanceNotCreated,
 		},
@@ -151,7 +153,7 @@ func TestModifyDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:           &RDSInstance{},
+			dbInstance:           NewRDSInstance(),
 			expectedErr:          modifyDbErr,
 			expectedResponseCode: base.InstanceNotModified,
 		},
@@ -187,6 +189,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
@@ -202,6 +205,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
@@ -218,6 +222,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
 				ClearPassword:   helpers.RandStr(10),
+				dbUtils:         &RDSDatabaseUtils{},
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
