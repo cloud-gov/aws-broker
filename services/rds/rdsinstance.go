@@ -15,9 +15,24 @@ import (
 	"github.com/18F/aws-broker/helpers"
 )
 
+type DatabaseUtils interface {
+	FormatDBName(dbType string, database string) string
+	generatePassword(salt string, password string, key string) (string, string, error)
+	getPassword(salt string, password string, key string) (string, error)
+	getCredentials(i *RDSInstance, password string) (map[string]string, error)
+	generateCredentials(settings *config.Settings) (string, string, string, error)
+	generateDatabaseName(settings *config.Settings) string
+	buildUsername() string
+}
+
+type RDSDatabaseUtils struct {
+}
+
 // RDSInstance represents the information of a RDS Service instance.
 type RDSInstance struct {
 	base.Instance
+
+	dbUtils DatabaseUtils `sql:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
@@ -44,44 +59,43 @@ type RDSInstance struct {
 	EnablePgCron         *bool  `sql:"size(255)"`
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
+
+	StorageType string `sql:"size(255)"`
 }
 
-func (i *RDSInstance) FormatDBName() string {
-	switch i.DbType {
+func (u *RDSDatabaseUtils) FormatDBName(dbType string, database string) string {
+	switch dbType {
 	case "oracle-se1", "oracle-se2":
 		return "ORCL"
 	default:
 		re, _ := regexp.Compile("(i?)[^a-z0-9]")
-		return re.ReplaceAllString(i.Database, "")
+		return re.ReplaceAllString(database, "")
 	}
 }
 
-func (i *RDSInstance) setPassword(password, key string) error {
-	if i.Salt == "" {
-		return errors.New("Salt has to be set before writing the password")
+func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, string, error) {
+	if salt == "" {
+		return "", "", errors.New("salt has to be set before writing the password")
 	}
 
-	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
+	iv, _ := base64.StdEncoding.DecodeString(salt)
 
 	encrypted, err := helpers.Encrypt(password, key, iv)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
-	i.Password = encrypted
-	i.ClearPassword = password
-
-	return nil
+	return encrypted, password, nil
 }
 
-func (i *RDSInstance) getPassword(key string) (string, error) {
-	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("Salt and password has to be set before writing the password")
+func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string) (string, error) {
+	if salt == "" || password == "" {
+		return "", errors.New("salt and password has to be set before writing the password")
 	}
 
-	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
+	iv, _ := base64.StdEncoding.DecodeString(salt)
 
-	decrypted, err := helpers.Decrypt(i.Password, key, iv)
+	decrypted, err := helpers.Decrypt(password, key, iv)
 	if err != nil {
 		return "", err
 	}
@@ -89,9 +103,10 @@ func (i *RDSInstance) getPassword(key string) (string, error) {
 	return decrypted, nil
 }
 
-func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
+func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
 	var dbScheme string
 	var credentials map[string]string
+
 	switch i.DbType {
 	case "postgres", "mysql":
 		dbScheme = i.DbType
@@ -100,13 +115,17 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 	default:
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
-	uri := fmt.Sprintf("%s://%s:%s@%s:%d/%s",
+
+	dbName := i.FormatDBName()
+	uri := fmt.Sprintf(
+		"%s://%s:%s@%s:%d/%s",
 		dbScheme,
 		i.Username,
 		password,
 		i.Host,
 		i.Port,
-		i.FormatDBName())
+		dbName,
+	)
 
 	credentials = map[string]string{
 		"uri":      uri,
@@ -114,17 +133,57 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 		"password": password,
 		"host":     i.Host,
 		"port":     strconv.FormatInt(i.Port, 10),
-		"db_name":  i.FormatDBName(),
-		"name":     i.FormatDBName(),
+		"db_name":  dbName,
+		"name":     dbName,
 	}
 	return credentials, nil
 }
 
-func (i *RDSInstance) setCredentials(settings *config.Settings) error {
-	i.Salt = helpers.GenerateSalt(aes.BlockSize)
+func (u *RDSDatabaseUtils) generateCredentials(
+	settings *config.Settings,
+) (string, string, string, error) {
+	salt := helpers.GenerateSalt(aes.BlockSize)
 	password := helpers.RandStrNoCaps(25)
-	err := i.setPassword(password, settings.EncryptionKey)
-	return err
+	encrypted, password, err := u.generatePassword(salt, password, settings.EncryptionKey)
+	if err != nil {
+		return "", "", "", err
+	}
+	return salt, encrypted, password, err
+}
+
+func (u *RDSDatabaseUtils) generateDatabaseName(
+	settings *config.Settings,
+) string {
+	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
+}
+
+func (u *RDSDatabaseUtils) buildUsername() string {
+	return "u" + helpers.RandStrNoCaps(15)
+}
+
+func NewRDSInstance() *RDSInstance {
+	return &RDSInstance{
+		dbUtils: &RDSDatabaseUtils{},
+	}
+}
+
+func (i *RDSInstance) FormatDBName() string {
+	return i.dbUtils.FormatDBName(i.DbType, i.Database)
+}
+
+func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
+	return i.dbUtils.getCredentials(i, password)
+}
+
+func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
+	salt, encrypted, password, err := i.dbUtils.generateCredentials(settings)
+	if err != nil {
+		return err
+	}
+	i.Salt = salt
+	i.Password = encrypted
+	i.ClearPassword = password
+	return nil
 }
 
 func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) error {
@@ -137,6 +196,14 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 
 		// Update the existing instance with the new allocated storage.
 		i.AllocatedStorage = options.AllocatedStorage
+	}
+
+	if options.StorageType == "gp3" && i.AllocatedStorage < 20 {
+		return errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+	}
+
+	if options.StorageType != i.StorageType {
+		i.StorageType = options.StorageType
 	}
 
 	// Check if there is a backup retention change:
@@ -165,7 +232,8 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 	}
 
 	if options.RotateCredentials != nil && *options.RotateCredentials {
-		if err := i.setCredentials(settings); err != nil {
+		err := i.generateCredentials(settings)
+		if err != nil {
 			return err
 		}
 	}
@@ -173,14 +241,15 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 	return nil
 }
 
-func (i *RDSInstance) init(uuid string,
+func (i *RDSInstance) init(
+	uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RDSPlan,
 	options Options,
-	s *config.Settings) error {
-
+	settings *config.Settings,
+) error {
 	i.Uuid = uuid
 	i.ServiceID = serviceID
 	i.PlanID = plan.ID
@@ -211,14 +280,19 @@ func (i *RDSInstance) init(uuid string,
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = s.DbNamePrefix + helpers.RandStrNoCaps(15)
-	i.Username = "u" + helpers.RandStrNoCaps(15)
-	if err := i.setCredentials(s); err != nil {
+	i.Database = i.dbUtils.generateDatabaseName(settings)
+	i.Username = i.dbUtils.buildUsername()
+
+	err := i.generateCredentials(settings)
+	if err != nil {
 		return err
 	}
 
 	// Load tags
 	i.Tags = plan.Tags
+	if i.Tags == nil {
+		i.Tags = make(map[string]string)
+	}
 
 	// Tag instance with broker details
 	i.Tags["Instance GUID"] = uuid
@@ -226,6 +300,8 @@ func (i *RDSInstance) init(uuid string,
 	i.Tags["Organization GUID"] = orgGUID
 	i.Tags["Plan GUID"] = plan.ID
 	i.Tags["Service GUID"] = serviceID
+
+	i.StorageType = plan.StorageType
 
 	i.AllocatedStorage = options.AllocatedStorage
 	if i.AllocatedStorage == 0 {

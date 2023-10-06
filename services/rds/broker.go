@@ -30,6 +30,7 @@ type Options struct {
 	BinaryLogFormat       string `json:"binary_log_format"`
 	EnablePgCron          *bool  `json:"enable_pg_cron"`
 	RotateCredentials     *bool  `json:"rotate_credentials"`
+	StorageType           string `json:"storage_type"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -50,6 +51,10 @@ func (o Options) Validate(settings *config.Settings) error {
 	}
 
 	if err := validateBinaryLogFormat(o.BinaryLogFormat); err != nil {
+		return err
+	}
+
+	if err := validateStorageType(o.StorageType); err != nil {
 		return err
 	}
 
@@ -110,7 +115,7 @@ func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Insta
 }
 
 func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
-	newInstance := RDSInstance{}
+	newInstance := NewRDSInstance()
 
 	options := Options{}
 	if len(createRequest.RawParameters) > 0 {
@@ -125,7 +130,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	}
 
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
+	broker.brokerDB.Where("uuid = ?", id).First(newInstance).Count(&count)
 	if count != 0 {
 		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
 	}
@@ -163,7 +168,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	}
 
 	// Create the database instance.
-	status, err := adapter.createDB(&newInstance, newInstance.ClearPassword)
+	status, err := adapter.createDB(newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
 		desc := "There was an error creating the instance."
 		if err != nil {
@@ -175,7 +180,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	newInstance.State = status
 
 	broker.brokerDB.NewRecord(newInstance)
-	err = broker.brokerDB.Create(&newInstance).Error
+	err = broker.brokerDB.Create(newInstance).Error
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
@@ -200,11 +205,11 @@ func (broker *rdsBroker) parseModifyOptionsFromRequest(
 }
 
 func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+	existingInstance := NewRDSInstance()
 
 	// Load the existing instance provided.
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
 	}
@@ -249,7 +254,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Modify the database instance.
-	status, err := adapter.modifyDB(&existingInstance, existingInstance.ClearPassword)
+	status, err := adapter.modifyDB(existingInstance, existingInstance.ClearPassword)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
@@ -263,7 +268,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	// Update the existing instance in the broker.
 	existingInstance.State = status
 	existingInstance.PlanID = newPlan.ID
-	err = broker.brokerDB.Save(&existingInstance).Error
+	err = broker.brokerDB.Save(existingInstance).Error
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
@@ -273,10 +278,10 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 }
 
 func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
-	existingInstance := RDSInstance{}
+	existingInstance := NewRDSInstance()
 
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
@@ -292,7 +297,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	var state string
-	status, _ := adapter.checkDBStatus(&existingInstance)
+	status, _ := adapter.checkDBStatus(existingInstance)
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
@@ -311,10 +316,10 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+	existingInstance := NewRDSInstance()
 
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
@@ -324,7 +329,11 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		return planErr
 	}
 
-	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	password, err := existingInstance.dbUtils.getPassword(
+		existingInstance.Salt,
+		existingInstance.Password,
+		broker.settings.EncryptionKey,
+	)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
@@ -338,7 +347,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
-	if credentials, err = adapter.bindDBToApp(&existingInstance, password); err != nil {
+	if credentials, err = adapter.bindDBToApp(existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
@@ -348,16 +357,16 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 
 	// If the state of the instance has changed, update it.
 	if existingInstance.State != originalInstanceState {
-		broker.brokerDB.Save(&existingInstance)
+		broker.brokerDB.Save(existingInstance)
 	}
 
 	return response.NewSuccessBindResponse(credentials)
 }
 
 func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
-	existingInstance := RDSInstance{}
+	existingInstance := NewRDSInstance()
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
@@ -372,13 +381,13 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return adapterErr
 	}
 	// Delete the database instance.
-	if status, err := adapter.deleteDB(&existingInstance); status == base.InstanceNotGone {
+	if status, err := adapter.deleteDB(existingInstance); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-	broker.brokerDB.Unscoped().Delete(&existingInstance)
+	broker.brokerDB.Unscoped().Delete(existingInstance)
 	return response.SuccessDeleteResponse
 }
