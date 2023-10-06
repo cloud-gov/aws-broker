@@ -13,7 +13,7 @@ func validateBinaryLogFormat(format string) error {
 
 func validateStorageType(storageType string) error {
 	switch storageType {
-	case "", "gp2", "gp3":
+	case "", "gp3":
 		return nil
 	default:
 		return fmt.Errorf("storage type is not supported: %s", storageType)

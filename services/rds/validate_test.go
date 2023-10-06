@@ -59,7 +59,7 @@ func TestValidateStorageType(t *testing.T) {
 		},
 		"gp2": {
 			storageType: "gp2",
-			expectedErr: false,
+			expectedErr: true,
 		},
 		"gp3": {
 			storageType: "gp3",
