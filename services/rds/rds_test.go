@@ -6,7 +6,6 @@ import (
 
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/helpers"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -181,61 +180,94 @@ func TestModifyDb(t *testing.T) {
 func TestPrepareModifyDbInstanceInput(t *testing.T) {
 	testErr := errors.New("fail")
 	testCases := map[string]struct {
-		dbInstance                 *RDSInstance
-		dbAdapter                  *dedicatedDBAdapter
-		expectedGroupName          string
-		expectedErr                error
-		shouldUpdateParameterGroup bool
-		shouldUpdatePassword       bool
-		expectedParams             *rds.ModifyDBInstanceInput
+		dbInstance        *RDSInstance
+		dbAdapter         *dedicatedDBAdapter
+		expectedGroupName string
+		expectedErr       error
+		expectedParams    *rds.ModifyDBInstanceInput
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
-				BinaryLogFormat: "ROW",
-				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
+				dbUtils:               &RDSDatabaseUtils{},
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
 					customPgroupName: "foobar",
 					rds:              &mockRDSClient{},
 				},
+				Plan: catalog.RDSPlan{
+					InstanceClass: "class",
+					Redundant:     true,
+				},
 			},
-			expectedGroupName:          "foobar",
-			shouldUpdateParameterGroup: true,
-			shouldUpdatePassword:       false,
+			expectedGroupName: "foobar",
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int64(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int64(14),
+				DBParameterGroupName:     aws.String("foobar"),
+			},
 		},
 		"expect error": {
 			dbInstance: &RDSInstance{
-				BinaryLogFormat: "ROW",
-				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
+				dbUtils:               &RDSDatabaseUtils{},
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
 					rds:       &mockRDSClient{},
 					returnErr: testErr,
 				},
+				Plan: catalog.RDSPlan{
+					InstanceClass: "class",
+					Redundant:     true,
+				},
 			},
-			expectedErr:                testErr,
-			shouldUpdateParameterGroup: false,
-			shouldUpdatePassword:       false,
+			expectedErr: testErr,
 		},
 		"update password": {
 			dbInstance: &RDSInstance{
-				BinaryLogFormat: "ROW",
-				DbType:          "mysql",
-				ClearPassword:   helpers.RandStr(10),
-				dbUtils:         &RDSDatabaseUtils{},
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
+				ClearPassword:         "fake-pw",
+				dbUtils:               &RDSDatabaseUtils{},
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
 			},
 			dbAdapter: &dedicatedDBAdapter{
 				parameterGroupClient: &mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
 				rds: &mockRDSClient{},
+				Plan: catalog.RDSPlan{
+					InstanceClass: "class",
+					Redundant:     true,
+				},
 			},
-			shouldUpdateParameterGroup: false,
-			shouldUpdatePassword:       true,
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int64(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int64(14),
+				MasterUserPassword:       aws.String("fake-pw"),
+			},
 		},
 		"update storage type": {
 			dbInstance: &RDSInstance{
@@ -256,8 +288,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				},
 				rds: &mockRDSClient{},
 			},
-			shouldUpdateParameterGroup: false,
-			shouldUpdatePassword:       false,
 			expectedParams: &rds.ModifyDBInstanceInput{
 				AllocatedStorage:         aws.Int64(20),
 				ApplyImmediately:         aws.Bool(true),
@@ -276,14 +306,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance)
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("unexpected error: %s", err)
-			}
-			if test.expectedErr == nil {
-				if test.shouldUpdateParameterGroup && *params.DBParameterGroupName != test.expectedGroupName {
-					t.Fatalf("expected group name: %s, got: %s", test.expectedGroupName, *params.DBParameterGroupName)
-				}
-				if test.shouldUpdatePassword && *params.MasterUserPassword != test.dbInstance.ClearPassword {
-					t.Fatalf("expected password: %s, got: %s", test.dbInstance.ClearPassword, *params.MasterUserPassword)
-				}
 			}
 			if test.expectedParams != nil {
 				if diff := deep.Equal(params, test.expectedParams); diff != nil {
