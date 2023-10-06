@@ -54,6 +54,10 @@ func (o Options) Validate(settings *config.Settings) error {
 		return err
 	}
 
+	if err := validateStorageType(o.StorageType); err != nil {
+		return err
+	}
+
 	return nil
 }
 

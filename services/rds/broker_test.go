@@ -9,30 +9,45 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 )
 
-func TestOptionsBinaryLogFormatValidation(t *testing.T) {
+func TestValidate(t *testing.T) {
 	testCases := map[string]struct {
-		binaryLogFormat string
-		settings        *config.Settings
-		expectedErr     bool
+		options     Options
+		settings    *config.Settings
+		expectedErr bool
 	}{
-		"invalid": {
-			binaryLogFormat: "foo",
-			settings:        &config.Settings{},
-			expectedErr:     true,
+		"invalid binary log format": {
+			options: Options{
+				BinaryLogFormat: "foo",
+			},
+			settings:    &config.Settings{},
+			expectedErr: true,
 		},
-		"MIXED": {
-			binaryLogFormat: "MIXED",
-			settings:        &config.Settings{},
-			expectedErr:     false,
+		"MIXED binary log format": {
+			options: Options{
+				BinaryLogFormat: "MIXED",
+			},
+			settings:    &config.Settings{},
+			expectedErr: false,
+		},
+		"accepted storage type": {
+			options: Options{
+				StorageType: "gp3",
+			},
+			settings:    &config.Settings{},
+			expectedErr: false,
+		},
+		"invalid storage type": {
+			options: Options{
+				StorageType: "io1",
+			},
+			settings:    &config.Settings{},
+			expectedErr: true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			opts := Options{
-				BinaryLogFormat: test.binaryLogFormat,
-			}
-			err := opts.Validate(test.settings)
+			err := test.options.Validate(test.settings)
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}

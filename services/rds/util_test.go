@@ -40,3 +40,36 @@ func TestBinaryLogFormatValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestStorageType(t *testing.T) {
+	testCases := map[string]struct {
+		storageType string
+		expectedErr bool
+	}{
+		"invalid": {
+			storageType: "io1",
+			expectedErr: true,
+		},
+		"empty": {
+			storageType: "",
+			expectedErr: false,
+		},
+		"gp2": {
+			storageType: "gp2",
+			expectedErr: false,
+		},
+		"gp3": {
+			storageType: "gp3",
+			expectedErr: false,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateStorageType(test.storageType)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error")
+			}
+		})
+	}
+}
