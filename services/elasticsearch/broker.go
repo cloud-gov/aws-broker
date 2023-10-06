@@ -31,9 +31,13 @@ type ElasticsearchOptions struct {
 	ElasticsearchVersion string                       `json:"elasticsearchVersion"`
 	Bucket               string                       `json:"bucket"`
 	AdvancedOptions      ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
+	VolumeType           string                       `json:"volume_type"`
 }
 
-func (r ElasticsearchOptions) Validate(settings *config.Settings) error {
+func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
+	if err := validateVolumeType(o.VolumeType); err != nil {
+		return err
+	}
 	return nil
 }
 
