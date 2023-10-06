@@ -158,6 +158,30 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 				},
 			},
 		},
+		"set field cache data size": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                    "fake-domain",
+				IndicesFieldDataCacheSize: "1000",
+			},
+			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+				DomainName: aws.String("fake-domain"),
+				AdvancedOptions: map[string]*string{
+					"indices.fielddata.cache.size": aws.String("1000"),
+				},
+			},
+		},
+		"set max clause count": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                         "fake-domain",
+				IndicesQueryBoolMaxClauseCount: "5000",
+			},
+			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+				DomainName: aws.String("fake-domain"),
+				AdvancedOptions: map[string]*string{
+					"indices.query.bool.max_clause_count": aws.String("5000"),
+				},
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
