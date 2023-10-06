@@ -207,7 +207,7 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 
-	_, err = adapter.modifyElasticsearch(&esInstance, esInstance.ClearPassword)
+	_, err = adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")

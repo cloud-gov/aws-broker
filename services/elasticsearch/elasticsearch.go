@@ -31,7 +31,7 @@ import (
 
 type ElasticsearchAdapter interface {
 	createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
-	modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
+	modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
 	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *taskqueue.QueueManager) (base.InstanceState, error)
@@ -45,7 +45,7 @@ func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance,
 	return base.InstanceReady, nil
 }
 
-func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -120,7 +120,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	time.Sleep(5 * time.Second)
 
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
-	params := getCreateDomainInput(i, accessControlPolicy)
+	params := prepareCreateDomainInput(i, accessControlPolicy)
 
 	resp, err := d.opensearch.CreateDomain(params)
 	if isInvalidTypeException(err) {
@@ -163,21 +163,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	return base.InstanceNotCreated, nil
 }
 
-func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	AdvancedOptions := make(map[string]*string)
+func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
+	params := prepareUpdateDomainConfigInput(i)
 
-	if i.IndicesFieldDataCacheSize != "" {
-		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
-	}
-
-	if i.IndicesQueryBoolMaxClauseCount != "" {
-		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
-	}
-	// Standard Parameters
-	params := &opensearchservice.UpdateDomainConfigInput{
-		DomainName:      aws.String(i.Domain),
-		AdvancedOptions: AdvancedOptions,
-	}
 	_, err := d.opensearch.UpdateDomainConfig(params)
 	if d.didAwsCallSucceed(err) {
 		return base.InstanceInProgress, nil
@@ -715,7 +703,7 @@ func isInvalidTypeException(createErr error) bool {
 	return false
 }
 
-func getCreateDomainInput(
+func prepareCreateDomainInput(
 	i *ElasticsearchInstance,
 	accessControlPolicy string,
 ) *opensearchservice.CreateDomainInput {
@@ -817,5 +805,32 @@ func getCreateDomainInput(
 	}
 
 	params.SetAccessPolicies(accessControlPolicy)
+	return params
+}
+
+func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) *opensearchservice.UpdateDomainConfigInput {
+	AdvancedOptions := make(map[string]*string)
+
+	if i.IndicesFieldDataCacheSize != "" {
+		AdvancedOptions["indices.fielddata.cache.size"] = &i.IndicesFieldDataCacheSize
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "" {
+		AdvancedOptions["indices.query.bool.max_clause_count"] = &i.IndicesQueryBoolMaxClauseCount
+	}
+
+	params := &opensearchservice.UpdateDomainConfigInput{
+		DomainName:      aws.String(i.Domain),
+		AdvancedOptions: AdvancedOptions,
+	}
+
+	if i.VolumeSize != 0 && i.VolumeType != "" {
+		params.EBSOptions = &opensearchservice.EBSOptions{
+			EBSEnabled: aws.Bool(true),
+			VolumeSize: aws.Int64(int64(i.VolumeSize)),
+			VolumeType: aws.String(i.VolumeType),
+		}
+	}
+
 	return params
 }
