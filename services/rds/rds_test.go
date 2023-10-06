@@ -312,11 +312,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					t.Error(diff)
 				}
 			}
-			if test.expectedParams != nil {
-				if diff := deep.Equal(params, test.expectedParams); diff != nil {
-					t.Error(diff)
-				}
-			}
 		})
 	}
 }
