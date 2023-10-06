@@ -7,7 +7,7 @@ func validateBinaryLogFormat(format string) error {
 	case "", "ROW", "STATEMENT", "MIXED":
 		return nil
 	default:
-		return fmt.Errorf("invalid binary log format %s", format)
+		return fmt.Errorf("invalid binary log format: %s", format)
 	}
 }
 

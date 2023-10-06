@@ -37,11 +37,14 @@ func TestBinaryLogFormatValidation(t *testing.T) {
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
 		})
 	}
 }
 
-func TestStorageType(t *testing.T) {
+func TestValidateStorageType(t *testing.T) {
 	testCases := map[string]struct {
 		storageType string
 		expectedErr bool
@@ -69,6 +72,9 @@ func TestStorageType(t *testing.T) {
 			err := validateStorageType(test.storageType)
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
 			}
 		})
 	}
