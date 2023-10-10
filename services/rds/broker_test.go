@@ -51,6 +51,9 @@ func TestValidate(t *testing.T) {
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
 		})
 	}
 }

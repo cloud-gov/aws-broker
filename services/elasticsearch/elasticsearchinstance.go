@@ -192,6 +192,9 @@ func (i *ElasticsearchInstance) init(uuid string,
 func (i *ElasticsearchInstance) update(
 	options ElasticsearchOptions,
 ) error {
+	if options.VolumeType != i.VolumeType {
+		i.VolumeType = options.VolumeType
+	}
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount

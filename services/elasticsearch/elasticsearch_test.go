@@ -15,7 +15,7 @@ func TestIsInvalidTypeException(t *testing.T) {
 	}
 }
 
-func TestGetCreateDomainInput(t *testing.T) {
+func TestPrepareCreateDomainInput(t *testing.T) {
 	testCases := map[string]struct {
 		esInstance     *ElasticsearchInstance
 		accessPolicy   string
@@ -117,10 +117,75 @@ func TestGetCreateDomainInput(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := getCreateDomainInput(
+			params := prepareCreateDomainInput(
 				test.esInstance,
 				test.accessPolicy,
 			)
+			if diff := deep.Equal(params, test.expectedParams); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestPrepareUpdateDomainConfigInput(t *testing.T) {
+	testCases := map[string]struct {
+		esInstance     *ElasticsearchInstance
+		expectedParams *opensearchservice.UpdateDomainConfigInput
+	}{
+		"no ebs options": {
+			esInstance: &ElasticsearchInstance{
+				Domain: "fake-domain",
+			},
+			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]*string{},
+			},
+		},
+		"update volume type": {
+			esInstance: &ElasticsearchInstance{
+				Domain:     "fake-domain",
+				VolumeType: "gp3",
+				VolumeSize: 15,
+			},
+			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]*string{},
+				EBSOptions: &opensearchservice.EBSOptions{
+					EBSEnabled: aws.Bool(true),
+					VolumeType: aws.String("gp3"),
+					VolumeSize: aws.Int64(15),
+				},
+			},
+		},
+		"set field cache data size": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                    "fake-domain",
+				IndicesFieldDataCacheSize: "1000",
+			},
+			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+				DomainName: aws.String("fake-domain"),
+				AdvancedOptions: map[string]*string{
+					"indices.fielddata.cache.size": aws.String("1000"),
+				},
+			},
+		},
+		"set max clause count": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                         "fake-domain",
+				IndicesQueryBoolMaxClauseCount: "5000",
+			},
+			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+				DomainName: aws.String("fake-domain"),
+				AdvancedOptions: map[string]*string{
+					"indices.query.bool.max_clause_count": aws.String("5000"),
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params := prepareUpdateDomainConfigInput(test.esInstance)
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
 			}
