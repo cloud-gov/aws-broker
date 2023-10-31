@@ -464,17 +464,6 @@ func TestModifyInstance(t *testing.T) {
 			plan:             catalog.RDSPlan{},
 			settings:         &config.Settings{},
 		},
-		"set DB version from plan": {
-			options:          Options{},
-			existingInstance: &RDSInstance{},
-			expectedInstance: &RDSInstance{
-				DbVersion: "12",
-			},
-			plan: catalog.RDSPlan{
-				DbVersion: "12",
-			},
-			settings: &config.Settings{},
-		},
 		"gp3 fails for allocated storage < 20": {
 			options: Options{
 				StorageType: "gp3",

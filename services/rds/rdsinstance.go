@@ -224,13 +224,6 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 		i.EnableFunctions = options.EnableFunctions
 	}
 
-	// Set the DB Version if it is not already set
-	// Currently only supported for MySQL and PostgreSQL instances.
-	if i.DbVersion == "" && options.Version == "" {
-		// Default to the version provided by the plan chosen in catalog.
-		i.DbVersion = plan.DbVersion
-	}
-
 	if options.RotateCredentials != nil && *options.RotateCredentials {
 		err := i.generateCredentials(settings)
 		if err != nil {
