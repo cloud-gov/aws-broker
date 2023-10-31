@@ -26,6 +26,8 @@ type mockRDSClient struct {
 	describeDbParamsResults             []*rds.DescribeDBParametersOutput
 	describeDbParamsNumPages            int
 	describeDbParamsPageNum             int
+	describeDbInstancesResults          *rds.DescribeDBInstancesOutput
+	describeDbInstancesErr              error
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -87,6 +89,13 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 		shouldContinue = fn(output, lastPage)
 	}
 	return nil
+}
+
+func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
+	if m.describeDbInstancesErr != nil {
+		return nil, m.describeDbInstancesErr
+	}
+	return m.describeDbInstancesResults, nil
 }
 
 func createTestRdsInstance(i *RDSInstance) *RDSInstance {
@@ -1002,6 +1011,69 @@ func TestGetCustomParameters(t *testing.T) {
 	}
 }
 
+func TestGetDatabaseEngineVersion(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance            *RDSInstance
+		expectedErr           string
+		expectedDbVersion     string
+		parameterGroupAdapter *awsParameterGroupClient
+	}{
+		"no db version, fetches version from database name": {
+			dbInstance: &RDSInstance{
+				DbType:   "postgres",
+				Database: "database1",
+			},
+			expectedDbVersion: "version1",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								EngineVersion: aws.String("version1"),
+							},
+						},
+					},
+				},
+			},
+		},
+		"no db version, no database name": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			expectedErr: "database name is required to get database engine version",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{},
+			},
+		},
+		"no db version, error getting database instance info": {
+			dbInstance: &RDSInstance{
+				DbType:   "postgres",
+				Database: "database1",
+			},
+			expectedErr: "describe db instances error",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbInstancesErr: errors.New("describe db instances error"),
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			dbVersion, err := test.parameterGroupAdapter.getDatabaseEngineVersion(createTestRdsInstance(test.dbInstance))
+			if test.expectedErr == "" && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if err != nil && test.expectedErr != "" && test.expectedErr != err.Error() {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if dbVersion != test.expectedDbVersion {
+				t.Fatalf("expected parameter group family: %s, got: %s", test.expectedDbVersion, dbVersion)
+			}
+		})
+	}
+}
+
 func TestGetParameterGroupFamily(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
@@ -1011,12 +1083,25 @@ func TestGetParameterGroupFamily(t *testing.T) {
 	}{
 		"no db version": {
 			dbInstance: &RDSInstance{
-				DbType: "postgres",
+				DbType:   "postgres",
+				Database: "database1",
 			},
-			expectedPGroupFamily: "",
-			expectedErr:          "DB version must be set to determine parameter group family",
+			expectedPGroupFamily: "postgres1",
 			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								EngineVersion: aws.String("version1"),
+							},
+						},
+					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres1"),
+						},
+					},
+				},
 			},
 		},
 		"has db version": {

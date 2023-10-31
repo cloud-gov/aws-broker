@@ -101,6 +101,27 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() {
 	}
 }
 
+func (p *awsParameterGroupClient) getDatabaseEngineVersion(i *RDSInstance) (string, error) {
+	if i.Database == "" {
+		return "", errors.New("database name is required to get database engine version")
+	}
+
+	dbInstanceInfo, err := p.rds.DescribeDBInstances(&rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(i.Database),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Take the engine version of the database
+	dbVersion := *dbInstanceInfo.DBInstances[0].EngineVersion
+	if dbVersion == "" {
+		return "", errors.New("could not determine DB version to set parameter group family")
+	}
+
+	return dbVersion, nil
+}
+
 func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error {
 	if i.ParameterGroupFamily != "" {
 		return nil
@@ -108,7 +129,11 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	parameterGroupFamily := ""
 
 	if i.DbVersion == "" {
-		return errors.New("DB version must be set to determine parameter group family")
+		dbVersion, err := p.getDatabaseEngineVersion(i)
+		if err != nil {
+			return err
+		}
+		i.DbVersion = dbVersion
 	}
 
 	dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
