@@ -108,7 +108,22 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	parameterGroupFamily := ""
 
 	if i.DbVersion == "" {
-		return errors.New("DB version must be set to determine parameter group family")
+		if i.Database == "" {
+			return errors.New("database name is required to determine parameter group family")
+		}
+
+		dbInstanceInfo, err := p.rds.DescribeDBInstances(&rds.DescribeDBInstancesInput{
+			DBInstanceIdentifier: aws.String(i.Database),
+		})
+		if err != nil {
+			return err
+		}
+
+		// Take the engine version of the database
+		i.DbVersion = *dbInstanceInfo.DBInstances[0].EngineVersion
+		if i.DbVersion == "" {
+			return errors.New("could not determine DB version to set parameter group family")
+		}
 	}
 
 	dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{

@@ -26,6 +26,8 @@ type mockRDSClient struct {
 	describeDbParamsResults             []*rds.DescribeDBParametersOutput
 	describeDbParamsNumPages            int
 	describeDbParamsPageNum             int
+	describeDbInstancesResults          *rds.DescribeDBInstancesOutput
+	describeDbInstancesErr              error
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -87,6 +89,13 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 		shouldContinue = fn(output, lastPage)
 	}
 	return nil
+}
+
+func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
+	if m.describeDbInstancesErr != nil {
+		return nil, m.describeDbInstancesErr
+	}
+	return m.describeDbInstancesResults, nil
 }
 
 func createTestRdsInstance(i *RDSInstance) *RDSInstance {
@@ -1009,14 +1018,49 @@ func TestGetParameterGroupFamily(t *testing.T) {
 		expectedPGroupFamily  string
 		parameterGroupAdapter *awsParameterGroupClient
 	}{
-		"no db version": {
+		"no db version, fetches version from database name": {
+			dbInstance: &RDSInstance{
+				DbType:   "postgres",
+				Database: "database1",
+			},
+			expectedPGroupFamily: "postgres1",
+			expectedErr:          "DB version must be set to determine parameter group family",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								EngineVersion: aws.String("version1"),
+							},
+						},
+					},
+					dbEngineVersions: []*rds.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("postgres1"),
+						},
+					},
+				},
+			},
+		},
+		"no db version, no database name": {
 			dbInstance: &RDSInstance{
 				DbType: "postgres",
 			},
-			expectedPGroupFamily: "",
-			expectedErr:          "DB version must be set to determine parameter group family",
+			expectedErr: "database name is required to determine parameter group family",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
+			},
+		},
+		"no db version, error getting database instance info": {
+			dbInstance: &RDSInstance{
+				DbType:   "postgres",
+				Database: "database1",
+			},
+			expectedErr: "describe db instances error",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbInstancesErr: errors.New("describe db instances error"),
+				},
 			},
 		},
 		"has db version": {
