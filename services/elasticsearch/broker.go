@@ -201,17 +201,17 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		broker.logger.Error("Updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
-	err = broker.brokerDB.Save(&esInstance).Error
-	if err != nil {
-		broker.logger.Error("Saving instance failed", err)
-		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
-	}
-
 	_, err = adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
-		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
+		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
 	}
+	err = broker.brokerDB.Save(&esInstance).Error
+	if err != nil {
+		broker.logger.Error("Saving instance failed", err)
+		return response.NewErrorResponse(http.StatusBadRequest, "Error saving updated Elasticsearch service instance")
+	}
+
 	return response.NewAsyncOperationResponse(base.ModifyOp.String())
 }
 
