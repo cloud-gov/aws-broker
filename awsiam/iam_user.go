@@ -8,21 +8,29 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
+
+	brokerTags "github.com/cloud-gov/go-broker-tags"
 )
 
 type IAMUserClient struct {
-	iamsvc iamiface.IAMAPI
-	logger lager.Logger
+	iamsvc     iamiface.IAMAPI
+	logger     lager.Logger
+	tagManager *brokerTags.TagManager
 }
 
 func NewIAMUserClient(
 	iamsvc iamiface.IAMAPI,
 	logger lager.Logger,
-) *IAMUserClient {
-	return &IAMUserClient{
-		iamsvc: iamsvc,
-		logger: logger.Session("iam-user"),
+) (*IAMUserClient, error) {
+	tagManager, err := brokerTags.NewTagManager()
+	if err != nil {
+		return nil, err
 	}
+	return &IAMUserClient{
+		iamsvc:     iamsvc,
+		logger:     logger.Session("iam-user"),
+		tagManager: tagManager,
+	}, nil
 }
 
 func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {

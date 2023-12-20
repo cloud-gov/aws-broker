@@ -44,7 +44,7 @@ var _ = Describe("IAM User", func() {
 		testSink = lagertest.NewTestSink()
 		logger.RegisterSink(testSink)
 
-		iamUserClient = NewIAMUserClient(iamsvc, logger)
+		iamUserClient, _ = NewIAMUserClient(iamsvc, logger)
 	})
 
 	var _ = Describe("Describe", func() {

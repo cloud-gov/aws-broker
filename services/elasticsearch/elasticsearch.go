@@ -78,11 +78,15 @@ type dedicatedElasticsearchAdapter struct {
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	user := awsiam.NewIAMUserClient(d.iam, d.logger)
+	user, err := awsiam.NewIAMUserClient(d.iam, d.logger)
+	if err != nil {
+		fmt.Println(err.Error())
+		return base.InstanceNotCreated, err
+	}
 	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
-	_, err := user.Create(i.Domain, "")
+	_, err = user.Create(i.Domain, "")
 	if err != nil {
 		fmt.Println(err.Error())
 		return base.InstanceNotCreated, err
@@ -557,7 +561,11 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 // in which we clean up all the roles and policies for the ES domain
 func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *ElasticsearchInstance) error {
-	user := awsiam.NewIAMUserClient(d.iam, d.logger)
+	user, err := awsiam.NewIAMUserClient(d.iam, d.logger)
+	if err != nil {
+		return err
+	}
+
 	policyHandler := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
