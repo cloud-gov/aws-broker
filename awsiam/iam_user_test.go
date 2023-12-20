@@ -44,7 +44,7 @@ var _ = Describe("IAM User", func() {
 		testSink = lagertest.NewTestSink()
 		logger.RegisterSink(testSink)
 
-		iamUserClient, _ = NewIAMUserClient(iamsvc, logger)
+		iamUserClient = NewIAMUserClient(iamsvc, logger)
 	})
 
 	var _ = Describe("Describe", func() {
@@ -149,7 +149,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("creates the User", func() {
-			userARN, err := iamUserClient.Create(userName, iamPath)
+			userARN, err := iamUserClient.Create(userName, iamPath, nil)
 			Expect(userARN).To(Equal("user-arn"))
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -160,7 +160,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, err := iamUserClient.Create(userName, iamPath)
+				_, err := iamUserClient.Create(userName, iamPath, nil)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -171,7 +171,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, err := iamUserClient.Create(userName, iamPath)
+					_, err := iamUserClient.Create(userName, iamPath, nil)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})

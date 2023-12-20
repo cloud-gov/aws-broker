@@ -8,29 +8,21 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
-
-	brokerTags "github.com/cloud-gov/go-broker-tags"
 )
 
 type IAMUserClient struct {
-	iamsvc     iamiface.IAMAPI
-	logger     lager.Logger
-	tagManager *brokerTags.TagManager
+	iamsvc iamiface.IAMAPI
+	logger lager.Logger
 }
 
 func NewIAMUserClient(
 	iamsvc iamiface.IAMAPI,
 	logger lager.Logger,
-) (*IAMUserClient, error) {
-	tagManager, err := brokerTags.NewTagManager()
-	if err != nil {
-		return nil, err
-	}
+) *IAMUserClient {
 	return &IAMUserClient{
-		iamsvc:     iamsvc,
-		logger:     logger.Session("iam-user"),
-		tagManager: tagManager,
-	}, nil
+		iamsvc: iamsvc,
+		logger: logger.Session("iam-user"),
+	}
 }
 
 func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {
@@ -59,10 +51,20 @@ func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {
 	return userDetails, nil
 }
 
-func (i *IAMUserClient) Create(userName, iamPath string) (string, error) {
+func (i *IAMUserClient) Create(userName, iamPath string, tags map[string]string) (string, error) {
+	// move to broker-tags lib
+	var awsTags []*iam.Tag
+	for k, v := range tags {
+		awsTags = append(awsTags, &iam.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		})
+	}
+
 	createUserInput := &iam.CreateUserInput{
 		UserName: aws.String(userName),
 		Path:     stringOrNil(iamPath),
+		Tags:     awsTags,
 	}
 	i.logger.Debug("create-user", lager.Data{"input": createUserInput})
 

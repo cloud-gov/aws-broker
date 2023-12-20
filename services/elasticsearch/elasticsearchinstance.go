@@ -129,13 +129,15 @@ func (i *ElasticsearchInstance) setBucket(bucket string) error {
 	return nil
 }
 
-func (i *ElasticsearchInstance) init(uuid string,
+func (i *ElasticsearchInstance) init(
+	uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.ElasticsearchPlan,
 	options ElasticsearchOptions,
-	s *config.Settings) error {
+	s *config.Settings,
+) error {
 
 	i.Uuid = uuid
 	i.ServiceID = serviceID

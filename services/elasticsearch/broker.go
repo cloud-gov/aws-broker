@@ -134,7 +134,8 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 		createRequest.ServiceID,
 		plan,
 		options,
-		broker.settings)
+		broker.settings,
+	)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
