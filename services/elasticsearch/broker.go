@@ -192,8 +192,6 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 }
 
 func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
-	// logger := lager.NewLogger("aws-broker")
-	// logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 	esInstance := ElasticsearchInstance{}
 	options := ElasticsearchOptions{}
 	if len(updateRequest.RawParameters) > 0 {
