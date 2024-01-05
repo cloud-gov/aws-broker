@@ -20,6 +20,8 @@ import (
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
 	"github.com/18F/aws-broker/taskqueue"
+
+	brokerTags "github.com/cloud-gov/go-broker-tags"
 )
 
 type ElasticsearchAdvancedOptions struct {
@@ -42,17 +44,28 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 }
 
 type elasticsearchBroker struct {
-	brokerDB  *gorm.DB
-	settings  *config.Settings
-	taskqueue *taskqueue.QueueManager
-	logger    lager.Logger
+	brokerDB   *gorm.DB
+	settings   *config.Settings
+	taskqueue  *taskqueue.QueueManager
+	logger     lager.Logger
+	tagManager *brokerTags.TagManager
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
-func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) base.Broker {
+func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return &elasticsearchBroker{brokerDB, settings, taskqueue, logger}
+	tagManager, err := brokerTags.NewManager()
+	if err != nil {
+		return nil, err
+	}
+	return &elasticsearchBroker{
+		brokerDB,
+		settings,
+		taskqueue,
+		logger,
+		tagManager,
+	}, nil
 }
 
 // initializeAdapter is the main function to create database instances
@@ -127,7 +140,20 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 			)
 		}
 	}
-	err := newInstance.init(
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokerTags.Create,
+		createRequest.ServiceID,
+		plan.ID,
+		createRequest.OrganizationGUID,
+		createRequest.SpaceGUID,
+		id,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	err = newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
 		createRequest.SpaceGUID,
@@ -135,6 +161,7 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 		plan,
 		options,
 		broker.settings,
+		tags,
 	)
 
 	if err != nil {

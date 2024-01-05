@@ -23,7 +23,11 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	case c.RedisService.ID:
 		return redis.InitRedisBroker(brokerDb, settings), nil
 	case c.ElasticsearchService.ID:
-		return elasticsearch.InitElasticsearchBroker(brokerDb, settings, taskqueue), nil
+		broker, err := elasticsearch.InitElasticsearchBroker(brokerDb, settings, taskqueue)
+		if err != nil {
+			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		return broker, nil
 	}
 
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())

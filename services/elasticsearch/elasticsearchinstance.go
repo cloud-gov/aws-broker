@@ -137,8 +137,8 @@ func (i *ElasticsearchInstance) init(
 	plan catalog.ElasticsearchPlan,
 	options ElasticsearchOptions,
 	s *config.Settings,
+	tags map[string]string,
 ) error {
-
 	i.Uuid = uuid
 	i.ServiceID = serviceID
 	i.PlanID = plan.ID
@@ -181,12 +181,8 @@ func (i *ElasticsearchInstance) init(
 		// Default to the version provided by the plan chosen in catalog.
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
-	// Tag instance with broker details
-	i.Tags["Instance GUID"] = uuid
-	i.Tags["Space GUID"] = spaceGUID
-	i.Tags["Organization GUID"] = orgGUID
-	i.Tags["Plan GUID"] = plan.ID
-	i.Tags["Service GUID"] = serviceID
+
+	i.Tags = tags
 
 	return nil
 }

@@ -52,7 +52,7 @@ func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {
 }
 
 func (i *IAMUserClient) Create(userName, iamPath string, tags map[string]string) (string, error) {
-	// move to broker-tags lib
+	// move to go-broker-tags package?
 	var awsTags []*iam.Tag
 	for k, v := range tags {
 		awsTags = append(awsTags, &iam.Tag{
