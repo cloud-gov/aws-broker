@@ -280,7 +280,7 @@ rds:
         displayName: "Dedicated small MySQL"
       free: true
       adapter: dedicated
-      instanceClass: db.t2.small
+      instanceClass: db.t3.small
       dbType: mysql
       allocatedStorage: 20
       approvedMajorVersions:
