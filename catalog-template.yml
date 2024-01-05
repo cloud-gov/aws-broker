@@ -698,7 +698,7 @@ rds:
         displayName: *small-mysql-name
       free: true
       adapter: dedicated
-      instanceClass: db.t2.small
+      instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.0"
@@ -732,7 +732,7 @@ rds:
         displayName: *small-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.t2.small
+      instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.0"
