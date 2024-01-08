@@ -79,6 +79,9 @@ jobs:
         DB_NAME: ((development-rds-internal-db-name))
         ENC_KEY: ((development-enc-key))
         AWS_USE_FIPS_ENDPOINT: "true"
+        CF_API_URL: ((dev-cf-api-url))
+        CF_API_CLIENT_ID: ((development-cf-api-client-id))
+        CF_API_CLIENT_SECRET: ((development-cf-api-client-secret))
 
     on_failure:
       put: slack
