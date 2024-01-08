@@ -21,7 +21,7 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 	"github.com/18F/aws-broker/taskqueue"
 
-	brokerTags "github.com/cloud-gov/go-broker-tags"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 )
 
 type ElasticsearchAdvancedOptions struct {
@@ -48,14 +48,14 @@ type elasticsearchBroker struct {
 	settings   *config.Settings
 	taskqueue  *taskqueue.QueueManager
 	logger     lager.Logger
-	tagManager *brokerTags.TagManager
+	tagManager *brokertags.TagManager
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	tagManager, err := brokerTags.NewManager()
+	tagManager, err := brokertags.NewManager()
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	}
 
 	tags, err := broker.tagManager.GenerateTags(
-		brokerTags.Create,
+		brokertags.Create,
 		createRequest.ServiceID,
 		plan.ID,
 		createRequest.OrganizationGUID,
