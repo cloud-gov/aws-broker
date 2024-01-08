@@ -182,7 +182,9 @@ func (i *ElasticsearchInstance) init(
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
 
-	i.Tags = tags
+	for k, v := range tags {
+		i.Tags[k] = v
+	}
 
 	return nil
 }
