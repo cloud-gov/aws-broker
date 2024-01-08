@@ -24,9 +24,9 @@ type Settings struct {
 	SnapshotsBucketName       string
 	SnapshotsRepoName         string
 	LastSnapshotName          string
-	CfUser                    string
-	CfPass                    string
 	CfApiUrl                  string
+	CfApiClientId             string
+	CfApiClientSecret         string
 	MaxBackupRetention        int64
 	MinBackupRetention        int64
 }
@@ -134,5 +134,24 @@ func (s *Settings) LoadFromEnv() error {
 	if s.MinBackupRetention == 0 {
 		s.MinBackupRetention = 14
 	}
+
+	if cfApiUrl, ok := os.LookupEnv("CF_API_URL"); !ok {
+		s.CfApiUrl = cfApiUrl
+	} else {
+		return errors.New("CF_API_URL environment variable is required")
+	}
+
+	if cfApiClient, ok := os.LookupEnv("CF_API_CLIENT_ID"); !ok {
+		s.CfApiClientId = cfApiClient
+	} else {
+		return errors.New("CF_API_CLIENT_ID environment variable is required")
+	}
+
+	if cfApiClientSecret, ok := os.LookupEnv("CF_API_CLIENT_SECRET"); !ok {
+		s.CfApiClientSecret = cfApiClientSecret
+	} else {
+		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
+	}
+
 	return nil
 }
