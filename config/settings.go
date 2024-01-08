@@ -135,19 +135,19 @@ func (s *Settings) LoadFromEnv() error {
 		s.MinBackupRetention = 14
 	}
 
-	if cfApiUrl, ok := os.LookupEnv("CF_API_URL"); !ok {
+	if cfApiUrl, ok := os.LookupEnv("CF_API_URL"); ok {
 		s.CfApiUrl = cfApiUrl
 	} else {
 		return errors.New("CF_API_URL environment variable is required")
 	}
 
-	if cfApiClient, ok := os.LookupEnv("CF_API_CLIENT_ID"); !ok {
+	if cfApiClient, ok := os.LookupEnv("CF_API_CLIENT_ID"); ok {
 		s.CfApiClientId = cfApiClient
 	} else {
 		return errors.New("CF_API_CLIENT_ID environment variable is required")
 	}
 
-	if cfApiClientSecret, ok := os.LookupEnv("CF_API_CLIENT_SECRET"); !ok {
+	if cfApiClientSecret, ok := os.LookupEnv("CF_API_CLIENT_SECRET"); ok {
 		s.CfApiClientSecret = cfApiClientSecret
 	} else {
 		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
