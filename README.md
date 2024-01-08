@@ -3,6 +3,7 @@
 Cloud Foundry Service Broker to manage instances of various AWS services.
 
 ### Current Services Supported
+
 - RDS
 - AWS Elasticache for Redis
 - AWS Elasticsearch
@@ -10,6 +11,7 @@ Cloud Foundry Service Broker to manage instances of various AWS services.
 ### Setup
 
 #### Environment Variables
+
 There are important environment variables that should be overriden inside the `manifest.yml` file
 
 > Note: All environment variables prefixed with `DB_` refer to attributes for the database the broker itself will use for internal uses.
@@ -39,6 +41,7 @@ There are important environment variables that should be overriden inside the `m
 #### Optional Environment Variables
 
 There are some feature flags that you can turn on as well:
+
 1. `ENABLE_FUNCTIONS`:  If this environment variable exists, it will enable users to create mysql databases like
    `cf create-service _servicename_ production my-mysql-service -c '{"enable_functions": true}'`,
    which will set the `log_bin_trust_function_creators=1` parameter for their db,
@@ -61,7 +64,6 @@ secrets.yml contains the all of the secrets for the different resources.
 
 Make sure you have a valid secrets.yml and catalog.yml. The easiest way is to copy catalog-test.yml and secrets-test.yml to catalog.yml and secrets.yml. Once you have these in place
 run `go test` to run the tests
-
 
 ### How to deploy it
 
@@ -88,7 +90,7 @@ be the connection string to the DB.
 
 This section is primarily for auditors who need to understand how the broker, and related components, handle credentials so that they aren't stored or transmitted in the clear. All calls between entities are made over HTTPS, unless otherwise specified.
 
-#### Broker environment variables:
+#### Broker environment variables
 
 There are important environment variables that should be overriden inside the `manifest.yml` file
 
@@ -114,12 +116,11 @@ The broker is deployed by Concourse CI onto CloudFoundry, using a manifest that 
 
 The CF Cloud Controller stores the configuration for the app, including these environment variables, in an encrypted database table on the CCDB, as described in [Cloud Foundry security concepts](https://docs.cloudfoundry.org/concepts/security.html). The `aws-broker` app does not write these to static storage since Cloud Foundry makes them available as environment variables.
 
-
 #### Provision a new instance
 
 When an authenticated, authorized CloudFoundry user runs `cf create-service aws-rds _plan_name_ _service_name_`, the CloudFoundry platform uses the OSBAPI (open-service broker API) (https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md) to call the registered broker with a `PUT` request, `/v2/service_instances/:instance_id` where instance_id is a GUID. The request uses BASIC AUTH, e,g.:
 
-```
+```shell
 curl -X PUT https://username:password@aws-broker..../v2/service_instances/:instance_id
 ```
 
@@ -132,6 +133,7 @@ The response indicates if the provisioning request has been accepted.
 The broker application calls the AWS API with the AWS Access Key and Secret Key, which were provided as environment variables at instantiation.
 
 When the provisioning is complete, the broker takes the following actions:
+
 - For RDS and Redis, it creates a username/password in the AWS service, and stores the credentials in the broker database
 - For AWS Elasticsearch, it creates an IAM user with privileges to the new instance, then stores the credentials in the broker database
 
@@ -144,7 +146,6 @@ The broker is instantiated with encryption key, `ENC_KEY`, and all credentials a
 #### Providing credentials to CloudFoundry applications
 
 The CloudFoundry applications have access to the credentials only if the user `binds` an app to a service instance, as specified at https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#binding of the OSBAPI standard. The credentials are fetched from the service broker and are stored in the environment of the application container, and not written the static storage. If the application instance is re-instantiated, the platform fetches the credentials for the application container from the broker.
-
 
 ### Public domain
 
