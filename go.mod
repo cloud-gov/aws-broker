@@ -5,7 +5,7 @@ go 1.20
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.10
-	github.com/cloud-gov/go-broker-tags v0.0.0-20240105211141-b80d15d9ce0f
+	github.com/cloud-gov/go-broker-tags v0.0.0-20240108151858-26bcae3652cb
 	github.com/go-co-op/gocron v1.13.0
 	github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 	github.com/go-sql-driver/mysql v1.6.0
