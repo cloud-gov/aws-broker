@@ -122,12 +122,22 @@ var _ = Describe("IAM User", func() {
 		var (
 			createUserInput *iam.CreateUserInput
 			createUserError error
+			tags            map[string]string
 		)
 
 		BeforeEach(func() {
+			tags = map[string]string{
+				"foo": "bar",
+			}
 			createUserInput = &iam.CreateUserInput{
 				UserName: aws.String(userName),
 				Path:     aws.String(iamPath),
+				Tags: []*iam.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
+				},
 			}
 			createUserError = nil
 		})
@@ -149,7 +159,7 @@ var _ = Describe("IAM User", func() {
 		})
 
 		It("creates the User", func() {
-			userARN, err := iamUserClient.Create(userName, iamPath, nil)
+			userARN, err := iamUserClient.Create(userName, iamPath, tags)
 			Expect(userARN).To(Equal("user-arn"))
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -160,7 +170,7 @@ var _ = Describe("IAM User", func() {
 			})
 
 			It("returns the proper error", func() {
-				_, err := iamUserClient.Create(userName, iamPath, nil)
+				_, err := iamUserClient.Create(userName, iamPath, tags)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation failed"))
 			})
@@ -171,7 +181,7 @@ var _ = Describe("IAM User", func() {
 				})
 
 				It("returns the proper error", func() {
-					_, err := iamUserClient.Create(userName, iamPath, nil)
+					_, err := iamUserClient.Create(userName, iamPath, tags)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("code: message"))
 				})
