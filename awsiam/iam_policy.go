@@ -98,11 +98,16 @@ func logAWSError(err error) {
 }
 
 // create new assumable role with the trust policy
-func (ip *IAMPolicyClient) CreateAssumeRole(policy string, rolename string) (*iam.Role, error) {
+func (ip *IAMPolicyClient) CreateAssumeRole(
+	policy string,
+	rolename string,
+	iamTags []*iam.Tag,
+) (*iam.Role, error) {
 	role := &iam.Role{}
 	roleInput := &iam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(policy),
 		RoleName:                 aws.String(rolename),
+		Tags:                     iamTags,
 	}
 	resp, err := ip.iam.CreateRole(roleInput)
 	if err != nil {
@@ -132,6 +137,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 	iamPath,
 	policyTemplate string,
 	resources []string,
+	iamTags []*iam.Tag,
 ) (string, error) {
 	tmpl, err := template.New("policy").Funcs(template.FuncMap{
 		"resources": func(suffix string) string {
@@ -164,6 +170,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		PolicyName:     aws.String(policyName),
 		PolicyDocument: aws.String(policy.String()),
 		Path:           stringOrNil(iamPath),
+		Tags:           iamTags,
 	}
 	ip.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
 
@@ -182,13 +189,19 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 
 // create a policy and attach to a user, return the policy ARN
 // the does not validate the policy
-func (ip *IAMPolicyClient) CreateUserPolicy(policy string, policyname string, username string) (string, error) {
+func (ip *IAMPolicyClient) CreateUserPolicy(
+	policy string,
+	policyname string,
+	username string,
+	iamTags []*iam.Tag,
+) (string, error) {
 
 	IamRolePolicyARN := ""
 
 	rolePolicyInput := &iam.CreatePolicyInput{
 		PolicyName:     aws.String(policyname),
 		PolicyDocument: aws.String(policy),
+		Tags:           iamTags,
 	}
 
 	respPolicy, err := ip.iam.CreatePolicy(rolePolicyInput)
@@ -237,10 +250,16 @@ func (ip *IAMPolicyClient) CreateUserPolicy(policy string, policyname string, us
 
 // create a new policy and attach to a specific role
 // this does not validate the policy
-func (ip *IAMPolicyClient) CreatePolicyAttachRole(policyname string, policy string, role iam.Role) (policyarn string, err error) {
+func (ip *IAMPolicyClient) CreatePolicyAttachRole(
+	policyname string,
+	policy string,
+	role iam.Role,
+	iamTags []*iam.Tag,
+) (policyarn string, err error) {
 	rolePolicyInput := &iam.CreatePolicyInput{
 		PolicyName:     aws.String(policyname), //(i.Domain + "-to-S3-RolePolicy"),
 		PolicyDocument: aws.String(policy),
+		Tags:           iamTags,
 	}
 
 	respPolicy, err := ip.iam.CreatePolicy(rolePolicyInput)

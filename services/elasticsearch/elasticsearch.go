@@ -82,7 +82,8 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
-	_, err := user.Create(i.Domain, "", i.Tags)
+	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
+	_, err := user.Create(i.Domain, "", iamTags)
 	if err != nil {
 		fmt.Println(err.Error())
 		return base.InstanceNotCreated, err
@@ -141,7 +142,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		esARNs := make([]string, 0)
 		esARNs = append(esARNs, i.ARN)
 		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-		policyARN, err := ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs)
+		policyARN, err := ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs, iamTags)
 		if err != nil {
 			return base.InstanceNotCreated, err
 		}
@@ -153,7 +154,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		i.IamPolicyARN = policyARN
 
 		//try setup of roles and policies on create
-		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
 			return base.InstanceNotCreated, nil
 		}
@@ -217,12 +218,15 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	}
 
+	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
+
 	// add broker snapshot bucket and create roles and policies if it hasnt been done.
 	if !i.BrokerSnapshotsEnabled {
 		if i.SnapshotPath == "" {
 			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 		}
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
 			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
 			return nil, err
@@ -232,7 +236,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	// add client bucket and adjust policies and roles if present
 	if i.Bucket != "" {
-		err := d.createUpdateBucketRolesAndPolicies(i, i.Bucket, "")
+		err := d.createUpdateBucketRolesAndPolicies(i, i.Bucket, "", iamTags)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +341,12 @@ func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
 
 // utility to create roles and policies to enable snapshots in an s3 bucket
 // we pass bucket-name separately to enable reuse for client and broker buckets
-func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *ElasticsearchInstance, bucket string, path string) error {
+func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
+	i *ElasticsearchInstance,
+	bucket string,
+	path string,
+	iamTags []*iam.Tag,
+) error {
 	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 	var snapshotRole *iam.Role
 
@@ -345,7 +354,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 	if i.SnapshotARN == "" {
 		rolename := i.Domain + "-to-s3-SnapshotRole"
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		arole, err := ip.CreateAssumeRole(policy, rolename)
+		arole, err := ip.CreateAssumeRole(policy, rolename, iamTags)
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
 			return err
@@ -361,7 +370,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
 		policyname := i.Domain + "-to-S3-ESRolePolicy"
 		username := i.Domain
-		policyarn, err := ip.CreateUserPolicy(policy, policyname, username)
+		policyarn, err := ip.CreateUserPolicy(policy, policyname, username, iamTags)
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", err)
 			return err
@@ -401,7 +410,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(i *El
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", err)
 			return err
 		}
-		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole)
+		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", err)
 			return err
@@ -508,7 +517,8 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		if i.SnapshotPath == "" {
 			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 		}
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath)
+		iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
+		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
 			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
 			return err

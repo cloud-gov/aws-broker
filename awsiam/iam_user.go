@@ -51,20 +51,11 @@ func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {
 	return userDetails, nil
 }
 
-func (i *IAMUserClient) Create(userName, iamPath string, tags map[string]string) (string, error) {
-	// move to go-broker-tags package?
-	var awsTags []*iam.Tag
-	for k, v := range tags {
-		awsTags = append(awsTags, &iam.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		})
-	}
-
+func (i *IAMUserClient) Create(userName, iamPath string, iamTags []*iam.Tag) (string, error) {
 	createUserInput := &iam.CreateUserInput{
 		UserName: aws.String(userName),
 		Path:     stringOrNil(iamPath),
-		Tags:     awsTags,
+		Tags:     iamTags,
 	}
 	i.logger.Debug("create-user", lager.Data{"input": createUserInput})
 

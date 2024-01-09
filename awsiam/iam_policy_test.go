@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
+	"github.com/go-test/deep"
 )
 
 var mockPolDoc string = `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": ["some:action"],"Resource": ["some:resource"]}]}`
@@ -66,6 +67,7 @@ func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleO
 			Arn:                      aws.String(arn),
 			RoleName:                 input.RoleName,
 			AssumeRolePolicyDocument: input.AssumeRolePolicyDocument,
+			Tags:                     input.Tags,
 		},
 	}, nil
 }
@@ -90,6 +92,7 @@ func (m *mockIamClient) CreatePolicy(input *iam.CreatePolicyInput) (*iam.CreateP
 		Policy: &iam.Policy{
 			Arn:        aws.String(arn),
 			PolicyName: input.PolicyName,
+			Tags:       input.Tags,
 		},
 	}, nil
 }
@@ -168,11 +171,21 @@ func TestCreateAssumeRole(t *testing.T) {
 	ip := &IAMPolicyClient{
 		iam: &mockIamClient{},
 	}
+	iamTags := []*iam.Tag{
+		{
+			Key:   aws.String("foo"),
+			Value: aws.String("bar"),
+		},
+	}
 
-	role, _ := ip.CreateAssumeRole(policy, rolename)
+	role, _ := ip.CreateAssumeRole(policy, rolename, iamTags)
 	if role != nil {
 		if *(role.RoleName) != rolename {
 			t.Errorf("RoleName returned as %v", role.RoleName)
+		}
+
+		if diff := deep.Equal(role.Tags, iamTags); diff != nil {
+			t.Error(diff)
 		}
 	} else {
 		t.Error("Role is nil")
@@ -189,7 +202,7 @@ func TestCreateAssumeRoleAlreadyExists(t *testing.T) {
 		},
 	}
 
-	role, err := ip.CreateAssumeRole(policy, rolename)
+	role, err := ip.CreateAssumeRole(policy, rolename, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -213,7 +226,7 @@ func TestCreateUserPolicy(t *testing.T) {
 	policyname := Domain + "-to-S3-ESRolePolicy"
 	username := Domain
 	expectedarn := "arn:aws:iam::123456789012:policy/" + policyname
-	policyarn, err := ip.CreateUserPolicy(policy, policyname, username)
+	policyarn, err := ip.CreateUserPolicy(policy, policyname, username, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -248,7 +261,7 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 		},
 	}
 
-	policyArn, err := ip.CreateUserPolicy(policy, policyname, username)
+	policyArn, err := ip.CreateUserPolicy(policy, policyname, username, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +281,7 @@ func TestCreatePolicyAttachRole(t *testing.T) {
 	}
 	policyname := "test-pol"
 	expectedarn := "arn:aws:iam::123456789012:policy/" + policyname
-	policyarn, err := ip.CreatePolicyAttachRole(policyname, mockPolDoc, role)
+	policyarn, err := ip.CreatePolicyAttachRole(policyname, mockPolDoc, role, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -301,7 +314,7 @@ func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
 		RoleName: aws.String(roleName),
 	}
 
-	policyarn, err := ip.CreatePolicyAttachRole(policyName, mockPolDoc, role)
+	policyarn, err := ip.CreatePolicyAttachRole(policyName, mockPolDoc, role, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,6 +502,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 		iamPath                    string
 		expectedPolicyArn          string
 		expectedCreatePolicyInputs []*iam.CreatePolicyInput
+		iamTags                    []*iam.Tag
 	}{
 		"creates policy": {
 			fakeIAMClient:     &mockIamClient{},
@@ -497,11 +511,23 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 			resources:         []string{"resource"},
 			iamPath:           "/path/",
 			expectedPolicyArn: "arn:aws:iam::123456789012:policy/policy-name",
+			iamTags: []*iam.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+			},
 			expectedCreatePolicyInputs: []*iam.CreatePolicyInput{
 				{
 					PolicyName:     aws.String("policy-name"),
 					PolicyDocument: aws.String(`{"Version": "2012-10-17","Id": "policy-name","Statement": [{"Action":"action","Effect":"effect","Resource": ["resource/*"]}]}`),
 					Path:           aws.String("/path/"),
+					Tags: []*iam.Tag{
+						{
+							Key:   aws.String("foo"),
+							Value: aws.String("bar"),
+						},
+					},
 				},
 			},
 		},
@@ -558,6 +584,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 				test.iamPath,
 				test.policyTemplate,
 				test.resources,
+				test.iamTags,
 			)
 			if test.expectedErrMessage != "" && err.Error() != test.expectedErrMessage {
 				t.Fatalf("expected error message: %s, got: %s", test.expectedErrMessage, err.Error())
@@ -565,8 +592,8 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 			if policyARN != test.expectedPolicyArn {
 				t.Fatalf("unexpected policy ARN: %s", policyARN)
 			}
-			if !reflect.DeepEqual(test.fakeIAMClient.createPolicyInputs, test.expectedCreatePolicyInputs) {
-				t.Fatalf("expected: %s, got: %s", test.expectedCreatePolicyInputs, test.fakeIAMClient.createPolicyInputs)
+			if diff := deep.Equal(test.fakeIAMClient.createPolicyInputs, test.expectedCreatePolicyInputs); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
