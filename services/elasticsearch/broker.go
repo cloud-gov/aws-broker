@@ -48,7 +48,7 @@ type elasticsearchBroker struct {
 	settings   *config.Settings
 	taskqueue  *taskqueue.QueueManager
 	logger     lager.Logger
-	tagManager brokertags.TagGenerator
+	tagManager brokertags.TagManager
 }
 
 type mockTagGenerator struct {
@@ -81,7 +81,8 @@ func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskq
 		}, nil
 	}
 
-	tagManager, err := brokertags.NewManager(
+	tagManager, err := brokertags.NewCFTagManager(
+		"AWS broker",
 		settings.CfApiUrl,
 		settings.CfApiClientId,
 		settings.CfApiClientSecret,
