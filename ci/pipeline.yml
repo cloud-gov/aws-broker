@@ -1030,6 +1030,9 @@ jobs:
         ENC_KEY: ((prod-enc-key))
         AWS_USE_FIPS_ENDPOINT: "true"
         ENVIRONMENT: ((production-environment))
+        CF_API_URL: ((prod-cf-api-url))
+        CF_API_CLIENT_ID: ((production-cf-api-client-id))
+        CF_API_CLIENT_SECRET: ((production-cf-api-client-secret))
 
     on_failure:
       put: slack
