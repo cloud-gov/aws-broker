@@ -82,6 +82,7 @@ jobs:
         CF_API_URL: ((dev-cf-api-url))
         CF_API_CLIENT_ID: ((development-cf-api-client-id))
         CF_API_CLIENT_SECRET: ((development-cf-api-client-secret))
+        ENVIRONMENT: ((development-environment))
 
     on_failure:
       put: slack
@@ -553,6 +554,7 @@ jobs:
         DB_NAME: ((staging-rds-internal-db-name))
         ENC_KEY: ((staging-enc-key))
         AWS_USE_FIPS_ENDPOINT: "true"
+        ENVIRONMENT: ((staging-environment))
 
     on_failure:
       put: slack
@@ -1024,6 +1026,7 @@ jobs:
         DB_NAME: ((prod-rds-internal-db-name))
         ENC_KEY: ((prod-enc-key))
         AWS_USE_FIPS_ENDPOINT: "true"
+        ENVIRONMENT: ((production-environment))
 
     on_failure:
       put: slack
