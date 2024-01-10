@@ -144,8 +144,7 @@ func (i *ElasticsearchInstance) init(
 	i.PlanID = plan.ID
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
-	// Load tags
-	i.Tags = plan.Tags
+
 	i.Description = plan.Description
 
 	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
@@ -182,9 +181,7 @@ func (i *ElasticsearchInstance) init(
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
 
-	for k, v := range tags {
-		i.Tags[k] = v
-	}
+	i.setTags(plan, tags)
 
 	return nil
 }
@@ -198,5 +195,18 @@ func (i *ElasticsearchInstance) update(
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	return nil
+}
+
+func (i *ElasticsearchInstance) setTags(
+	plan catalog.ElasticsearchPlan,
+	tags map[string]string,
+) error {
+	i.Tags = plan.Tags
+
+	for k, v := range tags {
+		i.Tags[k] = v
+	}
+
 	return nil
 }
