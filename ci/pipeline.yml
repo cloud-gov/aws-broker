@@ -554,6 +554,9 @@ jobs:
         DB_NAME: ((staging-rds-internal-db-name))
         ENC_KEY: ((staging-enc-key))
         AWS_USE_FIPS_ENDPOINT: "true"
+        CF_API_URL: ((staging-cf-api-url))
+        CF_API_CLIENT_ID: ((staging-cf-api-client-id))
+        CF_API_CLIENT_SECRET: ((staging-cf-api-client-secret))
         ENVIRONMENT: ((staging-environment))
 
     on_failure:
