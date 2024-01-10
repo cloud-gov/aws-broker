@@ -1004,7 +1004,7 @@ jobs:
       BASE_STACK_NAME: ((prod-stack-base))
       AWS_DEFAULT_REGION: us-gov-west-1
       STATE_FILE: terraform-state/terraform.tfstate
-      ENVIRONMENT: ((prod-environment))
+      ENVIRONMENT: ((production-environment))
 
   - put: deploy-aws-broker-prod
     params:
