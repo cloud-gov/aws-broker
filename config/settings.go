@@ -24,9 +24,9 @@ type Settings struct {
 	SnapshotsBucketName       string
 	SnapshotsRepoName         string
 	LastSnapshotName          string
-	CfUser                    string
-	CfPass                    string
 	CfApiUrl                  string
+	CfApiClientId             string
+	CfApiClientSecret         string
 	MaxBackupRetention        int64
 	MinBackupRetention        int64
 }
@@ -49,7 +49,7 @@ func (s *Settings) LoadFromEnv() error {
 	// Ensure AWS credentials exist in environment
 	for _, key := range []string{"AWS_DEFAULT_REGION"} {
 		if os.Getenv(key) == "" {
-			return fmt.Errorf("Must set environment variable %s", key)
+			return fmt.Errorf("must set environment variable %s", key)
 		}
 	}
 
@@ -58,7 +58,7 @@ func (s *Settings) LoadFromEnv() error {
 		dbConfig.Port, err = strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
 		// Just return nothing if we can't interpret the number.
 		if err != nil {
-			return errors.New("Couldn't load port number")
+			return errors.New("couldn't load port number")
 		}
 	} else {
 		dbConfig.Port = 5432
@@ -67,9 +67,10 @@ func (s *Settings) LoadFromEnv() error {
 	s.DbConfig = &dbConfig
 
 	// Load Encryption Key
-	s.EncryptionKey = os.Getenv("ENC_KEY")
-	if s.EncryptionKey == "" {
-		return errors.New("An encryption key is required")
+	if _, ok := os.LookupEnv("ENC_KEY"); ok {
+		s.EncryptionKey = os.Getenv("ENC_KEY")
+	} else {
+		return errors.New("an encryption key is required. Must specify ENC_KEY environment variable")
 	}
 
 	s.DbNamePrefix = os.Getenv("DB_PREFIX")
@@ -82,8 +83,7 @@ func (s *Settings) LoadFromEnv() error {
 		s.DbShorthandPrefix = "db"
 	}
 
-	// Set env to production
-	s.Environment = "production"
+	s.Environment = os.Getenv("ENVIRONMENT")
 
 	s.Region = os.Getenv("AWS_DEFAULT_REGION")
 
@@ -134,5 +134,24 @@ func (s *Settings) LoadFromEnv() error {
 	if s.MinBackupRetention == 0 {
 		s.MinBackupRetention = 14
 	}
+
+	if cfApiUrl, ok := os.LookupEnv("CF_API_URL"); ok {
+		s.CfApiUrl = cfApiUrl
+	} else {
+		return errors.New("CF_API_URL environment variable is required")
+	}
+
+	if cfApiClient, ok := os.LookupEnv("CF_API_CLIENT_ID"); ok {
+		s.CfApiClientId = cfApiClient
+	} else {
+		return errors.New("CF_API_CLIENT_ID environment variable is required")
+	}
+
+	if cfApiClientSecret, ok := os.LookupEnv("CF_API_CLIENT_SECRET"); ok {
+		s.CfApiClientSecret = cfApiClientSecret
+	} else {
+		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
+	}
+
 	return nil
 }

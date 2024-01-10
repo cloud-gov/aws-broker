@@ -51,10 +51,11 @@ func (i *IAMUserClient) Describe(userName string) (UserDetails, error) {
 	return userDetails, nil
 }
 
-func (i *IAMUserClient) Create(userName, iamPath string) (string, error) {
+func (i *IAMUserClient) Create(userName, iamPath string, iamTags []*iam.Tag) (string, error) {
 	createUserInput := &iam.CreateUserInput{
 		UserName: aws.String(userName),
 		Path:     stringOrNil(iamPath),
+		Tags:     iamTags,
 	}
 	i.logger.Debug("create-user", lager.Data{"input": createUserInput})
 

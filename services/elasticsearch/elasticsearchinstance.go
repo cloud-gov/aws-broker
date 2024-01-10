@@ -129,21 +129,22 @@ func (i *ElasticsearchInstance) setBucket(bucket string) error {
 	return nil
 }
 
-func (i *ElasticsearchInstance) init(uuid string,
+func (i *ElasticsearchInstance) init(
+	uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.ElasticsearchPlan,
 	options ElasticsearchOptions,
-	s *config.Settings) error {
-
+	s *config.Settings,
+	tags map[string]string,
+) error {
 	i.Uuid = uuid
 	i.ServiceID = serviceID
 	i.PlanID = plan.ID
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
-	// Load tags
-	i.Tags = plan.Tags
+
 	i.Description = plan.Description
 
 	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
@@ -179,12 +180,8 @@ func (i *ElasticsearchInstance) init(uuid string,
 		// Default to the version provided by the plan chosen in catalog.
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
-	// Tag instance with broker details
-	i.Tags["Instance GUID"] = uuid
-	i.Tags["Space GUID"] = spaceGUID
-	i.Tags["Organization GUID"] = orgGUID
-	i.Tags["Plan GUID"] = plan.ID
-	i.Tags["Service GUID"] = serviceID
+
+	i.setTags(plan, tags)
 
 	return nil
 }
@@ -198,5 +195,18 @@ func (i *ElasticsearchInstance) update(
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	return nil
+}
+
+func (i *ElasticsearchInstance) setTags(
+	plan catalog.ElasticsearchPlan,
+	tags map[string]string,
+) error {
+	i.Tags = plan.Tags
+
+	for k, v := range tags {
+		i.Tags[k] = v
+	}
+
 	return nil
 }

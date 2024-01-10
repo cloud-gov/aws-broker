@@ -220,6 +220,10 @@ func setup() *martini.ClassicMartini {
 	s.EncryptionKey = "12345678901234567890123456789012"
 	s.Environment = "test"
 	s.MaxAllocatedStorage = 1024
+	s.CfApiUrl = "fake-api-url"
+	s.CfApiClientId = "fake-client-id"
+	s.CfApiClientSecret = "fake-client-secret"
+
 	brokerDB, _ = db.InternalDBInit(&dbConfig)
 	tq := taskqueue.NewQueueManager()
 	tq.Init()

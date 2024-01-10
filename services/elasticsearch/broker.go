@@ -20,6 +20,8 @@ import (
 	"github.com/18F/aws-broker/helpers/request"
 	"github.com/18F/aws-broker/helpers/response"
 	"github.com/18F/aws-broker/taskqueue"
+
+	brokertags "github.com/cloud-gov/go-broker-tags"
 )
 
 type ElasticsearchAdvancedOptions struct {
@@ -42,17 +44,61 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 }
 
 type elasticsearchBroker struct {
-	brokerDB  *gorm.DB
-	settings  *config.Settings
-	taskqueue *taskqueue.QueueManager
-	logger    lager.Logger
+	brokerDB   *gorm.DB
+	settings   *config.Settings
+	taskqueue  *taskqueue.QueueManager
+	logger     lager.Logger
+	tagManager brokertags.TagManager
+}
+
+type mockTagGenerator struct {
+	tags map[string]string
+}
+
+func (mt *mockTagGenerator) GenerateTags(
+	action brokertags.Action,
+	environment string,
+	serviceGUID string,
+	servicePlanGUID string,
+	organizationGUID string,
+	spaceGUID string,
+	instanceGUID string,
+) (map[string]string, error) {
+	return mt.tags, nil
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
-func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) base.Broker {
+func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return &elasticsearchBroker{brokerDB, settings, taskqueue, logger}
+
+	if settings.Environment == "test" {
+		return &elasticsearchBroker{
+			brokerDB:   brokerDB,
+			settings:   settings,
+			taskqueue:  taskqueue,
+			logger:     logger,
+			tagManager: &mockTagGenerator{},
+		}, nil
+	}
+
+	tagManager, err := brokertags.NewCFTagManager(
+		"AWS broker",
+		settings.CfApiUrl,
+		settings.CfApiClientId,
+		settings.CfApiClientSecret,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &elasticsearchBroker{
+		brokerDB,
+		settings,
+		taskqueue,
+		logger,
+		tagManager,
+	}, nil
 }
 
 // initializeAdapter is the main function to create database instances
@@ -127,14 +173,30 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 			)
 		}
 	}
-	err := newInstance.init(
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Create,
+		broker.settings.Environment,
+		c.ElasticsearchService.Name,
+		plan.Name,
+		createRequest.OrganizationGUID,
+		createRequest.SpaceGUID,
+		id,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	err = newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
 		createRequest.SpaceGUID,
 		createRequest.ServiceID,
 		plan,
 		options,
-		broker.settings)
+		broker.settings,
+		tags,
+	)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
@@ -164,8 +226,6 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 }
 
 func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
-	// logger := lager.NewLogger("aws-broker")
-	// logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 	esInstance := ElasticsearchInstance{}
 	options := ElasticsearchOptions{}
 	if len(updateRequest.RawParameters) > 0 {
