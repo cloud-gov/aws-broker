@@ -57,6 +57,7 @@ type mockTagGenerator struct {
 
 func (mt *mockTagGenerator) GenerateTags(
 	action brokertags.Action,
+	environment string,
 	serviceGUID string,
 	servicePlanGUID string,
 	organizationGUID string,
@@ -175,6 +176,7 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
+		broker.settings.Environment,
 		createRequest.ServiceID,
 		plan.ID,
 		createRequest.OrganizationGUID,
