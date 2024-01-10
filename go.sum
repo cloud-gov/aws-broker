@@ -24,6 +24,8 @@ github.com/cloud-gov/go-broker-tags v0.0.0-20240110164341-ab30d7ae3e42 h1:EftSBd
 github.com/cloud-gov/go-broker-tags v0.0.0-20240110164341-ab30d7ae3e42/go.mod h1:vQsBqs6ze14lotTKOZbubtKsM49gK5cwFPUbQE+ZU30=
 github.com/cloud-gov/go-broker-tags v0.0.0-20240110200930-76754207769b h1:8edy0USZHwhVNnEF8Uwk8315VSB/hB1F5wjcYnqqa8U=
 github.com/cloud-gov/go-broker-tags v0.0.0-20240110200930-76754207769b/go.mod h1:vQsBqs6ze14lotTKOZbubtKsM49gK5cwFPUbQE+ZU30=
+github.com/cloud-gov/go-broker-tags v0.0.0-20240110222823-ade415005c99 h1:ca/zkC5tKUNhCwnp7kP1n/Qa0UeOh03MzFZ2wrPGiZE=
+github.com/cloud-gov/go-broker-tags v0.0.0-20240110222823-ade415005c99/go.mod h1:vQsBqs6ze14lotTKOZbubtKsM49gK5cwFPUbQE+ZU30=
 github.com/cloudfoundry-community/go-cfclient/v3 v3.0.0-alpha.6 h1:mF8LXapcJsG+zqNFSlfWssERIuK0Nf0UEAyAR/s0TAI=
 github.com/cloudfoundry-community/go-cfclient/v3 v3.0.0-alpha.6/go.mod h1:3tjqtK8cGhfhGNhDVKLQ7AaTDzP9K7fyfeNtYqmNWWM=
 github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 h1:sDMmm+q/3+BukdIpxwO365v/Rbspp2Nt5XntgQRXq8Q=
