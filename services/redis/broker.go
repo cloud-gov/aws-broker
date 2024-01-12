@@ -6,6 +6,9 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/elasticache"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 
@@ -68,10 +71,12 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 		return redisAdapter, nil
 	}
 
+	elasticache := elasticache.New(session.New(), aws.NewConfig().WithRegion(s.Region))
 	redisAdapter = &dedicatedRedisAdapter{
-		Plan:     plan,
-		settings: *s,
-		logger:   logger,
+		Plan:        plan,
+		settings:    *s,
+		logger:      logger,
+		elasticache: elasticache,
 	}
 	return redisAdapter, nil
 }

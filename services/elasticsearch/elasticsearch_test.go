@@ -33,6 +33,9 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				InstanceType:               "db.m5.xlarge",
 				NodeToNodeEncryption:       true,
 				AutomatedSnapshotStartHour: 0,
+				Tags: map[string]string{
+					"foo": "bar",
+				},
 			},
 			accessPolicy: "fake-access-policy",
 			expectedParams: &opensearchservice.CreateDomainInput{
@@ -62,6 +65,12 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				},
 				EncryptionAtRestOptions: &opensearchservice.EncryptionAtRestOptions{
 					Enabled: aws.Bool(false),
+				},
+				TagList: []*opensearchservice.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
 				},
 			},
 		},
