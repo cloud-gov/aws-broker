@@ -128,6 +128,7 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      aws.Int64(int64(i.SnapshotRetentionLimit)),
+		Tags:                        redisTags,
 	}
 	if i.EngineVersion != "" {
 		params.EngineVersion = aws.String(i.EngineVersion)
