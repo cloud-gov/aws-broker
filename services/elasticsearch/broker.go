@@ -48,48 +48,18 @@ type elasticsearchBroker struct {
 	settings   *config.Settings
 	taskqueue  *taskqueue.QueueManager
 	logger     lager.Logger
-	tagManager brokertags.TagManager
-}
-
-type mockTagGenerator struct {
-	tags map[string]string
-}
-
-func (mt *mockTagGenerator) GenerateTags(
-	action brokertags.Action,
-	serviceName string,
-	servicePlanName string,
-	resourceGUIDS brokertags.ResourceGUIDs,
-	getMissingRsources bool,
-) (map[string]string, error) {
-	return mt.tags, nil
+	tagManager brokertags.TagGenerator
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
-func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, error) {
+func InitElasticsearchBroker(
+	brokerDB *gorm.DB,
+	settings *config.Settings,
+	taskqueue *taskqueue.QueueManager,
+	tagManager brokertags.TagGenerator,
+) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	if settings.Environment == "test" {
-		return &elasticsearchBroker{
-			brokerDB:   brokerDB,
-			settings:   settings,
-			taskqueue:  taskqueue,
-			logger:     logger,
-			tagManager: &mockTagGenerator{},
-		}, nil
-	}
-
-	tagManager, err := brokertags.NewCFTagManager(
-		"AWS broker",
-		settings.Environment,
-		settings.CfApiUrl,
-		settings.CfApiClientId,
-		settings.CfApiClientSecret,
-	)
-	if err != nil {
-		return nil, err
-	}
 
 	return &elasticsearchBroker{
 		brokerDB,

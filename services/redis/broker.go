@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -24,16 +25,21 @@ func (r RedisOptions) Validate(settings *config.Settings) error {
 }
 
 type redisBroker struct {
-	brokerDB *gorm.DB
-	settings *config.Settings
-	logger   lager.Logger
+	brokerDB   *gorm.DB
+	settings   *config.Settings
+	logger     lager.Logger
+	tagManager brokertags.TagGenerator
 }
 
 // InitRedisBroker is the constructor for the redisBroker.
-func InitRedisBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
+func InitRedisBroker(
+	brokerDB *gorm.DB,
+	settings *config.Settings,
+	tagManager brokertags.TagGenerator,
+) base.Broker {
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return &redisBroker{brokerDB, settings, logger}
+	return &redisBroker{brokerDB, settings, logger, tagManager}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async

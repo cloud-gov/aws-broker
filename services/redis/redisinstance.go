@@ -120,14 +120,15 @@ func (i *RedisInstance) init(uuid string,
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err
 	}
-        // Set the DB Version
+	// Set the DB Version
 	if options.EngineVersion != "" {
 		i.EngineVersion = options.EngineVersion
 	} else {
 		// Default to the version provided by the plan chosen in catalog.
 		i.EngineVersion = plan.EngineVersion
 	}
-        i.NumCacheClusters = plan.NumCacheClusters
+
+	i.NumCacheClusters = plan.NumCacheClusters
 	i.CacheNodeType = plan.CacheNodeType
 	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
 	i.SnapshotWindow = plan.SnapshotWindow
