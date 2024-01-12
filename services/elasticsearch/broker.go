@@ -48,7 +48,7 @@ type elasticsearchBroker struct {
 	settings   *config.Settings
 	taskqueue  *taskqueue.QueueManager
 	logger     lager.Logger
-	tagManager brokertags.TagGenerator
+	tagManager brokertags.TagManager
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
@@ -56,7 +56,7 @@ func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
 	taskqueue *taskqueue.QueueManager,
-	tagManager brokertags.TagGenerator,
+	tagManager brokertags.TagManager,
 ) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))

@@ -28,14 +28,14 @@ type redisBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
 	logger     lager.Logger
-	tagManager brokertags.TagGenerator
+	tagManager brokertags.TagManager
 }
 
 // InitRedisBroker is the constructor for the redisBroker.
 func InitRedisBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
-	tagManager brokertags.TagGenerator,
+	tagManager brokertags.TagManager,
 ) base.Broker {
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))

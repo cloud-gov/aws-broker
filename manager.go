@@ -22,22 +22,23 @@ type mockTagGenerator struct {
 
 func (mt *mockTagGenerator) GenerateTags(
 	action brokertags.Action,
-	serviceGUID string,
-	servicePlanGUID string,
-	organizationGUID string,
-	spaceGUID string,
-	instanceGUID string,
+	serviceName string,
+	servicePlanName string,
+	resourceGUIDs brokertags.ResourceGUIDs,
+	getMissingResources bool,
 ) (map[string]string, error) {
 	return mt.tags, nil
 }
 
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, response.Response) {
-	var tagManager brokertags.TagGenerator
+	var tagManager brokertags.TagManager
 	if settings.Environment == "test" {
 		tagManager = &mockTagGenerator{}
 	} else {
 		var err error
-		tagManager, err = brokertags.NewManager(
+		tagManager, err = brokertags.NewCFTagManager(
+			"AWS broker",
+			settings.Environment,
 			settings.CfApiUrl,
 			settings.CfApiClientId,
 			settings.CfApiClientSecret,
