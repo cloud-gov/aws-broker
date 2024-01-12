@@ -110,14 +110,32 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 			)
 		}
 	}
-	err := newInstance.init(
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Create,
+		c.ElasticsearchService.Name,
+		plan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        createRequest.SpaceGUID,
+			OrganizationGUID: createRequest.OrganizationGUID,
+		},
+		false,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	err = newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
 		createRequest.SpaceGUID,
 		createRequest.ServiceID,
 		plan,
 		options,
-		broker.settings)
+		broker.settings,
+		tags,
+	)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
