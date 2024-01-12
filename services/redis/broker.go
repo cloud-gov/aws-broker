@@ -71,12 +71,12 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 		return redisAdapter, nil
 	}
 
-	elasticache := elasticache.New(session.New(), aws.NewConfig().WithRegion(s.Region))
+	elasticacheClient := elasticache.New(session.New(), aws.NewConfig().WithRegion(s.Region))
 	redisAdapter = &dedicatedRedisAdapter{
 		Plan:        plan,
 		settings:    *s,
 		logger:      logger,
-		elasticache: elasticache,
+		elasticache: elasticacheClient,
 	}
 	return redisAdapter, nil
 }

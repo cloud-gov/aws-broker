@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -62,8 +63,9 @@ func (o Options) Validate(settings *config.Settings) error {
 }
 
 type rdsBroker struct {
-	brokerDB *gorm.DB
-	settings *config.Settings
+	brokerDB   *gorm.DB
+	settings   *config.Settings
+	tagManager brokertags.TagManager
 }
 
 // initializeAdapter is the main function to create database instances
@@ -94,8 +96,8 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
-	return &rdsBroker{brokerDB, settings}
+func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) base.Broker {
+	return &rdsBroker{brokerDB, settings, tagManager}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -149,14 +151,32 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 			)
 		}
 	}
-	err := newInstance.init(
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Create,
+		c.RdsService.Name,
+		plan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        createRequest.SpaceGUID,
+			OrganizationGUID: createRequest.OrganizationGUID,
+		},
+		false,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	err = newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
 		createRequest.SpaceGUID,
 		createRequest.ServiceID,
 		plan,
 		options,
-		broker.settings)
+		broker.settings,
+		tags,
+	)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())

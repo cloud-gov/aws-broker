@@ -242,6 +242,7 @@ func (i *RDSInstance) init(
 	plan catalog.RDSPlan,
 	options Options,
 	settings *config.Settings,
+	tags map[string]string,
 ) error {
 	i.Uuid = uuid
 	i.ServiceID = serviceID
@@ -281,18 +282,7 @@ func (i *RDSInstance) init(
 		return err
 	}
 
-	// Load tags
-	i.Tags = plan.Tags
-	if i.Tags == nil {
-		i.Tags = make(map[string]string)
-	}
-
-	// Tag instance with broker details
-	i.Tags["Instance GUID"] = uuid
-	i.Tags["Space GUID"] = spaceGUID
-	i.Tags["Organization GUID"] = orgGUID
-	i.Tags["Plan GUID"] = plan.ID
-	i.Tags["Service GUID"] = serviceID
+	i.setTags(plan, tags)
 
 	i.StorageType = plan.StorageType
 
@@ -305,5 +295,20 @@ func (i *RDSInstance) init(
 	i.BinaryLogFormat = options.BinaryLogFormat
 	i.EnablePgCron = options.EnablePgCron
 
+	return nil
+}
+
+func (i *RDSInstance) setTags(
+	plan catalog.RDSPlan,
+	tags map[string]string,
+) error {
+	// Load tags
+	i.Tags = plan.Tags
+	if i.Tags == nil {
+		i.Tags = make(map[string]string)
+	}
+	for k, v := range tags {
+		i.Tags[k] = v
+	}
 	return nil
 }
