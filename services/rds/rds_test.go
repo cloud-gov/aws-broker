@@ -6,6 +6,7 @@ import (
 
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
+	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -57,21 +58,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 		expectedGroupName string
 		expectedErr       error
 		password          string
+		expectedParams    *rds.CreateDBInstanceInput
 	}{
-		"expect returned group name": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat: "ROW",
-				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
-			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
-					customPgroupName: "foobar",
-					rds:              &mockRDSClient{},
-				},
-			},
-			expectedGroupName: "foobar",
-		},
 		"expect error": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
@@ -86,16 +74,80 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			},
 			expectedErr: testErr,
 		},
+		"creates correct params": {
+			dbInstance: &RDSInstance{
+				AllocatedStorage: 10,
+				Database:         "db-1",
+				BinaryLogFormat:  "ROW",
+				DbType:           "mysql",
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName: "formatted-name",
+				},
+				Username:    "fake-user",
+				StorageType: "storage-1",
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+				PubliclyAccessible:    true,
+				BackupRetentionPeriod: 14,
+				DbSubnetGroup:         "subnet-group-1",
+				SecGroup:              "sec-group-1",
+			},
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					rds:              &mockRDSClient{},
+					customPgroupName: "parameter-group-1",
+				},
+				Plan: catalog.RDSPlan{
+					InstanceClass: "class-1",
+					Redundant:     true,
+					Encrypted:     true,
+				},
+				settings: config.Settings{
+					PubliclyAccessibleFeature: true,
+				},
+			},
+			password: "fake-password",
+			expectedParams: &rds.CreateDBInstanceInput{
+				AllocatedStorage:        aws.Int64(10),
+				DBInstanceClass:         aws.String("class-1"),
+				DBInstanceIdentifier:    aws.String("db-1"),
+				DBName:                  aws.String("formatted-name"),
+				Engine:                  aws.String("mysql"),
+				MasterUserPassword:      aws.String("fake-password"),
+				MasterUsername:          aws.String("fake-user"),
+				AutoMinorVersionUpgrade: aws.Bool(true),
+				MultiAZ:                 aws.Bool(true),
+				StorageEncrypted:        aws.Bool(true),
+				StorageType:             aws.String("storage-1"),
+				Tags: []*rds.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
+				},
+				PubliclyAccessible:    aws.Bool(true),
+				BackupRetentionPeriod: aws.Int64(14),
+				DBSubnetGroupName:     aws.String("subnet-group-1"),
+				VpcSecurityGroupIds: []*string{
+					aws.String("sec-group-1"),
+				},
+				DBParameterGroupName: aws.String("parameter-group-1"),
+			},
+		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.password)
 			if err != nil && test.expectedErr == nil {
-				t.Errorf("unexpected error: %s", err)
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if test.expectedErr == nil && *params.DBParameterGroupName != test.expectedGroupName {
-				t.Fatalf("expected group name: %s, got: %s", test.expectedGroupName, *params.DBParameterGroupName)
+			if test.expectedErr != nil && (err == nil || err.Error() != test.expectedErr.Error()) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if diff := deep.Equal(params, test.expectedParams); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
