@@ -57,12 +57,10 @@ type mockTagGenerator struct {
 
 func (mt *mockTagGenerator) GenerateTags(
 	action brokertags.Action,
-	environment string,
-	serviceGUID string,
-	servicePlanGUID string,
-	organizationGUID string,
-	spaceGUID string,
-	instanceGUID string,
+	serviceName string,
+	servicePlanName string,
+	resourceGUIDS brokertags.ResourceGUIDs,
+	getMissingRsources bool,
 ) (map[string]string, error) {
 	return mt.tags, nil
 }
@@ -84,6 +82,7 @@ func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskq
 
 	tagManager, err := brokertags.NewCFTagManager(
 		"AWS broker",
+		settings.Environment,
 		settings.CfApiUrl,
 		settings.CfApiClientId,
 		settings.CfApiClientSecret,
@@ -176,12 +175,14 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
-		broker.settings.Environment,
 		c.ElasticsearchService.Name,
 		plan.Name,
-		createRequest.OrganizationGUID,
-		createRequest.SpaceGUID,
-		id,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        createRequest.SpaceGUID,
+			OrganizationGUID: createRequest.OrganizationGUID,
+		},
+		false,
 	)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
