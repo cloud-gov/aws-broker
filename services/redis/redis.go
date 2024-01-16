@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticache"
+	"github.com/aws/aws-sdk-go/service/elasticache/elasticacheiface"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jinzhu/gorm"
 
@@ -83,57 +84,21 @@ func (d *sharedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, 
 }
 
 type dedicatedRedisAdapter struct {
-	Plan     catalog.RedisPlan
-	settings config.Settings
-	logger   lager.Logger
+	Plan        catalog.RedisPlan
+	settings    config.Settings
+	logger      lager.Logger
+	elasticache elasticacheiface.ElastiCacheAPI
 }
 
 // This is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-redis-broker-"
 
 func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	svc := elasticache.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
-
-	// Elasticache Redis does not currently support custom tags (possibly in the future)
-	var redisTags []*elasticache.Tag
-
-	for k, v := range i.Tags {
-		tag := elasticache.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		redisTags = append(redisTags, &tag)
-	}
-
-	var securityGroups []*string
-
-	securityGroups = append(securityGroups, &i.SecGroup)
-
 	// Standard parameters
-	params := &elasticache.CreateReplicationGroupInput{
-		AtRestEncryptionEnabled:     aws.Bool(true),
-		TransitEncryptionEnabled:    aws.Bool(true),
-		AutoMinorVersionUpgrade:     aws.Bool(true),
-		ReplicationGroupDescription: aws.String(i.Description),
-		AuthToken:                   &password,
-		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
-		ReplicationGroupId:          aws.String(i.ClusterID),
-		CacheNodeType:               aws.String(i.CacheNodeType),
-		CacheSubnetGroupName:        aws.String(i.DbSubnetGroup),
-		SecurityGroupIds:            securityGroups,
-		Engine:                      aws.String("redis"),
-		NumCacheClusters:            aws.Int64(int64(i.NumCacheClusters)),
-		Port:                        aws.Int64(6379),
-		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
-		SnapshotWindow:              aws.String(i.SnapshotWindow),
-		SnapshotRetentionLimit:      aws.Int64(int64(i.SnapshotRetentionLimit)),
-	}
-	if i.EngineVersion != "" {
-		params.EngineVersion = aws.String(i.EngineVersion)
-	}
+	params := prepareCreateReplicationGroupInput(i, password)
 
-	resp, err := svc.CreateReplicationGroup(params)
+	resp, err := d.elasticache.CreateReplicationGroup(params)
+
 	// Pretty-print the response data.
 	log.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
@@ -151,12 +116,11 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 	// First, we need to check if the instance state
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		svc := elasticache.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 		params := &elasticache.DescribeReplicationGroupsInput{
 			ReplicationGroupId: aws.String(i.ClusterID), // Required
 		}
 
-		resp, err := svc.DescribeReplicationGroups(params)
+		resp, err := d.elasticache.DescribeReplicationGroups(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -203,12 +167,11 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		svc := elasticache.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 		params := &elasticache.DescribeReplicationGroupsInput{
 			ReplicationGroupId: aws.String(i.ClusterID), // Required
 		}
 
-		resp, err := svc.DescribeReplicationGroups(params)
+		resp, err := d.elasticache.DescribeReplicationGroups(params)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Generic AWS error with Code, Message, and original error (if any)
@@ -253,12 +216,11 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 }
 
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
-	svc := elasticache.New(session.New(), aws.NewConfig().WithRegion(d.settings.Region))
 	params := &elasticache.DeleteReplicationGroupInput{
 		ReplicationGroupId:      aws.String(i.ClusterID), // Required
 		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
 	}
-	_, err := svc.DeleteReplicationGroup(params)
+	_, err := d.elasticache.DeleteReplicationGroup(params)
 
 	// Decide if AWS service call was successful
 	if yes := d.didAwsCallSucceed(err); yes {
@@ -296,7 +258,6 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	}
 	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	bucket := d.settings.SnapshotsBucketName
-	ec_svc := elasticache.New(aws_session)
 	s3_svc := s3.New(aws_session)
 	snapshot_name := i.ClusterID + "-final"
 	sleep := 30 * time.Second
@@ -306,7 +267,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		SnapshotName: &snapshot_name,
 	}
 	for {
-		resp, err := ec_svc.DescribeSnapshots(check_input)
+		resp, err := d.elasticache.DescribeSnapshots(check_input)
 		if success := d.didAwsCallSucceed(err); !success {
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
@@ -323,7 +284,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		TargetSnapshotName: aws.String(path + "/" + snapshot_name),
 		SourceSnapshotName: aws.String(snapshot_name),
 	}
-	_, err = ec_svc.CopySnapshot(copy_input)
+	_, err = d.elasticache.CopySnapshot(copy_input)
 	if success := d.didAwsCallSucceed(err); !success {
 		d.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", err, lager.Data{"uuid": i.Uuid})
 		return
@@ -356,7 +317,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		SnapshotName: &snapshot_name,
 	}
 	for {
-		resp, err := ec_svc.DescribeSnapshots(check_input)
+		resp, err := d.elasticache.DescribeSnapshots(check_input)
 		if success := d.didAwsCallSucceed(err); !success {
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
@@ -372,10 +333,54 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	delete_input := &elasticache.DeleteSnapshotInput{
 		SnapshotName: aws.String(snapshot_name),
 	}
-	_, err = ec_svc.DeleteSnapshot(delete_input)
+	_, err = d.elasticache.DeleteSnapshot(delete_input)
 	if success := d.didAwsCallSucceed(err); !success {
 		d.logger.Error("Redis.DeleteSnapshot: Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
 	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
+}
+
+func prepareCreateReplicationGroupInput(
+	i *RedisInstance,
+	password string,
+) *elasticache.CreateReplicationGroupInput {
+	var redisTags []*elasticache.Tag
+	for k, v := range i.Tags {
+		tag := elasticache.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		}
+
+		redisTags = append(redisTags, &tag)
+	}
+
+	var securityGroups []*string
+
+	securityGroups = append(securityGroups, &i.SecGroup)
+
+	// Standard parameters
+	params := &elasticache.CreateReplicationGroupInput{
+		AtRestEncryptionEnabled:     aws.Bool(true),
+		TransitEncryptionEnabled:    aws.Bool(true),
+		AutoMinorVersionUpgrade:     aws.Bool(true),
+		ReplicationGroupDescription: aws.String(i.Description),
+		AuthToken:                   &password,
+		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
+		ReplicationGroupId:          aws.String(i.ClusterID),
+		CacheNodeType:               aws.String(i.CacheNodeType),
+		CacheSubnetGroupName:        aws.String(i.DbSubnetGroup),
+		SecurityGroupIds:            securityGroups,
+		Engine:                      aws.String("redis"),
+		NumCacheClusters:            aws.Int64(int64(i.NumCacheClusters)),
+		Port:                        aws.Int64(6379),
+		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
+		SnapshotWindow:              aws.String(i.SnapshotWindow),
+		SnapshotRetentionLimit:      aws.Int64(int64(i.SnapshotRetentionLimit)),
+		Tags:                        redisTags,
+	}
+	if i.EngineVersion != "" {
+		params.EngineVersion = aws.String(i.EngineVersion)
+	}
+	return params
 }

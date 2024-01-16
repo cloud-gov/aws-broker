@@ -81,6 +81,7 @@ func TestInit(t *testing.T) {
 		serviceID        string
 		expectedErr      error
 		testDbName       string
+		tags             map[string]string
 	}{
 		"sets expected properties": {
 			options: Options{
@@ -133,23 +134,17 @@ func TestInit(t *testing.T) {
 				DbType:                "postgres",
 				DbVersion:             "15",
 				BackupRetentionPeriod: 14,
-				Tags: map[string]string{
-					"Instance GUID":     "uuid-1",
-					"Organization GUID": "org-1",
-					"Space GUID":        "space-1",
-					"Plan GUID":         "plan-1",
-					"Service GUID":      "service-1",
-				},
-				StorageType:        "gp3",
-				AllocatedStorage:   20,
-				EnableFunctions:    false,
-				PubliclyAccessible: false,
-				LicenseModel:       "license-model",
-				DbSubnetGroup:      "subnet-1",
-				SecGroup:           "security-group-1",
-				Salt:               "salt",
-				Password:           "encrypted-pw",
-				ClearPassword:      "clear-pw",
+				Tags:                  map[string]string{},
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				LicenseModel:          "license-model",
+				DbSubnetGroup:         "subnet-1",
+				SecGroup:              "security-group-1",
+				Salt:                  "salt",
+				Password:              "encrypted-pw",
+				ClearPassword:         "clear-pw",
 			},
 		},
 		"MySQL sets db version from plan": {
@@ -185,13 +180,7 @@ func TestInit(t *testing.T) {
 				DbVersion:             "8.0",
 				BackupRetentionPeriod: 14,
 				AllocatedStorage:      20,
-				Tags: map[string]string{
-					"Instance GUID":     "uuid-1",
-					"Organization GUID": "org-1",
-					"Space GUID":        "space-1",
-					"Plan GUID":         "plan-1",
-					"Service GUID":      "service-1",
-				},
+				Tags:                  map[string]string{},
 			},
 		},
 		"MySQL sets db version from options": {
@@ -229,13 +218,7 @@ func TestInit(t *testing.T) {
 				DbVersion:             "9.0",
 				BackupRetentionPeriod: 14,
 				AllocatedStorage:      20,
-				Tags: map[string]string{
-					"Instance GUID":     "uuid-1",
-					"Organization GUID": "org-1",
-					"Space GUID":        "space-1",
-					"Plan GUID":         "plan-1",
-					"Service GUID":      "service-1",
-				},
+				Tags:                  map[string]string{},
 			},
 		},
 		"PostgreSQL sets db version from options": {
@@ -273,13 +256,7 @@ func TestInit(t *testing.T) {
 				DbVersion:             "15",
 				BackupRetentionPeriod: 14,
 				AllocatedStorage:      20,
-				Tags: map[string]string{
-					"Instance GUID":     "uuid-1",
-					"Organization GUID": "org-1",
-					"Space GUID":        "space-1",
-					"Plan GUID":         "plan-1",
-					"Service GUID":      "service-1",
-				},
+				Tags:                  map[string]string{},
 			},
 		},
 		"sets backup retention period from plan": {
@@ -315,13 +292,82 @@ func TestInit(t *testing.T) {
 				DbVersion:             "15",
 				BackupRetentionPeriod: 23,
 				AllocatedStorage:      20,
-				Tags: map[string]string{
-					"Instance GUID":     "uuid-1",
-					"Organization GUID": "org-1",
-					"Space GUID":        "space-1",
-					"Plan GUID":         "plan-1",
-					"Service GUID":      "service-1",
+				Tags:                  map[string]string{},
+			},
+		},
+		"merges plan and instance tags": {
+			options: Options{
+				BackupRetentionPeriod: 14,
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
 				},
+				Adapter:          "adapter-1",
+				DbType:           "postgres",
+				DbVersion:        "15",
+				SubnetGroup:      "subnet-1",
+				SecurityGroup:    "security-group-1",
+				LicenseModel:     "license-model",
+				StorageType:      "gp3",
+				AllocatedStorage: 20,
+				Tags: map[string]string{
+					"plan-tag": "random-value",
+				},
+			},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			tags: map[string]string{
+				"foo": "bar",
+			},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName:   "test-db",
+					mockDbName:            "db",
+					mockUsername:          "fake-user",
+					mockSalt:              "salt",
+					mockEncryptedPassword: "encrypted-pw",
+					mockClearPassword:     "clear-pw",
+				},
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Database: "db",
+				Username: "fake-user",
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				Adapter:               "adapter-1",
+				DbType:                "postgres",
+				DbVersion:             "15",
+				BackupRetentionPeriod: 14,
+				Tags: map[string]string{
+					"plan-tag": "random-value",
+					"foo":      "bar",
+				},
+				StorageType:        "gp3",
+				AllocatedStorage:   20,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				LicenseModel:       "license-model",
+				DbSubnetGroup:      "subnet-1",
+				SecGroup:           "security-group-1",
+				Salt:               "salt",
+				Password:           "encrypted-pw",
+				ClearPassword:      "clear-pw",
 			},
 		},
 	}
@@ -336,6 +382,7 @@ func TestInit(t *testing.T) {
 				test.plan,
 				test.options,
 				test.settings,
+				test.tags,
 			)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)

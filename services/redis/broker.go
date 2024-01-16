@@ -6,6 +6,10 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/elasticache"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 
 	"github.com/18F/aws-broker/base"
@@ -24,16 +28,21 @@ func (r RedisOptions) Validate(settings *config.Settings) error {
 }
 
 type redisBroker struct {
-	brokerDB *gorm.DB
-	settings *config.Settings
-	logger   lager.Logger
+	brokerDB   *gorm.DB
+	settings   *config.Settings
+	logger     lager.Logger
+	tagManager brokertags.TagManager
 }
 
 // InitRedisBroker is the constructor for the redisBroker.
-func InitRedisBroker(brokerDB *gorm.DB, settings *config.Settings) base.Broker {
+func InitRedisBroker(
+	brokerDB *gorm.DB,
+	settings *config.Settings,
+	tagManager brokertags.TagManager,
+) base.Broker {
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return &redisBroker{brokerDB, settings, logger}
+	return &redisBroker{brokerDB, settings, logger, tagManager}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -62,10 +71,12 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 		return redisAdapter, nil
 	}
 
+	elasticacheClient := elasticache.New(session.New(), aws.NewConfig().WithRegion(s.Region))
 	redisAdapter = &dedicatedRedisAdapter{
-		Plan:     plan,
-		settings: *s,
-		logger:   logger,
+		Plan:        plan,
+		settings:    *s,
+		logger:      logger,
+		elasticache: elasticacheClient,
 	}
 	return redisAdapter, nil
 }
@@ -104,14 +115,32 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 			)
 		}
 	}
-	err := newInstance.init(
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Create,
+		c.ElasticsearchService.Name,
+		plan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        createRequest.SpaceGUID,
+			OrganizationGUID: createRequest.OrganizationGUID,
+		},
+		false,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	err = newInstance.init(
 		id,
 		createRequest.OrganizationGUID,
 		createRequest.SpaceGUID,
 		createRequest.ServiceID,
 		plan,
 		options,
-		broker.settings)
+		broker.settings,
+		tags,
+	)
 
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())

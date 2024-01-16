@@ -92,13 +92,16 @@ func (i *RedisInstance) getCredentials(password string) (map[string]string, erro
 	return credentials, nil
 }
 
-func (i *RedisInstance) init(uuid string,
+func (i *RedisInstance) init(
+	uuid string,
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
 	plan catalog.RedisPlan,
 	options RedisOptions,
-	s *config.Settings) error {
+	s *config.Settings,
+	tags map[string]string,
+) error {
 
 	i.Uuid = uuid
 	i.ServiceID = serviceID
@@ -110,8 +113,6 @@ func (i *RedisInstance) init(uuid string,
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
 
-	// Load tags
-	i.Tags = plan.Tags
 	i.Description = plan.Description
 
 	i.ClusterID = s.DbShorthandPrefix + "-" + uuid
@@ -120,26 +121,35 @@ func (i *RedisInstance) init(uuid string,
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err
 	}
-        // Set the DB Version
+	// Set the DB Version
 	if options.EngineVersion != "" {
 		i.EngineVersion = options.EngineVersion
 	} else {
 		// Default to the version provided by the plan chosen in catalog.
 		i.EngineVersion = plan.EngineVersion
 	}
-        i.NumCacheClusters = plan.NumCacheClusters
+
+	i.NumCacheClusters = plan.NumCacheClusters
 	i.CacheNodeType = plan.CacheNodeType
 	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
 	i.SnapshotWindow = plan.SnapshotWindow
 	i.SnapshotRetentionLimit = plan.SnapshotRetentionLimit
 	i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
 
-	// Tag instance with broker details
-	i.Tags["Instance GUID"] = uuid
-	i.Tags["Space GUID"] = spaceGUID
-	i.Tags["Organization GUID"] = orgGUID
-	i.Tags["Plan GUID"] = plan.ID
-	i.Tags["Service GUID"] = serviceID
+	i.setTags(plan, tags)
+
+	return nil
+}
+
+func (i *RedisInstance) setTags(
+	plan catalog.RedisPlan,
+	tags map[string]string,
+) error {
+	i.Tags = plan.Tags
+
+	for k, v := range tags {
+		i.Tags[k] = v
+	}
 
 	return nil
 }

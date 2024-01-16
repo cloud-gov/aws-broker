@@ -12,18 +12,50 @@ import (
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/18F/aws-broker/services/redis"
 	"github.com/18F/aws-broker/taskqueue"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 )
 
+type mockTagGenerator struct {
+	tags map[string]string
+}
+
+func (mt *mockTagGenerator) GenerateTags(
+	action brokertags.Action,
+	serviceName string,
+	servicePlanName string,
+	resourceGUIDs brokertags.ResourceGUIDs,
+	getMissingResources bool,
+) (map[string]string, error) {
+	return mt.tags, nil
+}
+
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, response.Response) {
+	var tagManager brokertags.TagManager
+	if settings.Environment == "test" {
+		tagManager = &mockTagGenerator{}
+	} else {
+		var err error
+		tagManager, err = brokertags.NewCFTagManager(
+			"AWS broker",
+			settings.Environment,
+			settings.CfApiUrl,
+			settings.CfApiClientId,
+			settings.CfApiClientSecret,
+		)
+		if err != nil {
+			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+	}
+
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
-		return rds.InitRDSBroker(brokerDb, settings), nil
+		return rds.InitRDSBroker(brokerDb, settings, tagManager), nil
 	case c.RedisService.ID:
-		return redis.InitRedisBroker(brokerDb, settings), nil
+		return redis.InitRedisBroker(brokerDb, settings, tagManager), nil
 	case c.ElasticsearchService.ID:
-		broker, err := elasticsearch.InitElasticsearchBroker(brokerDb, settings, taskqueue)
+		broker, err := elasticsearch.InitElasticsearchBroker(brokerDb, settings, taskqueue, tagManager)
 		if err != nil {
 			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}

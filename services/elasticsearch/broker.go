@@ -51,46 +51,15 @@ type elasticsearchBroker struct {
 	tagManager brokertags.TagManager
 }
 
-type mockTagGenerator struct {
-	tags map[string]string
-}
-
-func (mt *mockTagGenerator) GenerateTags(
-	action brokertags.Action,
-	environment string,
-	serviceGUID string,
-	servicePlanGUID string,
-	organizationGUID string,
-	spaceGUID string,
-	instanceGUID string,
-) (map[string]string, error) {
-	return mt.tags, nil
-}
-
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
-func InitElasticsearchBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, error) {
+func InitElasticsearchBroker(
+	brokerDB *gorm.DB,
+	settings *config.Settings,
+	taskqueue *taskqueue.QueueManager,
+	tagManager brokertags.TagManager,
+) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	if settings.Environment == "test" {
-		return &elasticsearchBroker{
-			brokerDB:   brokerDB,
-			settings:   settings,
-			taskqueue:  taskqueue,
-			logger:     logger,
-			tagManager: &mockTagGenerator{},
-		}, nil
-	}
-
-	tagManager, err := brokertags.NewCFTagManager(
-		"AWS broker",
-		settings.CfApiUrl,
-		settings.CfApiClientId,
-		settings.CfApiClientSecret,
-	)
-	if err != nil {
-		return nil, err
-	}
 
 	return &elasticsearchBroker{
 		brokerDB,
@@ -176,12 +145,14 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
-		broker.settings.Environment,
 		c.ElasticsearchService.Name,
 		plan.Name,
-		createRequest.OrganizationGUID,
-		createRequest.SpaceGUID,
-		id,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        createRequest.SpaceGUID,
+			OrganizationGUID: createRequest.OrganizationGUID,
+		},
+		false,
 	)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
