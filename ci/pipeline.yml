@@ -1361,7 +1361,7 @@ resources:
   type: git
   source:
     commit_verification_keys: ((cloud-gov-pgp-keys))
-    uri: https://github.com/18F/cg-pipeline-tasks
+    uri: https://github.com/cloud-gov/cg-pipeline-tasks
     branch: main
 
 - name: aws-broker-app
@@ -1384,7 +1384,7 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     paths:
     - services/rds/*
-    uri: https://github.com/18F/aws-broker
+    uri: https://github.com/cloud-gov/aws-broker
   type: git
 
 - name: db-app-staging
@@ -1393,7 +1393,7 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     paths:
     - services/rds/*
-    uri: https://github.com/18F/aws-broker
+    uri: https://github.com/cloud-gov/aws-broker
   type: git
 
 - name: redis-app-development
@@ -1429,13 +1429,13 @@ resources:
     commit_verification_keys: ((cloud-gov-pgp-keys))
     paths:
     - services/elasticsearch/*
-    uri: https://github.com/18F/aws-broker
+    uri: https://github.com/cloud-gov/aws-broker
   type: git
 
 - name: aws-db-test
   type: git
   source:
-    uri: https://github.com/18F/cg-labratory
+    uri: https://github.com/cloud-gov/laboratory
     branch: main
     commit_verification_keys: ((cloud-gov-pgp-keys))
 
