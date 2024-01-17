@@ -19,8 +19,8 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-// Options is a struct containing all of the custom parameters supported by
-// the broker for the "cf create-service" and "cf update-service" commands -
+// Options is a struct containing all of the custom parameters supported by 
+// the broker for the "cf create-service" and "cf update-service" commands - 
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
 	AllocatedStorage      int64  `json:"storage"`

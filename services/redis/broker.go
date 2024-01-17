@@ -34,7 +34,7 @@ type redisBroker struct {
 	tagManager brokertags.TagManager
 }
 
-// InitRedisBroker is the constructor for the redisBroker.
+// InitRedisBroker is the constructor for the redisBroker.  
 func InitRedisBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
