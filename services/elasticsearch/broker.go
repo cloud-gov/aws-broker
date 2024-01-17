@@ -51,7 +51,7 @@ type elasticsearchBroker struct {
 	tagManager brokertags.TagManager
 }
 
-// InitelasticsearchBroker is the constructor for the elasticsearchBroker. 
+// InitelasticsearchBroker is the constructor for the elasticsearchBroker.  
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
