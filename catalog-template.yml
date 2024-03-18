@@ -766,7 +766,7 @@ rds:
         displayName: *medium-mysql-name
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.t2.medium
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.0"
@@ -800,7 +800,7 @@ rds:
         displayName: *medium-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.t2.medium
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.0"
