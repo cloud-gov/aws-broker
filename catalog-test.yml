@@ -308,7 +308,7 @@ rds:
         displayName: "Dedicated Medium MySQL"
       free: false
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.t2.medium
       dbType: mysql
       allocatedStorage: 20
       approvedMajorVersions:
@@ -338,7 +338,7 @@ rds:
       free: false
       backup_retention_period: 14
       adapter: dedicated
-      instanceClass: db.t3.medium
+      instanceClass: db.t2.medium
       dbType: oracle-se2
       licenseModel: license-included
       securityGroup: sg-123456
