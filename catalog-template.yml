@@ -27,8 +27,8 @@ rds:
           - &default-10-gb-storage "Default 10 GB storage"
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 16
+            unit: "MONTHLY"
         displayName: *micro-psql-name
       free: true
       adapter: dedicated
@@ -64,8 +64,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 31
+            unit: "MONTHLY"
         displayName: *micro-psql-redundant-name
       free: false
       adapter: dedicated
@@ -101,8 +101,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 29
+            unit: "MONTHLY"
         displayName: *small-psql-name
       free: false
       adapter: dedicated
@@ -138,8 +138,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 65
+            unit: "MONTHLY"
         displayName: *small-psql-redundant-name
       free: false
       adapter: dedicated
@@ -175,8 +175,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 65
+            unit: "MONTHLY"
         displayName: *medium-psql-name
       free: false
       adapter: dedicated
@@ -212,8 +212,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 123
+            unit: "MONTHLY"
         displayName: *medium-psql-redundant-name
       free: false
       adapter: dedicated
@@ -249,8 +249,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 152
+            unit: "MONTHLY"
         displayName: *medium-gp-psql-name
       free: false
       adapter: dedicated
@@ -286,8 +286,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 310
+            unit: "MONTHLY"
         displayName: *medium-gp-psql-redundant
       free: false
       adapter: dedicated
@@ -323,8 +323,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 152
+            unit: "MONTHLY"
         displayName: *large-gp-psql-name
       free: false
       adapter: dedicated
@@ -360,8 +360,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 310
+            unit: "MONTHLY"
         displayName: *large-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -398,8 +398,8 @@ rds:
         costs:
           -
             amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 310
+            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-name
       free: false
       adapter: dedicated
@@ -435,8 +435,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 612
+            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -474,8 +474,8 @@ rds:
         costs:
           -
             amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 612
+            unit: "MONTHLY"
         displayName: *2xlarge-gp-psql-name
       free: false
       adapter: dedicated
@@ -511,8 +511,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 1224
+            unit: "MONTHLY"
         displayName: *2xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -550,8 +550,8 @@ rds:
         costs:
           -
             amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 268
+            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-m6-name
       free: false
       adapter: dedicated
@@ -587,8 +587,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 535
+            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-m6-redundant-name
       free: false
       adapter: dedicated
@@ -625,8 +625,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 16
+            unit: "MONTHLY"
         displayName: *micro-mysql-name
       free: true
       adapter: dedicated
@@ -659,8 +659,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 30
+            unit: "MONTHLY"
         displayName: *micro-mysql-name
       free: true
       adapter: dedicated
@@ -693,8 +693,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 29
+            unit: "MONTHLY"
         displayName: *small-mysql-name
       free: true
       adapter: dedicated
@@ -727,8 +727,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 58
+            unit: "MONTHLY"
         displayName: *small-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -761,8 +761,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 58
+            unit: "MONTHLY"
         displayName: *medium-mysql-name
       free: false
       adapter: dedicated
@@ -795,8 +795,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 116
+            unit: "MONTHLY"
         displayName: *medium-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -829,8 +829,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 148
+            unit: "MONTHLY"
         displayName: *medium-gp-mysql-name
       free: false
       adapter: dedicated
@@ -863,8 +863,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 296
+            unit: "MONTHLY"
         displayName: *medium-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -897,8 +897,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 148
+            unit: "MONTHLY"
         displayName: *large-gp-mysql-name
       free: false
       adapter: dedicated
@@ -931,8 +931,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 296
+            unit: "MONTHLY"
         displayName: *large-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -965,8 +965,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 296
+            unit: "MONTHLY"
         displayName: *xlarge-gp-mysql-name
       free: false
       adapter: dedicated
@@ -999,8 +999,8 @@ rds:
           - *default-10-gb-storage
         costs:
           - amount:
-              usd: 0
-            unit: "HOURLY"
+              usd: 591
+            unit: "MONTHLY"
         displayName: *xlarge-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1034,8 +1034,8 @@ rds:
           - &license-included "License Included"
         costs:
         - amount:
-            usd: 0
-          unit: "HOURLY"
+            usd: 117
+          unit: "MONTHLY"
         displayName: *medium-oracle-se2-name
       free: false
       adapter: dedicated
@@ -1066,8 +1066,8 @@ rds:
           - *license-included
         costs:
         - amount:
-            usd: 0
-        unit: "HOURLY"
+            usd: 722
+        unit: "MONTHLY"
         displayName: *large-gp-sqlserver-se-name
       free: false
       adapter: dedicated
