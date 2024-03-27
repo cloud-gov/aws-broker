@@ -1362,7 +1362,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
     name: "es-medium"
-    description: "Elasticsearch/OpenSearch medium - 3 master nodes with 2 data nodes"
+    description: "Medium Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1399,7 +1399,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "95b528cf-743e-2996-32yt-mc0a5vnf87cg"
     name: "es-medium-ha"
-    description: "Elasticsearch/OpenSearch medium - 3 master nodes with 4 data nodes"
+    description: "Medium Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1436,7 +1436,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "4c9529cf-93be-4873-94fd-ad0a5daf9ty1"
     name: "es-large"
-    description: "Elasticsearch/OpenSearch large - 3 master nodes with 2 data nodes"
+    description: "Large Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1473,7 +1473,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "2dd3528cf-9gc2-2996-32yt-mc0a5vnfee56"
     name: "es-large-ha"
-    description: "Elasticsearch/OpenSearch large - 3 master nodes with 4 data nodes"
+    description: "Large Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1510,7 +1510,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "31d9abdc-424b-4e75-a43f-a09cd64216e9"
     name: "es-xlarge"
-    description: "Elasticsearch/OpenSearch large - 3 master nodes with 2 data nodes"
+    description: "Large Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1547,7 +1547,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "a40344fc-73ec-461d-952e-5601fec173b1"
     name: "es-xlarge-ha"
-    description: "AWS X-Large OpenSearch 2.11 - 3 master nodes with 4 data nodes"
+    description: "AWS X-Large Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1584,7 +1584,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "4a286fc7-e6f5-4c73-9d4f-65d899354abd"
     name: "es-2xlarge-gp"
-    description: "AWS 2X-Large General-Purpose OpenSearch 2.11 - 3 master nodes with 2 data nodes"
+    description: "2X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1621,7 +1621,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "e7d1f1b3-f539-4573-a4f9-ff3db9de1550"
     name: "es-2xlarge-gp-ha"
-    description: "AWS 2X-Large General-Purpose OpenSearch 2.11 - 3 master nodes with 4 data nodes"
+    description: "2X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1658,7 +1658,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "7e005210-a5f5-41bf-9ada-d0fce8c49f00"
     name: "es-4xlarge-gp"
-    description: "AWS 4X-Large General-Purpose OpenSearch 2.11 - 3 master nodes with 2 data nodes"
+    description: "4X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
@@ -1695,7 +1695,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "20209473-6fab-44ed-93f2-46cc29c1ca00"
     name: "es-4xlarge-gp-ha"
-    description: "AWS 4X-Large General-Purpose OpenSearch 2.11 - 3 master nodes with 4 data nodes"
+    description: "4X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
