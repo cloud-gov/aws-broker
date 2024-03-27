@@ -1547,7 +1547,7 @@ elasticsearch:
       broker: "AWS broker"
   - id: "a40344fc-73ec-461d-952e-5601fec173b1"
     name: "es-xlarge-ha"
-    description: "AWS X-Large Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
+    description: "X-Large Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
     metadata:
       bullets:
       - "OpenSearch"
