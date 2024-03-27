@@ -1332,7 +1332,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "OpenSearch 2.11"
       - "single node"
       - "non-prod"
       costs:
@@ -1367,7 +1366,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "2 data nodes"
       costs:
       - amount:
@@ -1405,7 +1403,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "4 data nodes"
       costs:
       - amount:
@@ -1443,7 +1440,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "2 data nodes"
       costs:
       - amount:
@@ -1481,7 +1477,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "4 data nodes"
       costs:
       - amount:
@@ -1519,7 +1514,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "2 data nodes"
       costs:
       - amount:
@@ -1557,7 +1551,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "4 data nodes"
       costs:
       - amount:
@@ -1595,7 +1588,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "2 data nodes"
       costs:
       - amount:
@@ -1633,7 +1625,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "4 data nodes"
       costs:
       - amount:
@@ -1671,7 +1662,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "2 data nodes"
       costs:
       - amount:
@@ -1709,7 +1699,6 @@ elasticsearch:
     metadata:
       bullets:
       - "OpenSearch"
-      - "es 7.4"
       - "4 data nodes"
       costs:
       - amount:
