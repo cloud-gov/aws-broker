@@ -28,7 +28,7 @@ jobs:
       STACK_NAME: ((development-stack-name))
       S3_TFSTATE_BUCKET: ((development-s3-tfstate-bucket))
       AWS_DEFAULT_REGION: us-gov-west-1
-      
+
       TF_VAR_base_stack: ((development-stack-base))
       TF_VAR_stack_description: ((development-stack-name))
       TF_VAR_remote_state_bucket: ((development-s3-tfstate-bucket))
@@ -104,7 +104,7 @@ jobs:
         icon_url: ((slack-icon-url))
 
   - task: update-broker
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((development-cf-api-url))
       CF_USERNAME: ((development-cf-deploy-username))
@@ -156,7 +156,7 @@ jobs:
         aws-elasticsearch:es-4xlarge-gp-ha
 
   - task: update-broker-enterprise
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((development-cf-api-url))
       CF_USERNAME: ((development-cf-deploy-username))
@@ -503,7 +503,7 @@ jobs:
       STACK_NAME: ((staging-stack-name))
       S3_TFSTATE_BUCKET: ((staging-s3-tfstate-bucket))
       AWS_DEFAULT_REGION: us-gov-west-1
-      
+
       TF_VAR_base_stack: ((staging-stack-base))
       TF_VAR_stack_description: ((staging-stack-name))
       TF_VAR_remote_state_bucket: ((staging-s3-tfstate-bucket))
@@ -522,7 +522,7 @@ jobs:
       TF_VAR_rds_internal_password: ((staging-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
-      
+
       TF_VAR_snapshot_expiration: 7
       TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
 
@@ -575,7 +575,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - task: update-broker
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((staging-cf-api-url))
       CF_USERNAME: ((staging-cf-deploy-username))
@@ -626,7 +626,7 @@ jobs:
         aws-elasticsearch:es-4xlarge-gp-ha
 
   - task: update-broker-enterprise
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((staging-cf-api-url))
       CF_USERNAME: ((staging-cf-deploy-username))
@@ -967,7 +967,7 @@ jobs:
       TF_VAR_rds_internal_password: ((prod-rds-internal-password))
       TF_VAR_rds_internal_apply_immediately: "true"
       TF_VAR_rds_internal_allow_major_version_upgrade: "true"
-      
+
       TF_VAR_snapshot_expiration: 14
       TF_VAR_platform_access_role_arn: ((prod-platform-role-arn))
 
@@ -1050,7 +1050,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - task: update-broker
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((prod-cf-api-url))
       CF_USERNAME: ((prod-cf-deploy-username))
@@ -1101,7 +1101,7 @@ jobs:
         aws-elasticsearch:es-4xlarge-gp-ha
 
   - task: update-broker-enterprise
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((prod-cf-api-url))
       CF_USERNAME: ((prod-cf-deploy-username))
@@ -1115,7 +1115,7 @@ jobs:
       SERVICE_ORGANIZATION: cloud-gov
 
   - task: update-broker-datagov
-    file: pipeline-tasks/register-service-broker.yml
+    file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
     params:
       CF_API_URL: ((prod-cf-api-url))
       CF_USERNAME: ((prod-cf-deploy-username))
@@ -1355,7 +1355,7 @@ jobs:
       text: |
         :x: Acceptance Tests for aws-broker on production FAILED
         <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      
+
 resources:
 - name: pipeline-tasks
   type: git
