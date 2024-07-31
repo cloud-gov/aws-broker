@@ -79,7 +79,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloud-gov/aws-broker
-    branch: audit
+    branch: main
     paths: [ci/audit-pipeline.yml]
     commit_verification_keys: ((cloud-gov-pgp-keys))
 
@@ -87,7 +87,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloud-gov/aws-broker
-    branch: audit
+    branch: main
     commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: cg-scripts
