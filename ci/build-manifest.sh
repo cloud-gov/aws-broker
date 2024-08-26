@@ -12,11 +12,11 @@ TERRAFORM="${TERRAFORM_BIN:-terraform}"
 
 # Append environment variables to manifest
 cat << EOF >> built/manifest.yml
-env:
-  DB_URL: `${TERRAFORM} output -raw -state=$STATE_FILE rds_internal_rds_host`
-  DB_PORT: `${TERRAFORM} output -raw -state=$STATE_FILE rds_internal_rds_port`
-  S3_SNAPSHOT_BUCKET: `${TERRAFORM} output -raw -state=$STATE_FILE s3_snapshots_bucket_id`
-  ENABLE_FUNCTIONS: true
+# from build-manifest.sh
+    DB_URL: `${TERRAFORM} output -raw -state=$STATE_FILE rds_internal_rds_host`
+    DB_PORT: `${TERRAFORM} output -raw -state=$STATE_FILE rds_internal_rds_port`
+    S3_SNAPSHOT_BUCKET: `${TERRAFORM} output -raw -state=$STATE_FILE s3_snapshots_bucket_id`
+    ENABLE_FUNCTIONS: true
 EOF
 
 # Build secrets for merging into templates
