@@ -3,9 +3,9 @@ applications:
 - name: aws-broker
   buildpack: go_buildpack
   # memory: 512M
-  env:
-    GOVERSION: go1.22
   processes:
   - type: web
     instances: 1
     memory: 512M
+  env:
+    GOVERSION: go1.22
