@@ -11,11 +11,12 @@ cf delete-service -f "rds-smoke-tests-$SERVICE_PLAN"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
-cf push "smoke-tests-${SERVICE_PLAN}" -f manifest.yml --var pg-service="${DB_TYPE}" --no-start
+cf push "smoke-tests-${SERVICE_PLAN}" -f manifest.yml --var pg-service="${SERVICE_PLAN}" --no-start
 
 # set some variables that it needs
 cf set-env "smoke-tests-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
 cf set-env "smoke-tests-${SERVICE_PLAN}" SERVICE_NAME "rds-smoke-tests-$SERVICE_PLAN"
+echo "before creation of service"
 
 # Create service
 if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
@@ -24,6 +25,7 @@ if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
 else
   # create a regular instance
   cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-$SERVICE_PLAN" -b "$BROKER_NAME"
+  echo "created"
 fi
 
 while true; do
