@@ -11,7 +11,7 @@ cf delete-service -f "rds-smoke-tests-$SERVICE_PLAN"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
-cf push "smoke-tests-${SERVICE_PLAN}" -f manifest.yml --var pg_service="${SERVICE_PLAN}" --no-start
+cf push "smoke-tests-${SERVICE_PLAN}" -f manifest.yml --var pg-service="${SERVICE_PLAN}" --no-start
 
 # set some variables that it needs
 cf set-env "smoke-tests-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
