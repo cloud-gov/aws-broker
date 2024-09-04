@@ -24,7 +24,6 @@ if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
 else
   # create a regular instance
   cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-$SERVICE_PLAN" -b "$BROKER_NAME"
-  echo "created"
 fi
 
 while true; do
@@ -38,7 +37,7 @@ while true; do
 done
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
-cf push "smoke-tests-${SERVICE_PLAN}"
+cf push "smoke-tests-${SERVICE_PLAN}" --var pg-service="rds-smoke-tests-$SERVICE_PLAN"
 
 # Clean up app and service
 cf delete -f "smoke-tests-$SERVICE_PLAN"
