@@ -189,6 +189,7 @@ rds:
         - "13"
         - "14"
         - "15"
+        - "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -222,6 +223,7 @@ rds:
         - "13"
         - "14"
         - "15"
+        - "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -255,6 +257,7 @@ rds:
         - "13"
         - "14"
         - "15"
+        - "16"
       dbType: postgres
       redundant: true
       encrypted: true
