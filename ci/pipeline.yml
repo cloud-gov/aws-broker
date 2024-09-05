@@ -313,7 +313,7 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
-          DB_TYPE: postgres
+          DB_TYPE: postgresql
 
       - task: smoke-tests-postgres-update-micro-to-small
         file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -327,7 +327,7 @@ jobs:
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
           NEW_SERVICE_PLAN: small-psql
-          DB_TYPE: postgres
+          DB_TYPE: postgresql
 
       - task: smoke-tests-postgres-version
         file: aws-broker-app/ci/run-smoke-tests-db-version.yml
@@ -340,8 +340,8 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
-          DB_TYPE: postgres
-          DB_VERSION: 14
+          DB_TYPE: postgresql
+          DB_VERSION: 16.1
 
       - task: smoke-tests-postgres-update-storage
         file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
@@ -354,7 +354,7 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
-          DB_TYPE: postgres
+          DB_TYPE: postgresql
 
       - task: smoke-tests-mysql
         file: aws-broker-app/ci/run-smoke-tests.yml
@@ -421,7 +421,7 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: medium-oracle-se2
-          DB_TYPE: oracle-se2
+          DB_TYPE: oracle
 
       - task: smoke-tests-postgres-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -434,7 +434,7 @@ jobs:
           CF_ORGANIZATION: ((development-cf-organization))
           CF_SPACE: ((development-cf-space))
           SERVICE_PLAN: micro-psql
-          DB_TYPE: postgres
+          DB_TYPE: postgresql
 
       - task: smoke-tests-mysql-rotate-creds
         file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -1436,7 +1436,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloud-gov/laboratory
-    branch: main
+    branch: fix-aws-broker
     commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: deploy-aws-broker-development
