@@ -23,7 +23,7 @@ cf delete-service -f "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
-cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" -f manifest.yml --no-start
+cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" -f manifest.yml --var pg-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN" --no-start
 
 # set some variables that it needs
 cf set-env "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
@@ -43,7 +43,7 @@ while true; do
 done
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
-cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}"
+cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" --var pg-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
 
 # Rotate creds
 cf update-service "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN" -c '{"rotate_credentials": true}'
