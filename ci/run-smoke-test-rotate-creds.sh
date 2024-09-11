@@ -43,7 +43,7 @@ while true; do
 done
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
-cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}"
+cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
 
 # Rotate creds
 cf update-service "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN" -c '{"rotate_credentials": true}'
