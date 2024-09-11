@@ -23,7 +23,7 @@ cf delete-service -f "rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
-cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" -f manifest.yml --var rds-service="rds-smoke-tests-$SERVICE_PLAN" --no-start
+cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" -f manifest.yml --var rds-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN" --no-start
 
 # set some variables that it needs
 cf set-env "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
@@ -64,7 +64,7 @@ while true; do
 done
 
 # Restage app with new credentials
-cf restage "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-$SERVICE_PLAN"
+cf restage "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
 
 # Restart app - if it succeeds, then smoke tests have passed with new credentials
 cf restart "smoke-tests-db-rotate-creds-${SERVICE_PLAN}"
