@@ -50,7 +50,7 @@ while true; do
 done
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
-cf push "smoke-tests-db-update-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-update-$SERVICE_PLAN"
+cf push "smoke-tests-db-update-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-db-update-$SERVICE_PLAN"
 
 # Update service
 cf update-service "rds-smoke-tests-db-update-$SERVICE_PLAN" -p "$NEW_SERVICE_PLAN"
