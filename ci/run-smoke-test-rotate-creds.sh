@@ -64,10 +64,10 @@ while true; do
 done
 
 # Restage app with new credentials
-cf restage "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
+cf restage "smoke-tests-db-rotate-creds-${SERVICE_PLAN}"
 
 # Restart app - if it succeeds, then smoke tests have passed with new credentials
-cf restart "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-db-rotate-creds-$SERVICE_PLAN"
+cf restart "smoke-tests-db-rotate-creds-${SERVICE_PLAN}"
 
 
 # Clean up app and service
