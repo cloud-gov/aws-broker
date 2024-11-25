@@ -2,6 +2,8 @@ package rds
 
 import (
 	"testing"
+
+	"github.com/18F/aws-broker/config"
 )
 
 func TestBinaryLogFormatValidation(t *testing.T) {
@@ -70,6 +72,35 @@ func TestValidateStorageType(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			err := validateStorageType(test.storageType)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}
+
+func TestValidateRetentionPeriod(t *testing.T) {
+	testCases := map[string]struct {
+		retentionPeriod int
+		expectedErr     bool
+	}{
+		"should not allow retention period of 0": {
+			retentionPeriod: 0,
+			expectedErr:     true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			opts := &Options{
+				BackupRetentionPeriod: int64(test.retentionPeriod),
+			}
+			err := opts.Validate(&config.Settings{
+				MinBackupRetention: 14,
+			})
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}

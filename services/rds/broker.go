@@ -19,8 +19,8 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-// Options is a struct containing all of the custom parameters supported by 
-// the broker for the "cf create-service" and "cf update-service" commands - 
+// Options is a struct containing all of the custom parameters supported by
+// the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
 	AllocatedStorage      int64  `json:"storage"`
@@ -47,7 +47,7 @@ func (o Options) Validate(settings *config.Settings) error {
 		return fmt.Errorf("Invalid Retention Period %d; must be <= %d", o.BackupRetentionPeriod, settings.MaxBackupRetention)
 	}
 
-	if o.BackupRetentionPeriod != 0 && o.BackupRetentionPeriod < settings.MinBackupRetention {
+	if o.BackupRetentionPeriod < settings.MinBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
 	}
 
