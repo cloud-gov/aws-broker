@@ -86,10 +86,24 @@ func TestValidateRetentionPeriod(t *testing.T) {
 	testCases := map[string]struct {
 		retentionPeriod int
 		expectedErr     bool
+		settings        *config.Settings
 	}{
+		// 0 was a special case in the previous buggy code, so should be
+		// left as a standalone test case. A retention period value of 0
+		// will disable backups on a database.
 		"should not allow retention period of 0": {
 			retentionPeriod: 0,
 			expectedErr:     true,
+			settings: &config.Settings{
+				MinBackupRetention: 14,
+			},
+		},
+		"should not allow retention period of less than the minimum": {
+			retentionPeriod: 5,
+			expectedErr:     true,
+			settings: &config.Settings{
+				MinBackupRetention: 14,
+			},
 		},
 	}
 
@@ -98,9 +112,7 @@ func TestValidateRetentionPeriod(t *testing.T) {
 			opts := &Options{
 				BackupRetentionPeriod: int64(test.retentionPeriod),
 			}
-			err := opts.Validate(&config.Settings{
-				MinBackupRetention: 14,
-			})
+			err := opts.Validate(test.settings)
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}
