@@ -540,6 +540,19 @@ func TestModifyInstance(t *testing.T) {
 			plan:     catalog.RDSPlan{},
 			settings: &config.Settings{},
 		},
+		"does not allow backup retention less than minimum backup retention": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				BackupRetentionPeriod: 0,
+			},
+			expectedInstance: &RDSInstance{
+				BackupRetentionPeriod: 14,
+			},
+			plan: catalog.RDSPlan{},
+			settings: &config.Settings{
+				MinBackupRetention: 14,
+			},
+		},
 	}
 
 	for name, test := range testCases {

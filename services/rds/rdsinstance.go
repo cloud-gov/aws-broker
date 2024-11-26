@@ -206,9 +206,17 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 		i.StorageType = options.StorageType
 	}
 
-	// Check if there is a backup retention change:
+	// Check if there is a backup retention change
 	if options.BackupRetentionPeriod > 0 {
 		i.BackupRetentionPeriod = options.BackupRetentionPeriod
+	}
+
+	// There may be some instances which were previously updated to have
+	// i.BackupRetentionPeriod = 0. Make sure those instances get updated
+	// to the minimum backup retention period, since 0 will disable backups
+	// on the database.
+	if i.BackupRetentionPeriod < settings.MinBackupRetention {
+		i.BackupRetentionPeriod = settings.MinBackupRetention
 	}
 
 	// Check if there is a binary log format change and if so, apply it
