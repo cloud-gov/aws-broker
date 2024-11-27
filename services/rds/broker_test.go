@@ -63,6 +63,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 		broker          *rdsBroker
 		modifyRequest   request.Request
 		expectedOptions Options
+		expectErr       bool
 	}{
 		"enable PG cron not specified": {
 			broker: &rdsBroker{
@@ -158,29 +159,34 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				BinaryLogFormat:    "",
 			},
 		},
-		"foo": {
+		"backup retention period less than minimum is rejected": {
 			broker: &rdsBroker{
 				settings: &config.Settings{
 					MinBackupRetention: 14,
 				},
 			},
 			modifyRequest: request.Request{
-				RawParameters: []byte(`{}`),
+				RawParameters: []byte(`{"backup_retention_period": 0}`),
 			},
 			expectedOptions: Options{
-				AllocatedStorage:   0,
-				EnableFunctions:    false,
-				PubliclyAccessible: false,
-				Version:            "",
-				BinaryLogFormat:    "",
+				AllocatedStorage:      0,
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				Version:               "",
+				BinaryLogFormat:       "",
+				BackupRetentionPeriod: aws.Int64(0),
 			},
+			expectErr: true,
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			options, err := test.broker.parseModifyOptionsFromRequest(test.modifyRequest)
-			if err != nil {
+			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.expectErr && err == nil {
+				t.Errorf("expected error, got nil")
 			}
 			if !reflect.DeepEqual(test.expectedOptions, options) {
 				t.Errorf("expected: %+v, got %+v", test.expectedOptions, options)

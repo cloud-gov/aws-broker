@@ -207,7 +207,7 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 	}
 
 	// Check if there is a backup retention change
-	if *options.BackupRetentionPeriod > 0 {
+	if options.BackupRetentionPeriod != nil && *options.BackupRetentionPeriod > 0 {
 		i.BackupRetentionPeriod = *options.BackupRetentionPeriod
 	}
 
