@@ -272,8 +272,11 @@ func (i *RDSInstance) init(
 		i.DbVersion = plan.DbVersion
 	}
 
-	i.BackupRetentionPeriod = *options.BackupRetentionPeriod
-	if *options.BackupRetentionPeriod == 0 {
+	if options.BackupRetentionPeriod != nil {
+		i.BackupRetentionPeriod = *options.BackupRetentionPeriod
+	}
+
+	if i.BackupRetentionPeriod == 0 {
 		i.BackupRetentionPeriod = plan.BackupRetentionPeriod
 	}
 
