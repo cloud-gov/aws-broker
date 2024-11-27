@@ -63,6 +63,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 		broker          *rdsBroker
 		modifyRequest   request.Request
 		expectedOptions Options
+		expectErr       bool
 	}{
 		"enable PG cron not specified": {
 			broker: &rdsBroker{
@@ -72,12 +73,11 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				RawParameters: []byte(``),
 			},
 			expectedOptions: Options{
-				AllocatedStorage:      0,
-				BackupRetentionPeriod: 0,
-				EnableFunctions:       false,
-				PubliclyAccessible:    false,
-				Version:               "",
-				BinaryLogFormat:       "",
+				AllocatedStorage:   0,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
 			},
 		},
 		"enable PG cron true": {
@@ -88,13 +88,12 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				RawParameters: []byte(`{ "enable_pg_cron": true }`),
 			},
 			expectedOptions: Options{
-				AllocatedStorage:      0,
-				BackupRetentionPeriod: 0,
-				EnablePgCron:          aws.Bool(true),
-				EnableFunctions:       false,
-				PubliclyAccessible:    false,
-				Version:               "",
-				BinaryLogFormat:       "",
+				AllocatedStorage:   0,
+				EnablePgCron:       aws.Bool(true),
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
 			},
 		},
 		"enable PG cron false": {
@@ -105,13 +104,12 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				RawParameters: []byte(`{ "enable_pg_cron": false }`),
 			},
 			expectedOptions: Options{
-				AllocatedStorage:      0,
-				BackupRetentionPeriod: 0,
-				EnablePgCron:          aws.Bool(false),
-				EnableFunctions:       false,
-				PubliclyAccessible:    false,
-				Version:               "",
-				BinaryLogFormat:       "",
+				AllocatedStorage:   0,
+				EnablePgCron:       aws.Bool(false),
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
 			},
 		},
 		"rotate creds true": {
@@ -122,13 +120,12 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				RawParameters: []byte(`{ "rotate_credentials": true }`),
 			},
 			expectedOptions: Options{
-				AllocatedStorage:      0,
-				BackupRetentionPeriod: 0,
-				RotateCredentials:     aws.Bool(true),
-				EnableFunctions:       false,
-				PubliclyAccessible:    false,
-				Version:               "",
-				BinaryLogFormat:       "",
+				AllocatedStorage:   0,
+				RotateCredentials:  aws.Bool(true),
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
 			},
 		},
 		"rotate creds false": {
@@ -139,13 +136,12 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				RawParameters: []byte(`{ "rotate_credentials": false }`),
 			},
 			expectedOptions: Options{
-				AllocatedStorage:      0,
-				BackupRetentionPeriod: 0,
-				RotateCredentials:     aws.Bool(false),
-				EnableFunctions:       false,
-				PubliclyAccessible:    false,
-				Version:               "",
-				BinaryLogFormat:       "",
+				AllocatedStorage:   0,
+				RotateCredentials:  aws.Bool(false),
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
 			},
 		},
 		"rotate creds not specified": {
@@ -156,20 +152,75 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				RawParameters: []byte(`{}`),
 			},
 			expectedOptions: Options{
+				AllocatedStorage:   0,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
+			},
+		},
+		"backup retention period less than minimum is rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{
+					MinBackupRetention: 14,
+				},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{"backup_retention_period": 0}`),
+			},
+			expectedOptions: Options{
 				AllocatedStorage:      0,
-				BackupRetentionPeriod: 0,
 				EnableFunctions:       false,
 				PubliclyAccessible:    false,
 				Version:               "",
 				BinaryLogFormat:       "",
+				BackupRetentionPeriod: aws.Int64(0),
 			},
+			expectErr: true,
+		},
+		"allocated storage exceeding maxmimum is rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{
+					MaxAllocatedStorage: 100,
+				},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{"storage": 150}`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:   150,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
+			},
+			expectErr: true,
+		},
+		"throws error on invalid JSON": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{"foo": }`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:   0,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
+			},
+			expectErr: true,
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			options, err := test.broker.parseModifyOptionsFromRequest(test.modifyRequest)
-			if err != nil {
+			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.expectErr && err == nil {
+				t.Errorf("expected error, got nil")
 			}
 			if !reflect.DeepEqual(test.expectedOptions, options) {
 				t.Errorf("expected: %+v, got %+v", test.expectedOptions, options)

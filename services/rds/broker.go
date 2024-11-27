@@ -19,15 +19,15 @@ import (
 	"github.com/18F/aws-broker/helpers/response"
 )
 
-// Options is a struct containing all of the custom parameters supported by 
-// the broker for the "cf create-service" and "cf update-service" commands - 
+// Options is a struct containing all of the custom parameters supported by
+// the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
 	AllocatedStorage      int64  `json:"storage"`
 	EnableFunctions       bool   `json:"enable_functions"`
 	PubliclyAccessible    bool   `json:"publicly_accessible"`
 	Version               string `json:"version"`
-	BackupRetentionPeriod int64  `json:"backup_retention_period"`
+	BackupRetentionPeriod *int64 `json:"backup_retention_period"`
 	BinaryLogFormat       string `json:"binary_log_format"`
 	EnablePgCron          *bool  `json:"enable_pg_cron"`
 	RotateCredentials     *bool  `json:"rotate_credentials"`
@@ -43,11 +43,11 @@ func (o Options) Validate(settings *config.Settings) error {
 		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
 
-	if o.BackupRetentionPeriod > settings.MaxBackupRetention {
+	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod > settings.MaxBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be <= %d", o.BackupRetentionPeriod, settings.MaxBackupRetention)
 	}
 
-	if o.BackupRetentionPeriod != 0 && o.BackupRetentionPeriod < settings.MinBackupRetention {
+	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod < settings.MinBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
 	}
 

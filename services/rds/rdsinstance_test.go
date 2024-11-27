@@ -85,7 +85,7 @@ func TestInit(t *testing.T) {
 	}{
 		"sets expected properties": {
 			options: Options{
-				BackupRetentionPeriod: 14,
+				BackupRetentionPeriod: aws.Int64(21),
 			},
 			plan: catalog.RDSPlan{
 				Plan: catalog.Plan{
@@ -133,7 +133,7 @@ func TestInit(t *testing.T) {
 				Adapter:               "adapter-1",
 				DbType:                "postgres",
 				DbVersion:             "15",
-				BackupRetentionPeriod: 14,
+				BackupRetentionPeriod: 21,
 				Tags:                  map[string]string{},
 				StorageType:           "gp3",
 				AllocatedStorage:      20,
@@ -297,7 +297,7 @@ func TestInit(t *testing.T) {
 		},
 		"merges plan and instance tags": {
 			options: Options{
-				BackupRetentionPeriod: 14,
+				BackupRetentionPeriod: aws.Int64(14),
 			},
 			plan: catalog.RDSPlan{
 				Plan: catalog.Plan{
@@ -449,7 +449,7 @@ func TestModifyInstance(t *testing.T) {
 		},
 		"update backup retention period": {
 			options: Options{
-				BackupRetentionPeriod: 20,
+				BackupRetentionPeriod: aws.Int64(20),
 			},
 			existingInstance: &RDSInstance{
 				BackupRetentionPeriod: 10,
@@ -462,7 +462,7 @@ func TestModifyInstance(t *testing.T) {
 		},
 		"does not update backup retention period": {
 			options: Options{
-				BackupRetentionPeriod: 0,
+				BackupRetentionPeriod: aws.Int64(0),
 			},
 			existingInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
@@ -539,6 +539,19 @@ func TestModifyInstance(t *testing.T) {
 			},
 			plan:     catalog.RDSPlan{},
 			settings: &config.Settings{},
+		},
+		"does not allow backup retention less than minimum backup retention": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				BackupRetentionPeriod: 0,
+			},
+			expectedInstance: &RDSInstance{
+				BackupRetentionPeriod: 14,
+			},
+			plan: catalog.RDSPlan{},
+			settings: &config.Settings{
+				MinBackupRetention: 14,
+			},
 		},
 	}
 
