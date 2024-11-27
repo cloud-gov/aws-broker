@@ -178,6 +178,40 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		"allocated storage exceeding maxmimum is rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{
+					MaxAllocatedStorage: 100,
+				},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{"storage": 150}`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:   150,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
+			},
+			expectErr: true,
+		},
+		"throws error on invalid JSON": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			modifyRequest: request.Request{
+				RawParameters: []byte(`{"foo": }`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:   0,
+				EnableFunctions:    false,
+				PubliclyAccessible: false,
+				Version:            "",
+				BinaryLogFormat:    "",
+			},
+			expectErr: true,
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
