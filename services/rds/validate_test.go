@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/18F/aws-broker/config"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 func TestBinaryLogFormatValidation(t *testing.T) {
@@ -84,7 +85,7 @@ func TestValidateStorageType(t *testing.T) {
 
 func TestValidateRetentionPeriod(t *testing.T) {
 	testCases := map[string]struct {
-		retentionPeriod int
+		retentionPeriod int64
 		expectedErr     bool
 		settings        *config.Settings
 	}{
@@ -110,7 +111,7 @@ func TestValidateRetentionPeriod(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			opts := &Options{
-				BackupRetentionPeriod: int64(test.retentionPeriod),
+				BackupRetentionPeriod: aws.Int64(test.retentionPeriod),
 			}
 			err := opts.Validate(test.settings)
 			if test.expectedErr && err == nil {

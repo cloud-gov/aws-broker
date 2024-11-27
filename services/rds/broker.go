@@ -27,7 +27,7 @@ type Options struct {
 	EnableFunctions       bool   `json:"enable_functions"`
 	PubliclyAccessible    bool   `json:"publicly_accessible"`
 	Version               string `json:"version"`
-	BackupRetentionPeriod int64  `json:"backup_retention_period"`
+	BackupRetentionPeriod *int64 `json:"backup_retention_period"`
 	BinaryLogFormat       string `json:"binary_log_format"`
 	EnablePgCron          *bool  `json:"enable_pg_cron"`
 	RotateCredentials     *bool  `json:"rotate_credentials"`
@@ -43,11 +43,11 @@ func (o Options) Validate(settings *config.Settings) error {
 		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
 
-	if o.BackupRetentionPeriod > settings.MaxBackupRetention {
+	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod > settings.MaxBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be <= %d", o.BackupRetentionPeriod, settings.MaxBackupRetention)
 	}
 
-	if o.BackupRetentionPeriod < settings.MinBackupRetention {
+	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod < settings.MinBackupRetention {
 		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
 	}
 
