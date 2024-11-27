@@ -85,7 +85,7 @@ func TestInit(t *testing.T) {
 	}{
 		"sets expected properties": {
 			options: Options{
-				BackupRetentionPeriod: aws.Int64(14),
+				BackupRetentionPeriod: aws.Int64(21),
 			},
 			plan: catalog.RDSPlan{
 				Plan: catalog.Plan{
@@ -133,7 +133,7 @@ func TestInit(t *testing.T) {
 				Adapter:               "adapter-1",
 				DbType:                "postgres",
 				DbVersion:             "15",
-				BackupRetentionPeriod: 14,
+				BackupRetentionPeriod: 21,
 				Tags:                  map[string]string{},
 				StorageType:           "gp3",
 				AllocatedStorage:      20,
