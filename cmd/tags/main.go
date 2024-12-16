@@ -81,6 +81,7 @@ func main() {
 				if awsErr, ok := err.(awserr.Error); ok {
 					if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
 						log.Printf("Could not find database %s, continuing", rdsInstance.Database)
+						continue
 					} else {
 						log.Fatalf("Could not find database instance: %s", err)
 					}
