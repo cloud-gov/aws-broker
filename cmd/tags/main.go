@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	awsRds "github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/sts"
+
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
 	"github.com/18F/aws-broker/services/rds"
@@ -48,6 +53,19 @@ func main() {
 		return
 	}
 
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(settings.Region),
+	})
+	if err != nil {
+		log.Fatalf("Could not initialize session: %s", err)
+	}
+
+	stsClient := sts.New(sess)
+	info, err := stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	if err != nil {
+		log.Fatalf("Could not get caller identity: %s", err)
+	}
+
 	if slices.Contains(servicesToTag, "rds") {
 		rows, err := db.Model(&rds.RDSInstance{}).Rows()
 		if err != nil {
@@ -61,6 +79,16 @@ func main() {
 
 			// Perform operations on each user
 			log.Printf("found database %s", rdsInstance.Database)
+
+			rdsClient := awsRds.New(sess)
+			tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
+				ResourceName: aws.String(fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", settings.Region, *info.Account, rdsInstance.Database)),
+			})
+			if err != nil {
+				log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
+			}
+
+			log.Printf("found database %s with tags %s", rdsInstance.Database, tagsResponse.TagList)
 		}
 	}
 }

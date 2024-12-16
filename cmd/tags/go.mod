@@ -4,12 +4,12 @@ go 1.23.4
 
 require (
 	github.com/18F/aws-broker v0.0.0-20241127191649-70dd3f1a3ed9
+	github.com/aws/aws-sdk-go v1.44.10
 	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e
 )
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible // indirect
-	github.com/aws/aws-sdk-go v1.44.10 // indirect
 	github.com/cloud-gov/go-broker-tags v0.0.0-20240112192542-8f1bb5859679 // indirect
 	github.com/cloudfoundry-community/go-cfclient/v3 v3.0.0-alpha.6 // indirect
 	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
