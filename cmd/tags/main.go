@@ -77,9 +77,6 @@ func main() {
 			// ScanRows scans a row into a struct
 			db.ScanRows(rows, &rdsInstance)
 
-			// Perform operations on each user
-			log.Printf("found database %s", rdsInstance.Database)
-
 			rdsClient := awsRds.New(sess)
 			tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
 				ResourceName: aws.String(fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", settings.Region, *info.Account, rdsInstance.Database)),
