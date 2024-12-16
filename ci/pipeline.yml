@@ -1473,6 +1473,16 @@ resources:
       space: ((development-cf-space))
       skip_cert_check: false
 
+  - name: deploy-aws-broker-development-tags
+    type: cf
+    source:
+      api: ((development-cf-api-url))
+      username: ((development-cf-deploy-username))
+      password: ((development-cf-deploy-password))
+      organization: ((development-cf-organization))
+      space: ((development-cf-space))
+      skip_cert_check: false
+
   - name: deploy-aws-broker-staging
     type: cf
     source:
