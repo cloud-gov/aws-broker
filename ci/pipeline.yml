@@ -63,8 +63,9 @@ jobs:
       - put: deploy-aws-broker-development-tags
         params:
           manifest: built/manifest.yml
-          path: built
+          path: built/cmd/tags
           current_app_name: aws-broker-tags
+          no_start: true
           environment_variables:
             DB_PREFIX: ((development-db-name-prefix))
             DB_SHORTHAND_PREFIX: dev
