@@ -4,12 +4,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 
+	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
 	"github.com/18F/aws-broker/services/rds"
@@ -60,6 +63,20 @@ func main() {
 		log.Fatalf("Could not initialize session: %s", err)
 	}
 
+	tagManager, err := brokertags.NewCFTagManager(
+		"AWS broker",
+		settings.Environment,
+		settings.CfApiUrl,
+		settings.CfApiClientId,
+		settings.CfApiClientSecret,
+	)
+	if err != nil {
+		log.Fatalf("Could not initialize tag manager: %s", err)
+	}
+
+	path, _ := os.Getwd()
+	c := catalog.InitCatalog(path)
+
 	if slices.Contains(servicesToTag, "rds") {
 		rdsClient := awsRds.New(sess)
 
@@ -97,7 +114,29 @@ func main() {
 				log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
 			}
 
-			log.Printf("found database %s with tags %s", rdsInstance.Database, tagsResponse.TagList)
+			log.Printf("found database %s with tags %+v", rdsInstance.Database, tagsResponse.TagList)
+
+			plan, _ := c.RdsService.FetchPlan(rdsInstance.PlanID)
+			if plan.Name == "" {
+				log.Fatalf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
+			}
+
+			newTags, err := tagManager.GenerateTags(
+				brokertags.Create,
+				c.RdsService.Name,
+				plan.Name,
+				brokertags.ResourceGUIDs{
+					InstanceGUID:     rdsInstance.Uuid,
+					SpaceGUID:        rdsInstance.SpaceGUID,
+					OrganizationGUID: rdsInstance.OrganizationGUID,
+				},
+				true,
+			)
+			if err != nil {
+				log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
+			}
+
+			log.Printf("generated new tags %+v for database %s", newTags, rdsInstance.Database)
 		}
 	}
 }
