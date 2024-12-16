@@ -27,7 +27,7 @@ func (s *serviceNames) Set(value string) error {
 var servicesToTag serviceNames
 
 func main() {
-	flag.Var(&servicesToTag, "service", "Name of AWS service to update tags (e.g. 'rds')")
+	flag.Var(&servicesToTag, "service", "Name of AWS service to update tags. Accepted options: 'rds'")
 	flag.Parse()
 
 	if len(servicesToTag) == 0 {
