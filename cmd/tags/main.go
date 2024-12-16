@@ -23,8 +23,17 @@ func main() {
 		return
 	}
 
-	result := db.Find(&rds.RDSInstance{})
-	if result.Error != nil {
-		log.Fatal(result.Error)
+	rows, err := db.Model(&rds.RDSInstance{}).Rows()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for rows.Next() {
+		var rdsInstance rds.RDSInstance
+		// ScanRows scans a row into a struct
+		db.ScanRows(rows, &rdsInstance)
+
+		// Perform operations on each user
+		log.Printf("found database %s", rdsInstance.Database)
 	}
 }
