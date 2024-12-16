@@ -102,6 +102,30 @@ jobs:
             username: ((slack-username))
             icon_url: ((slack-icon-url))
 
+      - put: deploy-aws-broker-development-tags
+        params:
+          manifest: built/manifest.yml
+          path: built
+          current_app_name: aws-broker-tags
+          environment_variables:
+            DB_PREFIX: ((development-db-name-prefix))
+            DB_SHORTHAND_PREFIX: dev
+            AUTH_PASS: ((development-auth-pass))
+            AUTH_USER: ((development-auth-user))
+            AWS_DEFAULT_REGION: ((development-aws-default-region))
+            DB_SSLMODE: require
+            DB_USER: ((development-rds-internal-username))
+            DB_PASS: ((development-rds-internal-password))
+            DB_TYPE: postgres
+            DB_NAME: ((development-rds-internal-db-name))
+            ENC_KEY: ((development-enc-key))
+            AWS_USE_FIPS_ENDPOINT: "true"
+            CF_API_URL: ((dev-cf-api-url))
+            CF_API_CLIENT_ID: ((development-cf-api-client-id))
+            CF_API_CLIENT_SECRET: ((development-cf-api-client-secret))
+            ENVIRONMENT: ((development-environment))
+            GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tags
+
       - task: update-broker
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
         params:
