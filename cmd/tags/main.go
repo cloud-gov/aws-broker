@@ -8,11 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/sts"
 
 	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/db"
-	"github.com/18F/aws-broker/services/rds"
 	"golang.org/x/exp/slices"
 )
 
@@ -47,11 +44,11 @@ func main() {
 		return
 	}
 
-	db, err := db.InternalDBInit(settings.DbConfig)
-	if err != nil {
-		log.Fatalf("There was an error with the DB. Error: %s", err.Error())
-		return
-	}
+	// db, err := db.InternalDBInit(settings.DbConfig)
+	// if err != nil {
+	// 	log.Fatalf("There was an error with the DB. Error: %s", err.Error())
+	// 	return
+	// }
 
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(settings.Region),
@@ -60,32 +57,44 @@ func main() {
 		log.Fatalf("Could not initialize session: %s", err)
 	}
 
-	stsClient := sts.New(sess)
-	info, err := stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-	if err != nil {
-		log.Fatalf("Could not get caller identity: %s", err)
-	}
+	// stsClient := sts.New(sess)
+	// info, err := stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	// if err != nil {
+	// 	log.Fatalf("Could not get caller identity: %s", err)
+	// }
 
 	if slices.Contains(servicesToTag, "rds") {
-		rows, err := db.Model(&rds.RDSInstance{}).Rows()
+		rdsClient := awsRds.New(sess)
+		// Todo: needs pagination
+		instances, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
+			DBInstanceIdentifier: aws.String(settings.DbNamePrefix),
+		})
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Could not list database instances: %s", err)
 		}
 
-		for rows.Next() {
-			var rdsInstance rds.RDSInstance
-			// ScanRows scans a row into a struct
-			db.ScanRows(rows, &rdsInstance)
-
-			rdsClient := awsRds.New(sess)
-			tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
-				ResourceName: aws.String(fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", settings.Region, *info.Account, rdsInstance.Database)),
-			})
-			if err != nil {
-				log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
-			}
-
-			log.Printf("found database %s with tags %s", rdsInstance.Database, tagsResponse.TagList)
+		for _, instance := range instances.DBInstances {
+			log.Printf("found database %s", *instance.DBInstanceIdentifier)
 		}
+
+		// rows, err := db.Model(&rds.RDSInstance{}).Rows()
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+
+		// for rows.Next() {
+		// 	var rdsInstance rds.RDSInstance
+		// 	// ScanRows scans a row into a struct
+		// 	db.ScanRows(rows, &rdsInstance)
+
+		// 	tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
+		// 		ResourceName: aws.String(fmt.Sprintf("arn:aws-us-gov:rds:%s:%s:db:%s", settings.Region, *info.Account, rdsInstance.Database)),
+		// 	})
+		// 	if err != nil {
+		// 		log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
+		// 	}
+
+		// 	log.Printf("found database %s with tags %s", rdsInstance.Database, tagsResponse.TagList)
+		// }
 	}
 }
