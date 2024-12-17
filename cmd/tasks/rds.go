@@ -75,27 +75,6 @@ func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRd
 	return true
 }
 
-func generateRDSTags(tagManager brokertags.TagManager, serviceOfferingName string, planName string, rdsInstance rds.RDSInstance) (map[string]string, error) {
-	generatedTags, err := tagManager.GenerateTags(
-		brokertags.Update,
-		serviceOfferingName,
-		planName,
-		brokertags.ResourceGUIDs{
-			InstanceGUID:     rdsInstance.Uuid,
-			SpaceGUID:        rdsInstance.SpaceGUID,
-			OrganizationGUID: rdsInstance.OrganizationGUID,
-		},
-		true,
-	)
-	if err != nil {
-		log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
-	}
-	// We can ignore the timestamp tags, if they exist
-	delete(generatedTags, "Created at")
-	delete(generatedTags, "Updated at")
-	return generatedTags, nil
-}
-
 func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
@@ -124,7 +103,16 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			log.Fatalf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
 		}
 
-		generatedTags, err := generateRDSTags(tagManager, catalog.RdsService.Name, plan.Name, rdsInstance)
+		generatedTags, err := generateTags(
+			tagManager,
+			catalog.RdsService.Name,
+			plan.Name,
+			brokertags.ResourceGUIDs{
+				InstanceGUID:     rdsInstance.Uuid,
+				SpaceGUID:        rdsInstance.SpaceGUID,
+				OrganizationGUID: rdsInstance.OrganizationGUID,
+			},
+		)
 		if err != nil {
 			log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
 		}
