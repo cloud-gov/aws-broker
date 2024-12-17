@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -42,15 +41,9 @@ func TestGetRdsInstanceTags(t *testing.T) {
 			},
 		},
 	}
-	instance := &rds.RDSInstance{
-		Database: "fake-database",
-	}
-	tags, shouldContinue, err := getRdsInstanceTags(mockClient, instance)
+	tags, err := getRdsInstanceTags(mockClient, "fake-arn")
 	if err != nil {
 		t.Error(err)
-	}
-	if !shouldContinue {
-		t.Error("expected shouldContinue to be true")
 	}
 	expectedTags := []*awsRds.Tag{
 		{

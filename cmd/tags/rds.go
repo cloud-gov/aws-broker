@@ -15,7 +15,18 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, rdsInstance *rds.RDSInstance) ([]*awsRds.Tag, bool, error) {
+func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, dbInstanceArn string) ([]*awsRds.Tag, error) {
+	tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
+		ResourceName: aws.String(dbInstanceArn),
+	})
+	if err != nil {
+		return []*awsRds.Tag{}, fmt.Errorf("error getting tags for database %s: %s", dbInstanceArn, err)
+	}
+
+	return tagsResponse.TagList, nil
+}
+
+func getRdsInstanceArn(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSInstance) (string, error) {
 	instanceInfo, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(rdsInstance.Database),
 	})
@@ -24,23 +35,16 @@ func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, rdsInstance *rds.RDSInstance)
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
 				log.Printf("Could not find database %s, continuing", rdsInstance.Database)
-				return []*awsRds.Tag{}, false, nil
+				return "", nil
 			} else {
-				return []*awsRds.Tag{}, false, fmt.Errorf("could not describe database instance: %s", err)
+				return "", fmt.Errorf("could not describe database instance: %s", err)
 			}
 		} else {
-			return []*awsRds.Tag{}, false, fmt.Errorf("could not describe database instance: %s", err)
+			return "", fmt.Errorf("could not describe database instance: %s", err)
 		}
 	}
 
-	tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
-		ResourceName: instanceInfo.DBInstances[0].DBInstanceArn,
-	})
-	if err != nil {
-		log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
-	}
-
-	return tagsResponse.TagList, true, nil
+	return *instanceInfo.DBInstances[0].DBInstanceArn, nil
 }
 
 func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
@@ -81,12 +85,17 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 		var rdsInstance rds.RDSInstance
 		db.ScanRows(rows, &rdsInstance)
 
-		existingRdsTags, shouldContinue, err := getRdsInstanceTags(rdsClient, &rdsInstance)
+		dbInstanceArn, err := getRdsInstanceArn(rdsClient, rdsInstance)
+		if err != nil {
+			log.Fatalf("could not get ARN for database %s: %s", rdsInstance.Database, err)
+		}
+		if dbInstanceArn == "" {
+			continue
+		}
+
+		existingRdsTags, err := getRdsInstanceTags(rdsClient, dbInstanceArn)
 		if err != nil {
 			log.Fatalf("could not get tags for database %s: %s", rdsInstance.Database, err)
-		}
-		if !shouldContinue {
-			continue
 		}
 
 		plan, _ := catalog.RdsService.FetchPlan(rdsInstance.PlanID)
@@ -115,6 +124,14 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			continue
 		}
 
-		log.Printf("need to update tags for database %s", rdsInstance.Database)
+		log.Printf("updating tags for database %s", rdsInstance.Database)
+		_, err = rdsClient.AddTagsToResource(&awsRds.AddTagsToResourceInput{
+			ResourceName: aws.String(dbInstanceArn),
+		})
+		if err != nil {
+			log.Fatalf("error adding new tags for database %s: %s", rdsInstance.Database, err)
+		}
+
+		log.Printf("finished updating tags for database %s", rdsInstance.Database)
 	}
 }
