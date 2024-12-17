@@ -104,7 +104,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 		}
 
 		generatedTags, err := tagManager.GenerateTags(
-			brokertags.Create,
+			brokertags.Update,
 			catalog.RdsService.Name,
 			plan.Name,
 			brokertags.ResourceGUIDs{
