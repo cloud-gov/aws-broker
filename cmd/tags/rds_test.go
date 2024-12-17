@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
@@ -63,31 +64,103 @@ func TestGetRdsInstanceTags(t *testing.T) {
 }
 
 func TestDoExistingTagsMatchNewTags(t *testing.T) {
-	// Compare tags where order of keys is different
-	existingTags := []*awsRds.Tag{
-		{
-			Key:   aws.String("foo"),
-			Value: aws.String("bar"),
+	testCases := map[string]struct {
+		existingRdsTags  []*awsRds.Tag
+		generatedRdsTags []*awsRds.Tag
+		shouldTagsMatch  bool
+	}{
+		"different key order": {
+			existingRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+				{
+					Key:   aws.String("moo"),
+					Value: aws.String("cow"),
+				},
+			},
+			generatedRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("moo"),
+					Value: aws.String("cow"),
+				},
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+			},
+			shouldTagsMatch: true,
 		},
-		{
-			Key:   aws.String("moo"),
-			Value: aws.String("cow"),
+		"different Created at times": {
+			existingRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+				{
+					Key:   aws.String("Created at"),
+					Value: aws.String(time.Now().String()),
+				},
+			},
+			generatedRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+				{
+					Key:   aws.String("Created at"),
+					Value: aws.String(time.Now().String()),
+				},
+			},
+			shouldTagsMatch: true,
+		},
+		"different Updated at times": {
+			existingRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+				{
+					Key:   aws.String("Updated at"),
+					Value: aws.String(time.Now().String()),
+				},
+			},
+			generatedRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+				{
+					Key:   aws.String("Updated at"),
+					Value: aws.String(time.Now().String()),
+				},
+			},
+			shouldTagsMatch: true,
+		},
+		"should not match": {
+			existingRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("bar"),
+				},
+			},
+			generatedRdsTags: []*awsRds.Tag{
+				{
+					Key:   aws.String("foo"),
+					Value: aws.String("cow"),
+				},
+			},
+			shouldTagsMatch: false,
 		},
 	}
-	newTags := []*awsRds.Tag{
-		{
-			Key:   aws.String("moo"),
-			Value: aws.String("cow"),
-		},
-		{
-			Key:   aws.String("foo"),
-			Value: aws.String("bar"),
-		},
-	}
-	if !doExistingTagsMatchNewTags(existingTags, newTags) {
-		t.Error("expected doExistingTagsMatchNewTags to return true")
-		if diff := deep.Equal(existingTags, newTags); diff != nil {
-			t.Error(diff)
-		}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			doTagsMatch := doRDSTagsContainGeneratedTags(test.existingRdsTags, test.generatedRdsTags)
+			if doTagsMatch != test.shouldTagsMatch {
+				t.Errorf("expected doRDSTagsContainGeneratedTags to return %t, got: %t", test.shouldTagsMatch, doTagsMatch)
+			}
+		})
 	}
 }

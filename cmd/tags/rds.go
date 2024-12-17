@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"reflect"
-	"sort"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/services/rds"
@@ -14,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
+	"golang.org/x/exp/slices"
 )
 
 func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, rdsInstance *rds.RDSInstance) ([]*awsRds.Tag, bool, error) {
@@ -41,7 +40,7 @@ func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, rdsInstance *rds.RDSInstance)
 		log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
 	}
 
-	log.Printf("found database %s with tags %v", rdsInstance.Database, tagsResponse.TagList)
+	// log.Printf("found database %s with tags %v", rdsInstance.Database, tagsResponse.TagList)
 	return tagsResponse.TagList, true, nil
 }
 
@@ -58,14 +57,19 @@ func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
 	return rdsTags
 }
 
-func doExistingTagsMatchNewTags(existingTags []*awsRds.Tag, newRdsTags []*awsRds.Tag) bool {
-	sort.Slice(existingTags[:], func(i, j int) bool {
-		return *existingTags[i].Key < *existingTags[j].Key
-	})
-	sort.Slice(newRdsTags[:], func(i, j int) bool {
-		return *newRdsTags[i].Key < *newRdsTags[j].Key
-	})
-	return reflect.DeepEqual(existingTags, newRdsTags)
+func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
+	for _, v := range generatedTags {
+		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
+			continue
+		}
+
+		if !slices.ContainsFunc(rdsTags, func(tag *awsRds.Tag) bool {
+			return *tag.Key == *v.Key && *tag.Value == *v.Value
+		}) {
+			return false
+		}
+	}
+	return true
 }
 
 func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) {
@@ -78,7 +82,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 		var rdsInstance rds.RDSInstance
 		db.ScanRows(rows, &rdsInstance)
 
-		existingTags, shouldContinue, err := getRdsInstanceTags(rdsClient, &rdsInstance)
+		existingRdsTags, shouldContinue, err := getRdsInstanceTags(rdsClient, &rdsInstance)
 		if err != nil {
 			log.Fatalf("could not get tags for database %s: %s", rdsInstance.Database, err)
 		}
@@ -91,7 +95,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			log.Fatalf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
 		}
 
-		newTags, err := tagManager.GenerateTags(
+		generatedTags, err := tagManager.GenerateTags(
 			brokertags.Create,
 			catalog.RdsService.Name,
 			plan.Name,
@@ -106,10 +110,8 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
 		}
 
-		newRdsTags := convertTagsToRDSTags(newTags)
-		log.Printf("generated new tags %+v for database %s", newRdsTags, rdsInstance.Database)
-
-		if doExistingTagsMatchNewTags(existingTags, newRdsTags) {
+		generatedRdsTags := convertTagsToRDSTags(generatedTags)
+		if doRDSTagsContainGeneratedTags(existingRdsTags, generatedRdsTags) {
 			log.Printf("tags already updated for database %s", rdsInstance.Database)
 			continue
 		}
