@@ -129,7 +129,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 					Value: aws.String(time.Now().String()),
 				},
 			},
-			shouldTagsMatch: true,
+			shouldTagsMatch: false,
 		},
 		"should not match": {
 			existingRdsTags: []*awsRds.Tag{

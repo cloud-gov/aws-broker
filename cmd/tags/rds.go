@@ -62,7 +62,7 @@ func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
 
 func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
 	for _, v := range generatedTags {
-		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
+		if *v.Key == "Created at" {
 			continue
 		}
 
