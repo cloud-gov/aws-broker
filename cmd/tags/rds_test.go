@@ -63,6 +63,7 @@ func TestGetRdsInstanceTags(t *testing.T) {
 }
 
 func TestDoExistingTagsMatchNewTags(t *testing.T) {
+	// Compare tags where order of keys is different
 	existingTags := []*awsRds.Tag{
 		{
 			Key:   aws.String("foo"),
