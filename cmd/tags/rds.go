@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"sort"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/services/rds"
@@ -58,6 +59,12 @@ func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
 }
 
 func doExistingTagsMatchNewTags(existingTags []*awsRds.Tag, newRdsTags []*awsRds.Tag) bool {
+	sort.Slice(existingTags[:], func(i, j int) bool {
+		return *existingTags[i].Key < *existingTags[j].Key
+	})
+	sort.Slice(newRdsTags[:], func(i, j int) bool {
+		return *newRdsTags[i].Key < *newRdsTags[j].Key
+	})
 	return reflect.DeepEqual(existingTags, newRdsTags)
 }
 
