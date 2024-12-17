@@ -123,14 +123,14 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 		}
 
 		log.Printf("updating tags for cluster %s", redisInstance.ClusterID)
-		// _, err = elasticacheClient.AddTagsToResource(&elasticache.AddTagsToResourceInput{
-		// 	ResourceName: aws.String(instanceArn),
-		// 	Tags:         generatedElasticacheTags,
-		// })
-		// if err != nil {
-		// 	log.Fatalf("error adding new tags for cluster %s: %s", redisInstance.ClusterID, err)
-		// }
+		_, err = elasticacheClient.AddTagsToResource(&elasticache.AddTagsToResourceInput{
+			ResourceName: aws.String(instanceArn),
+			Tags:         generatedElasticacheTags,
+		})
+		if err != nil {
+			log.Fatalf("error adding new tags for cluster %s: %s", redisInstance.ClusterID, err)
+		}
 
-		// log.Printf("finished updating tags for cluster %s", redisInstance.ClusterID)
+		log.Printf("finished updating tags for cluster %s", redisInstance.ClusterID)
 	}
 }
