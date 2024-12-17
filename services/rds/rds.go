@@ -67,16 +67,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
 	password string,
 ) (*rds.CreateDBInstanceInput, error) {
-	var rdsTags []*rds.Tag
-
-	for k, v := range i.Tags {
-		tag := rds.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		rdsTags = append(rdsTags, &tag)
-	}
+	rdsTags := convertTagsToRDSTags(i.Tags)
 
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
