@@ -127,6 +127,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 		log.Printf("updating tags for database %s", rdsInstance.Database)
 		_, err = rdsClient.AddTagsToResource(&awsRds.AddTagsToResourceInput{
 			ResourceName: aws.String(dbInstanceArn),
+			Tags:         generatedRdsTags,
 		})
 		if err != nil {
 			log.Fatalf("error adding new tags for database %s: %s", rdsInstance.Database, err)
