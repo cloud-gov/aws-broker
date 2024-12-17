@@ -83,7 +83,7 @@ jobs:
             CF_API_CLIENT_ID: ((development-cf-api-client-id))
             CF_API_CLIENT_SECRET: ((development-cf-api-client-secret))
             ENVIRONMENT: ((development-environment))
-            GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tags
+            GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tasks
 
       - put: deploy-aws-broker-development
         params:
