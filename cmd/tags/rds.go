@@ -62,7 +62,7 @@ func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
 
 func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
 	for _, v := range generatedTags {
-		if *v.Key == "Created at" {
+		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
 		}
 
@@ -73,6 +73,26 @@ func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRd
 		}
 	}
 	return true
+}
+
+func generateRDSTags(tagManager brokertags.TagManager, serviceOfferingName string, planName string, rdsInstance rds.RDSInstance) (map[string]string, error) {
+	generatedTags, err := tagManager.GenerateTags(
+		brokertags.Update,
+		serviceOfferingName,
+		planName,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     rdsInstance.Uuid,
+			SpaceGUID:        rdsInstance.SpaceGUID,
+			OrganizationGUID: rdsInstance.OrganizationGUID,
+		},
+		true,
+	)
+	if err != nil {
+		log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
+	}
+	delete(generatedTags, "Created at")
+	delete(generatedTags, "Updated at")
+	return generatedTags, nil
 }
 
 func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) {
@@ -103,17 +123,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			log.Fatalf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
 		}
 
-		generatedTags, err := tagManager.GenerateTags(
-			brokertags.Update,
-			catalog.RdsService.Name,
-			plan.Name,
-			brokertags.ResourceGUIDs{
-				InstanceGUID:     rdsInstance.Uuid,
-				SpaceGUID:        rdsInstance.SpaceGUID,
-				OrganizationGUID: rdsInstance.OrganizationGUID,
-			},
-			true,
-		)
+		generatedTags, err := generateRDSTags(tagManager, catalog.RdsService.Name, plan.Name, rdsInstance)
 		if err != nil {
 			log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
 		}
