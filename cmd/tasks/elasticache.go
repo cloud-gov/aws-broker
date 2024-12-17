@@ -104,7 +104,7 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 
 		generatedTags, err := generateTags(
 			tagManager,
-			catalog.RdsService.Name,
+			catalog.RedisService.Name,
 			plan.Name,
 			brokertags.ResourceGUIDs{
 				InstanceGUID:     redisInstance.Uuid,

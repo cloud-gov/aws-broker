@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticache"
+	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 
@@ -89,6 +90,10 @@ func main() {
 		if slices.Contains(servicesToTag, "elasticache") {
 			elasticacheClient := elasticache.New(sess)
 			fetchAndUpdateElasticacheInstanceTags(c, db, elasticacheClient, tagManager)
+		}
+		if slices.Contains(servicesToTag, "elasticsearch") || slices.Contains(servicesToTag, "opensearch") {
+			opensearchClient := opensearchservice.New(sess)
+			fetchAndUpdateOpensearchInstanceTags(c, db, opensearchClient, tagManager)
 		}
 	}
 }
