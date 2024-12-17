@@ -40,7 +40,6 @@ func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, rdsInstance *rds.RDSInstance)
 		log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
 	}
 
-	// log.Printf("found database %s with tags %v", rdsInstance.Database, tagsResponse.TagList)
 	return tagsResponse.TagList, true, nil
 }
 
