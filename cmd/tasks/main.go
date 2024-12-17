@@ -33,11 +33,12 @@ func (s *serviceNames) Set(value string) error {
 var servicesToTag serviceNames
 
 func main() {
-	flag.Var(&servicesToTag, "service", "Name of AWS service to update tags. Accepted options: 'rds'")
+	actionPtr := flag.String("action", "", "Action to take. Accepted option: 'update-tags'")
+	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds'")
 	flag.Parse()
 
-	if len(servicesToTag) == 0 {
-		log.Fatal("no services specified")
+	if *actionPtr == "" {
+		log.Fatal("--action flag is required")
 	}
 
 	var settings config.Settings
@@ -61,22 +62,28 @@ func main() {
 		log.Fatalf("Could not initialize session: %s", err)
 	}
 
-	tagManager, err := brokertags.NewCFTagManager(
-		"AWS broker",
-		settings.Environment,
-		settings.CfApiUrl,
-		settings.CfApiClientId,
-		settings.CfApiClientSecret,
-	)
-	if err != nil {
-		log.Fatalf("Could not initialize tag manager: %s", err)
-	}
+	if *actionPtr == "update-tags" {
+		if len(servicesToTag) == 0 {
+			log.Fatal("--service argument is required. Specify --service multiple times to update tags for multiple services")
+		}
 
-	path, _ := os.Getwd()
-	c := catalog.InitCatalog(path)
+		tagManager, err := brokertags.NewCFTagManager(
+			"AWS broker",
+			settings.Environment,
+			settings.CfApiUrl,
+			settings.CfApiClientId,
+			settings.CfApiClientSecret,
+		)
+		if err != nil {
+			log.Fatalf("Could not initialize tag manager: %s", err)
+		}
 
-	if slices.Contains(servicesToTag, "rds") {
-		rdsClient := awsRds.New(sess)
-		fetchAndUpdateRdsInstanceTags(c, db, rdsClient, tagManager)
+		path, _ := os.Getwd()
+		c := catalog.InitCatalog(path)
+
+		if slices.Contains(servicesToTag, "rds") {
+			rdsClient := awsRds.New(sess)
+			fetchAndUpdateRdsInstanceTags(c, db, rdsClient, tagManager)
+		}
 	}
 }

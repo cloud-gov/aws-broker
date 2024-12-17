@@ -60,10 +60,10 @@ jobs:
           STATE_FILE: terraform-state/terraform.tfstate
           ENVIRONMENT: ((development-environment))
 
-      - put: deploy-aws-broker-development-tags
+      - put: deploy-aws-broker-development-tasks
         params:
           manifest: built/manifest.yml
-          path: built/cmd/tags
+          path: built/cmd/tasks
           current_app_name: aws-broker-tags
           no_start: true
           environment_variables:
@@ -1473,7 +1473,7 @@ resources:
       space: ((development-cf-space))
       skip_cert_check: false
 
-  - name: deploy-aws-broker-development-tags
+  - name: deploy-aws-broker-development-tasks
     type: cf
     source:
       api: ((development-cf-api-url))
