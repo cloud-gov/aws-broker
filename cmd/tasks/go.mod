@@ -1,4 +1,4 @@
-module github.com/cloud-gov/aws-broker/cmd/tags
+module github.com/cloud-gov/aws-broker/cmd/tasks
 
 go 1.23.4
 
