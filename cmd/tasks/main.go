@@ -33,7 +33,7 @@ func (s *serviceNames) Set(value string) error {
 var servicesToTag serviceNames
 
 func main() {
-	actionPtr := flag.String("action", "", "Action to take. Accepted option: 'update-tags'")
+	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'update-tags'")
 	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds'")
 	flag.Parse()
 
