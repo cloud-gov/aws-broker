@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -15,7 +14,6 @@ import (
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
-	"github.com/18F/aws-broker/services/rds"
 	"golang.org/x/exp/slices"
 )
 
@@ -79,64 +77,6 @@ func main() {
 
 	if slices.Contains(servicesToTag, "rds") {
 		rdsClient := awsRds.New(sess)
-
-		rows, err := db.Model(&rds.RDSInstance{}).Rows()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for rows.Next() {
-			var rdsInstance rds.RDSInstance
-			// ScanRows scans a row into a struct
-			db.ScanRows(rows, &rdsInstance)
-
-			instanceInfo, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
-				DBInstanceIdentifier: aws.String(rdsInstance.Database),
-			})
-
-			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
-						log.Printf("Could not find database %s, continuing", rdsInstance.Database)
-						continue
-					} else {
-						log.Fatalf("Could not find database instance: %s", err)
-					}
-				} else {
-					log.Fatalf("Could not find database instance: %s", err)
-				}
-			}
-
-			tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
-				ResourceName: instanceInfo.DBInstances[0].DBInstanceArn,
-			})
-			if err != nil {
-				log.Fatalf("error getting tags for database %s: %s", rdsInstance.Database, err)
-			}
-
-			log.Printf("found database %s with tags %+v", rdsInstance.Database, tagsResponse.TagList)
-
-			plan, _ := c.RdsService.FetchPlan(rdsInstance.PlanID)
-			if plan.Name == "" {
-				log.Fatalf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
-			}
-
-			newTags, err := tagManager.GenerateTags(
-				brokertags.Create,
-				c.RdsService.Name,
-				plan.Name,
-				brokertags.ResourceGUIDs{
-					InstanceGUID:     rdsInstance.Uuid,
-					SpaceGUID:        rdsInstance.SpaceGUID,
-					OrganizationGUID: rdsInstance.OrganizationGUID,
-				},
-				true,
-			)
-			if err != nil {
-				log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
-			}
-
-			log.Printf("generated new tags %+v for database %s", newTags, rdsInstance.Database)
-		}
+		fetchAndUpdateRdsInstanceTags(c, db, rdsClient, tagManager)
 	}
 }
