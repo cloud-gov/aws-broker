@@ -90,6 +90,7 @@ func generateRDSTags(tagManager brokertags.TagManager, serviceOfferingName strin
 	if err != nil {
 		log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
 	}
+	// We can ignore the timestamp tags, if they exist
 	delete(generatedTags, "Created at")
 	delete(generatedTags, "Updated at")
 	return generatedTags, nil
