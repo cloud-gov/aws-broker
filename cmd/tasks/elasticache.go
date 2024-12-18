@@ -46,19 +46,6 @@ func getElasticacheResourceTags(elasticacheClient elasticacheiface.ElastiCacheAP
 	return response.TagList, nil
 }
 
-func convertTagsToElasticacheTags(tags map[string]string) []*elasticache.Tag {
-	var elasticacheTags []*elasticache.Tag
-	for k, v := range tags {
-		tag := elasticache.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		elasticacheTags = append(elasticacheTags, &tag)
-	}
-	return elasticacheTags
-}
-
 func doElasticacheResourceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, generatedTags []*elasticache.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
@@ -135,7 +122,7 @@ func reconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, ela
 			return fmt.Errorf("error generating new tags for cluster %s: %s", redisInstance.ClusterID, err)
 		}
 
-		generatedElasticacheTags := convertTagsToElasticacheTags(generatedTags)
+		generatedElasticacheTags := redis.ConvertTagsToElasticacheTags(generatedTags)
 
 		err = processElasticacheResource(elasticacheClient, instanceArn, generatedElasticacheTags)
 		if err != nil {

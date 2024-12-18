@@ -47,19 +47,6 @@ func getRDSInstanceArn(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSInstance) (
 	return *instanceInfo.DBInstances[0].DBInstanceArn, nil
 }
 
-func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
-	var rdsTags []*awsRds.Tag
-	for k, v := range tags {
-		tag := awsRds.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		rdsTags = append(rdsTags, &tag)
-	}
-	return rdsTags
-}
-
 func doRDSResourceTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
@@ -141,7 +128,7 @@ func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 			return fmt.Errorf("error generating new tags for database %s: %s", rdsInstance.Database, err)
 		}
 
-		generatedRdsTags := convertTagsToRDSTags(generatedTags)
+		generatedRdsTags := rds.ConvertTagsToRDSTags(generatedTags)
 
 		err = processRDSResource(rdsClient, dbInstanceArn, generatedRdsTags)
 		if err != nil {
