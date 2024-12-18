@@ -1281,7 +1281,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil)
+			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1387,6 +1387,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
 				createTestRdsInstance(test.dbInstance),
+				nil,
 			)
 
 			if test.expectedErr == nil && err != nil {

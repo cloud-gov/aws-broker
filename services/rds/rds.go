@@ -100,7 +100,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i)
+	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +132,11 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 		params.MasterUserPassword = aws.String(i.ClearPassword)
 	}
 
+	rdsTags := convertTagsToRDSTags(i.Tags)
+
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i)
+	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
 	if err != nil {
 		return nil, err
 	}
