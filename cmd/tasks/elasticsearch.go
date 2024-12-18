@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func getOpensearchInstanceArn(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, elasticsearchInstance elasticsearch.ElasticsearchInstance) (string, error) {
+func getOpensearchDomainArn(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, elasticsearchInstance elasticsearch.ElasticsearchInstance) (string, error) {
 	instanceInfo, err := opensearchClient.DescribeDomain(&opensearchservice.DescribeDomainInput{
 		DomainName: aws.String(elasticsearchInstance.Domain),
 	})
@@ -36,7 +36,7 @@ func getOpensearchInstanceArn(opensearchClient opensearchserviceiface.OpenSearch
 	return *instanceInfo.DomainStatus.ARN, nil
 }
 
-func getOpensearchInstanceTags(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, instanceArn string) ([]*opensearchservice.Tag, error) {
+func getOpensearchResourceTags(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, instanceArn string) ([]*opensearchservice.Tag, error) {
 	response, err := opensearchClient.ListTags(&opensearchservice.ListTagsInput{
 		ARN: aws.String(instanceArn),
 	})
@@ -59,7 +59,7 @@ func convertTagsToOpensearchTags(tags map[string]string) []*opensearchservice.Ta
 	return opensearchTags
 }
 
-func doOpensearchInstanceTagsContainGeneratedTags(rdsTags []*opensearchservice.Tag, generatedTags []*opensearchservice.Tag) bool {
+func doOpensearchResourceTagsContainGeneratedTags(rdsTags []*opensearchservice.Tag, generatedTags []*opensearchservice.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
@@ -74,7 +74,7 @@ func doOpensearchInstanceTagsContainGeneratedTags(rdsTags []*opensearchservice.T
 	return true
 }
 
-func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
+func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&elasticsearch.ElasticsearchInstance{}).Rows()
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 		var elasticsearchInstance elasticsearch.ElasticsearchInstance
 		db.ScanRows(rows, &elasticsearchInstance)
 
-		instanceArn, err := getOpensearchInstanceArn(opensearchClient, elasticsearchInstance)
+		instanceArn, err := getOpensearchDomainArn(opensearchClient, elasticsearchInstance)
 		if err != nil {
 			return fmt.Errorf("could not get ARN for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
@@ -92,7 +92,7 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 			continue
 		}
 
-		existingInstanceTags, err := getOpensearchInstanceTags(opensearchClient, instanceArn)
+		existingInstanceTags, err := getOpensearchResourceTags(opensearchClient, instanceArn)
 		if err != nil {
 			return fmt.Errorf("could not get tags for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
@@ -117,7 +117,7 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 		}
 
 		generatedOpensearchTags := convertTagsToOpensearchTags(generatedTags)
-		if doOpensearchInstanceTagsContainGeneratedTags(existingInstanceTags, generatedOpensearchTags) {
+		if doOpensearchResourceTagsContainGeneratedTags(existingInstanceTags, generatedOpensearchTags) {
 			log.Printf("tags already updated for domain %s", elasticsearchInstance.Domain)
 			continue
 		}

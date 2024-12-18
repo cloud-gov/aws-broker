@@ -59,7 +59,7 @@ func convertTagsToElasticacheTags(tags map[string]string) []*elasticache.Tag {
 	return elasticacheTags
 }
 
-func doInstanceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, generatedTags []*elasticache.Tag) bool {
+func doElasticacheResourceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, generatedTags []*elasticache.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
@@ -74,7 +74,7 @@ func doInstanceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, generatedTag
 	return true
 }
 
-func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) error {
+func reconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&redis.RedisInstance{}).Rows()
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 		}
 
 		generatedElasticacheTags := convertTagsToElasticacheTags(generatedTags)
-		if doInstanceTagsContainGeneratedTags(existingInstanceTags, generatedElasticacheTags) {
+		if doElasticacheResourceTagsContainGeneratedTags(existingInstanceTags, generatedElasticacheTags) {
 			log.Printf("tags already updated for cluster %s", redisInstance.ClusterID)
 			continue
 		}

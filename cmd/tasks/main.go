@@ -91,14 +91,14 @@ func run() error {
 		}
 		if slices.Contains(servicesToTag, "elasticache") {
 			elasticacheClient := elasticache.New(sess)
-			err := fetchAndUpdateElasticacheInstanceTags(c, db, elasticacheClient, tagManager)
+			err := reconcileElasticacheResourceTags(c, db, elasticacheClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
 		if slices.Contains(servicesToTag, "elasticsearch") || slices.Contains(servicesToTag, "opensearch") {
 			opensearchClient := opensearchservice.New(sess)
-			err := fetchAndUpdateOpensearchInstanceTags(c, db, opensearchClient, tagManager)
+			err := reconcileOpensearchResourceTags(c, db, opensearchClient, tagManager)
 			if err != nil {
 				return err
 			}
