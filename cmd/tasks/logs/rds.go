@@ -33,12 +33,12 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 		if dbName == "" {
 			return fmt.Errorf("could not get database name for log group %s", *logGroup.LogGroupName)
 		}
-		log.Printf("got database name %s from group %s", dbName, logGroup)
+		log.Printf("got database name %s from group %s", dbName, *logGroup.LogGroupName)
 
 		var rdsDatabase *rds.RDSInstance
 		db.Where(&rds.RDSInstance{Database: dbName}).First(&rdsDatabase)
 		if rdsDatabase == nil {
-			log.Printf("could not find database with name %s", dbName)
+			log.Printf("could not find database with name %s, continuing", dbName)
 			continue
 		}
 
