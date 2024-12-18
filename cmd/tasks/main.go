@@ -12,11 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
+	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
+
 	"golang.org/x/exp/slices"
 )
 
@@ -36,7 +38,7 @@ func (s *serviceNames) Set(value string) error {
 var servicesToTag serviceNames
 
 func run() error {
-	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'update-tags'")
+	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups'")
 	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
 	flag.Parse()
 
@@ -63,7 +65,7 @@ func run() error {
 		return fmt.Errorf("could not initialize session: %s", err)
 	}
 
-	if *actionPtr == "update-tags" {
+	if *actionPtr == "reconcile-tags" {
 		if len(servicesToTag) == 0 {
 			return errors.New("--service argument is required. Specify --service multiple times to update tags for multiple services")
 		}
@@ -102,6 +104,14 @@ func run() error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	if *actionPtr == "reconcile-log-groups" {
+		rdsClient := awsRds.New(sess)
+		err := logs.ReconcileRDSCloudwatchLogGroups(rdsClient)
+		if err != nil {
+			return err
 		}
 	}
 
