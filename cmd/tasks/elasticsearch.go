@@ -46,19 +46,6 @@ func getOpensearchResourceTags(opensearchClient opensearchserviceiface.OpenSearc
 	return response.TagList, nil
 }
 
-func convertTagsToOpensearchTags(tags map[string]string) []*opensearchservice.Tag {
-	var opensearchTags []*opensearchservice.Tag
-	for k, v := range tags {
-		tag := opensearchservice.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		opensearchTags = append(opensearchTags, &tag)
-	}
-	return opensearchTags
-}
-
 func doOpensearchResourceTagsContainGeneratedTags(rdsTags []*opensearchservice.Tag, generatedTags []*opensearchservice.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
@@ -135,7 +122,7 @@ func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, open
 			return fmt.Errorf("error generating new tags for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
 
-		generatedOpensearchTags := convertTagsToOpensearchTags(generatedTags)
+		generatedOpensearchTags := elasticsearch.ConvertTagsToOpensearchTags(generatedTags)
 		err = processOpensearchResource(opensearchClient, instanceArn, generatedOpensearchTags)
 		if err != nil {
 			return err
