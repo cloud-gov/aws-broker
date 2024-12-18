@@ -74,10 +74,10 @@ func doOpensearchInstanceTagsContainGeneratedTags(rdsTags []*opensearchservice.T
 	return true
 }
 
-func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) {
+func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&elasticsearch.ElasticsearchInstance{}).Rows()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for rows.Next() {
@@ -86,7 +86,7 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 
 		instanceArn, err := getOpensearchInstanceArn(opensearchClient, elasticsearchInstance)
 		if err != nil {
-			log.Fatalf("could not get ARN for domain %s: %s", elasticsearchInstance.Domain, err)
+			return fmt.Errorf("could not get ARN for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
 		if instanceArn == "" {
 			continue
@@ -94,12 +94,12 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 
 		existingInstanceTags, err := getOpensearchInstanceTags(opensearchClient, instanceArn)
 		if err != nil {
-			log.Fatalf("could not get tags for domain %s: %s", elasticsearchInstance.Domain, err)
+			return fmt.Errorf("could not get tags for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
 
 		plan, _ := catalog.ElasticsearchService.FetchPlan(elasticsearchInstance.PlanID)
 		if plan.Name == "" {
-			log.Fatalf("error getting plan %s for domain %s", elasticsearchInstance.PlanID, elasticsearchInstance.Domain)
+			return fmt.Errorf("error getting plan %s for domain %s", elasticsearchInstance.PlanID, elasticsearchInstance.Domain)
 		}
 
 		generatedTags, err := generateTags(
@@ -113,7 +113,7 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 			},
 		)
 		if err != nil {
-			log.Fatalf("error generating new tags for domain %s: %s", elasticsearchInstance.Domain, err)
+			return fmt.Errorf("error generating new tags for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
 
 		generatedOpensearchTags := convertTagsToOpensearchTags(generatedTags)
@@ -128,9 +128,11 @@ func fetchAndUpdateOpensearchInstanceTags(catalog *catalog.Catalog, db *gorm.DB,
 			TagList: generatedOpensearchTags,
 		})
 		if err != nil {
-			log.Fatalf("error adding new tags for domain %s: %s", elasticsearchInstance.Domain, err)
+			return fmt.Errorf("error adding new tags for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
 
 		log.Printf("finished updating tags for domain %s", elasticsearchInstance.Domain)
 	}
+
+	return nil
 }

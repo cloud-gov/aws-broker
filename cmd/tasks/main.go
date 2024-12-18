@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -34,9 +35,9 @@ func (s *serviceNames) Set(value string) error {
 
 var servicesToTag serviceNames
 
-func main() {
+func run() error {
 	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'update-tags'")
-	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds'")
+	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
 	flag.Parse()
 
 	if *actionPtr == "" {
@@ -47,26 +48,24 @@ func main() {
 
 	// Load settings from environment
 	if err := settings.LoadFromEnv(); err != nil {
-		log.Fatalf("There was an error loading settings: %s", err)
-		return
+		return fmt.Errorf("there was an error loading settings: %w", err)
 	}
 
 	db, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
-		log.Fatalf("There was an error with the DB. Error: %s", err.Error())
-		return
+		return fmt.Errorf("there was an error with the DB. Error: %s", err.Error())
 	}
 
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(settings.Region),
 	})
 	if err != nil {
-		log.Fatalf("Could not initialize session: %s", err)
+		return fmt.Errorf("could not initialize session: %s", err)
 	}
 
 	if *actionPtr == "update-tags" {
 		if len(servicesToTag) == 0 {
-			log.Fatal("--service argument is required. Specify --service multiple times to update tags for multiple services")
+			return errors.New("--service argument is required. Specify --service multiple times to update tags for multiple services")
 		}
 
 		tagManager, err := brokertags.NewCFTagManager(
@@ -77,7 +76,7 @@ func main() {
 			settings.CfApiClientSecret,
 		)
 		if err != nil {
-			log.Fatalf("Could not initialize tag manager: %s", err)
+			return fmt.Errorf("could not initialize tag manager: %s", err)
 		}
 
 		path, _ := os.Getwd()
@@ -85,15 +84,33 @@ func main() {
 
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			fetchAndUpdateRdsInstanceTags(c, db, rdsClient, tagManager)
+			err := fetchAndUpdateRdsInstanceTags(c, db, rdsClient, tagManager)
+			if err != nil {
+				return err
+			}
 		}
 		if slices.Contains(servicesToTag, "elasticache") {
 			elasticacheClient := elasticache.New(sess)
-			fetchAndUpdateElasticacheInstanceTags(c, db, elasticacheClient, tagManager)
+			err := fetchAndUpdateElasticacheInstanceTags(c, db, elasticacheClient, tagManager)
+			if err != nil {
+				return err
+			}
 		}
 		if slices.Contains(servicesToTag, "elasticsearch") || slices.Contains(servicesToTag, "opensearch") {
 			opensearchClient := opensearchservice.New(sess)
-			fetchAndUpdateOpensearchInstanceTags(c, db, opensearchClient, tagManager)
+			err := fetchAndUpdateOpensearchInstanceTags(c, db, opensearchClient, tagManager)
+			if err != nil {
+				return err
+			}
 		}
+	}
+
+	return nil
+}
+
+func main() {
+	err := run()
+	if err != nil {
+		log.Fatal(err.Error())
 	}
 }

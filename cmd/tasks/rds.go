@@ -75,10 +75,10 @@ func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRd
 	return true
 }
 
-func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) {
+func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for rows.Next() {
@@ -87,7 +87,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 
 		dbInstanceArn, err := getRdsInstanceArn(rdsClient, rdsInstance)
 		if err != nil {
-			log.Fatalf("could not get ARN for database %s: %s", rdsInstance.Database, err)
+			return fmt.Errorf("could not get ARN for database %s: %s", rdsInstance.Database, err)
 		}
 		if dbInstanceArn == "" {
 			continue
@@ -95,12 +95,12 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 
 		existingRdsTags, err := getRdsInstanceTags(rdsClient, dbInstanceArn)
 		if err != nil {
-			log.Fatalf("could not get tags for database %s: %s", rdsInstance.Database, err)
+			return fmt.Errorf("could not get tags for database %s: %s", rdsInstance.Database, err)
 		}
 
 		plan, _ := catalog.RdsService.FetchPlan(rdsInstance.PlanID)
 		if plan.Name == "" {
-			log.Fatalf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
+			return fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
 		}
 
 		generatedTags, err := generateTags(
@@ -114,7 +114,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			},
 		)
 		if err != nil {
-			log.Fatalf("error generating new tags for database %s: %s", rdsInstance.Database, err)
+			return fmt.Errorf("error generating new tags for database %s: %s", rdsInstance.Database, err)
 		}
 
 		generatedRdsTags := convertTagsToRDSTags(generatedTags)
@@ -129,9 +129,11 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			Tags:         generatedRdsTags,
 		})
 		if err != nil {
-			log.Fatalf("error adding new tags for database %s: %s", rdsInstance.Database, err)
+			return fmt.Errorf("error adding new tags for database %s: %s", rdsInstance.Database, err)
 		}
 
 		log.Printf("finished updating tags for database %s", rdsInstance.Database)
 	}
+
+	return nil
 }

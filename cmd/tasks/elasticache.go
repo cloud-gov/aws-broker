@@ -74,10 +74,10 @@ func doInstanceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, generatedTag
 	return true
 }
 
-func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) {
+func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&redis.RedisInstance{}).Rows()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for rows.Next() {
@@ -86,7 +86,7 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 
 		instanceArn, err := getElasticacheInstanceArn(elasticacheClient, redisInstance)
 		if err != nil {
-			log.Fatalf("could not get ARN for cluster %s: %s", redisInstance.ClusterID, err)
+			return fmt.Errorf("could not get ARN for cluster %s: %s", redisInstance.ClusterID, err)
 		}
 		if instanceArn == "" {
 			continue
@@ -94,12 +94,12 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 
 		existingInstanceTags, err := getElasticacheInstanceTags(elasticacheClient, instanceArn)
 		if err != nil {
-			log.Fatalf("could not get tags for cluster %s: %s", redisInstance.ClusterID, err)
+			return fmt.Errorf("could not get tags for cluster %s: %s", redisInstance.ClusterID, err)
 		}
 
 		plan, _ := catalog.RedisService.FetchPlan(redisInstance.PlanID)
 		if plan.Name == "" {
-			log.Fatalf("error getting plan %s for cluster %s", redisInstance.PlanID, redisInstance.ClusterID)
+			return fmt.Errorf("error getting plan %s for cluster %s", redisInstance.PlanID, redisInstance.ClusterID)
 		}
 
 		generatedTags, err := generateTags(
@@ -113,7 +113,7 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 			},
 		)
 		if err != nil {
-			log.Fatalf("error generating new tags for cluster %s: %s", redisInstance.ClusterID, err)
+			return fmt.Errorf("error generating new tags for cluster %s: %s", redisInstance.ClusterID, err)
 		}
 
 		generatedElasticacheTags := convertTagsToElasticacheTags(generatedTags)
@@ -128,9 +128,11 @@ func fetchAndUpdateElasticacheInstanceTags(catalog *catalog.Catalog, db *gorm.DB
 			Tags:         generatedElasticacheTags,
 		})
 		if err != nil {
-			log.Fatalf("error adding new tags for cluster %s: %s", redisInstance.ClusterID, err)
+			return fmt.Errorf("error adding new tags for cluster %s: %s", redisInstance.ClusterID, err)
 		}
 
 		log.Printf("finished updating tags for cluster %s", redisInstance.ClusterID)
 	}
+
+	return nil
 }
