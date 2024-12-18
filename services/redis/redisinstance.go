@@ -41,6 +41,9 @@ type RedisInstance struct {
 
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
+
+	EngineLogsGroupName string `sql:"size(512)"`
+	SlowLogsGroupName   string `sql:"size(512)"`
 }
 
 func (i *RedisInstance) setPassword(password, key string) error {
