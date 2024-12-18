@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
@@ -108,8 +109,8 @@ func run() error {
 	}
 
 	if *actionPtr == "reconcile-log-groups" {
-		rdsClient := awsRds.New(sess)
-		err := logs.ReconcileRDSCloudwatchLogGroups(rdsClient)
+		logsClient := cloudwatchlogs.New(sess)
+		err := logs.ReconcileRDSCloudwatchLogGroups(logsClient, settings.DbNamePrefix)
 		if err != nil {
 			return err
 		}
