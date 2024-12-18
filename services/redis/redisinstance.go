@@ -38,6 +38,9 @@ type RedisInstance struct {
 	Tags          map[string]string `sql:"-"`
 	DbSubnetGroup string            `sql:"-"`
 	SecGroup      string            `sql:"-"`
+
+	ParameterGroupFamily string `sql:"-"`
+	ParameterGroupName   string `sql:"size(255)"`
 }
 
 func (i *RedisInstance) setPassword(password, key string) error {
