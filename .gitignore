@@ -9,3 +9,4 @@ ci/credentials.yml
 .vscode
 
 pipeline-*.yml
+aws-broker_manifest.yml

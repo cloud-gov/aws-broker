@@ -717,16 +717,7 @@ func prepareCreateDomainInput(
 	i *ElasticsearchInstance,
 	accessControlPolicy string,
 ) *opensearchservice.CreateDomainInput {
-	var elasticsearchTags []*opensearchservice.Tag
-
-	for k, v := range i.Tags {
-		tag := opensearchservice.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		}
-
-		elasticsearchTags = append(elasticsearchTags, &tag)
-	}
+	elasticsearchTags := convertTagsToOpensearchTags(i.Tags)
 
 	ebsoptions := &opensearchservice.EBSOptions{
 		EBSEnabled: aws.Bool(true),
