@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func getRdsInstanceTags(rdsClient rdsiface.RDSAPI, dbInstanceArn string) ([]*awsRds.Tag, error) {
+func getRdsResourceTags(rdsClient rdsiface.RDSAPI, dbInstanceArn string) ([]*awsRds.Tag, error) {
 	tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
 		ResourceName: aws.String(dbInstanceArn),
 	})
@@ -60,7 +60,7 @@ func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
 	return rdsTags
 }
 
-func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
+func doExistingTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
@@ -73,6 +73,14 @@ func doRDSTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRd
 		}
 	}
 	return true
+}
+
+func applyTagsToRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, tags []*awsRds.Tag) error {
+	_, err := rdsClient.AddTagsToResource(&awsRds.AddTagsToResourceInput{
+		ResourceName: aws.String(instanceArn),
+		Tags:         tags,
+	})
+	return err
 }
 
 func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) error {
@@ -93,7 +101,7 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 			continue
 		}
 
-		existingRdsTags, err := getRdsInstanceTags(rdsClient, dbInstanceArn)
+		existingRdsTags, err := getRdsResourceTags(rdsClient, dbInstanceArn)
 		if err != nil {
 			return fmt.Errorf("could not get tags for database %s: %s", rdsInstance.Database, err)
 		}
@@ -118,21 +126,47 @@ func fetchAndUpdateRdsInstanceTags(catalog *catalog.Catalog, db *gorm.DB, rdsCli
 		}
 
 		generatedRdsTags := convertTagsToRDSTags(generatedTags)
-		if doRDSTagsContainGeneratedTags(existingRdsTags, generatedRdsTags) {
+		if doExistingTagsContainGeneratedTags(existingRdsTags, generatedRdsTags) {
 			log.Printf("tags already updated for database %s", rdsInstance.Database)
 			continue
 		}
 
 		log.Printf("updating tags for database %s", rdsInstance.Database)
-		_, err = rdsClient.AddTagsToResource(&awsRds.AddTagsToResourceInput{
-			ResourceName: aws.String(dbInstanceArn),
-			Tags:         generatedRdsTags,
-		})
+		err = applyTagsToRDSResource(rdsClient, dbInstanceArn, generatedRdsTags)
 		if err != nil {
 			return fmt.Errorf("error adding new tags for database %s: %s", rdsInstance.Database, err)
 		}
 
 		log.Printf("finished updating tags for database %s", rdsInstance.Database)
+
+		if rdsInstance.ParameterGroupName != "" {
+			groupInfo, err := rdsClient.DescribeDBParameterGroups(&awsRds.DescribeDBParameterGroupsInput{
+				DBParameterGroupName: aws.String(rdsInstance.ParameterGroupName),
+			})
+			if err != nil {
+				log.Fatalf("could not find parameter group with name %s: %s", rdsInstance.ParameterGroupName, err)
+			}
+
+			parameterGroupArn := groupInfo.DBParameterGroups[0].DBParameterGroupArn
+
+			existingGroupTags, err := getRdsResourceTags(rdsClient, *parameterGroupArn)
+			if err != nil {
+				log.Fatalf("could not find parameter group with name %s: %s", rdsInstance.ParameterGroupName, err)
+			}
+
+			if doExistingTagsContainGeneratedTags(existingGroupTags, generatedRdsTags) {
+				log.Printf("tags already updated for group %s", rdsInstance.ParameterGroupName)
+				continue
+			}
+
+			log.Printf("updating tags for group %s", rdsInstance.ParameterGroupName)
+			err = applyTagsToRDSResource(rdsClient, dbInstanceArn, generatedRdsTags)
+			if err != nil {
+				log.Fatalf("error adding new tags for group %s: %s", rdsInstance.ParameterGroupName, err)
+			}
+
+			log.Printf("finished updating tags for group %s", rdsInstance.ParameterGroupName)
+		}
 	}
 
 	return nil
