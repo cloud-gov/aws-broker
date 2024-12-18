@@ -1008,7 +1008,7 @@ jobs:
           STATE_FILE: terraform-state/terraform.tfstate
           ENVIRONMENT: ((production-environment))
 
-      - put: deploy-aws-broker-prod
+      - put: deploy-aws-broker-prod-tasks
         params:
           manifest: built/manifest.yml
           path: built
