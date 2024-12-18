@@ -5,9 +5,11 @@ import (
 	"log"
 	"strings"
 
+	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
+	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/jinzhu/gorm"
 )
@@ -22,26 +24,47 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 
 	for _, logGroup := range resp.LogGroups {
 		log.Printf("found group: %s", *logGroup.LogGroupName)
-		res := strings.Split("/", *logGroup.LogGroupName)
-		dbName := res[3]
+		res := strings.Split(*logGroup.LogGroupName, "/")
+		if len(res) < 4 {
+			return fmt.Errorf("error parsing log group name %s", *logGroup.LogGroupName)
+		}
+
+		dbName := res[4]
 		if dbName == "" {
 			return fmt.Errorf("could not get database name for log group %s", *logGroup.LogGroupName)
 		}
 		log.Printf("got database name %s from group %s", dbName, logGroup)
 
-		// var rdsDatabase rds.RDSInstance
-		// db.Where(&rds.RDSInstance{Database: dbName}).First(&rdsDatabase)
-		// if *rdsDatabase == nil {
-		// 	log.Printf("could not find database with name %s", dbName)
-		// 	continue
-		// }
+		var rdsDatabase *rds.RDSInstance
+		db.Where(&rds.RDSInstance{Database: dbName}).First(&rdsDatabase)
+		if rdsDatabase == nil {
+			log.Printf("could not find database with name %s", dbName)
+			continue
+		}
 
-		// dbInfo, err := rdsClient.DescribeDBInstances(&rds.DescribeDBInstancesInput{
-		// 	DBInstanceIdentifier: aws.String(dbName),
-		// })
-		// if err != nil {
-		// 	return err
-		// }
+		log.Printf("database name %s has log groups enabled %s", dbName, rdsDatabase.EnabledCloudWatchLogGroupExports)
+
+		resp, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
+			DBInstanceIdentifier: aws.String(dbName),
+		})
+		if err != nil {
+			return err
+		}
+
+		instanceInfo := resp.DBInstances[0]
+
+		var enabledGroups []string
+		for _, enabledGroup := range instanceInfo.EnabledCloudwatchLogsExports {
+			enabledGroups = append(enabledGroups, *enabledGroup)
+		}
+		rdsDatabase.EnabledCloudWatchLogGroupExports = enabledGroups
+
+		err = db.Save(&rdsDatabase).Error
+		if err != nil {
+			return err
+		}
+
+		log.Printf("saved enabled log groups for %s", dbName)
 	}
 
 	return nil
