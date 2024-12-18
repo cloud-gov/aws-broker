@@ -5,7 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/elasticache"
 )
 
-func convertTagsToElasticacheTags(tags map[string]string) []*elasticache.Tag {
+func ConvertTagsToElasticacheTags(tags map[string]string) []*elasticache.Tag {
 	var elasticacheTags []*elasticache.Tag
 	for k, v := range tags {
 		tag := elasticache.Tag{

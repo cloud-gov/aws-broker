@@ -41,7 +41,7 @@ func TestGetRdsInstanceTags(t *testing.T) {
 			},
 		},
 	}
-	tags, err := getRdsInstanceTags(mockClient, "fake-arn")
+	tags, err := getRDSResourceTags(mockClient, "fake-arn")
 	if err != nil {
 		t.Error(err)
 	}
@@ -150,7 +150,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			doTagsMatch := doRDSTagsContainGeneratedTags(test.existingRdsTags, test.generatedRdsTags)
+			doTagsMatch := doRDSResourceTagsContainGeneratedTags(test.existingRdsTags, test.generatedRdsTags)
 			if doTagsMatch != test.shouldTagsMatch {
 				t.Errorf("expected doRDSTagsContainGeneratedTags to return %t, got: %t", test.shouldTagsMatch, doTagsMatch)
 			}

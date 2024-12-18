@@ -19,7 +19,7 @@ type mockParameterGroupClient struct {
 	returnErr        error
 }
 
-func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
+func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error {
 	if m.returnErr != nil {
 		return m.returnErr
 	}

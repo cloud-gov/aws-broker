@@ -18,7 +18,7 @@ const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
-	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error
+	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error
 	CleanupCustomParameterGroups()
 }
 
@@ -46,7 +46,7 @@ func NewAwsParameterGroupClient(rds rdsiface.RDSAPI, settings config.Settings) *
 // there needs to be a custom parameter group for the instance. If so, the method will either
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
-func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance) error {
+func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error {
 	if !p.needCustomParameters(i) {
 		return nil
 	}
@@ -59,7 +59,7 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 	setParameterGroupName(i, p)
 
 	// apply parameter group
-	err = p.createOrModifyCustomParameterGroup(i, customRDSParameters)
+	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters)
 	if err != nil {
 		log.Println(err.Error())
 		return fmt.Errorf("encountered error applying parameter group: %w", err)
@@ -176,6 +176,7 @@ func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName
 // parameters have been requested.
 func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
+	rdsTags []*rds.Tag,
 	customparams map[string]map[string]paramDetails,
 ) error {
 	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
@@ -191,6 +192,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(i.ParameterGroupName),
 			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
+			Tags:                   rdsTags,
 		}
 
 		_, err = p.rds.CreateDBParameterGroup(createInput)
