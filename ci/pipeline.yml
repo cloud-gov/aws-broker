@@ -87,8 +87,10 @@ jobs:
 
         on_failure:
           put: slack
-          params:
-            <<: *slack-failure-config
+          params: &slack-failure-config
+            channel: ((slack-failure-channel))
+            username: ((slack-username))
+            icon_url: ((slack-icon-url))            
             text: |
               :x: FAILED to deploy aws-broker-tasks on development
               <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>                      
@@ -119,12 +121,10 @@ jobs:
         on_failure:
           put: slack
           params:
+            <<: *slack-failure-config
             text: |
               :x: FAILED to deploy aws-broker on development
               <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-            channel: ((slack-failure-channel))
-            username: ((slack-username))
-            icon_url: ((slack-icon-url))
 
       - task: update-broker
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -220,14 +220,13 @@ jobs:
                 SERVICE_PLAN: redis-dev
                 REGION: ((development-aws-default-region))
     on_failure:
-      params:
-        channel: ((slack-failure-channel))
-        icon_url: ((slack-icon-url))
+      put: slack
+      params: 
+        <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        username: concourse
-      put: slack
+      
 
   - name: acceptance-tests-search-development
     plan:
@@ -285,14 +284,13 @@ jobs:
                 SERVICE_PLAN: es-dev
                 REGION: ((development-aws-default-region))
     on_failure:
+      put: slack
       params:
-        channel: ((slack-failure-channel))
-        icon_url: ((slack-icon-url))
+        <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on development FAILED
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        username: concourse
-      put: slack
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>      
+      
 
   - name: acceptance-tests-db-development
     plan:
@@ -455,13 +453,11 @@ jobs:
                 DB_TYPE: mysql
     on_failure:
       put: slack
-      params: &slack-failure-config
+      params: 
+        <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((slack-failure-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
 
   - name: reconfigure
     plan:
@@ -822,13 +818,13 @@ jobs:
                 SERVICE_PLAN: micro-mysql
                 DB_TYPE: mysql
     on_failure:
+      put: slack
       params:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      put: slack
-
+      
   - name: acceptance-tests-redis-staging
     plan:
       - in_parallel:
@@ -856,12 +852,12 @@ jobs:
                 SERVICE_PLAN: redis-dev
                 REGION: ((staging-aws-default-region))
     on_failure:
+      put: slack
       params:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on staging FAILED
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      put: slack
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>      
 
   - name: acceptance-tests-search-staging
     plan:
@@ -918,13 +914,13 @@ jobs:
                 SERVICE_PLAN: es-dev
                 REGION: ((staging-aws-default-region))
     on_failure:
+      put: slack
       params:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      put: slack
-
+      
   - name: terraform-plan-aws-broker-prod
     plan:
       - in_parallel:
@@ -974,11 +970,11 @@ jobs:
 
       - put: slack
         params:
-          <<: *slack-success-config
+          <<: *slack-failure-config
           text: |
             :terraform: $BUILD_JOB_NAME needs review
             <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-          channel: ((slack-notify-channel))
+          channel: ((slack-success-channel))
 
   - name: deploy-aws-broker-prod
     plan:
@@ -1489,6 +1485,16 @@ resources:
       space: ((staging-cf-space))
       skip_cert_check: false
 
+  - name: deploy-aws-broker-staging-tasks
+    type: cf
+    source:
+      api: ((staging-cf-api-url))
+      username: ((staging-cf-deploy-username))
+      password: ((staging-cf-deploy-password))
+      organization: ((staging-cf-organization))
+      space: ((staging-cf-space))
+      skip_cert_check: false
+
   - name: deploy-aws-broker-prod
     type: cf
     source:
@@ -1498,6 +1504,16 @@ resources:
       organization: ((prod-cf-organization))
       space: ((prod-cf-space))
       skip_cert_check: false
+
+  - name: deploy-aws-broker-prod-tasks
+    type: cf
+    source:
+      api: ((prod-cf-api-url))
+      username: ((prod-cf-deploy-username))
+      password: ((prod-cf-deploy-password))
+      organization: ((prod-cf-organization))
+      space: ((prod-cf-space))
+      skip_cert_check: false      
 
   - name: slack
     type: slack-notification
