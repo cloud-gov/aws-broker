@@ -7,7 +7,7 @@ toolchain go1.23.4
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.10
-	github.com/cloud-gov/go-broker-tags v0.0.0-20241218195254-24284a5c54ae
+	github.com/cloud-gov/go-broker-tags v0.0.0-20241218215556-c78c3f147c5a
 	github.com/go-co-op/gocron v1.13.0
 	github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 	github.com/go-sql-driver/mysql v1.6.0
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	github.com/cloudfoundry-community/go-cfclient/v3 v3.0.0-alpha.6 // indirect
+	github.com/cloudfoundry/go-cfclient/v3 v3.0.0-alpha.9 // indirect
 	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e // indirect
