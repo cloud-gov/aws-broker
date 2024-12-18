@@ -1,7 +1,7 @@
 code.cloudfoundry.org/lager v2.0.0+incompatible h1:WZwDKDB2PLd/oL+USK4b4aEjUymIej9My2nUQ9oWEwQ=
 code.cloudfoundry.org/lager v2.0.0+incompatible/go.mod h1:O2sS7gKP3HM2iemG+EnwvyNQK7pTSC6Foi4QiMp9sSk=
-github.com/18F/aws-broker v0.0.0-20241127191649-70dd3f1a3ed9 h1:2U9L1kJ03Q3+9aMzsWWhRxE9G9AV1aSRBnclIobTRYY=
-github.com/18F/aws-broker v0.0.0-20241127191649-70dd3f1a3ed9/go.mod h1:S6ZkzzUqW2orPapsUi70KDaK4sf0nHEpTkwEpGUNP5o=
+github.com/18F/aws-broker v0.0.0-20241218165110-c3f2f35696e3 h1:G+e/1e7xxlJsVGEoTzWclsd9JVU4FkJjHptyCjzL0/g=
+github.com/18F/aws-broker v0.0.0-20241218165110-c3f2f35696e3/go.mod h1:S6ZkzzUqW2orPapsUi70KDaK4sf0nHEpTkwEpGUNP5o=
 github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/aws/aws-sdk-go v1.44.10 h1:ohCdgQpJ9ojzm0fOk7ykrMTgTpHJBk5nnA7X+HzmnOA=
