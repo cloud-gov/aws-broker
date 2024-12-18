@@ -47,6 +47,10 @@ func run() error {
 		log.Fatal("--action flag is required")
 	}
 
+	if len(servicesToTag) == 0 {
+		return errors.New("--service argument is required. Specify --service multiple times to update tags for multiple services")
+	}
+
 	var settings config.Settings
 
 	// Load settings from environment
@@ -67,10 +71,6 @@ func run() error {
 	}
 
 	if *actionPtr == "reconcile-tags" {
-		if len(servicesToTag) == 0 {
-			return errors.New("--service argument is required. Specify --service multiple times to update tags for multiple services")
-		}
-
 		tagManager, err := brokertags.NewCFTagManager(
 			"AWS broker",
 			settings.Environment,
@@ -110,9 +110,13 @@ func run() error {
 
 	if *actionPtr == "reconcile-log-groups" {
 		logsClient := cloudwatchlogs.New(sess)
-		err := logs.ReconcileRDSCloudwatchLogGroups(logsClient, settings.DbNamePrefix)
-		if err != nil {
-			return err
+
+		if slices.Contains(servicesToTag, "rds") {
+			rdsClient := awsRds.New(sess)
+			err := logs.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
