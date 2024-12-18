@@ -85,6 +85,14 @@ jobs:
             ENVIRONMENT: ((development-environment))
             GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tasks
 
+        on_failure:
+          put: slack
+          params:
+            <<: *slack-failure-config
+            text: |
+              :x: FAILED to deploy aws-broker-tasks on development
+              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>                      
+
       - put: deploy-aws-broker-development
         params:
           manifest: built/manifest.yml
@@ -560,6 +568,39 @@ jobs:
           STATE_FILE: terraform-state/terraform.tfstate
           ENVIRONMENT: ((staging-environment))
 
+      - put: deploy-aws-broker-staging-tasks
+        params:
+          manifest: built/manifest.yml
+          path: built/cmd/tasks
+          current_app_name: aws-broker-tasks
+          task: true
+          environment_variables:
+            DB_PREFIX: ((staging-db-name-prefix))
+            DB_SHORTHAND_PREFIX: stg
+            AUTH_PASS: ((staging-auth-pass))
+            AUTH_USER: ((staging-auth-user))
+            AWS_DEFAULT_REGION: ((staging-aws-default-region))
+            DB_SSLMODE: require
+            DB_USER: ((staging-rds-internal-username))
+            DB_PASS: ((staging-rds-internal-password))
+            DB_TYPE: postgres
+            DB_NAME: ((staging-rds-internal-db-name))
+            ENC_KEY: ((staging-enc-key))
+            AWS_USE_FIPS_ENDPOINT: "true"
+            CF_API_URL: ((staging-cf-api-url))
+            CF_API_CLIENT_ID: ((staging-cf-api-client-id))
+            CF_API_CLIENT_SECRET: ((staging-cf-api-client-secret))
+            ENVIRONMENT: ((staging-environment))
+            GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tasks
+
+        on_failure:
+          put: slack
+          params:
+            <<: *slack-failure-config
+            text: |
+              :x: FAILED to deploy aws-broker-tasks on staging
+              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>          
+
       - put: deploy-aws-broker-staging
         params:
           manifest: built/manifest.yml
@@ -589,13 +630,6 @@ jobs:
             <<: *slack-failure-config
             text: |
               :x: FAILED to deploy aws-broker on staging
-              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        on_success:
-          put: slack
-          params:
-            <<: *slack-success-config
-            text: |
-              :white_check_mark: Successfully deployed aws-broker on staging
               <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
       - task: update-broker
@@ -1057,6 +1091,39 @@ jobs:
             CF_API_URL: ((prod-cf-api-url))
             CF_API_CLIENT_ID: ((production-cf-api-client-id))
             CF_API_CLIENT_SECRET: ((production-cf-api-client-secret))
+            GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tasks
+
+        on_failure:
+          put: slack
+          params:
+            <<: *slack-failure-config
+            text: |
+              :x: FAILED to deploy aws-broker-tasks on production
+              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>  
+
+      - put: deploy-aws-broker-prod
+        params:
+          manifest: built/manifest.yml
+          path: built/cmd/tasks
+          current_app_name: aws-broker-tasks
+          task: true
+          environment_variables:
+            DB_PREFIX: ((prod-db-name-prefix))
+            DB_SHORTHAND_PREFIX: prd
+            AUTH_PASS: ((prod-auth-pass))
+            AUTH_USER: ((prod-auth-user))
+            AWS_DEFAULT_REGION: ((prod-aws-default-region))
+            DB_SSLMODE: require
+            DB_USER: ((prod-rds-internal-username))
+            DB_PASS: ((prod-rds-internal-password))
+            DB_TYPE: postgres
+            DB_NAME: ((prod-rds-internal-db-name))
+            ENC_KEY: ((prod-enc-key))
+            AWS_USE_FIPS_ENDPOINT: "true"
+            ENVIRONMENT: ((production-environment))
+            CF_API_URL: ((prod-cf-api-url))
+            CF_API_CLIENT_ID: ((production-cf-api-client-id))
+            CF_API_CLIENT_SECRET: ((production-cf-api-client-secret))
 
         on_failure:
           put: slack
@@ -1064,13 +1131,6 @@ jobs:
             <<: *slack-failure-config
             text: |
               :x: FAILED to deploy aws-broker on production
-              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        on_success:
-          put: slack
-          params:
-            <<: *slack-success-config
-            text: |
-              :white_check_mark: Successfully deployed aws-broker on production
               <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
       - task: update-broker
