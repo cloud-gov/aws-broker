@@ -60,7 +60,7 @@ func convertTagsToRDSTags(tags map[string]string) []*awsRds.Tag {
 	return rdsTags
 }
 
-func doExistingTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
+func doRDSResourceTagsContainGeneratedTags(rdsTags []*awsRds.Tag, generatedTags []*awsRds.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
@@ -89,7 +89,7 @@ func processRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, generated
 		return fmt.Errorf("could not find resource %s: %s", instanceArn, err)
 	}
 
-	if doExistingTagsContainGeneratedTags(existingTags, generatedTags) {
+	if doRDSResourceTagsContainGeneratedTags(existingTags, generatedTags) {
 		log.Printf("tags already updated for resource %s", instanceArn)
 		return nil
 	}

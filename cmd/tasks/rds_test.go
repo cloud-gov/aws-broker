@@ -150,7 +150,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			doTagsMatch := doExistingTagsContainGeneratedTags(test.existingRdsTags, test.generatedRdsTags)
+			doTagsMatch := doRDSResourceTagsContainGeneratedTags(test.existingRdsTags, test.generatedRdsTags)
 			if doTagsMatch != test.shouldTagsMatch {
 				t.Errorf("expected doRDSTagsContainGeneratedTags to return %t, got: %t", test.shouldTagsMatch, doTagsMatch)
 			}

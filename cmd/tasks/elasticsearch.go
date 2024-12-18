@@ -74,6 +74,30 @@ func doOpensearchResourceTagsContainGeneratedTags(rdsTags []*opensearchservice.T
 	return true
 }
 
+func processOpensearchResource(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, resourceArn string, generatedTags []*opensearchservice.Tag) error {
+	existingInstanceTags, err := getOpensearchResourceTags(opensearchClient, resourceArn)
+	if err != nil {
+		return fmt.Errorf("could not get tags for resource %s: %s", resourceArn, err)
+	}
+
+	if doOpensearchResourceTagsContainGeneratedTags(existingInstanceTags, generatedTags) {
+		log.Printf("tags already updated for resource %s", resourceArn)
+		return nil
+	}
+
+	log.Printf("updating tags for resource %s", resourceArn)
+	_, err = opensearchClient.AddTags(&opensearchservice.AddTagsInput{
+		ARN:     aws.String(resourceArn),
+		TagList: generatedTags,
+	})
+	if err != nil {
+		return fmt.Errorf("error adding new tags for resource %s: %s", resourceArn, err)
+	}
+
+	log.Printf("finished updating tags for resource %s", resourceArn)
+	return nil
+}
+
 func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&elasticsearch.ElasticsearchInstance{}).Rows()
 	if err != nil {
@@ -90,11 +114,6 @@ func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, open
 		}
 		if instanceArn == "" {
 			continue
-		}
-
-		existingInstanceTags, err := getOpensearchResourceTags(opensearchClient, instanceArn)
-		if err != nil {
-			return fmt.Errorf("could not get tags for domain %s: %s", elasticsearchInstance.Domain, err)
 		}
 
 		plan, _ := catalog.ElasticsearchService.FetchPlan(elasticsearchInstance.PlanID)
@@ -117,21 +136,10 @@ func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, open
 		}
 
 		generatedOpensearchTags := convertTagsToOpensearchTags(generatedTags)
-		if doOpensearchResourceTagsContainGeneratedTags(existingInstanceTags, generatedOpensearchTags) {
-			log.Printf("tags already updated for domain %s", elasticsearchInstance.Domain)
-			continue
-		}
-
-		log.Printf("updating tags for domain %s", elasticsearchInstance.Domain)
-		_, err = opensearchClient.AddTags(&opensearchservice.AddTagsInput{
-			ARN:     aws.String(instanceArn),
-			TagList: generatedOpensearchTags,
-		})
+		err = processOpensearchResource(opensearchClient, instanceArn, generatedOpensearchTags)
 		if err != nil {
-			return fmt.Errorf("error adding new tags for domain %s: %s", elasticsearchInstance.Domain, err)
+			return err
 		}
-
-		log.Printf("finished updating tags for domain %s", elasticsearchInstance.Domain)
 	}
 
 	return nil
