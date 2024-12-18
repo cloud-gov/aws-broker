@@ -67,7 +67,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
 	password string,
 ) (*rds.CreateDBInstanceInput, error) {
-	rdsTags := convertTagsToRDSTags(i.Tags)
+	rdsTags := ConvertTagsToRDSTags(i.Tags)
 
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
@@ -132,7 +132,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 		params.MasterUserPassword = aws.String(i.ClearPassword)
 	}
 
-	rdsTags := convertTagsToRDSTags(i.Tags)
+	rdsTags := ConvertTagsToRDSTags(i.Tags)
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.

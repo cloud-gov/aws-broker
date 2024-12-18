@@ -5,7 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 )
 
-func convertTagsToRDSTags(tags map[string]string) []*rds.Tag {
+func ConvertTagsToRDSTags(tags map[string]string) []*rds.Tag {
 	var rdsTags []*rds.Tag
 	for k, v := range tags {
 		tag := rds.Tag{

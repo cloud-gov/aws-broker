@@ -345,7 +345,7 @@ func prepareCreateReplicationGroupInput(
 	i *RedisInstance,
 	password string,
 ) *elasticache.CreateReplicationGroupInput {
-	redisTags := convertTagsToElasticacheTags(i.Tags)
+	redisTags := ConvertTagsToElasticacheTags(i.Tags)
 
 	var securityGroups []*string
 

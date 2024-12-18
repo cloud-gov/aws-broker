@@ -5,7 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 )
 
-func convertTagsToOpensearchTags(tags map[string]string) []*opensearchservice.Tag {
+func ConvertTagsToOpensearchTags(tags map[string]string) []*opensearchservice.Tag {
 	var opensearchTags []*opensearchservice.Tag
 	for k, v := range tags {
 		tag := opensearchservice.Tag{
