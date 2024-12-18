@@ -65,7 +65,7 @@ jobs:
           manifest: built/manifest.yml
           path: built/cmd/tasks
           current_app_name: aws-broker-tasks
-          no_start: true
+          task: true
           environment_variables:
             DB_PREFIX: ((development-db-name-prefix))
             DB_SHORTHAND_PREFIX: dev
