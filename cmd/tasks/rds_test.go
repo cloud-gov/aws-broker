@@ -41,7 +41,7 @@ func TestGetRdsInstanceTags(t *testing.T) {
 			},
 		},
 	}
-	tags, err := getRdsResourceTags(mockClient, "fake-arn")
+	tags, err := getRDSResourceTags(mockClient, "fake-arn")
 	if err != nil {
 		t.Error(err)
 	}

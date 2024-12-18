@@ -84,7 +84,7 @@ func run() error {
 
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := fetchAndUpdateRdsInstanceTags(c, db, rdsClient, tagManager)
+			err := reconcileRDSResourceTags(c, db, rdsClient, tagManager)
 			if err != nil {
 				return err
 			}
