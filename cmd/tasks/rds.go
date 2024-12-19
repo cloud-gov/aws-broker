@@ -8,6 +8,7 @@ import (
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -91,7 +92,7 @@ func processRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, generated
 	return nil
 }
 
-func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, tagManager brokertags.TagManager) error {
+func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
 		return err

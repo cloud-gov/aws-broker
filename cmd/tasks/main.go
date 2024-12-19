@@ -85,9 +85,11 @@ func run() error {
 		path, _ := os.Getwd()
 		c := catalog.InitCatalog(path)
 
+		logsClient := cloudwatchlogs.New(sess)
+
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := reconcileRDSResourceTags(c, db, rdsClient, tagManager)
+			err := reconcileRDSResourceTags(c, db, rdsClient, logsClient, tagManager)
 			if err != nil {
 				return err
 			}
