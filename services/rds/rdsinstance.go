@@ -61,7 +61,7 @@ type RDSInstance struct {
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudWatchLogGroupExports pgtype.JSONB `sql:"type:jsonb"`
+	EnabledCloudWatchLogGroupExports pgtype.JSONB `sql:"type:jsonb;default:'[]';not null"`
 
 	StorageType string `sql:"size(255)"`
 }
@@ -242,6 +242,8 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 		}
 	}
 
+	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+
 	return nil
 }
 
@@ -309,6 +311,8 @@ func (i *RDSInstance) init(
 	i.BinaryLogFormat = options.BinaryLogFormat
 	i.EnablePgCron = options.EnablePgCron
 
+	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+
 	return nil
 }
 
@@ -323,6 +327,16 @@ func (i *RDSInstance) setTags(
 	}
 	for k, v := range tags {
 		i.Tags[k] = v
+	}
+	return nil
+}
+
+func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
+	// TODO: update this to set the enabled log groups when
+	// enabling log groups is supported by the broker
+	if enabledLogGroups != nil {
+		err := i.EnabledCloudWatchLogGroupExports.Set(enabledLogGroups)
+		return err
 	}
 	return nil
 }

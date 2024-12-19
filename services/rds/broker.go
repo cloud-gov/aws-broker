@@ -23,15 +23,16 @@ import (
 // the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
-	AllocatedStorage      int64  `json:"storage"`
-	EnableFunctions       bool   `json:"enable_functions"`
-	PubliclyAccessible    bool   `json:"publicly_accessible"`
-	Version               string `json:"version"`
-	BackupRetentionPeriod *int64 `json:"backup_retention_period"`
-	BinaryLogFormat       string `json:"binary_log_format"`
-	EnablePgCron          *bool  `json:"enable_pg_cron"`
-	RotateCredentials     *bool  `json:"rotate_credentials"`
-	StorageType           string `json:"storage_type"`
+	AllocatedStorage                int64    `json:"storage"`
+	EnableFunctions                 bool     `json:"enable_functions"`
+	PubliclyAccessible              bool     `json:"publicly_accessible"`
+	Version                         string   `json:"version"`
+	BackupRetentionPeriod           *int64   `json:"backup_retention_period"`
+	BinaryLogFormat                 string   `json:"binary_log_format"`
+	EnablePgCron                    *bool    `json:"enable_pg_cron"`
+	RotateCredentials               *bool    `json:"rotate_credentials"`
+	StorageType                     string   `json:"storage_type"`
+	EnableCloudWatchLogGroupExports []string `json:"enable_cloudwatch_log_groups_exports"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
