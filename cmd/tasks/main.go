@@ -13,8 +13,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
-	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+
+	tasksElasticache "github.com/cloud-gov/aws-broker/cmd/tasks/elasticache"
+	tasksOpensearch "github.com/cloud-gov/aws-broker/cmd/tasks/opensearch"
+	"github.com/cloud-gov/aws-broker/cmd/tasks/rds"
+	tasksRds "github.com/cloud-gov/aws-broker/cmd/tasks/rds"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
@@ -89,21 +93,21 @@ func run() error {
 
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := reconcileRDSResourceTags(c, db, rdsClient, logsClient, tagManager)
+			err := tasksRds.ReconcileRDSResourceTags(c, db, rdsClient, logsClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
 		if slices.Contains(servicesToTag, "elasticache") {
 			elasticacheClient := elasticache.New(sess)
-			err := reconcileElasticacheResourceTags(c, db, elasticacheClient, tagManager)
+			err := tasksElasticache.ReconcileElasticacheResourceTags(c, db, elasticacheClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
 		if slices.Contains(servicesToTag, "elasticsearch") || slices.Contains(servicesToTag, "opensearch") {
 			opensearchClient := opensearchservice.New(sess)
-			err := reconcileOpensearchResourceTags(c, db, opensearchClient, tagManager)
+			err := tasksOpensearch.ReconcileOpensearchResourceTags(c, db, opensearchClient, tagManager)
 			if err != nil {
 				return err
 			}
@@ -115,7 +119,7 @@ func run() error {
 
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := logs.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
+			err := rds.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
 			if err != nil {
 				return err
 			}

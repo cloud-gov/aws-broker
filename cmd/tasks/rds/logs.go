@@ -1,4 +1,4 @@
-package logs
+package rds
 
 import (
 	"errors"
@@ -12,10 +12,12 @@ import (
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/jinzhu/gorm"
+
+	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 )
 
 func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLogsAPI, rdsClient rdsiface.RDSAPI, dbNamePrefix string, db *gorm.DB) error {
-	resp, err := DescribeLogGroups(logsClient, fmt.Sprintf("/aws/rds/instance/%s", dbNamePrefix))
+	resp, err := logs.DescribeLogGroups(logsClient, fmt.Sprintf("/aws/rds/instance/%s", dbNamePrefix))
 	if err != nil {
 		return err
 	}

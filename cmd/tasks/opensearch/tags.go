@@ -1,4 +1,4 @@
-package main
+package opensearch
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/opensearchservice/opensearchserviceiface"
+	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
@@ -85,7 +86,7 @@ func processOpensearchResource(opensearchClient opensearchserviceiface.OpenSearc
 	return nil
 }
 
-func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
+func ReconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&elasticsearch.ElasticsearchInstance{}).Rows()
 	if err != nil {
 		return err
@@ -108,7 +109,7 @@ func reconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, open
 			return fmt.Errorf("error getting plan %s for domain %s", elasticsearchInstance.PlanID, elasticsearchInstance.Domain)
 		}
 
-		generatedTags, err := generateTags(
+		generatedTags, err := tags.GenerateTags(
 			tagManager,
 			catalog.ElasticsearchService.Name,
 			plan.Name,

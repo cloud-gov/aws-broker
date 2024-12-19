@@ -1,4 +1,4 @@
-package main
+package rds
 
 import (
 	"fmt"
@@ -12,6 +12,9 @@ import (
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+
+	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
+
 	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
 )
@@ -92,7 +95,7 @@ func processRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, generated
 	return nil
 }
 
-func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
+func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
 		return err
@@ -115,7 +118,7 @@ func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 			return fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
 		}
 
-		generatedTags, err := generateTags(
+		generatedTags, err := tags.GenerateTags(
 			tagManager,
 			catalog.RdsService.Name,
 			plan.Name,
