@@ -8,7 +8,6 @@ import (
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -177,9 +176,7 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 
 			logGroupArn := resp.LogGroups[0].Arn
 
-			_, err = logsClient.TagResource(&cloudwatchlogs.TagResourceInput{
-				ResourceArn: logGroupArn,
-			})
+			err = logs.TagCloudwatchLogGroup(logsClient, *logGroupArn, generatedTags)
 			if err != nil {
 				return err
 			}
