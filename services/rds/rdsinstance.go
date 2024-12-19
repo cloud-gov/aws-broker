@@ -60,7 +60,7 @@ type RDSInstance struct {
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudWatchLogGroupExports []string `sql:"-"`
+	EnabledCloudWatchLogGroupExports []string `sql:"type:jsonb"`
 
 	StorageType string `sql:"size(255)"`
 }
