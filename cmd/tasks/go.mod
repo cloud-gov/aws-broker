@@ -3,9 +3,9 @@ module github.com/cloud-gov/aws-broker/cmd/tasks
 go 1.23.4
 
 require (
-	github.com/18F/aws-broker v0.0.0-20241218202745-c4a6175c8d13
+	github.com/18F/aws-broker v0.0.0-20241219171405-4200ba5a116d
 	github.com/aws/aws-sdk-go v1.55.5
-	github.com/cloud-gov/go-broker-tags v0.0.0-20241218195254-24284a5c54ae
+	github.com/cloud-gov/go-broker-tags v0.0.0-20241218215556-c78c3f147c5a
 	github.com/go-test/deep v1.1.0
 	github.com/jinzhu/gorm v1.9.16
 	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e
@@ -15,6 +15,7 @@ require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/cloudfoundry-community/go-cfclient/v3 v3.0.0-alpha.6 // indirect
+	github.com/cloudfoundry/go-cfclient/v3 v3.0.0-alpha.9 // indirect
 	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-co-op/gocron v1.37.0 // indirect
@@ -24,6 +25,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
+	github.com/martini-contrib/auth v0.0.0-20150219114609-fa62c19b7ae8 // indirect
 	github.com/martini-contrib/render v0.0.0-20150707142108-ec18f8345a11 // indirect
 	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
