@@ -79,8 +79,14 @@ secrets.yml contains the all of the secrets for the different resources.
 
 ## Testing and development
 
-Make sure you have a valid secrets.yml and catalog.yml. The easiest way is to copy catalog-test.yml and secrets-test.yml to catalog.yml and secrets.yml. Once you have these in place
-run `go test` to run the tests
+Make sure you have a valid `secrets.yml` and `catalog.yml`:
+
+```shell
+cp catalog-test.yml catalog.yml
+cp secrets-test.yml secrets.yml
+```
+
+Once you have these in place, run `go test ./...` to run the tests.
 
 ### How to deploy it
 
