@@ -61,10 +61,10 @@ type ElasticsearchInstance struct {
 	SubnetID4AZ2 string            `sql:"-"`
 	SecGroup     string            `sql:"-"`
 
-	SearchSlowLogsGroupARN string `sql:"size(-)"`
-	IndexSlowLogsGroupARN  string `sql:"size(-)"`
-	ErrorLogsGroupARN      string `sql:"size(-)"`
-	AuditLogsGroupARN      string `sql:"size(-)"`
+	SearchSlowLogsGroupARN string `sql:"size(2048)"`
+	IndexSlowLogsGroupARN  string `sql:"size(2048)"`
+	ErrorLogsGroupARN      string `sql:"size(2048)"`
+	AuditLogsGroupARN      string `sql:"size(2048)"`
 }
 
 func (i *ElasticsearchInstance) setPassword(password, key string) error {
