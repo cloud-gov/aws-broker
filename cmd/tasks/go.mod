@@ -14,7 +14,6 @@ require (
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/cloudfoundry-community/go-cfclient/v3 v3.0.0-alpha.6 // indirect
 	github.com/cloudfoundry/go-cfclient/v3 v3.0.0-alpha.9 // indirect
 	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -25,7 +24,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
-	github.com/martini-contrib/auth v0.0.0-20150219114609-fa62c19b7ae8 // indirect
 	github.com/martini-contrib/render v0.0.0-20150707142108-ec18f8345a11 // indirect
 	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
@@ -33,7 +31,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
