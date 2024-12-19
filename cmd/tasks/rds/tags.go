@@ -8,11 +8,13 @@ import (
 	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 
+	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 
 	"github.com/jinzhu/gorm"
@@ -160,8 +162,29 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 		if err != nil {
 			return err
 		}
-		if len(enabledLogGroups) > 0 {
-			log.Printf("enabled log groups for database %s: %v", rdsInstance.Database, enabledLogGroups)
+
+		if len(enabledLogGroups) == 0 {
+			log.Printf("no enabled log groups for database %s", rdsInstance.Database)
+			continue
+		}
+
+		for _, logGroupType := range enabledLogGroups {
+			logGroupName := getLogGroupPrefix(rdsInstance.Database, logGroupType)
+			resp, err := logs.DescribeLogGroups(logsClient, logGroupName)
+			if err != nil {
+				return err
+			}
+
+			logGroupArn := resp.LogGroups[0].Arn
+
+			_, err = logsClient.TagResource(&cloudwatchlogs.TagResourceInput{
+				ResourceArn: logGroupArn,
+			})
+			if err != nil {
+				return err
+			}
+
+			log.Printf("finished updating tags for log group %s", logGroupName)
 		}
 	}
 

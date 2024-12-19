@@ -16,8 +16,12 @@ import (
 	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 )
 
+func getLogGroupPrefix(prefixParts ...string) string {
+	return fmt.Sprintf("/aws/rds/instance/%s", strings.Join(prefixParts, "/"))
+}
+
 func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLogsAPI, rdsClient rdsiface.RDSAPI, dbNamePrefix string, db *gorm.DB) error {
-	resp, err := logs.DescribeLogGroups(logsClient, fmt.Sprintf("/aws/rds/instance/%s", dbNamePrefix))
+	resp, err := logs.DescribeLogGroups(logsClient, getLogGroupPrefix(dbNamePrefix))
 	if err != nil {
 		return err
 	}
