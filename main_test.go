@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 
 	"github.com/go-martini/martini"
@@ -37,6 +38,17 @@ var createRDSInstanceReq = []byte(
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
+}`)
+
+var createRDSInstanceWithEnabledLogGroupsReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
+	  "enable_cloudwatch_log_groups_exports": ["foo"]
+	}
 }`)
 
 var createRDSPGWithVersionInstanceReq = []byte(
@@ -478,6 +490,47 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	// Does it contain "...because the service plan does not allow updates or modification."?
 	if !strings.Contains(res.Body.String(), "is not a supported major version; major version must be one of:") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the version is invaild")
+	}
+}
+
+func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
+	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceWithEnabledLogGroupsReq))
+
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Does it say "accepted"?
+	if !strings.Contains(res.Body.String(), "accepted") {
+		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
+	}
+	// Is it in the database and has a username and password?
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.Username == "" || i.Password == "" {
+		t.Error("The instance should have a username and password")
+	}
+
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata")
+	}
+
+	var enabledGroups []string
+	err := i.EnabledCloudWatchLogGroupExports.AssignTo(&enabledGroups)
+	if err != nil {
+		t.Error(err)
+	}
+	if !slices.Contains(enabledGroups, "foo") {
+		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
 	}
 }
 
