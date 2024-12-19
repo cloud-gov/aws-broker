@@ -62,7 +62,7 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 		for _, enabledGroup := range instanceInfo.EnabledCloudwatchLogsExports {
 			enabledGroups = append(enabledGroups, *enabledGroup)
 		}
-		rdsDatabase.EnabledCloudWatchLogGroupExports = enabledGroups
+		rdsDatabase.EnabledCloudWatchLogGroupExports.Set(enabledGroups)
 
 		err = db.Save(&rdsDatabase).Error
 		if err != nil {

@@ -151,8 +151,13 @@ func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 			}
 		}
 
-		if len(rdsInstance.EnabledCloudWatchLogGroupExports) > 0 {
-
+		var enabledLogGroups []string
+		err = rdsInstance.EnabledCloudWatchLogGroupExports.AssignTo(&enabledLogGroups)
+		if err != nil {
+			return err
+		}
+		if len(enabledLogGroups) > 0 {
+			log.Printf("enabled log groups for database %s: %v", rdsInstance.Database, enabledLogGroups)
 		}
 	}
 
