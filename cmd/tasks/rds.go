@@ -150,6 +150,10 @@ func reconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 				return err
 			}
 		}
+
+		if len(rdsInstance.EnabledCloudWatchLogGroupExports) > 0 {
+
+		}
 	}
 
 	return nil

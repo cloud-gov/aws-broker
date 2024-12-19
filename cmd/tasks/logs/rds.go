@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -35,14 +36,18 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 		}
 		log.Printf("got database name %s from group %s", dbName, *logGroup.LogGroupName)
 
-		var rdsDatabase *rds.RDSInstance
-		db.Where(&rds.RDSInstance{Database: dbName}).First(&rdsDatabase)
-		if rdsDatabase == nil {
-			log.Printf("could not find database with name %s, continuing", dbName)
-			continue
+		var rdsDatabase rds.RDSInstance
+		err := db.Where(&rds.RDSInstance{Database: dbName}).First(&rdsDatabase).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Printf("could not find database record with name %s, continuing", dbName)
+				continue
+			} else {
+				return err
+			}
 		}
 
-		log.Printf("database name %s has log groups enabled %s", dbName, rdsDatabase.EnabledCloudWatchLogGroupExports)
+		log.Printf("database name %s has log groups enabled %v", dbName, rdsDatabase.EnabledCloudWatchLogGroupExports)
 
 		resp, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
 			DBInstanceIdentifier: aws.String(dbName),
