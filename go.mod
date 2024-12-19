@@ -30,6 +30,8 @@ require (
 	github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
+	github.com/jackc/pgtype v1.14.4 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

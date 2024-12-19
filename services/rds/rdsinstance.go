@@ -2,6 +2,7 @@ package rds
 
 import (
 	"github.com/18F/aws-broker/base"
+	"github.com/jackc/pgtype"
 
 	"crypto/aes"
 	"encoding/base64"
@@ -60,7 +61,7 @@ type RDSInstance struct {
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudWatchLogGroupExports []string `sql:"type:jsonb"`
+	EnabledCloudWatchLogGroupExports pgtype.JSONB `sql:"type:jsonb"`
 
 	StorageType string `sql:"size(255)"`
 }
