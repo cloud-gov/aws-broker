@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-martini/martini"
+	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 
 	"encoding/json"
@@ -17,7 +18,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/common"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
@@ -258,37 +258,10 @@ func initTestDbConfig() (*common.DBConfig, error) {
 	return &dbConfig, nil
 }
 
-func recreateTestDbTables(brokerDB *gorm.DB) error {
-	models := map[string]interface{}{
-		"base":          base.Instance{},
-		"rds":           rds.RDSInstance{},
-		"redis":         redis.RedisInstance{},
-		"elasticsearch": elasticsearch.ElasticsearchInstance{},
-	}
-	for _, model := range models {
-		err := brokerDB.DropTableIfExists(model).Error
-		if err != nil {
-			return err
-		}
-		err = brokerDB.CreateTable(model).Error
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func initTestDb(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	brokerDB, err := db.InternalDBInit(dbConfig)
 	if err != nil {
 		return nil, err
-	}
-	if dbConfig.DbType == "postgres" {
-		err = recreateTestDbTables(brokerDB)
-		if err != nil {
-			return nil, err
-		}
-		brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{})
 	}
 	return brokerDB, nil
 }
@@ -377,7 +350,8 @@ func TestCatalog(t *testing.T) {
 Testing RDS
 */
 func TestCreateRDSInstance(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -385,7 +359,7 @@ func TestCreateRDSInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if res.Code != http.StatusAccepted {
@@ -402,7 +376,7 @@ func TestCreateRDSInstance(t *testing.T) {
 	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -417,7 +391,8 @@ func TestCreateRDSInstance(t *testing.T) {
 }
 
 func TestCreateRDSPGWithVersionInstance(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -425,7 +400,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if res.Code != http.StatusAccepted {
@@ -442,7 +417,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -457,7 +432,8 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 }
 
 func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -465,7 +441,7 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
 
 	if res.Code != http.StatusAccepted {
@@ -482,7 +458,7 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -501,7 +477,8 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 }
 
 func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -509,7 +486,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
 
 	if res.Code != http.StatusAccepted {
@@ -526,7 +503,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -545,7 +522,8 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 }
 
 func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -553,7 +531,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if res.Code != http.StatusBadRequest {
@@ -571,7 +549,8 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 }
 
 func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	instanceUUID := uuid.NewString()
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceWithEnabledLogGroupsReq))
 
 	if res.Code != http.StatusAccepted {
@@ -588,7 +567,7 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -607,8 +586,9 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 }
 
 func TestModifyRDSInstance(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -619,7 +599,7 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -629,7 +609,7 @@ func TestModifyRDSInstance(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -637,7 +617,7 @@ func TestModifyRDSInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusAccepted {
@@ -655,7 +635,7 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	// Reload the instance and check to see that the plan has been modified.
 	i = rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != updateableRDSPlanID {
 		t.Logf("The instance was not modified: " + i.PlanID + " != " + updateableRDSPlanID)
 		t.Error("The instance was not modified to have the new instance class plan.")
@@ -663,8 +643,9 @@ func TestModifyRDSInstance(t *testing.T) {
 }
 
 func TestModifyRDSInstanceNotAllowed(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -675,7 +656,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -685,7 +666,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -693,7 +674,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusBadRequest {
@@ -711,7 +692,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 
 	// Reload the instance and check to see that the plan has not been modified.
 	i = rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != originalRDSPlanID {
 		t.Logf("The instance was modified: " + i.PlanID + " != " + originalRDSPlanID)
 		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
@@ -719,8 +700,9 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 }
 
 func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -731,7 +713,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -743,7 +725,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -752,7 +734,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	}
 
 	// Pull in AllocatedStorage and increase the storage
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
 	if resp.Code != http.StatusAccepted {
@@ -769,7 +751,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -781,8 +763,9 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 }
 
 func TestModifyBinaryLogFormat(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -793,7 +776,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -803,7 +786,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -812,7 +795,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	}
 
 	// Pull in AllocatedStorage and increase the storage
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
 
 	if resp.Code != http.StatusAccepted {
@@ -829,7 +812,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -840,8 +823,9 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 }
 
 func TestModifyEnablePgCron(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -852,7 +836,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -862,7 +846,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_RDS_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -871,7 +855,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 	}
 
 	// Pull in AllocatedStorage and increase the storage
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
 
 	if resp.Code != http.StatusAccepted {
@@ -888,7 +872,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -899,8 +883,9 @@ func TestModifyEnablePgCron(t *testing.T) {
 }
 
 func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -911,7 +896,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -922,7 +907,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	}
 
 	// Pull in AllocatedStorage and increase the storage
-	urlAcceptsIncomplete := "/v2/service_instances/the_RDS_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ := doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnableCloudwatchLogGroups))
 
 	if resp.Code != http.StatusAccepted {
@@ -939,7 +924,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -950,7 +935,8 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 }
 
 func TestRDSLastOperation(t *testing.T) {
-	url := "/v2/service_instances/the_RDS_instance/last_operation"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
 	res, m := doRequest(nil, url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Without the instance
@@ -959,7 +945,7 @@ func TestRDSLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, m = doRequest(m, "/v2/service_instances/the_RDS_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res, m = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -974,7 +960,8 @@ func TestRDSLastOperation(t *testing.T) {
 }
 
 func TestRDSBindInstance(t *testing.T) {
-	url := "/v2/service_instances/the_RDS_instance/service_bindings/the_binding"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
 	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Without the instance
@@ -983,7 +970,7 @@ func TestRDSBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, _ = doRequest(m, "/v2/service_instances/the_RDS_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res, _ = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1020,7 +1007,7 @@ func TestRDSBindInstance(t *testing.T) {
 	}
 
 	instance := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&instance)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&instance)
 
 	// Does it return an unencrypted password?
 	if instance.Password == r.Credentials.Password || r.Credentials.Password == "" {
@@ -1029,7 +1016,8 @@ func TestRDSBindInstance(t *testing.T) {
 }
 
 func TestRDSUnbind(t *testing.T) {
-	url := "/v2/service_instances/the_RDS_instance/service_bindings/the_binding"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
 	res, _ := doRequest(nil, url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -1046,7 +1034,8 @@ func TestRDSUnbind(t *testing.T) {
 }
 
 func TestRDSDeleteInstance(t *testing.T) {
-	url := "/v2/service_instances/the_RDS_instance"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	res, m := doRequest(nil, url, "DELETE", true, nil)
 
 	// With no instance
@@ -1055,9 +1044,9 @@ func TestRDSDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(m, "/v2/service_instances/the_RDS_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
@@ -1071,7 +1060,7 @@ func TestRDSDeleteInstance(t *testing.T) {
 
 	// Is it actually gone from the DB?
 	i = rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", "the_RDS_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if len(i.Uuid) > 0 {
 		t.Error("The instance shouldn't be in the DB")
 	}
@@ -1082,7 +1071,8 @@ func TestRDSDeleteInstance(t *testing.T) {
 */
 
 func TestCreateRedisInstance(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_redis_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -1090,7 +1080,7 @@ func TestCreateRedisInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_redis_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	if res.Code != http.StatusAccepted {
@@ -1107,7 +1097,7 @@ func TestCreateRedisInstance(t *testing.T) {
 	}
 	// Is it in the database and has a username and password?
 	i := redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -1122,8 +1112,9 @@ func TestCreateRedisInstance(t *testing.T) {
 }
 
 func TestModifyRedisInstance(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_redis_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -1134,7 +1125,7 @@ func TestModifyRedisInstance(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -1144,7 +1135,7 @@ func TestModifyRedisInstance(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_redis_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -1152,7 +1143,7 @@ func TestModifyRedisInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_redis_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
 	if resp.Code != http.StatusBadRequest {
@@ -1170,7 +1161,7 @@ func TestModifyRedisInstance(t *testing.T) {
 
 	// Reload the instance and check to see that the plan has not been modified.
 	i = redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != originalRedisPlanID {
 		t.Logf("The instance was modified: " + i.PlanID + " != " + originalRedisPlanID)
 		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
@@ -1178,7 +1169,8 @@ func TestModifyRedisInstance(t *testing.T) {
 }
 
 func TestRedisLastOperation(t *testing.T) {
-	url := "/v2/service_instances/the_redis_instance/last_operation"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
 	res, m := doRequest(nil, url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Without the instance
@@ -1187,7 +1179,7 @@ func TestRedisLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, m = doRequest(m, "/v2/service_instances/the_redis_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res, m = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1202,7 +1194,8 @@ func TestRedisLastOperation(t *testing.T) {
 }
 
 func TestRedisBindInstance(t *testing.T) {
-	url := "/v2/service_instances/the_redis_instance/service_bindings/the_binding"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
 	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Without the instance
@@ -1211,7 +1204,7 @@ func TestRedisBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, _ = doRequest(m, "/v2/service_instances/the_redis_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res, _ = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1248,7 +1241,7 @@ func TestRedisBindInstance(t *testing.T) {
 	}
 
 	instance := redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&instance)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&instance)
 
 	// Does it return an unencrypted password?
 	if instance.Password == r.Credentials.Password || r.Credentials.Password == "" {
@@ -1257,7 +1250,8 @@ func TestRedisBindInstance(t *testing.T) {
 }
 
 func TestRedisUnbind(t *testing.T) {
-	url := "/v2/service_instances/the_redis_instance/service_bindings/the_binding"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
 	res, _ := doRequest(nil, url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -1274,7 +1268,8 @@ func TestRedisUnbind(t *testing.T) {
 }
 
 func TestRedisDeleteInstance(t *testing.T) {
-	url := "/v2/service_instances/the_redis_instance"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	res, m := doRequest(nil, url, "DELETE", true, nil)
 
 	// With no instance
@@ -1283,9 +1278,9 @@ func TestRedisDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(m, "/v2/service_instances/the_redis_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	i := redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
@@ -1299,7 +1294,7 @@ func TestRedisDeleteInstance(t *testing.T) {
 
 	// Is it actually gone from the DB?
 	i = redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if len(i.Uuid) > 0 {
 		t.Error("The instance shouldn't be in the DB")
 	}
@@ -1310,7 +1305,8 @@ func TestRedisDeleteInstance(t *testing.T) {
 */
 
 func TestCreateElasticsearchInstance(t *testing.T) {
-	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -1318,7 +1314,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	if res.Code != http.StatusAccepted {
@@ -1339,7 +1335,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 
 	// Is it in the database and has a username and password?
 	i := elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -1360,7 +1356,8 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 		t.Error("The instance should not have IndicesQueryBoolMaxClauseCount but has it as", i.IndicesQueryBoolMaxClauseCount)
 	}
 
-	urlAcceptsIncompleteAdv := "/v2/service_instances/the_advanced_elasticsearch_instance?accepts_incomplete=true"
+	advancedInstanceUUID := uuid.NewString()
+	urlAcceptsIncompleteAdv := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", advancedInstanceUUID)
 	res, _ = doRequest(nil, urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceAdvancedOptionsReq))
 
 	if res.Code != http.StatusAccepted {
@@ -1381,7 +1378,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 
 	// Is it in the database and has a username and password?
 	i = elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_advanced_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", advancedInstanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -1404,8 +1401,9 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 }
 
 func TestModifyElasticsearchInstanceParams(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -1416,7 +1414,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -1426,7 +1424,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -1434,7 +1432,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusAccepted {
@@ -1445,7 +1443,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 	i = elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
 	}
@@ -1461,8 +1459,9 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 }
 
 func TestModifyElasticsearchInstancePlan(t *testing.T) {
+	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
-	createURL := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Check to make sure the request was successful.
@@ -1473,7 +1472,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance was not saved to the DB.")
 	}
@@ -1483,7 +1482,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	urlUnacceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance"
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
@@ -1491,7 +1490,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
-	urlAcceptsIncomplete := "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true"
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusBadRequest {
@@ -1509,7 +1508,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 
 	// Reload the instance and check to see that the plan has not been modified.
 	i = elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != originalElasticsearchPlanID {
 		t.Logf("The instance was modified: " + i.PlanID + " != " + originalElasticsearchPlanID)
 		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
@@ -1517,7 +1516,8 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 }
 
 func TestElasticsearchLastOperation(t *testing.T) {
-	url := "/v2/service_instances/the_elasticsearch_instance/last_operation"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
 	res, m := doRequest(nil, url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Without the instance
@@ -1526,7 +1526,7 @@ func TestElasticsearchLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, m = doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res, m = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1541,7 +1541,8 @@ func TestElasticsearchLastOperation(t *testing.T) {
 }
 
 func TestElasticsearchBindInstance(t *testing.T) {
-	url := "/v2/service_instances/the_elasticsearch_instance/service_bindings/the_binding"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
 	res, m := doRequest(nil, url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Without the instance
@@ -1550,7 +1551,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res, _ = doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res, _ = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1596,7 +1597,8 @@ func TestElasticsearchBindInstance(t *testing.T) {
 }
 
 func TestElasticsearchUnbind(t *testing.T) {
-	url := "/v2/service_instances/the_elasticsearch_instance/service_bindings/the_binding"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
 	res, _ := doRequest(nil, url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -1613,7 +1615,8 @@ func TestElasticsearchUnbind(t *testing.T) {
 }
 
 func TestElasticsearchDeleteInstance(t *testing.T) {
-	url := "/v2/service_instances/the_elasticsearch_instance"
+	instanceUUID := uuid.NewString()
+	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	res, m := doRequest(nil, url, "DELETE", true, nil)
 
 	// With no instance
@@ -1622,9 +1625,9 @@ func TestElasticsearchDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(m, "/v2/service_instances/the_elasticsearch_instance?accepts_incomplete=true", "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	i := elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
@@ -1638,7 +1641,7 @@ func TestElasticsearchDeleteInstance(t *testing.T) {
 
 	// Is it actually gone from the DB?
 	i = elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_redis_instance").First(&i)
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if len(i.Uuid) > 0 {
 		t.Error("The instance shouldn't be in the DB")
 	}
