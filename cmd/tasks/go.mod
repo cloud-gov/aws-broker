@@ -3,7 +3,7 @@ module github.com/cloud-gov/aws-broker/cmd/tasks
 go 1.23.4
 
 require (
-	github.com/18F/aws-broker v0.0.0-20241220185802-0812b6defaba
+	github.com/18F/aws-broker v0.0.0-20241220194228-cfd14a5f5a8a
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/cloud-gov/go-broker-tags v0.0.0-20241218215556-c78c3f147c5a
 	github.com/go-test/deep v1.1.0
