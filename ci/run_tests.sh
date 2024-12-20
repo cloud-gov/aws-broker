@@ -7,3 +7,6 @@ cp catalog-test.yml catalog.yml
 
 # Run all _test.go files in main directory and subdirectories
 go test ./...
+
+cd cmd/tasks
+go test ./...
