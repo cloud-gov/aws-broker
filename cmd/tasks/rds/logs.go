@@ -66,7 +66,7 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 
 		log.Printf("database name %s has log groups enabled %v", dbName, enabledGroups)
 
-		rdsDatabase.EnabledCloudWatchLogGroupExports = enabledGroups
+		rdsDatabase.EnabledCloudwatchLogGroupExports = enabledGroups
 		err = db.Save(&rdsDatabase).Error
 		if err != nil {
 			return err
