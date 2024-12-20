@@ -1,4 +1,4 @@
-package main
+package elasticache
 
 import (
 	"fmt"
@@ -13,6 +13,8 @@ import (
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
+
+	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 )
 
 func getElasticacheInstanceArn(elasticacheClient elasticacheiface.ElastiCacheAPI, redisInstance redis.RedisInstance) (string, error) {
@@ -85,7 +87,7 @@ func processElasticacheResource(elasticacheClient elasticacheiface.ElastiCacheAP
 	return nil
 }
 
-func reconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) error {
+func ReconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&redis.RedisInstance{}).Rows()
 	if err != nil {
 		return err
@@ -108,7 +110,7 @@ func reconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, ela
 			return fmt.Errorf("error getting plan %s for cluster %s", redisInstance.PlanID, redisInstance.ClusterID)
 		}
 
-		generatedTags, err := generateTags(
+		generatedTags, err := tags.GenerateTags(
 			tagManager,
 			catalog.RedisService.Name,
 			plan.Name,
