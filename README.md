@@ -96,7 +96,7 @@ Once you have these in place, run `go test ./...` to run the tests.
 1. Start the PostgreSQL docker container:
 
       ```shell
-      cd docker && docker compose up -d 
+      cd docker && docker compose up -d  && cd -
       ```
 
 1. **OPTIONAL**: For `.env` file integration with the VSCode Go test runner, create `.vscode/settings.json` with:
