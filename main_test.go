@@ -266,7 +266,7 @@ func recreateTestDbTables(brokerDB *gorm.DB) error {
 		"elasticsearch": elasticsearch.ElasticsearchInstance{},
 	}
 	for _, model := range models {
-		err := brokerDB.DropTable(model).Error
+		err := brokerDB.DropTableIfExists(model).Error
 		if err != nil {
 			return err
 		}
@@ -601,9 +601,7 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 		t.Error("The instance should have metadata")
 	}
 
-	var enabledLogGroups []string
-	i.EnabledCloudWatchLogGroupExports.AssignTo(&enabledLogGroups)
-	if !slices.Contains(enabledLogGroups, "foo") {
+	if !slices.Contains(i.EnabledCloudWatchLogGroupExports, "foo") {
 		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
 	}
 }
@@ -946,9 +944,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	var enabledLogGroups []string
-	i.EnabledCloudWatchLogGroupExports.AssignTo(&enabledLogGroups)
-	if !slices.Contains(enabledLogGroups, "foo") {
+	if !slices.Contains(i.EnabledCloudWatchLogGroupExports, "foo") {
 		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
 	}
 }
