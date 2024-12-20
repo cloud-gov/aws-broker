@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
-	"github.com/lib/pq"
 
 	"encoding/json"
 	"io"
@@ -602,7 +601,9 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 		t.Error("The instance should have metadata")
 	}
 
-	if !reflect.DeepEqual(i.EnabledCloudWatchLogGroupExports, pq.Array([]string{"foo"})) {
+	var enabledLogGroups []string
+	i.EnabledCloudWatchLogGroupExports.AssignTo(&enabledLogGroups)
+	if !slices.Contains(enabledLogGroups, "foo") {
 		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
 	}
 }
@@ -945,7 +946,9 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if !reflect.DeepEqual(i.EnabledCloudWatchLogGroupExports, []string{"foo"}) {
+	var enabledLogGroups []string
+	i.EnabledCloudWatchLogGroupExports.AssignTo(&enabledLogGroups)
+	if !slices.Contains(enabledLogGroups, "foo") {
 		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
 	}
 }
