@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -16,6 +18,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/common"
 	"github.com/18F/aws-broker/config"
 	"github.com/18F/aws-broker/db"
@@ -233,14 +236,74 @@ var modifyElasticsearchInstanceParamsReq = []byte(
 
 var brokerDB *gorm.DB
 
+func initTestDbConfig() (*common.DBConfig, error) {
+	var dbConfig common.DBConfig
+	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
+		dbConfig.DbType = "sqlite3"
+	}
+	switch dbConfig.DbType {
+	case "postgres":
+		dbConfig.DbType = "postgres"
+		dbConfig.DbName = os.Getenv("POSTGRES_USER")
+		dbConfig.Password = os.Getenv("POSTGRES_PASSWORD")
+		dbConfig.Sslmode = "disable"
+		dbConfig.Port = 5432
+		dbConfig.Username = os.Getenv("POSTGRES_USER")
+		dbConfig.URL = "localhost"
+	case "sqlite3":
+		dbConfig.DbType = "sqlite3"
+		dbConfig.DbName = ":memory:"
+	default:
+		return nil, fmt.Errorf("unsupported db type: %s", dbConfig.DbType)
+	}
+	return &dbConfig, nil
+}
+
+func recreateTestDbTables(brokerDB *gorm.DB) error {
+	models := map[string]interface{}{
+		"base":          base.Instance{},
+		"rds":           rds.RDSInstance{},
+		"redis":         redis.RedisInstance{},
+		"elasticsearch": elasticsearch.ElasticsearchInstance{},
+	}
+	for _, model := range models {
+		err := brokerDB.DropTable(model).Error
+		if err != nil {
+			return err
+		}
+		err = brokerDB.CreateTable(model).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func initTestDb(dbConfig *common.DBConfig) (*gorm.DB, error) {
+	brokerDB, err := db.InternalDBInit(dbConfig)
+	if err != nil {
+		return nil, err
+	}
+	if dbConfig.DbType == "postgres" {
+		err = recreateTestDbTables(brokerDB)
+		if err != nil {
+			return nil, err
+		}
+		brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{})
+	}
+	return brokerDB, nil
+}
+
 func setup() *martini.ClassicMartini {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
 	var s config.Settings
-	var dbConfig common.DBConfig
-	s.DbConfig = &dbConfig
-	dbConfig.DbType = "sqlite3"
-	dbConfig.DbName = ":memory:"
+
+	dbConfig, err := initTestDbConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	s.EncryptionKey = "12345678901234567890123456789012"
 	s.Environment = "test"
 	s.MaxAllocatedStorage = 1024
@@ -248,7 +311,10 @@ func setup() *martini.ClassicMartini {
 	s.CfApiClientId = "fake-client-id"
 	s.CfApiClientSecret = "fake-client-secret"
 
-	brokerDB, _ = db.InternalDBInit(&dbConfig)
+	brokerDB, err = initTestDb(dbConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 	tq := taskqueue.NewQueueManager()
 	tq.Init()
 
