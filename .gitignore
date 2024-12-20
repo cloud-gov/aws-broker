@@ -2,7 +2,9 @@
 gin-bin
 aws-broker
 secrets.yml
+secrets*.yml
 catalog.yml
+catalog*.yml
 ci/credentials.yml
 .DS_Store
 *.swp

@@ -2,7 +2,7 @@ package rds
 
 import (
 	"github.com/18F/aws-broker/base"
-	"github.com/jackc/pgtype"
+	"github.com/lib/pq"
 
 	"crypto/aes"
 	"encoding/base64"
@@ -61,10 +61,12 @@ type RDSInstance struct {
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudWatchLogGroupExports pgtype.JSONB `sql:"type:jsonb;default:'[]';not null"`
+	EnabledCloudWatchLogGroupExports pq.StringArray `sql:"type:text[]"`
 
 	StorageType string `sql:"size(255)"`
 }
+
+type EnabledCloudwatchLogGroupExports []string
 
 func (u *RDSDatabaseUtils) FormatDBName(dbType string, database string) string {
 	switch dbType {
@@ -334,9 +336,8 @@ func (i *RDSInstance) setTags(
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
 	// TODO: update this to set the enabled log groups when
 	// enabling log groups is supported by the broker
-	if enabledLogGroups != nil {
-		err := i.EnabledCloudWatchLogGroupExports.Set(enabledLogGroups)
-		return err
+	if len(enabledLogGroups) > 0 {
+		i.EnabledCloudWatchLogGroupExports = enabledLogGroups
 	}
 	return nil
 }
