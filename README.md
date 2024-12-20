@@ -88,6 +88,32 @@ cp secrets-test.yml secrets.yml
 
 Once you have these in place, run `go test ./...` to run the tests.
 
+### Testing with PostgreSQL database
+
+1. Copy `.env-sample` to `.env`
+1. Add a value for `POSTGRES_USER` to the `.env` file
+1. Add a value for `POSTGRES_PASSWORD` to the `.env` file
+1. Start the PostgreSQL docker container:
+
+      ```shell
+      cd docker && docker compose up -d  && cd -
+      ```
+
+1. **OPTIONAL**: For `.env` file integration with the VSCode Go test runner, create `.vscode/settings.json` with:
+
+   ```json
+   {
+      "go.testEnvFile": "/path/to/aws-broker/.env"
+   }
+   ```
+
+1. Run the tests using `godotenv`:
+
+   ```shell
+   go install github.com/joho/godotenv/cmd/godotenv@latest
+   godotenv -f ./.env go test ./...
+   ```
+
 ### How to deploy it
 
 1. `cf push`

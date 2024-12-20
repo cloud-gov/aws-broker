@@ -1,0 +1,11 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - 5432:5432
+    env_file: ../.env
+    command: ["postgres", "-c", "log_statement=all"]
+    expose:
+      - "5432"
+
