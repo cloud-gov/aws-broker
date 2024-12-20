@@ -176,7 +176,11 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 
 			logGroupArn := resp.LogGroups[0].Arn
 
-			err = logs.TagCloudwatchLogGroup(logsClient, *logGroupArn, generatedTags)
+			cloudwatchTags := make(map[string]*string)
+			for key, value := range generatedTags {
+				cloudwatchTags[key] = aws.String(value)
+			}
+			err = logs.TagCloudwatchLogGroup(logsClient, *logGroupArn, cloudwatchTags)
 			if err != nil {
 				return err
 			}
