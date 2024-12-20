@@ -61,12 +61,10 @@ type RDSInstance struct {
 	ParameterGroupFamily string `sql:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudWatchLogGroupExports pq.StringArray `sql:"type:text[]"`
+	EnabledCloudwatchLogGroupExports pq.StringArray `sql:"type:text[]"`
 
 	StorageType string `sql:"size(255)"`
 }
-
-type EnabledCloudwatchLogGroupExports []string
 
 func (u *RDSDatabaseUtils) FormatDBName(dbType string, database string) string {
 	switch dbType {
@@ -337,7 +335,7 @@ func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []str
 	// TODO: update this to set the enabled log groups when
 	// enabling log groups is supported by the broker
 	if len(enabledLogGroups) > 0 {
-		i.EnabledCloudWatchLogGroupExports = enabledLogGroups
+		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
 	}
 	return nil
 }

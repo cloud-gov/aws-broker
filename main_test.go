@@ -580,8 +580,8 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 		t.Error("The instance should have metadata")
 	}
 
-	if !slices.Contains(i.EnabledCloudWatchLogGroupExports, "foo") {
-		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
+	if !slices.Contains(i.EnabledCloudwatchLogGroupExports, "foo") {
+		t.Error("expected EnabledCloudwatchLogGroupExports to contain 'foo'")
 	}
 }
 
@@ -929,8 +929,8 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if !slices.Contains(i.EnabledCloudWatchLogGroupExports, "foo") {
-		t.Error("expected EnabledCloudWatchLogGroupExports to contain 'foo'")
+	if !slices.Contains(i.EnabledCloudwatchLogGroupExports, "foo") {
+		t.Error("expected EnabledCloudwatchLogGroupExports to contain 'foo'")
 	}
 }
 
