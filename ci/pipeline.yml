@@ -1044,7 +1044,7 @@ jobs:
       - put: deploy-aws-broker-prod
         params:
           manifest: built/manifest.yml
-          path: built/cmd/tasks
+          path: built
           current_app_name: aws-broker
           task: true
           environment_variables:
