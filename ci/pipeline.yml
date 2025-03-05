@@ -1011,8 +1011,9 @@ jobs:
       - put: deploy-aws-broker-prod-tasks
         params:
           manifest: built/manifest.yml
-          path: built
-          current_app_name: aws-broker
+          path: built/cmd/tasks
+          current_app_name: aws-broker-tasks
+          task: true
           environment_variables:
             DB_PREFIX: ((prod-db-name-prefix))
             DB_SHORTHAND_PREFIX: prd
@@ -1026,10 +1027,10 @@ jobs:
             DB_NAME: ((prod-rds-internal-db-name))
             ENC_KEY: ((prod-enc-key))
             AWS_USE_FIPS_ENDPOINT: "true"
-            ENVIRONMENT: ((production-environment))
             CF_API_URL: ((prod-cf-api-url))
             CF_API_CLIENT_ID: ((production-cf-api-client-id))
             CF_API_CLIENT_SECRET: ((production-cf-api-client-secret))
+            ENVIRONMENT: ((production-environment))
             GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/aws-broker/cmd/tasks
 
         on_failure:
@@ -1043,9 +1044,8 @@ jobs:
       - put: deploy-aws-broker-prod
         params:
           manifest: built/manifest.yml
-          path: built/cmd/tasks
-          current_app_name: aws-broker-tasks
-          task: true
+          path: built
+          current_app_name: aws-broker
           environment_variables:
             DB_PREFIX: ((prod-db-name-prefix))
             DB_SHORTHAND_PREFIX: prd
