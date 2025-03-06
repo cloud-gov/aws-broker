@@ -17,6 +17,11 @@ func TagCloudwatchLogGroup(logGroupName string, generatedTags map[string]string,
 		return err
 	}
 
+	if len(resp.LogGroups) == 0 {
+		log.Printf("could not find log group %s", logGroupName)
+		return nil
+	}
+
 	logGroupArn := *resp.LogGroups[0].Arn
 	logGroupArn, _ = strings.CutSuffix(logGroupArn, ":*")
 
