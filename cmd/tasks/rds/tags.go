@@ -3,7 +3,6 @@ package rds
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/services/rds"
@@ -164,26 +163,11 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 
 		for _, logGroupType := range rdsInstance.EnabledCloudwatchLogGroupExports {
 			logGroupName := getLogGroupPrefix(rdsInstance.Database, logGroupType)
-			log.Printf("adding tags to log group %s", logGroupName)
 
-			resp, err := logs.DescribeLogGroups(logsClient, logGroupName)
+			err = logs.TagCloudwatchLogGroup(logGroupName, generatedTags, logsClient)
 			if err != nil {
 				return err
 			}
-
-			logGroupArn := *resp.LogGroups[0].Arn
-			logGroupArn, _ = strings.CutSuffix(logGroupArn, ":*")
-
-			cloudwatchTags := make(map[string]*string)
-			for key, value := range generatedTags {
-				cloudwatchTags[key] = aws.String(value)
-			}
-			err = logs.TagCloudwatchLogGroup(logsClient, logGroupArn, cloudwatchTags)
-			if err != nil {
-				return err
-			}
-
-			log.Printf("finished updating tags for log group %s", logGroupName)
 		}
 	}
 
