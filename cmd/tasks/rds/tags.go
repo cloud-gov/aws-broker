@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -102,13 +103,16 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 		return err
 	}
 
+	var errs error
+
 	for rows.Next() {
 		var rdsInstance rds.RDSInstance
 		db.ScanRows(rows, &rdsInstance)
 
 		dbInstanceArn, err := getRDSInstanceArn(rdsClient, rdsInstance)
 		if err != nil {
-			return fmt.Errorf("could not get ARN for database %s: %s", rdsInstance.Database, err)
+			errs = errors.Join(errs, fmt.Errorf("could not get ARN for database %s: %s", rdsInstance.Database, err))
+			continue
 		}
 		if dbInstanceArn == "" {
 			continue
@@ -116,7 +120,8 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 
 		plan, _ := catalog.RdsService.FetchPlan(rdsInstance.PlanID)
 		if plan.Name == "" {
-			return fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
+			errs = errors.Join(errs, fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database))
+			continue
 		}
 
 		generatedTags, err := tags.GenerateTags(
@@ -130,7 +135,8 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("error generating new tags for database %s: %s", rdsInstance.Database, err)
+			errs = errors.Join(errs, fmt.Errorf("error generating new tags for database %s: %s", rdsInstance.Database, err))
+			continue
 		}
 
 		generatedRdsTags := rds.ConvertTagsToRDSTags(generatedTags)
@@ -145,14 +151,16 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 				DBParameterGroupName: aws.String(rdsInstance.ParameterGroupName),
 			})
 			if err != nil {
-				log.Fatalf("could not find parameter group with name %s: %s", rdsInstance.ParameterGroupName, err)
+				errs = errors.Join(errs, fmt.Errorf("could not find parameter group with name %s: %s", rdsInstance.ParameterGroupName, err))
+				continue
 			}
 
 			parameterGroupArn := groupInfo.DBParameterGroups[0].DBParameterGroupArn
 
 			err = processRDSResource(rdsClient, *parameterGroupArn, generatedRdsTags)
 			if err != nil {
-				return err
+				errs = errors.Join(errs, fmt.Errorf("could not process tags for parameter group with name %s: %s", rdsInstance.ParameterGroupName, err))
+				continue
 			}
 		}
 
@@ -166,10 +174,11 @@ func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient r
 
 			err = logs.TagCloudwatchLogGroup(logGroupName, generatedTags, logsClient)
 			if err != nil {
-				return err
+				errs = errors.Join(errs, fmt.Errorf("could not apply tags to cloudwatch log group %s: %s", logGroupName, err))
+				continue
 			}
 		}
 	}
 
-	return nil
+	return errs
 }
