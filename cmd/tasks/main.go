@@ -93,7 +93,7 @@ func run() error {
 
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := tasksRds.ReconcileRDSResourceTags(c, db, rdsClient, logsClient, tagManager)
+			err := tasksRds.ReconcileResourceTagsForAllRDSDatabases(c, db, rdsClient, logsClient, tagManager)
 			if err != nil {
 				return err
 			}
