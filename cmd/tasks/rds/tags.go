@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -75,7 +76,7 @@ func applyTagsToRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, tags 
 	return err
 }
 
-func processRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, generatedTags []*awsRds.Tag) error {
+func reconcileRDSResourceTags(rdsClient rdsiface.RDSAPI, instanceArn string, generatedTags []*awsRds.Tag) error {
 	existingTags, err := getRDSResourceTags(rdsClient, instanceArn)
 	if err != nil {
 		return fmt.Errorf("could not find resource %s: %s", instanceArn, err)
@@ -96,80 +97,105 @@ func processRDSResource(rdsClient rdsiface.RDSAPI, instanceArn string, generated
 	return nil
 }
 
-func ReconcileRDSResourceTags(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
+func reconcileRDSParameterGroupTags(rdsInstance rds.RDSInstance, generatedRdsTags []*awsRds.Tag, rdsClient rdsiface.RDSAPI) error {
+	groupInfo, err := rdsClient.DescribeDBParameterGroups(&awsRds.DescribeDBParameterGroupsInput{
+		DBParameterGroupName: aws.String(rdsInstance.ParameterGroupName),
+	})
+	if err != nil {
+		return fmt.Errorf("could not find parameter group with name %s: %s", rdsInstance.ParameterGroupName, err)
+	}
+
+	if len(groupInfo.DBParameterGroups) == 0 {
+		return fmt.Errorf("could not find parameter group with name %s", rdsInstance.ParameterGroupName)
+	}
+
+	parameterGroupArn := groupInfo.DBParameterGroups[0].DBParameterGroupArn
+
+	err = reconcileRDSResourceTags(rdsClient, *parameterGroupArn, generatedRdsTags)
+	if err != nil {
+		return fmt.Errorf("could not process tags for parameter group with name %s: %s", rdsInstance.ParameterGroupName, err)
+	}
+
+	return nil
+}
+
+func reconcileResourceTagsForRDSDatabase(rdsInstance rds.RDSInstance, catalog *catalog.Catalog, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
+	dbInstanceArn, err := getRDSInstanceArn(rdsClient, rdsInstance)
+	if err != nil {
+		return fmt.Errorf("could not get ARN for database %s: %s", rdsInstance.Database, err)
+	}
+	if dbInstanceArn == "" {
+		return nil
+	}
+
+	plan, _ := catalog.RdsService.FetchPlan(rdsInstance.PlanID)
+	if plan.Name == "" {
+		return fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
+	}
+
+	generatedTags, err := tags.GenerateTags(
+		tagManager,
+		catalog.RdsService.Name,
+		plan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     rdsInstance.Uuid,
+			SpaceGUID:        rdsInstance.SpaceGUID,
+			OrganizationGUID: rdsInstance.OrganizationGUID,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("error generating new tags for database %s: %s", rdsInstance.Database, err)
+	}
+
+	generatedRdsTags := rds.ConvertTagsToRDSTags(generatedTags)
+
+	err = reconcileRDSResourceTags(rdsClient, dbInstanceArn, generatedRdsTags)
+	if err != nil {
+		return fmt.Errorf("failed to process database %s: %s", rdsInstance.Database, err)
+	}
+
+	if rdsInstance.ParameterGroupName != "" {
+		err := reconcileRDSParameterGroupTags(rdsInstance, generatedRdsTags, rdsClient)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(rdsInstance.EnabledCloudwatchLogGroupExports) == 0 {
+		log.Printf("no enabled log groups for database %s", rdsInstance.Database)
+		return nil
+	}
+
+	for _, logGroupType := range rdsInstance.EnabledCloudwatchLogGroupExports {
+		logGroupName := getLogGroupPrefix(rdsInstance.Database, logGroupType)
+
+		err = logs.TagCloudwatchLogGroup(logGroupName, generatedTags, logsClient)
+		if err != nil {
+			return fmt.Errorf("could not apply tags to cloudwatch log group %s: %s", logGroupName, err)
+		}
+	}
+
+	return nil
+}
+
+func ReconcileResourceTagsForAllRDSDatabases(catalog *catalog.Catalog, db *gorm.DB, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
 		return err
 	}
 
+	var errs error
+
 	for rows.Next() {
 		var rdsInstance rds.RDSInstance
 		db.ScanRows(rows, &rdsInstance)
 
-		dbInstanceArn, err := getRDSInstanceArn(rdsClient, rdsInstance)
+		err := reconcileResourceTagsForRDSDatabase(rdsInstance, catalog, rdsClient, logsClient, tagManager)
 		if err != nil {
-			return fmt.Errorf("could not get ARN for database %s: %s", rdsInstance.Database, err)
-		}
-		if dbInstanceArn == "" {
+			errs = errors.Join(errs, err)
 			continue
-		}
-
-		plan, _ := catalog.RdsService.FetchPlan(rdsInstance.PlanID)
-		if plan.Name == "" {
-			return fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
-		}
-
-		generatedTags, err := tags.GenerateTags(
-			tagManager,
-			catalog.RdsService.Name,
-			plan.Name,
-			brokertags.ResourceGUIDs{
-				InstanceGUID:     rdsInstance.Uuid,
-				SpaceGUID:        rdsInstance.SpaceGUID,
-				OrganizationGUID: rdsInstance.OrganizationGUID,
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("error generating new tags for database %s: %s", rdsInstance.Database, err)
-		}
-
-		generatedRdsTags := rds.ConvertTagsToRDSTags(generatedTags)
-
-		err = processRDSResource(rdsClient, dbInstanceArn, generatedRdsTags)
-		if err != nil {
-			return err
-		}
-
-		if rdsInstance.ParameterGroupName != "" {
-			groupInfo, err := rdsClient.DescribeDBParameterGroups(&awsRds.DescribeDBParameterGroupsInput{
-				DBParameterGroupName: aws.String(rdsInstance.ParameterGroupName),
-			})
-			if err != nil {
-				log.Fatalf("could not find parameter group with name %s: %s", rdsInstance.ParameterGroupName, err)
-			}
-
-			parameterGroupArn := groupInfo.DBParameterGroups[0].DBParameterGroupArn
-
-			err = processRDSResource(rdsClient, *parameterGroupArn, generatedRdsTags)
-			if err != nil {
-				return err
-			}
-		}
-
-		if len(rdsInstance.EnabledCloudwatchLogGroupExports) == 0 {
-			log.Printf("no enabled log groups for database %s", rdsInstance.Database)
-			continue
-		}
-
-		for _, logGroupType := range rdsInstance.EnabledCloudwatchLogGroupExports {
-			logGroupName := getLogGroupPrefix(rdsInstance.Database, logGroupType)
-
-			err = logs.TagCloudwatchLogGroup(logGroupName, generatedTags, logsClient)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
-	return nil
+	return errs
 }
