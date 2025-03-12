@@ -1,7 +1,7 @@
 package tags
 
 import (
-	"log"
+	"fmt"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -15,7 +15,7 @@ func GenerateTags(tagManager brokertags.TagManager, serviceOfferingName string, 
 		true,
 	)
 	if err != nil {
-		log.Fatalf("error generating new tags for database %s", err)
+		return map[string]string{}, fmt.Errorf("error generating new tags for database %s", err)
 	}
 	// We can ignore the timestamp tags, if they exist
 	delete(generatedTags, "Created at")
