@@ -1,7 +1,6 @@
 module github.com/18F/aws-broker
 
 go 1.21
-
 toolchain go1.23.4
 
 require (
@@ -12,6 +11,7 @@ require (
 	github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/go-test/deep v1.1.0
+	github.com/google/uuid v1.6.0
 	github.com/jinzhu/gorm v1.9.16
 	github.com/lib/pq v1.10.5
 	github.com/martini-contrib/auth v0.0.0-20150219114609-fa62c19b7ae8
@@ -30,10 +30,8 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/uuid v1.6.0 // indirect
-	github.com/jackc/pgio v1.0.0 // indirect
-	github.com/jackc/pgtype v1.14.4 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -43,17 +41,14 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/protobuf v1.36.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/datatypes v1.2.5 // indirect
-	gorm.io/driver/mysql v1.5.6 // indirect
-	gorm.io/gorm v1.25.11 // indirect
 )
