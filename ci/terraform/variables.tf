@@ -57,4 +57,7 @@ variable "rds_internal_allow_major_version_upgrade" {
 }
 
 variable "rds_force_ssl" {
+  description = "Sets the value of rds.force_ssl in the parameter group created in the rds_module, 0=false, 1=true"
+  type        = number
+  default     = 1
 }
