@@ -39,9 +39,9 @@ jobs:
           TF_VAR_rds_internal_db_size: 20
           TF_VAR_rds_internal_db_name: ((development-rds-internal-db-name))
           TF_VAR_rds_internal_db_engine: postgres
-          TF_VAR_rds_internal_db_engine_version: 16.3
+          TF_VAR_rds_internal_db_engine_version: 16.8
           TF_VAR_rds_internal_db_parameter_group_family: postgres16
-          TF_VAR_rds_force_ssl: 0
+          TF_VAR_rds_force_ssl: 1
           TF_VAR_rds_internal_multi_az: false
           TF_VAR_rds_internal_username: ((development-rds-internal-username))
           TF_VAR_rds_internal_password: ((development-rds-internal-password))
@@ -508,9 +508,9 @@ jobs:
           TF_VAR_rds_internal_db_size: 20
           TF_VAR_rds_internal_db_name: ((staging-rds-internal-db-name))
           TF_VAR_rds_internal_db_engine: postgres
-          TF_VAR_rds_internal_db_engine_version: 16.3
+          TF_VAR_rds_internal_db_engine_version: 16.8
           TF_VAR_rds_internal_db_parameter_group_family: postgres16
-          TF_VAR_rds_force_ssl: 0
+          TF_VAR_rds_force_ssl: 1
           TF_VAR_rds_internal_multi_az: false
           TF_VAR_rds_internal_username: ((staging-rds-internal-username))
           TF_VAR_rds_internal_password: ((staging-rds-internal-password))
