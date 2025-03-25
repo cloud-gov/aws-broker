@@ -7,20 +7,20 @@ variable "stack_description" {
 variable "remote_state_bucket" {
 }
 
-variable "aws_deploy_region"{
+variable "aws_deploy_region" {
 
 }
 
-variable "aws_deploy_role_arn"{
-    
-}
-
-variable "platform_access_role_arn"{
+variable "aws_deploy_role_arn" {
 
 }
 
-variable "snapshot_expiration"{
-    default = 14
+variable "platform_access_role_arn" {
+
+}
+
+variable "snapshot_expiration" {
+  default = 14
 }
 
 variable "rds_internal_instance_type" {
@@ -54,4 +54,7 @@ variable "rds_internal_apply_immediately" {
 }
 
 variable "rds_internal_allow_major_version_upgrade" {
+}
+
+variable "rds_force_ssl" {
 }

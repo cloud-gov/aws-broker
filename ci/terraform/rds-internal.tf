@@ -18,4 +18,5 @@ module "rds_internal" {
   rds_parameter_group_family    = var.rds_internal_db_parameter_group_family
   apply_immediately             = var.rds_internal_apply_immediately
   allow_major_version_upgrade   = var.rds_internal_allow_major_version_upgrade
+  rds_force_ssl                 = var.rds_force_ssl
 }
