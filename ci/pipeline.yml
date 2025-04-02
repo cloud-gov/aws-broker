@@ -553,8 +553,8 @@ jobs:
               STATE_FILE_PATH: terraform-state/terraform.tfstate
               DATABASES: aws_broker_internal
               TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
-              DB_USERNAME: ((development-rds-internal-username))
-              DB_PASSWORD: ((development-rds-internal-password))
+              DB_USERNAME: ((staging-rds-internal-username))
+              DB_PASSWORD: ((staging-rds-internal-password))
             run:
               path: sh
               args:
@@ -1055,8 +1055,8 @@ jobs:
               STATE_FILE_PATH: terraform-state/terraform.tfstate
               DATABASES: aws_broker_internal
               TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
-              DB_USERNAME: ((development-rds-internal-username))
-              DB_PASSWORD: ((development-rds-internal-password))
+              DB_USERNAME: ((prod-rds-internal-username))
+              DB_PASSWORD: ((prod-rds-internal-password))
             run:
               path: sh
               args:
