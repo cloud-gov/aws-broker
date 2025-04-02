@@ -51,6 +51,27 @@ jobs:
           TF_VAR_snapshot_expiration: 1
           TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
 
+      - do:  
+        - task: init-db
+          image: general-task
+          config:
+            platform: linux
+            inputs:
+              - name: aws-broker-app
+              - name: terraform-state
+            params:
+              STATE_FILE_PATH: terraform-state/terraform.tfstate
+              DATABASES: aws_broker_internal
+              TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
+              DB_USERNAME: ((development-rds-internal-username))
+              DB_PASSWORD: ((development-rds-internal-password))
+            run:
+              path: sh
+              args:
+                - -e
+                - -c
+                - aws-broker-app/ci/update-db.sh
+
       - task: build-manifest
         file: aws-broker-app/ci/build-manifest.yml
         image: general-task
@@ -519,6 +540,27 @@ jobs:
 
           TF_VAR_snapshot_expiration: 7
           TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
+
+      - do:  
+        - task: init-db
+          image: general-task
+          config:
+            platform: linux
+            inputs:
+              - name: aws-broker-app
+              - name: terraform-state
+            params:
+              STATE_FILE_PATH: terraform-state/terraform.tfstate
+              DATABASES: aws_broker_internal
+              TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
+              DB_USERNAME: ((development-rds-internal-username))
+              DB_PASSWORD: ((development-rds-internal-password))
+            run:
+              path: sh
+              args:
+                - -e
+                - -c
+                - aws-broker-app/ci/update-db.sh
 
       - task: build-manifest
         file: aws-broker-app/ci/build-manifest.yml
@@ -1000,6 +1042,27 @@ jobs:
         params:
           <<: *plan-params
           TERRAFORM_ACTION: apply
+
+      - do:  
+        - task: init-db
+          image: general-task
+          config:
+            platform: linux
+            inputs:
+              - name: aws-broker-app
+              - name: terraform-state
+            params:
+              STATE_FILE_PATH: terraform-state/terraform.tfstate
+              DATABASES: aws_broker_internal
+              TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
+              DB_USERNAME: ((development-rds-internal-username))
+              DB_PASSWORD: ((development-rds-internal-password))
+            run:
+              path: sh
+              args:
+                - -e
+                - -c
+                - aws-broker-app/ci/update-db.sh
 
       - task: build-manifest
         file: aws-broker-app/ci/build-manifest.yml
