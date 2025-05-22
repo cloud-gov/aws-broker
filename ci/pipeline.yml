@@ -49,7 +49,7 @@ jobs:
           TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
           TF_VAR_rds_add_pgaudit_to_shared_preload_libraries: true
-          TF_VAR_rds_shared_preload_libraries: "pgaudit,pg_stat_statements"
+          TF_VAR_rds_shared_preload_libraries: "pgaudit,pg_stat_statements,pg_tle"
           #TF_VAR_rds_add_pgaudit_log_parameter: true
           #TF_VAR_rds_pgaudit_log_values: "ddl,role"
 
@@ -67,7 +67,7 @@ jobs:
             params:
               STATE_FILE_PATH: terraform-state/terraform.tfstate
               DATABASES: aws_broker_internal
-              CUSTOM_EXTENSIONS: citext uuid-ossp pgcrypto pg_stat_statements pgaudit
+#              CUSTOM_EXTENSIONS: citext uuid-ossp pgcrypto pg_stat_statements pgaudit
               TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
               DB_USERNAME: ((development-rds-internal-username))
               DB_PASSWORD: ((development-rds-internal-password))
