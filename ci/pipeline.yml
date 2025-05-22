@@ -48,6 +48,11 @@ jobs:
           TF_VAR_rds_internal_apply_immediately: "true"
           TF_VAR_rds_internal_allow_major_version_upgrade: "true"
 
+          TF_VAR_rds_add_pgaudit_to_shared_preload_libraries: true
+          TF_VAR_rds_shared_preload_libraries: "pgaudit,pg_stat_statements"
+          #TF_VAR_rds_add_pgaudit_log_parameter: true
+          #TF_VAR_rds_pgaudit_log_values: "ddl,role"
+
           TF_VAR_snapshot_expiration: 1
           TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
 
@@ -62,6 +67,7 @@ jobs:
             params:
               STATE_FILE_PATH: terraform-state/terraform.tfstate
               DATABASES: aws_broker_internal
+              CUSTOM_EXTENSIONS: citext uuid-ossp pgcrypto pg_stat_statements pgaudit
               TERRAFORM_DB_HOST_FIELD: rds_internal_rds_host
               DB_USERNAME: ((development-rds-internal-username))
               DB_PASSWORD: ((development-rds-internal-password))
@@ -485,10 +491,10 @@ jobs:
     plan:
       - get: aws-broker-app
         trigger: true
-      - set_pipeline: deploy-aws-broker
-        file: aws-broker-app/ci/pipeline.yml
-        var_files:
-          - aws-broker-app/ci/config.yml
+#      - set_pipeline: deploy-aws-broker
+#        file: aws-broker-app/ci/pipeline.yml
+#        var_files:
+#          - aws-broker-app/ci/config.yml
 
   - name: deploy-aws-broker-staging
     plan:
@@ -1458,7 +1464,8 @@ resources:
     source:
       commit_verification_keys: ((cloud-gov-pgp-keys))
       uri: ((aws-broker-url))
-      branch: ((aws-broker-branch-development))
+      #branch: ((aws-broker-branch-development))
+      branch: pgaudit
 
   - name: db-app-development
     source:

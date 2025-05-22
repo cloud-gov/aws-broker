@@ -19,4 +19,10 @@ module "rds_internal" {
   apply_immediately             = var.rds_internal_apply_immediately
   allow_major_version_upgrade   = var.rds_internal_allow_major_version_upgrade
   rds_force_ssl                 = var.rds_force_ssl
+
+  rds_add_pgaudit_to_shared_preload_libraries = var.rds_add_pgaudit_to_shared_preload_libraries
+  rds_add_pgaudit_log_parameter               = var.rds_add_pgaudit_log_parameter
+  rds_shared_preload_libraries                = var.rds_shared_preload_libraries
+  rds_pgaudit_log_values                      = var.rds_pgaudit_log_values
+
 }
