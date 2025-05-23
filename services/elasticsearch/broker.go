@@ -51,7 +51,7 @@ type elasticsearchBroker struct {
 	tagManager brokertags.TagManager
 }
 
-// InitelasticsearchBroker is the constructor for the elasticsearchBroker.  
+// InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
@@ -250,7 +250,9 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	existingInstance := ElasticsearchInstance{}
 
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
+		response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+	}
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
@@ -279,8 +281,9 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 
 	default: //all other ops use synchronous checking of aws api
 		status, _ = adapter.checkElasticsearchStatus(&existingInstance)
-		broker.brokerDB.Save(&existingInstance)
-
+		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
 	}
 
 	switch status {
