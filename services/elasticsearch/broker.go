@@ -227,16 +227,22 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	if esInstance.PlanID != updateRequest.PlanID {
 		return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
 	}
+
+	fmt.Printf("Pickles: Attempting esInstance.update(options) ... \n")
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
+
+	fmt.Printf("Pickles: Attempting adapter.modifyElasticsearch(&esInstance) ... \n")
 	_, err = adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
 	}
+
+	fmt.Printf("Pickles: Attempting to broker.brokerDB.Save ... \n")
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
 		broker.logger.Error("Saving instance failed", err)
@@ -249,6 +255,7 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
 	existingInstance := ElasticsearchInstance{}
 
+	fmt.Printf("Pickles: Running LastOperation(..) ... \n")
 	var count int64
 	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
 		response.NewErrorResponse(http.StatusInternalServerError, err.Error())
@@ -257,11 +264,13 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
+	fmt.Printf("Pickles: Running c.ElasticsearchService.FetchPlan(..) ... \n")
 	plan, planErr := c.ElasticsearchService.FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
 		return planErr
 	}
 
+	fmt.Printf("Pickles: Running initializeAdapter(..) ... \n")
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
@@ -270,6 +279,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	var state string
 	var status base.InstanceState
 
+	fmt.Printf("Pickles: operation", operation)
 	switch operation {
 	case base.DeleteOp.String(): // delete is true concurrent operation
 		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
@@ -286,6 +296,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		}
 	}
 
+	fmt.Printf("Pickles: status", status)
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
