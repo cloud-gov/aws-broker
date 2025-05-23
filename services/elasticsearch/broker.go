@@ -236,11 +236,12 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	}
 
 	fmt.Println("Pickles: Attempting adapter.modifyElasticsearch(&esInstance) ... ")
-	_, err = adapter.modifyElasticsearch(&esInstance)
+	state, err := adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
 	}
+	esInstance.State = state
 
 	fmt.Println("Pickles: Attempting to broker.brokerDB.Save ... ")
 	err = broker.brokerDB.Save(&esInstance).Error
