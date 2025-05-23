@@ -278,6 +278,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 
 	var state string
 	var status base.InstanceState
+	var statusErr error
 
 	fmt.Printf("Pickles: operation: %s ... \n", operation)
 	switch operation {
