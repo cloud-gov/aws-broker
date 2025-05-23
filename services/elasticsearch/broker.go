@@ -228,21 +228,21 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
 	}
 
-	fmt.Println("Pickles: Attempting esInstance.update(options) ... \n")
+	fmt.Println("Pickles: Attempting esInstance.update(options) ... ")
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 
-	fmt.Println("Pickles: Attempting adapter.modifyElasticsearch(&esInstance) ... \n")
+	fmt.Println("Pickles: Attempting adapter.modifyElasticsearch(&esInstance) ... ")
 	_, err = adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
 	}
 
-	fmt.Println("Pickles: Attempting to broker.brokerDB.Save ... \n")
+	fmt.Println("Pickles: Attempting to broker.brokerDB.Save ... ")
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
 		broker.logger.Error("Saving instance failed", err)
@@ -255,7 +255,7 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
 	existingInstance := ElasticsearchInstance{}
 
-	fmt.Println("Pickles: Running LastOperation(..) ... \n")
+	fmt.Println("Pickles: Running LastOperation(..) ... ")
 	var count int64
 	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
 		response.NewErrorResponse(http.StatusInternalServerError, err.Error())
@@ -264,13 +264,13 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	fmt.Println("Pickles: Running c.ElasticsearchService.FetchPlan(..) ... \n")
+	fmt.Println("Pickles: Running c.ElasticsearchService.FetchPlan(..) ... ")
 	plan, planErr := c.ElasticsearchService.FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
 		return planErr
 	}
 
-	fmt.Println("Pickles: Running initializeAdapter(..) ... \n")
+	fmt.Println("Pickles: Running initializeAdapter(..) ... ")
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
