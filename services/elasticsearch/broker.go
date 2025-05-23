@@ -290,9 +290,15 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		broker.logger.Debug(fmt.Sprintf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message))
 
 	default: //all other ops use synchronous checking of aws api
-		status, _ = adapter.checkElasticsearchStatus(&existingInstance)
-		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		// status, _ = adapter.checkElasticsearchStatus(&existingInstance)
+		// if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
+		// 	return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		// }
+
+		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
+		if statusErr != nil {
+			fmt.Printf("Error checking Elasticsearch status: %v", statusErr)
+			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
 		}
 	}
 
