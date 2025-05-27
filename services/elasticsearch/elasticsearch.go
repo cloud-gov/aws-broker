@@ -279,6 +279,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
 	// First, we need to check if the instance state
 	// Only search for details if the instance was not indicated as ready.
+
 	if i.State != base.InstanceReady {
 		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
@@ -301,6 +302,8 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			return base.InstanceNotCreated, err
 		}
 
+		fmt.Println(fmt.Printf("domain status: %s", resp.DomainStatus))
+
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {
 			case false:
@@ -314,9 +317,8 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			// Instance not up yet.
 			return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
 		}
-	}
+	    return base.InstanceNotCreated, nil
 
-	return base.InstanceNotCreated, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {

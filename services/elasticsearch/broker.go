@@ -51,7 +51,7 @@ type elasticsearchBroker struct {
 	tagManager brokertags.TagManager
 }
 
-// InitelasticsearchBroker is the constructor for the elasticsearchBroker.  
+// InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
@@ -227,16 +227,20 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	if esInstance.PlanID != updateRequest.PlanID {
 		return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
 	}
+
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
-	_, err = adapter.modifyElasticsearch(&esInstance)
+
+	state, err := adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
 	}
+	esInstance.State = state
+
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
 		broker.logger.Error("Saving instance failed", err)
@@ -250,7 +254,9 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	existingInstance := ElasticsearchInstance{}
 
 	var count int64
-	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
+		response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+	}
 	if count == 0 {
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
@@ -267,6 +273,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 
 	var state string
 	var status base.InstanceState
+	var statusErr error
 
 	switch operation {
 	case base.DeleteOp.String(): // delete is true concurrent operation
@@ -278,9 +285,14 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		broker.logger.Debug(fmt.Sprintf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message))
 
 	default: //all other ops use synchronous checking of aws api
-		status, _ = adapter.checkElasticsearchStatus(&existingInstance)
-		broker.brokerDB.Save(&existingInstance)
-
+		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
+		if statusErr != nil {
+			fmt.Printf("Error checking Elasticsearch status: %v", statusErr)
+			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
+		}
+		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
 	}
 
 	switch status {
