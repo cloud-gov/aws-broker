@@ -280,11 +280,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	// First, we need to check if the instance state
 	// Only search for details if the instance was not indicated as ready.
 
-	fmt.Printf("Pickles: i.State: %s ... \n", i.State)
-	fmt.Printf("Pickles: base.InstanceReady: %s ... \n", base.InstanceReady)
-
 	if i.State != base.InstanceReady {
-		fmt.Println("Pickles: i.State != base.InstanceReady... ")
 		params := &opensearchservice.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
@@ -322,7 +318,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
 		}
 	} else {
-		fmt.Println("Pickles: i.State = base.InstanceReady... ")
 		return base.InstanceNotCreated, nil
 	}
 

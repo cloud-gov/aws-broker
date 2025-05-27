@@ -228,14 +228,12 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
 	}
 
-	fmt.Println("Pickles: Attempting esInstance.update(options) ... ")
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 
-	fmt.Println("Pickles: Attempting adapter.modifyElasticsearch(&esInstance) ... ")
 	state, err := adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
@@ -243,7 +241,6 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 	}
 	esInstance.State = state
 
-	fmt.Println("Pickles: Attempting to broker.brokerDB.Save ... ")
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
 		broker.logger.Error("Saving instance failed", err)
@@ -256,7 +253,6 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
 	existingInstance := ElasticsearchInstance{}
 
-	fmt.Println("Pickles: Running LastOperation(..) ... ")
 	var count int64
 	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
 		response.NewErrorResponse(http.StatusInternalServerError, err.Error())
@@ -265,13 +261,11 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	fmt.Println("Pickles: Running c.ElasticsearchService.FetchPlan(..) ... ")
 	plan, planErr := c.ElasticsearchService.FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
 		return planErr
 	}
 
-	fmt.Println("Pickles: Running initializeAdapter(..) ... ")
 	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
 	if adapterErr != nil {
 		return adapterErr
@@ -281,7 +275,6 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	var status base.InstanceState
 	var statusErr error
 
-	fmt.Printf("Pickles: operation: %s ... \n", operation)
 	switch operation {
 	case base.DeleteOp.String(): // delete is true concurrent operation
 		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
@@ -292,8 +285,6 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		broker.logger.Debug(fmt.Sprintf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message))
 
 	default: //all other ops use synchronous checking of aws api
-		// status, _ = adapter.checkElasticsearchStatus(&existingInstance)
-
 		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
 			fmt.Printf("Error checking Elasticsearch status: %v", statusErr)
@@ -304,7 +295,6 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		}
 	}
 
-	fmt.Printf("Pickles: status: %s ... \n", status)
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
