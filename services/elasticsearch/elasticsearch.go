@@ -317,9 +317,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			// Instance not up yet.
 			return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
 		}
-	} else {
-		return base.InstanceNotCreated, nil
-	}
+	    return base.InstanceNotCreated, nil
 
 }
 
