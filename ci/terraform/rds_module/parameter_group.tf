@@ -53,6 +53,11 @@ resource "aws_db_parameter_group" "recreatable_parameter_group_postgres" {
     }
   }
 
+  parameter {
+    name  = "log_replication_commands"
+    value = 1
+  }
+
   lifecycle {
     create_before_destroy = true
   }
