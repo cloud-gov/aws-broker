@@ -148,12 +148,23 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 
 func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
-	_, err := d.rds.CreateDBInstanceReadReplica(&rds.CreateDBInstanceReadReplicaInput{
+	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
+		AutoMinorVersionUpgrade:    aws.Bool(true),
 		DBInstanceIdentifier:       &i.ReplicaDatabase,
+		DBSubnetGroupName:          &i.DbSubnetGroup,
 		SourceDBInstanceIdentifier: &i.Database,
 		MultiAZ:                    &d.Plan.Redundant,
+		PubliclyAccessible:         aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
+		StorageType:                aws.String(i.StorageType),
 		Tags:                       rdsTags,
-	})
+		VpcSecurityGroupIds: []*string{
+			&i.SecGroup,
+		},
+	}
+	if i.ParameterGroupName != "" {
+		createReadReplicaParams.DBParameterGroupName = aws.String(i.ParameterGroupName)
+	}
+	_, err := d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
 	return err
 }
 
