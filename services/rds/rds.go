@@ -146,13 +146,24 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 	return params, nil
 }
 
+func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
+	rdsTags := ConvertTagsToRDSTags(i.Tags)
+	_, err := d.rds.CreateDBInstanceReadReplica(&rds.CreateDBInstanceReadReplicaInput{
+		DBInstanceIdentifier:       &i.ReplicaDatabase,
+		SourceDBInstanceIdentifier: &i.Database,
+		MultiAZ:                    &d.Plan.Redundant,
+		Tags:                       rdsTags,
+	})
+	return err
+}
+
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	params, err := d.prepareCreateDbInput(i, password)
+	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
 
-	_, err = d.rds.CreateDBInstance(params)
+	_, err = d.rds.CreateDBInstance(createDbInputParams)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		return base.InstanceNotCreated, err
@@ -173,6 +184,13 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		return base.InstanceNotModified, err
+	}
+
+	if i.ReplicaDatabase != "" {
+		err = d.createDBReadReplica(i)
+		if err != nil {
+			return base.InstanceNotCreated, err
+		}
 	}
 
 	return base.InstanceInProgress, nil

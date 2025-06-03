@@ -91,7 +91,7 @@ rds:
         broker: "AWS broker"
     - id: "8cdf153a-4228-47b4-bbf1-03193f00ee70"
       name: &micro-psql-replica-name "micro-psql-replica"
-      description: "Multi-AZ RDS instance of PostgreSQL, minimum 1 core, minimum 1 GiB memory"
+      description: "RDS instance of PostgreSQL with read-replica, minimum 1 core, minimum 1 GiB memory"
       metadata:
         bullets:
           - &read-replica "includes 1 read-replica"
@@ -118,6 +118,7 @@ rds:
       dbType: postgres
       plan_updateable: true
       redundant: true
+      add_read_replica: true
       encrypted: true
       storage_type: gp3
       backup_retention_period: 14

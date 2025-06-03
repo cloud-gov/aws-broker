@@ -64,6 +64,8 @@ type RDSInstance struct {
 	EnabledCloudwatchLogGroupExports pq.StringArray `sql:"type:text[]"`
 
 	StorageType string `sql:"size(255)"`
+
+	ReplicaDatabase string `sql:"size(255)"`
 }
 
 func (u *RDSDatabaseUtils) FormatDBName(dbType string, database string) string {
@@ -247,6 +249,10 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 	return nil
 }
 
+func (i *RDSInstance) generateDatabaseReplicaName() string {
+	return i.Database + "-replica"
+}
+
 func (i *RDSInstance) init(
 	uuid string,
 	orgGUID string,
@@ -312,6 +318,10 @@ func (i *RDSInstance) init(
 	i.EnablePgCron = options.EnablePgCron
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+
+	if plan.AddReadReplica {
+		i.ReplicaDatabase = i.generateDatabaseReplicaName()
+	}
 
 	return nil
 }

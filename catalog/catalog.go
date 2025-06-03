@@ -94,6 +94,7 @@ type RDSPlan struct {
 	SubnetGroup           string            `yaml:"subnetGroup" json:"-" validate:"required"`
 	SecurityGroup         string            `yaml:"securityGroup" json:"-" validate:"required"`
 	ApprovedMajorVersions []string          `yaml:"approvedMajorVersions" json:"-"`
+	AddReadReplica        bool              `yaml:"add_read_replica" json:"-"`
 }
 
 // CheckVersion verifies that a specific version chosen by the user for a new
