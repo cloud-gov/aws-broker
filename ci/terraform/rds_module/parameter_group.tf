@@ -58,6 +58,11 @@ resource "aws_db_parameter_group" "recreatable_parameter_group_postgres" {
     value = 1
   }
 
+  parameter {
+    name  = "log_error_verbosity"
+    value = "verbose"
+  }
+
   lifecycle {
     create_before_destroy = true
   }
