@@ -25,6 +25,7 @@ import (
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
+	brokerErrs "github.com/18F/aws-broker/errors"
 
 	"fmt"
 )
@@ -137,7 +138,9 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
+	if err != nil {
+		brokerErrs.LogAWSError(err)
+	} else {
 		i.ARN = *(resp.DomainStatus.ARN)
 		esARNs := make([]string, 0)
 		esARNs = append(esARNs, i.ARN)
@@ -168,10 +171,12 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	params := prepareUpdateDomainConfigInput(i)
 
 	_, err := d.opensearch.UpdateDomainConfig(params)
-	if d.didAwsCallSucceed(err) {
-		return base.InstanceInProgress, nil
+	if err != nil {
+		brokerErrs.LogAWSError(err)
+		return base.InstanceNotModified, err
 	}
-	return base.InstanceNotModified, err
+
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
@@ -184,18 +189,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 		resp, err := d.opensearch.DescribeDomain(params)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			brokerErrs.LogAWSError(err)
 			return nil, err
 		}
 
@@ -253,13 +247,8 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 	}
 	_, err := d.opensearch.DescribeDomain(params)
 	if err != nil {
+		brokerErrs.LogAWSError(err)
 		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
 			// Instance no longer exists, force a removal from brokerdb
 			if awsErr.Code() == opensearchservice.ErrCodeResourceNotFoundException {
 				return base.InstanceGone, err
@@ -320,26 +309,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	}
 	return base.InstanceNotCreated, nil
 
-}
-
-func (d *dedicatedElasticsearchAdapter) didAwsCallSucceed(err error) bool {
-	// TODO Eventually return a formatted error object.
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS Error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
-		} else {
-			// This case should never be hit, The SDK should alwsy return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
-		}
-		return false
-	}
-	return true
 }
 
 // utility to create roles and policies to enable snapshots in an s3 bucket
@@ -639,8 +608,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 	// Pretty-print the response data.
 	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
 
-	// Decide if AWS service call was successful
-	if success := d.didAwsCallSucceed(err); !success {
+	if err != nil {
 		return err
 	}
 	// now we poll for completion
@@ -653,6 +621,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 
 		_, err := d.opensearch.DescribeDomain(params)
 		if err != nil {
+			brokerErrs.LogAWSError(err)
 			if awsErr, ok := err.(awserr.Error); ok {
 				// Instance no longer exists, this is success
 				if awsErr.Code() == opensearchservice.ErrCodeResourceNotFoundException {
@@ -661,11 +630,6 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 				}
 				// Generic AWS error with Code, Message, and original error (if any)
 				d.logger.Error("CleanUpESDomain - svc.DescribeElasticSearchDomain Failed", awsErr)
-
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
 			}
 			return err
 		}
@@ -701,7 +665,8 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 
 	_, err = svc.PutObject(&input)
 	// Decide if AWS service call was successful
-	if success := d.didAwsCallSucceed(err); !success {
+	if err != nil {
+		brokerErrs.LogAWSError(err)
 		d.logger.Error("writeManifesttoS3.PutObject Failed", err)
 		return err
 	}
