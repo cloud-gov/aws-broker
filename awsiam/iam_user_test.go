@@ -3,7 +3,7 @@ package awsiam_test
 import (
 	"errors"
 
-	. "github.com/18F/aws-broker/awsiam"
+	. "github.com/cloud-gov/aws-broker/awsiam"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 

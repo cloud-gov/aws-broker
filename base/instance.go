@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/helpers/response"
 	"github.com/jinzhu/gorm"
 )
 

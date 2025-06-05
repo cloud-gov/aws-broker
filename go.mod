@@ -1,4 +1,4 @@
-module github.com/18F/aws-broker
+module github.com/cloud-gov/aws-broker
 
 go 1.23.0
 

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/helpers/response"
 	"gopkg.in/go-playground/validator.v8"
 	"gopkg.in/yaml.v2"
 )

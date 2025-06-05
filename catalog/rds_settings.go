@@ -2,7 +2,8 @@ package catalog
 
 import (
 	"errors"
-	"github.com/18F/aws-broker/common"
+
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/jinzhu/gorm"
 )
 

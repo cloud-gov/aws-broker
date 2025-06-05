@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/18F/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/go-co-op/gocron"
 )
 
@@ -14,12 +14,13 @@ type AsyncJobState struct {
 	Message string
 }
 
-// messages of job state delivered over chan that are persisited
+// messages of job state delivered over chan that are persisted
 type AsyncJobMsg struct {
-	BrokerId   string
-	InstanceId string
-	JobType    base.Operation
-	JobState   AsyncJobState
+	BrokerId        string
+	InstanceId      string
+	JobType         base.Operation
+	JobState        AsyncJobState
+	ProcessedStatus chan bool
 }
 
 // Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
@@ -31,10 +32,11 @@ type AsyncJobQueueKey struct {
 }
 
 // QueueManager maintains:
+//
 //	 	A set of open channels for active jobs
-// 		A list of jobstates for requested job
+//		A list of jobstates for requested job
 //		A task scheduler for cleanup of jobstates
-// 		A list of jobstates that need cleanup
+//		A list of jobstates that need cleanup
 type QueueManager struct {
 	jobStates    map[AsyncJobQueueKey]AsyncJobState
 	brokerQueues map[AsyncJobQueueKey]chan AsyncJobMsg
@@ -98,12 +100,15 @@ func (q *QueueManager) processMsg(msg AsyncJobMsg) {
 		Operation:  msg.JobType,
 	}
 	q.jobStates[*key] = msg.JobState
+	if msg.ProcessedStatus != nil {
+		msg.ProcessedStatus <- true
+		close(msg.ProcessedStatus)
+	}
 }
 
 // async job monitor will process any messages
 // coming in on the channel and then update the state for that job
 func (q *QueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueueKey) {
-
 	for job := range jobChan {
 		q.processMsg(job)
 	}
@@ -126,7 +131,6 @@ func (q *QueueManager) cleanupJobStates() {
 			delete(q.cleanup, key)
 		}
 	}
-
 }
 
 // a broker or adapter can request a channel to communicate state of async processes.

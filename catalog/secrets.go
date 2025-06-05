@@ -5,7 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/18F/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/common"
 	"gopkg.in/go-playground/validator.v8"
 	"gopkg.in/yaml.v2"
 )

@@ -3,7 +3,7 @@ package elasticsearch
 import (
 	"testing"
 
-	"github.com/18F/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/config"
 )
 
 func TestValidate(t *testing.T) {

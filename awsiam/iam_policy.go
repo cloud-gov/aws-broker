@@ -10,6 +10,9 @@ import (
 	"text/template"
 
 	"code.cloudfoundry.org/lager"
+
+	brokerErrs "github.com/cloud-gov/aws-broker/errors"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -82,21 +85,6 @@ func NewIAMPolicyClient(region string, logger lager.Logger) *IAMPolicyClient {
 	}
 }
 
-func logAWSError(err error) {
-	if awsErr, ok := err.(awserr.Error); ok {
-		// Generic AWS error with Code, Message, and original error (if any)
-		fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-		if reqErr, ok := err.(awserr.RequestFailure); ok {
-			// A service error occurred
-			fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-		}
-	} else {
-		// This case should never be hit, the SDK should always return an
-		// error which satisfies the awserr.Error interface.
-		fmt.Println(err.Error())
-	}
-}
-
 // create new assumable role with the trust policy
 func (ip *IAMPolicyClient) CreateAssumeRole(
 	policy string,
@@ -119,13 +107,13 @@ func (ip *IAMPolicyClient) CreateAssumeRole(
 					RoleName: aws.String(rolename),
 				})
 				if innerErr != nil {
-					logAWSError(err)
+					brokerErrs.LogAWSError(err)
 					return nil, innerErr
 				}
 				return resp.Role, nil
 			}
 		}
-		logAWSError(err)
+		brokerErrs.LogAWSError(err)
 		return role, err
 	}
 
@@ -214,7 +202,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 					UserName: aws.String(username),
 				})
 				if innerErr != nil {
-					logAWSError(err)
+					brokerErrs.LogAWSError(err)
 					return "", innerErr
 				}
 				for _, policy := range resp.AttachedPolicies {
@@ -226,7 +214,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 				return "", err
 			}
 		}
-		logAWSError(err)
+		brokerErrs.LogAWSError(err)
 		// return if error
 		return IamRolePolicyARN, err
 	}
@@ -241,7 +229,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 		}
 		_, err := ip.iam.AttachUserPolicy(userAttachPolicyInput)
 		if err != nil {
-			logAWSError(err)
+			brokerErrs.LogAWSError(err)
 			return IamRolePolicyARN, err
 		}
 	}
@@ -272,7 +260,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 					RoleName: role.RoleName,
 				})
 				if innerErr != nil {
-					logAWSError(err)
+					brokerErrs.LogAWSError(err)
 					return "", innerErr
 				}
 				for _, policy := range resp.AttachedPolicies {
@@ -284,7 +272,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 				return "", err
 			}
 		}
-		logAWSError(err)
+		brokerErrs.LogAWSError(err)
 		return policyarn, err
 	}
 	if respPolicy.Policy.Arn != nil && role.RoleName != nil {
@@ -296,7 +284,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 
 		respAttachPolicy, err := ip.iam.AttachRolePolicy(roleAttachPolicyInput)
 		if err != nil {
-			logAWSError(err)
+			brokerErrs.LogAWSError(err)
 			return policyarn, err
 		}
 		fmt.Println(awsutil.Prettify(respAttachPolicy))
@@ -314,7 +302,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		PolicyArn: aws.String(policyARN),
 	})
 	if err != nil {
-		logAWSError(err)
+		brokerErrs.LogAWSError(err)
 		fmt.Printf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN)
 		return respPolVer, err
 	}
@@ -326,7 +314,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		}
 		resPolicyVersion, err := ip.iam.GetPolicyVersion(policyVersionInput)
 		if err != nil {
-			logAWSError(err)
+			brokerErrs.LogAWSError(err)
 			fmt.Printf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId))
 			return respPolVer, err
 		}
@@ -363,7 +351,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 
 		resp, err := ip.iam.CreatePolicyVersion(policyUpdatedVersion)
 		if err != nil {
-			logAWSError(err)
+			brokerErrs.LogAWSError(err)
 			fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion)
 			return respPolVer, err
 		}
