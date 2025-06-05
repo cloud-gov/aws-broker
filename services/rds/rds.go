@@ -147,7 +147,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, jobstate chan taskqueue.AsyncJobMsg) error {
+func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
@@ -169,6 +169,51 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, jobstate chan t
 	return err
 }
 
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobstate chan taskqueue.AsyncJobMsg) {
+	defer close(jobstate)
+
+	msg := taskqueue.AsyncJobMsg{
+		BrokerId:   i.ServiceID,
+		InstanceId: i.Uuid,
+		JobType:    base.CreateOp,
+		JobState:   taskqueue.AsyncJobState{},
+	}
+
+	msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceInProgress
+	jobstate <- msg
+
+	// TODO: limit loop to specific number of executions
+	for {
+		dbState, err := d.checkDBStatus(i)
+		if err != nil {
+			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance %s: %s", i.Uuid, err)
+			msg.JobState.State = base.InstanceNotCreated
+			jobstate <- msg
+			return
+		}
+		if dbState == base.InstanceReady {
+			break
+		}
+	}
+
+	msg.JobState.Message = fmt.Sprintf("Creating database read replica for service instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceInProgress
+	jobstate <- msg
+
+	err := d.createDBReadReplica(i)
+	if err != nil {
+		msg.JobState.Message = fmt.Sprintf("Creating database read replica on instance %s failed: %s", i.Uuid, err)
+		msg.JobState.State = base.InstanceNotCreated
+		jobstate <- msg
+		return
+	}
+
+	msg.JobState.Message = fmt.Sprintf("Database provisioning finished for service instance: %s", i.Uuid)
+	msg.JobState.State = base.InstanceGone
+	jobstate <- msg
+}
+
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
@@ -183,7 +228,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue *ta
 
 	jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.CreateOp)
 	if err == nil {
-		go d.createDBReadReplica(i, jobchan)
+		go d.waitAndCreateDBReadReplica(i, jobchan)
 	}
 
 	return base.InstanceInProgress, nil
@@ -229,27 +274,24 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 
 		// Get the details (host and port) for the instance.
 		numOfInstances := len(resp.DBInstances)
-		if numOfInstances > 0 {
-			for _, value := range resp.DBInstances {
-				// First check that the instance is up.
-				fmt.Println("Database Instance:" + i.Database + " is " + *(value.DBInstanceStatus))
-				switch *(value.DBInstanceStatus) {
-				case "available":
-					return base.InstanceReady, nil
-				case "creating":
-					return base.InstanceInProgress, nil
-				case "deleting":
-					return base.InstanceNotGone, nil
-				case "failed":
-					return base.InstanceNotCreated, nil
-				default:
-					return base.InstanceInProgress, nil
-				}
-
+		if numOfInstances == 0 {
+			return base.InstanceNotCreated, errors.New("could not find any instances")
+		}
+		for _, value := range resp.DBInstances {
+			// First check that the instance is up.
+			fmt.Println("Database Instance:" + i.Database + " is " + *(value.DBInstanceStatus))
+			switch *(value.DBInstanceStatus) {
+			case "available":
+				return base.InstanceReady, nil
+			case "creating":
+				return base.InstanceInProgress, nil
+			case "deleting":
+				return base.InstanceNotGone, nil
+			case "failed":
+				return base.InstanceNotCreated, nil
+			default:
+				return base.InstanceInProgress, nil
 			}
-		} else {
-			// Couldn't find any instances.
-			return base.InstanceNotCreated, errors.New("Couldn't find any instances.")
 		}
 	}
 
