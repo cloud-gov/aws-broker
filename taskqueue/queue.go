@@ -2,6 +2,7 @@ package taskqueue
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cloud-gov/aws-broker/base"
@@ -44,12 +45,14 @@ type QueueManager struct {
 	scheduler    *gocron.Scheduler
 	expiration   time.Duration
 	check        time.Duration
+	wg           *sync.WaitGroup
 }
 
 // can be called to initialize the manager
 // defaults to do clean-up of jobstates after an hour.
 // runs clean up check every 15 minutes
 func NewQueueManager() *QueueManager {
+	wg := &sync.WaitGroup{}
 	mgr := &QueueManager{
 		jobStates:    make(map[AsyncJobQueueKey]AsyncJobState),
 		brokerQueues: make(map[AsyncJobQueueKey]chan AsyncJobMsg),
@@ -57,6 +60,7 @@ func NewQueueManager() *QueueManager {
 		scheduler:    gocron.NewScheduler(time.Local),
 		expiration:   5 * time.Minute, //platform issues last-operation calls every 2 minutes
 		check:        2 * time.Minute,
+		wg:           wg,
 	}
 	return mgr
 }
@@ -146,6 +150,7 @@ func (q *QueueManager) RequestTaskQueue(brokerid string, instanceid string, oper
 	if _, present := q.brokerQueues[*key]; !present {
 		jobchan := make(chan AsyncJobMsg)
 		q.brokerQueues[*key] = jobchan
+		q.wg.Add(1)
 		go q.msgProcessor(jobchan, key)
 		return jobchan, nil
 	}
@@ -161,6 +166,8 @@ func (q *QueueManager) GetTaskState(brokerid string, instanceid string, operatio
 		InstanceId: instanceid,
 		Operation:  operation,
 	}
+	q.wg.Wait()
+	// fmt.Println(fmt.Printf("job states: %v", q.jobStates))
 	if state, present := q.jobStates[*key]; present {
 		return &state, nil
 	}
