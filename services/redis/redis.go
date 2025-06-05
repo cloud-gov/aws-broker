@@ -9,8 +9,9 @@ import (
 	"github.com/18F/aws-broker/base"
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
+	brokerErrs "github.com/18F/aws-broker/errors"
+
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticache"
@@ -102,10 +103,12 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 	// Pretty-print the response data.
 	log.Println(awsutil.StringValue(resp))
 	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		return base.InstanceInProgress, nil
+	if err != nil {
+		brokerErrs.LogAWSError(err)
+		return base.InstanceNotCreated, err
 	}
-	return base.InstanceNotCreated, nil
+
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
@@ -122,18 +125,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 
 		resp, err := d.elasticache.DescribeReplicationGroups(params)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			brokerErrs.LogAWSError(err)
 			return base.InstanceNotCreated, err
 		}
 
@@ -173,18 +165,7 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 
 		resp, err := d.elasticache.DescribeReplicationGroups(params)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			brokerErrs.LogAWSError(err)
 			return nil, err
 		}
 
@@ -222,40 +203,23 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 	}
 	_, err := d.elasticache.DeleteReplicationGroup(params)
 
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		go d.exportRedisSnapshot(i)
-		return base.InstanceGone, nil
-	}
-	return base.InstanceNotGone, nil
-}
-
-func (d *dedicatedRedisAdapter) didAwsCallSucceed(err error) bool {
-	// TODO Eventually return a formatted error object.
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS Error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
-		} else {
-			// This case should never be hit, The SDK should alwsy return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
-		}
-		return false
+		brokerErrs.LogAWSError(err)
+		return base.InstanceNotGone, err
 	}
-	return true
+
+	go d.exportRedisSnapshot(i)
+	return base.InstanceGone, nil
 }
 
 func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	aws_session, err := session.NewSession(aws.NewConfig().WithRegion(d.settings.Region))
-	if success := d.didAwsCallSucceed(err); !success {
+	if err != nil {
+		brokerErrs.LogAWSError(err)
 		d.logger.Error("exportRedisSnapshot: aws.NewSession Failed", err)
 		return
 	}
+
 	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	bucket := d.settings.SnapshotsBucketName
 	s3_svc := s3.New(aws_session)
@@ -268,15 +232,18 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	}
 	for {
 		resp, err := d.elasticache.DescribeSnapshots(check_input)
-		if success := d.didAwsCallSucceed(err); !success {
+		if err != nil {
+			brokerErrs.LogAWSError(err)
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
 		}
+
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
 			break
 		}
 		time.Sleep(sleep)
 	}
+
 	d.logger.Info("exportRedisSnapshot: Exporting Instance Snapshot to s3", lager.Data{"uuid": i.Uuid})
 	// export to s3 bucket so copy will autoexpire after 14 days
 	copy_input := &elasticache.CopySnapshotInput{
@@ -285,10 +252,12 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		SourceSnapshotName: aws.String(snapshot_name),
 	}
 	_, err = d.elasticache.CopySnapshot(copy_input)
-	if success := d.didAwsCallSucceed(err); !success {
+	if err != nil {
+		brokerErrs.LogAWSError(err)
 		d.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
+
 	d.logger.Info("exportRedisSnapshot: Writing Instance manisfest to s3", lager.Data{"uuid": i.Uuid})
 	// write instance to manifest
 	// marshall instance to bytes.
@@ -306,7 +275,8 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	// drop info to s3
 	_, err = s3_svc.PutObject(&input)
 	// Decide if AWS service call was successful
-	if success := d.didAwsCallSucceed(err); !success {
+	if err != nil {
+		brokerErrs.LogAWSError(err)
 		d.logger.Error("exportRedisSnapshot: S3.PutObject Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
@@ -318,10 +288,12 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	}
 	for {
 		resp, err := d.elasticache.DescribeSnapshots(check_input)
-		if success := d.didAwsCallSucceed(err); !success {
+		if err != nil {
+			brokerErrs.LogAWSError(err)
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
 		}
+
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
 			break
 		}
@@ -334,10 +306,12 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		SnapshotName: aws.String(snapshot_name),
 	}
 	_, err = d.elasticache.DeleteSnapshot(delete_input)
-	if success := d.didAwsCallSucceed(err); !success {
+	if err != nil {
+		brokerErrs.LogAWSError(err)
 		d.logger.Error("Redis.DeleteSnapshot: Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
+
 	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
 }
 

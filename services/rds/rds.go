@@ -3,12 +3,12 @@ package rds
 import (
 	"github.com/18F/aws-broker/base"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 
 	"github.com/18F/aws-broker/catalog"
 	"github.com/18F/aws-broker/config"
+	brokerErrs "github.com/18F/aws-broker/errors"
 
 	"errors"
 	"fmt"
@@ -154,14 +154,11 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 	_, err = d.rds.CreateDBInstance(params)
 	if err != nil {
+		brokerErrs.LogAWSError(err)
 		return base.InstanceNotCreated, err
 	}
 
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		return base.InstanceInProgress, nil
-	}
-	return base.InstanceNotCreated, nil
+	return base.InstanceInProgress, nil
 }
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
@@ -174,15 +171,11 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 
 	_, err = d.rds.ModifyDBInstance(params)
 	if err != nil {
+		brokerErrs.LogAWSError(err)
 		return base.InstanceNotModified, err
 	}
 
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		return base.InstanceInProgress, nil
-	}
-
-	return base.InstanceNotModified, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
@@ -195,18 +188,7 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 
 		resp, err := d.rds.DescribeDBInstances(params)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			brokerErrs.LogAWSError(err)
 			return base.InstanceNotCreated, err
 		}
 
@@ -250,18 +232,7 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 
 		resp, err := d.rds.DescribeDBInstances(params)
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				// Generic AWS error with Code, Message, and original error (if any)
-				fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-				if reqErr, ok := err.(awserr.RequestFailure); ok {
-					// A service error occurred
-					fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-				}
-			} else {
-				// This case should never be hit, the SDK should always return an
-				// error which satisfies the awserr.Error interface.
-				fmt.Println(err.Error())
-			}
+			brokerErrs.LogAWSError(err)
 			return nil, err
 		}
 
@@ -305,31 +276,12 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	}
 	_, err := d.rds.DeleteDBInstance(params)
 
-	// Decide if AWS service call was successful
-	if yes := d.didAwsCallSucceed(err); yes {
-		// clean up custom parameter groups
-		d.parameterGroupClient.CleanupCustomParameterGroups()
-		return base.InstanceGone, nil
-	}
-	return base.InstanceNotGone, nil
-}
-
-func (d *dedicatedDBAdapter) didAwsCallSucceed(err error) bool {
-	// TODO Eventually return a formatted error object.
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			// Generic AWS Error with Code, Message, and original error (if any)
-			fmt.Println(awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
-			if reqErr, ok := err.(awserr.RequestFailure); ok {
-				// A service error occurred
-				fmt.Println(reqErr.Code(), reqErr.Message(), reqErr.StatusCode(), reqErr.RequestID())
-			}
-		} else {
-			// This case should never be hit, The SDK should alwsy return an
-			// error which satisfies the awserr.Error interface.
-			fmt.Println(err.Error())
-		}
-		return false
+		brokerErrs.LogAWSError(err)
+		return base.InstanceNotGone, err
 	}
-	return true
+
+	// clean up custom parameter groups
+	d.parameterGroupClient.CleanupCustomParameterGroups()
+	return base.InstanceGone, nil
 }
