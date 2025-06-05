@@ -140,31 +140,31 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	// Decide if AWS service call was successful
 	if err != nil {
 		brokerErrs.LogAWSError(err)
-	} else {
-		i.ARN = *(resp.DomainStatus.ARN)
-		esARNs := make([]string, 0)
-		esARNs = append(esARNs, i.ARN)
-		policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-		policyARN, err := ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs, iamTags)
-		if err != nil {
-			return base.InstanceNotCreated, err
-		}
-
-		if err = user.AttachUserPolicy(i.Domain, policyARN); err != nil {
-			return base.InstanceNotCreated, err
-		}
-		i.IamPolicy = policy
-		i.IamPolicyARN = policyARN
-
-		//try setup of roles and policies on create
-		err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
-		if err != nil {
-			return base.InstanceNotCreated, nil
-		}
-		i.BrokerSnapshotsEnabled = true
-		return base.InstanceInProgress, nil
+		return base.InstanceNotCreated, err
 	}
-	return base.InstanceNotCreated, nil
+
+	i.ARN = *(resp.DomainStatus.ARN)
+	esARNs := make([]string, 0)
+	esARNs = append(esARNs, i.ARN)
+	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
+	policyARN, err := ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs, iamTags)
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
+	if err = user.AttachUserPolicy(i.Domain, policyARN); err != nil {
+		return base.InstanceNotCreated, err
+	}
+	i.IamPolicy = policy
+	i.IamPolicyARN = policyARN
+
+	//try setup of roles and policies on create
+	err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	if err != nil {
+		return base.InstanceNotCreated, nil
+	}
+	i.BrokerSnapshotsEnabled = true
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
