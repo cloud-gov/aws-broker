@@ -17,6 +17,7 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 )
 
 // Options is a struct containing all of the custom parameters supported by
@@ -67,6 +68,7 @@ type rdsBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
 	tagManager brokertags.TagManager
+	taskqueue  *taskqueue.QueueManager
 }
 
 // initializeAdapter is the main function to create database instances
@@ -97,8 +99,8 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) base.Broker {
-	return &rdsBroker{brokerDB, settings, tagManager}
+func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager, tagManager brokertags.TagManager) base.Broker {
+	return &rdsBroker{brokerDB, settings, tagManager, taskqueue}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -189,7 +191,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	}
 
 	// Create the database instance.
-	status, err := adapter.createDB(newInstance, newInstance.ClearPassword)
+	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.taskqueue)
 	if status == base.InstanceNotCreated {
 		desc := "There was an error creating the instance."
 		if err != nil {
