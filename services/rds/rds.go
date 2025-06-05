@@ -9,13 +9,14 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	brokerErrs "github.com/cloud-gov/aws-broker/errors"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 
 	"errors"
 	"fmt"
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, password string) (base.InstanceState, error)
+	createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error)
 	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
@@ -29,7 +30,7 @@ type dbAdapter interface {
 type mockDBAdapter struct {
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -146,7 +147,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
+func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, jobstate chan taskqueue.AsyncJobMsg) error {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
@@ -168,7 +169,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		return base.InstanceNotCreated, err
@@ -178,6 +179,11 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		return base.InstanceNotCreated, err
+	}
+
+	jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.CreateOp)
+	if err == nil {
+		go d.createDBReadReplica(i, jobchan)
 	}
 
 	return base.InstanceInProgress, nil
@@ -197,12 +203,12 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceNotModified, err
 	}
 
-	if i.ReplicaDatabase != "" {
-		err = d.createDBReadReplica(i)
-		if err != nil {
-			return base.InstanceNotCreated, err
-		}
-	}
+	// if i.ReplicaDatabase != "" {
+	// 	err = d.createDBReadReplica(i)
+	// 	if err != nil {
+	// 		return base.InstanceNotCreated, err
+	// 	}
+	// }
 
 	return base.InstanceInProgress, nil
 }
