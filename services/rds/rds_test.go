@@ -4,12 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/18F/aws-broker/base"
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
 	"github.com/go-test/deep"
 )
 

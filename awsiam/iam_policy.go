@@ -11,7 +11,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 
-	brokerErrs "github.com/18F/aws-broker/errors"
+	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"

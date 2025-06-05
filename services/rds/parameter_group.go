@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"github.com/cloud-gov/aws-broker/config"
 )
 
 const pgCronLibraryName = "pg_cron"

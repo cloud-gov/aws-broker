@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/18F/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/base"
 )
 
 var brokerid string = "mybroker"

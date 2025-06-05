@@ -8,9 +8,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/18F/aws-broker/awsiam"
-	"github.com/18F/aws-broker/base"
-	"github.com/18F/aws-broker/taskqueue"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -22,10 +19,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
+	"github.com/cloud-gov/aws-broker/awsiam"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-	brokerErrs "github.com/18F/aws-broker/errors"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
+	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 
 	"fmt"
 )

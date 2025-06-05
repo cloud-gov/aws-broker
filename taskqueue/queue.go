@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/18F/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/go-co-op/gocron"
 )
 
@@ -31,10 +31,11 @@ type AsyncJobQueueKey struct {
 }
 
 // QueueManager maintains:
+//
 //	 	A set of open channels for active jobs
-// 		A list of jobstates for requested job
+//		A list of jobstates for requested job
 //		A task scheduler for cleanup of jobstates
-// 		A list of jobstates that need cleanup
+//		A list of jobstates that need cleanup
 type QueueManager struct {
 	jobStates    map[AsyncJobQueueKey]AsyncJobState
 	brokerQueues map[AsyncJobQueueKey]chan AsyncJobMsg

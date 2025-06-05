@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/18F/aws-broker/base"
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-	brokerErrs "github.com/18F/aws-broker/errors"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
+	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"

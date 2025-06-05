@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/18F/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/common"
 )
 
 // Settings stores settings used to run the application

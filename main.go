@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/18F/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/config"
 	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/auth"
@@ -10,9 +10,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/db"
-	"github.com/18F/aws-broker/taskqueue"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 )
 
 func main() {
