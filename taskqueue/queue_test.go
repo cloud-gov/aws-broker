@@ -13,12 +13,6 @@ var jobop base.Operation = base.DeleteOp
 var jobstate base.InstanceState = base.InstanceInProgress
 var jobmsg string = "testing in-progress"
 
-var testAsyncJobKey AsyncJobQueueKey = AsyncJobQueueKey{
-	BrokerId:   brokerid,
-	InstanceId: instanceid,
-	Operation:  jobop,
-}
-
 func TestRequestJobQueue(t *testing.T) {
 	quemgr := NewQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
