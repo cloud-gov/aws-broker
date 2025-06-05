@@ -14,12 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/jinzhu/gorm"
 
-	"github.com/18F/aws-broker/base"
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
-	"github.com/18F/aws-broker/taskqueue"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )

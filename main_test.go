@@ -18,13 +18,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/18F/aws-broker/common"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/db"
-	"github.com/18F/aws-broker/services/elasticsearch"
-	"github.com/18F/aws-broker/services/rds"
-	"github.com/18F/aws-broker/services/redis"
-	"github.com/18F/aws-broker/taskqueue"
+	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
+	"github.com/cloud-gov/aws-broker/services/rds"
+	"github.com/cloud-gov/aws-broker/services/redis"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 )
 
 var (

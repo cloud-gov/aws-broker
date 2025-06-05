@@ -3,11 +3,11 @@ package db
 import (
 	"log"
 
-	"github.com/18F/aws-broker/base"
-	"github.com/18F/aws-broker/common"
-	"github.com/18F/aws-broker/services/elasticsearch"
-	"github.com/18F/aws-broker/services/rds"
-	"github.com/18F/aws-broker/services/redis"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
+	"github.com/cloud-gov/aws-broker/services/rds"
+	"github.com/cloud-gov/aws-broker/services/redis"
 	"github.com/jinzhu/gorm"
 )
 

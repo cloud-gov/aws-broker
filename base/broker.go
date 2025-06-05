@@ -1,9 +1,9 @@
 package base
 
 import (
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/helpers/request"
-	"github.com/18F/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/helpers/response"
 )
 
 // operation represents the type of async operation a broker may require

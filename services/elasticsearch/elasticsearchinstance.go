@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/18F/aws-broker/base"
-	"github.com/18F/aws-broker/helpers"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/helpers"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
 )
 
 // ElasticsearchInstance represents the information of an Elasticsearch Service instance.

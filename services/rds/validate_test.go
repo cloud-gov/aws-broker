@@ -3,8 +3,8 @@ package rds
 import (
 	"testing"
 
-	"github.com/18F/aws-broker/config"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/cloud-gov/aws-broker/config"
 )
 
 func TestBinaryLogFormatValidation(t *testing.T) {

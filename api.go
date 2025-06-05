@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/taskqueue"
+	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/render"
 
 	"net/http"
 
-	"github.com/18F/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/catalog"
 )
 
 /*
@@ -28,12 +28,13 @@ type CreateResponse struct {
 // CreateInstance processes all requests for creating a new service instance.
 // URL: /v2/service_instances/:id
 // Request:
-// {
-//   "service_id":        "service-guid-here",
-//   "plan_id":           "plan-guid-here",
-//   "organization_guid": "org-guid-here",
-//   "space_guid":        "space-guid-here"
-// }
+//
+//	{
+//	  "service_id":        "service-guid-here",
+//	  "plan_id":           "plan-guid-here",
+//	  "organization_guid": "org-guid-here",
+//	  "space_guid":        "space-guid-here"
+//	}
 func CreateInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
 	resp := createInstance(req, c, brokerDb, p["id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
@@ -42,12 +43,13 @@ func CreateInstance(p martini.Params, req *http.Request, r render.Render, broker
 // ModifyInstance processes all requests for modifying an existing service instance.
 // URL: /v2/service_instances/:id
 // Request:
-// {
-//   "service_id":        "service-guid-here",
-//   "plan_id":           "plan-guid-here",
-//   "organization_guid": "org-guid-here",
-//   "space_guid":        "space-guid-here"
-// }
+//
+//	{
+//	  "service_id":        "service-guid-here",
+//	  "plan_id":           "plan-guid-here",
+//	  "organization_guid": "org-guid-here",
+//	  "space_guid":        "space-guid-here"
+//	}
 func ModifyInstance(p martini.Params, req *http.Request, r render.Render, brokerDb *gorm.DB, s *config.Settings, c *catalog.Catalog, q *taskqueue.QueueManager) {
 	resp := modifyInstance(req, c, brokerDb, p["id"], s, q)
 	r.JSON(resp.GetStatusCode(), resp)
