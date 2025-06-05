@@ -13,7 +13,7 @@ var jobop base.Operation = base.DeleteOp
 var jobstate base.InstanceState = base.InstanceInProgress
 var jobmsg string = "testing in-progress"
 
-func TestRequestJobQueue(t *testing.T) {
+func TestRequestTaskQueue(t *testing.T) {
 	quemgr := NewQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
 	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
@@ -46,7 +46,7 @@ func TestGetJobState(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobchan <- AsyncJobMsg{
+	jobMsg := AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
@@ -54,11 +54,20 @@ func TestGetJobState(t *testing.T) {
 			State:   jobstate,
 			Message: jobmsg,
 		},
+		ProcessedStatus: make(chan AsyncJobMsgStatus),
 	}
+	jobchan <- jobMsg
 	if len(quemgr.brokerQueues) != 1 {
 		t.Error("BrokerQueue has more than one channel registered!")
 	}
+
 	close(jobchan)
+	// receiving from the job message status ensures that it was received and processed
+	jobMsgStatus := <-jobMsg.ProcessedStatus
+	if jobMsgStatus != AsyncJobMsgProcessed {
+		t.Fatalf("expected job message status: %s, got %s", AsyncJobMsgProcessed, jobMsgStatus)
+	}
+
 	state, err := quemgr.GetTaskState(brokerid, instanceid, jobop)
 	if err != nil {
 		t.Errorf("RequestJobState failed! %v", err)

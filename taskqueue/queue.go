@@ -2,12 +2,26 @@ package taskqueue
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/go-co-op/gocron"
 )
+
+type AsyncJobMsgStatus uint8
+
+const (
+	AsyncJobMsgProcessed AsyncJobMsgStatus = iota
+)
+
+func (o AsyncJobMsgStatus) String() string {
+	switch o {
+	case AsyncJobMsgProcessed:
+		return "processed"
+	default:
+		return "unknown"
+	}
+}
 
 // job state object persisted for brokers to access
 type AsyncJobState struct {
@@ -15,12 +29,13 @@ type AsyncJobState struct {
 	Message string
 }
 
-// messages of job state delivered over chan that are persisited
+// messages of job state delivered over chan that are persisted
 type AsyncJobMsg struct {
-	BrokerId   string
-	InstanceId string
-	JobType    base.Operation
-	JobState   AsyncJobState
+	BrokerId        string
+	InstanceId      string
+	JobType         base.Operation
+	JobState        AsyncJobState
+	ProcessedStatus chan AsyncJobMsgStatus
 }
 
 // Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
@@ -44,14 +59,12 @@ type QueueManager struct {
 	scheduler    *gocron.Scheduler
 	expiration   time.Duration
 	check        time.Duration
-	wg           *sync.WaitGroup
 }
 
 // can be called to initialize the manager
 // defaults to do clean-up of jobstates after an hour.
 // runs clean up check every 15 minutes
 func NewQueueManager() *QueueManager {
-	wg := &sync.WaitGroup{}
 	mgr := &QueueManager{
 		jobStates:    make(map[AsyncJobQueueKey]AsyncJobState),
 		brokerQueues: make(map[AsyncJobQueueKey]chan AsyncJobMsg),
@@ -59,7 +72,6 @@ func NewQueueManager() *QueueManager {
 		scheduler:    gocron.NewScheduler(time.Local),
 		expiration:   5 * time.Minute, //platform issues last-operation calls every 2 minutes
 		check:        2 * time.Minute,
-		wg:           wg,
 	}
 	return mgr
 }
@@ -103,13 +115,15 @@ func (q *QueueManager) processMsg(msg AsyncJobMsg) {
 		Operation:  msg.JobType,
 	}
 	q.jobStates[*key] = msg.JobState
+	if msg.ProcessedStatus != nil {
+		msg.ProcessedStatus <- AsyncJobMsgProcessed
+		close(msg.ProcessedStatus)
+	}
 }
 
 // async job monitor will process any messages
 // coming in on the channel and then update the state for that job
 func (q *QueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueueKey) {
-	defer q.wg.Done()
-
 	for job := range jobChan {
 		q.processMsg(job)
 	}
@@ -132,7 +146,6 @@ func (q *QueueManager) cleanupJobStates() {
 			delete(q.cleanup, key)
 		}
 	}
-
 }
 
 // a broker or adapter can request a channel to communicate state of async processes.
@@ -148,7 +161,6 @@ func (q *QueueManager) RequestTaskQueue(brokerid string, instanceid string, oper
 	if _, present := q.brokerQueues[*key]; !present {
 		jobchan := make(chan AsyncJobMsg)
 		q.brokerQueues[*key] = jobchan
-		q.wg.Add(1)
 		go q.msgProcessor(jobchan, key)
 		return jobchan, nil
 	}
@@ -164,8 +176,6 @@ func (q *QueueManager) GetTaskState(brokerid string, instanceid string, operatio
 		InstanceId: instanceid,
 		Operation:  operation,
 	}
-	q.wg.Wait()
-	// fmt.Println(fmt.Printf("job states: %v", q.jobStates))
 	if state, present := q.jobStates[*key]; present {
 		return &state, nil
 	}
