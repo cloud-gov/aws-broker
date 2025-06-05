@@ -8,21 +8,6 @@ import (
 	"github.com/go-co-op/gocron"
 )
 
-type AsyncJobMsgStatus uint8
-
-const (
-	AsyncJobMsgProcessed AsyncJobMsgStatus = iota
-)
-
-func (o AsyncJobMsgStatus) String() string {
-	switch o {
-	case AsyncJobMsgProcessed:
-		return "processed"
-	default:
-		return "unknown"
-	}
-}
-
 // job state object persisted for brokers to access
 type AsyncJobState struct {
 	State   base.InstanceState
@@ -35,7 +20,7 @@ type AsyncJobMsg struct {
 	InstanceId      string
 	JobType         base.Operation
 	JobState        AsyncJobState
-	ProcessedStatus chan AsyncJobMsgStatus
+	ProcessedStatus chan bool
 }
 
 // Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
@@ -116,7 +101,7 @@ func (q *QueueManager) processMsg(msg AsyncJobMsg) {
 	}
 	q.jobStates[*key] = msg.JobState
 	if msg.ProcessedStatus != nil {
-		msg.ProcessedStatus <- AsyncJobMsgProcessed
+		msg.ProcessedStatus <- true
 		close(msg.ProcessedStatus)
 	}
 }

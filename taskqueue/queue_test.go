@@ -54,7 +54,7 @@ func TestGetJobState(t *testing.T) {
 			State:   jobstate,
 			Message: jobmsg,
 		},
-		ProcessedStatus: make(chan AsyncJobMsgStatus),
+		ProcessedStatus: make(chan bool),
 	}
 	jobchan <- jobMsg
 	if len(quemgr.brokerQueues) != 1 {
@@ -64,8 +64,8 @@ func TestGetJobState(t *testing.T) {
 	close(jobchan)
 	// receiving from the job message status ensures that it was received and processed
 	jobMsgStatus := <-jobMsg.ProcessedStatus
-	if jobMsgStatus != AsyncJobMsgProcessed {
-		t.Fatalf("expected job message status: %s, got %s", AsyncJobMsgProcessed, jobMsgStatus)
+	if jobMsgStatus != true {
+		t.Fatalf("expected job message status: %t, got %t", true, jobMsgStatus)
 	}
 
 	state, err := quemgr.GetTaskState(brokerid, instanceid, jobop)
