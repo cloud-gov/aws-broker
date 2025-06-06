@@ -185,7 +185,7 @@ func TestCreateDb(t *testing.T) {
 		expectedErr   error
 		expectedState base.InstanceState
 		password      string
-		queueManager  *taskqueue.QueueManager
+		queueManager  *taskqueue.TaskQueueManager
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -197,7 +197,7 @@ func TestCreateDb(t *testing.T) {
 			dbInstance:    NewRDSInstance(),
 			expectedErr:   createDbErr,
 			expectedState: base.InstanceNotCreated,
-			queueManager:  taskqueue.NewQueueManager(),
+			queueManager:  taskqueue.NewTaskQueueManager(),
 		},
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -206,7 +206,7 @@ func TestCreateDb(t *testing.T) {
 			},
 			dbInstance:    NewRDSInstance(),
 			expectedState: base.InstanceInProgress,
-			queueManager:  taskqueue.NewQueueManager(),
+			queueManager:  taskqueue.NewTaskQueueManager(),
 		},
 	}
 

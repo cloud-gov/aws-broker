@@ -30,7 +30,7 @@ func (mt *mockTagGenerator) GenerateTags(
 	return mt.tags, nil
 }
 
-func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, response.Response) {
+func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager) (base.Broker, response.Response) {
 	var tagManager brokertags.TagManager
 	if settings.Environment == "test" {
 		tagManager = &mockTagGenerator{}
@@ -65,7 +65,7 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
-func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager) response.Response {
 	createRequest, err := request.ExtractRequest(req)
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager) response.Response {
 	// Extract the request information.
 	modifyRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -136,7 +136,7 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
@@ -150,7 +150,7 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 	return broker.LastOperation(c, id, instance, operation)
 }
 
-func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager) response.Response {
 	// Extract the request information.
 	bindRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -169,7 +169,7 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	return broker.BindInstance(c, id, bindRequest, instance)
 }
 
-func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp

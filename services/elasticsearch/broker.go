@@ -46,7 +46,7 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 type elasticsearchBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
-	taskqueue  *taskqueue.QueueManager
+	taskqueue  *taskqueue.TaskQueueManager
 	logger     lager.Logger
 	tagManager brokertags.TagManager
 }
@@ -55,7 +55,7 @@ type elasticsearchBroker struct {
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
-	taskqueue *taskqueue.QueueManager,
+	taskqueue *taskqueue.TaskQueueManager,
 	tagManager brokertags.TagManager,
 ) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")

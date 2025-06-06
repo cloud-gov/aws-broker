@@ -35,7 +35,7 @@ type ElasticsearchAdapter interface {
 	modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *taskqueue.QueueManager) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *taskqueue.TaskQueueManager) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -61,7 +61,7 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials(password)
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.TaskQueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -240,7 +240,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *taskqueue.TaskQueueManager) (base.InstanceState, error) {
 	//check for backing resource and do async otherwise remove from db
 	params := &opensearchservice.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
