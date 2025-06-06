@@ -169,8 +169,8 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobstate chan taskqueue.AsyncJobMsg) {
-	defer close(jobstate)
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
+	defer close(jobchan)
 
 	msg := taskqueue.AsyncJobMsg{
 		BrokerId:   i.ServiceID,
@@ -181,37 +181,39 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobstate
 
 	msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceInProgress
-	jobstate <- msg
+	jobchan <- msg
 
 	// TODO: limit loop to specific number of executions
-	for {
+	attempts := 0
+	for attempts < 10 {
 		dbState, err := d.checkDBStatus(i)
 		if err != nil {
 			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance %s: %s", i.Uuid, err)
 			msg.JobState.State = base.InstanceNotCreated
-			jobstate <- msg
+			jobchan <- msg
 			return
 		}
 		if dbState == base.InstanceReady {
 			break
 		}
+		attempts += 1
 	}
 
 	msg.JobState.Message = fmt.Sprintf("Creating database read replica for service instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceInProgress
-	jobstate <- msg
+	jobchan <- msg
 
 	err := d.createDBReadReplica(i)
 	if err != nil {
 		msg.JobState.Message = fmt.Sprintf("Creating database read replica on instance %s failed: %s", i.Uuid, err)
 		msg.JobState.State = base.InstanceNotCreated
-		jobstate <- msg
+		jobchan <- msg
 		return
 	}
 
 	msg.JobState.Message = fmt.Sprintf("Database provisioning finished for service instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceGone
-	jobstate <- msg
+	jobchan <- msg
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
