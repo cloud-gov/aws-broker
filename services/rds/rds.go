@@ -17,7 +17,7 @@ import (
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, password string, queue *taskqueue.TaskQueueManager) (base.InstanceState, error)
+	createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
 	waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg)
 	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
@@ -32,7 +32,7 @@ type dbAdapter interface {
 type mockDBAdapter struct {
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.TaskQueueManager) (base.InstanceState, error) {
+func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -238,7 +238,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	jobchan <- msg
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.TaskQueueManager) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		return base.InstanceNotCreated, err
