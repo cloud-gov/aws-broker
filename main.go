@@ -31,7 +31,7 @@ func main() {
 		return
 	}
 
-	Queue := taskqueue.NewQueueManager()
+	Queue := taskqueue.NewTaskQueueManager()
 	Queue.Init()
 
 	// Try to connect and create the app.
@@ -44,7 +44,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.QueueManager) *martini.ClassicMartini {
+func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.TaskQueueManager) *martini.ClassicMartini {
 
 	m := martini.Classic()
 

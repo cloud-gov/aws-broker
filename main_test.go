@@ -287,7 +287,7 @@ func setup() *martini.ClassicMartini {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tq := taskqueue.NewQueueManager()
+	tq := taskqueue.NewTaskQueueManager()
 	tq.Init()
 
 	m := App(&s, brokerDB, tq)
