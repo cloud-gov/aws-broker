@@ -271,7 +271,6 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return adapterErr
 	}
 
-	var state string
 	var status base.InstanceState
 	var statusErr error
 
@@ -287,7 +286,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	default: //all other ops use synchronous checking of aws api
 		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
-			fmt.Printf("Error checking Elasticsearch status: %v", statusErr)
+			broker.logger.Error("Error checking Elasticsearch status", statusErr)
 			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
 		}
 		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
@@ -295,25 +294,13 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		}
 	}
 
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceGone:
-		state = "succeeded"
+	if status == base.InstanceGone {
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
 		broker.brokerDB.Unscoped().Delete(&baseInstance)
-	case base.InstanceNotGone:
-		state = "failed"
-	default:
-		state = "in progress"
 	}
 
-	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
-	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", status))
+	return response.NewSuccessLastOperation(status.String(), fmt.Sprintf("The service instance status is %s", status))
 }
 
 func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
