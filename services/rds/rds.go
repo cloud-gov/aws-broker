@@ -189,25 +189,40 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	jobchan <- msg
 
 	attempts := 0
+	var dbState base.InstanceState
+	var err error
+
 	for attempts < 10 {
-		dbState, err := d.checkDBStatus(i)
+		dbState, err = d.checkDBStatus(i)
 		if err != nil {
 			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance %s: %s", i.Uuid, err)
 			msg.JobState.State = base.InstanceNotCreated
 			jobchan <- msg
 			return
 		}
+
 		if dbState == base.InstanceReady {
 			break
 		}
+
+		msg.JobState.Message = fmt.Sprintf("Still waiting for database creation to finish on service instance: %s", i.Uuid)
+		msg.JobState.State = base.InstanceInProgress
+		jobchan <- msg
 		attempts += 1
+	}
+
+	if dbState != base.InstanceReady {
+		msg.JobState.Message = fmt.Sprintf("Could not verify database creation on service instance: %s", i.Uuid)
+		msg.JobState.State = base.InstanceNotCreated
+		jobchan <- msg
+		return
 	}
 
 	msg.JobState.Message = fmt.Sprintf("Creating database read replica for service instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceInProgress
 	jobchan <- msg
 
-	err := d.createDBReadReplica(i)
+	err = d.createDBReadReplica(i)
 	if err != nil {
 		msg.JobState.Message = fmt.Sprintf("Creating database read replica on instance %s failed: %s", i.Uuid, err)
 		msg.JobState.State = base.InstanceNotCreated
