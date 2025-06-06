@@ -17,6 +17,7 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error)
+	waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg)
 	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
@@ -33,6 +34,10 @@ type mockDBAdapter struct {
 func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue *taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
+}
+
+func (d *mockDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
+	// TODO
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
@@ -183,7 +188,6 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	msg.JobState.State = base.InstanceInProgress
 	jobchan <- msg
 
-	// TODO: limit loop to specific number of executions
 	attempts := 0
 	for attempts < 10 {
 		dbState, err := d.checkDBStatus(i)
@@ -212,7 +216,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	}
 
 	msg.JobState.Message = fmt.Sprintf("Database provisioning finished for service instance: %s", i.Uuid)
-	msg.JobState.State = base.InstanceGone
+	msg.JobState.State = base.InstanceReady
 	jobchan <- msg
 }
 
