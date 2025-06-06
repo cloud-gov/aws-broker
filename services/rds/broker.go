@@ -192,22 +192,21 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 
 	// Create the database instance.
 	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.taskqueue)
-	if status == base.InstanceNotCreated {
-		desc := "There was an error creating the instance."
+
+	switch status {
+	case base.InstanceNotCreated:
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("Error creating the instance: %s", err))
+	case base.InstanceInProgress:
+		newInstance.State = status
+		broker.brokerDB.NewRecord(newInstance)
+		err = broker.brokerDB.Create(newInstance).Error
 		if err != nil {
-			desc = desc + " Error: " + err.Error()
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 		}
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
+		return response.NewAsyncOperationResponse(base.CreateOp.String())
+	default:
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
 	}
-
-	newInstance.State = status
-
-	broker.brokerDB.NewRecord(newInstance)
-	err = broker.brokerDB.Create(newInstance).Error
-	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
-	}
-	return response.SuccessAcceptedResponse
 }
 
 func (broker *rdsBroker) parseModifyOptionsFromRequest(
@@ -319,8 +318,25 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return adapterErr
 	}
 
+	var status base.InstanceState
 	var state string
-	status, _ := adapter.checkDBStatus(existingInstance)
+	var err error
+
+	switch operation {
+	// creation is a concurrent operation when creating a replica
+	case base.CreateOp.String():
+		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, base.CreateOp)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		status = jobstate.State
+	default:
+		status, err = adapter.checkDBStatus(existingInstance)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+	}
+
 	switch status {
 	case base.InstanceInProgress:
 		state = "in progress"
@@ -335,6 +351,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	default:
 		state = "in progress"
 	}
+
 	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
 }
 
