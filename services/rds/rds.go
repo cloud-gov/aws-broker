@@ -34,7 +34,7 @@ type mockDBAdapter struct {
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
-	return base.InstanceReady, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
