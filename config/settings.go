@@ -29,6 +29,8 @@ type Settings struct {
 	CfApiClientSecret         string
 	MaxBackupRetention        int64
 	MinBackupRetention        int64
+	PollAwsMaxRetries         int64
+	PollAwsRetryDelaySeconds  int64
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -151,6 +153,24 @@ func (s *Settings) LoadFromEnv() error {
 		s.CfApiClientSecret = cfApiClientSecret
 	} else {
 		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
+	}
+
+	pollAwsMaxRetries, err := strconv.ParseInt(os.Getenv("POLL_AWS_MAX_RETRIES"), 10, 64)
+	if err != nil {
+		return err
+	}
+	s.PollAwsMaxRetries = pollAwsMaxRetries
+	if s.PollAwsMaxRetries == 0 {
+		s.PollAwsMaxRetries = 20
+	}
+
+	pollAwsRetryDelaySeconds, err := strconv.ParseInt(os.Getenv("POLL_AWS_RETRY_DELAY_SECONDS"), 10, 64)
+	if err != nil {
+		return err
+	}
+	s.PollAwsRetryDelaySeconds = pollAwsRetryDelaySeconds
+	if s.PollAwsRetryDelaySeconds == 0 {
+		s.PollAwsRetryDelaySeconds = 60
 	}
 
 	return nil

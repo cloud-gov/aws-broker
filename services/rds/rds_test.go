@@ -236,6 +236,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					describeDBInstancesResponses: []*string{aws.String("available")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
 			},
 			dbInstance:     NewRDSInstance(),
 			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
@@ -247,6 +251,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("available")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
 			},
 			dbInstance:     NewRDSInstance(),
 			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
@@ -255,12 +263,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		"gives up after maximum retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating")},
+					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
 			},
 			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 	}
