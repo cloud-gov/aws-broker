@@ -33,8 +33,10 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() {}
 type mockRdsClientForAdapterTests struct {
 	rdsiface.RDSAPI
 
-	createDbErr error
-	modifyDbErr error
+	createDbErr                  error
+	modifyDbErr                  error
+	describeDBInstancesCallNum   int
+	describeDBInstancesResponses []*string
 }
 
 func (m mockRdsClientForAdapterTests) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
@@ -51,14 +53,16 @@ func (m mockRdsClientForAdapterTests) ModifyDBInstance(*rds.ModifyDBInstanceInpu
 	return nil, nil
 }
 
-func (m mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
-	return &rds.DescribeDBInstancesOutput{
+func (m *mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
+	output := &rds.DescribeDBInstancesOutput{
 		DBInstances: []*rds.DBInstance{
 			{
-				DBInstanceStatus: aws.String("available"),
+				DBInstanceStatus: m.describeDBInstancesResponses[m.describeDBInstancesCallNum],
 			},
 		},
-	}, nil
+	}
+	m.describeDBInstancesCallNum++
+	return output, nil
 }
 
 func (m mockRdsClientForAdapterTests) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
@@ -228,11 +232,35 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds:                  &mockRdsClientForAdapterTests{},
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
 			dbInstance:     NewRDSInstance(),
 			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
+			jobchan:        make(chan taskqueue.AsyncJobMsg),
+		},
+		"waits with retries for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance:     NewRDSInstance(),
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
+			jobchan:        make(chan taskqueue.AsyncJobMsg),
+		},
+		"gives up after maximum retries for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance:     NewRDSInstance(),
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 	}
@@ -245,7 +273,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				if jobMsg.JobState.State != test.expectedStates[counter] {
 					t.Fatalf("expected state: %s, got: %s", test.expectedStates[counter], jobMsg.JobState.State)
 				}
-				counter += 1
+				counter++
 			}
 		})
 	}
