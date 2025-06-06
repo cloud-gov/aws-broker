@@ -12,9 +12,9 @@ type QueueManager interface {
 	ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error)
 	UnScheduleTask(id string) error
 	IsTaskScheduled(id string) bool
-	processMsg(msg AsyncJobMsg)
-	msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueueKey)
-	cleanupJobStates()
+	// processMsg(msg AsyncJobMsg)
+	// msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueueKey)
+	// cleanupJobStates()
 	RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error)
 	GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error)
 }

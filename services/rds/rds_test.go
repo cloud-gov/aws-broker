@@ -11,6 +11,7 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/taskqueue"
+	"github.com/go-co-op/gocron"
 	"github.com/go-test/deep"
 )
 
@@ -72,6 +73,37 @@ func (m *mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstan
 
 func (m mockRdsClientForAdapterTests) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
 	return nil, m.createDBInstanceReadReplicaErr
+}
+
+type mockQueueManager struct {
+	jobChan chan taskqueue.AsyncJobMsg
+}
+
+func (q mockQueueManager) ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error) {
+	return nil, nil
+}
+
+func (q mockQueueManager) UnScheduleTask(id string) error {
+	return nil
+}
+
+func (q mockQueueManager) IsTaskScheduled(id string) bool {
+	return false
+}
+
+// func (q mockQueueManager) processMsg(id string) {}
+
+// func (q mockQueueManager) msgProcessor(jobChan chan taskqueue.AsyncJobMsg, key *taskqueue.AsyncJobQueueKey) {
+// }
+
+// func (q mockQueueManager) cleanupJobStates() {}
+
+func (q mockQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan taskqueue.AsyncJobMsg, error) {
+	return q.jobChan, nil
+}
+
+func (q mockQueueManager) GetTaskState(brokerid string, instanceid string, operation base.Operation) (*taskqueue.AsyncJobState, error) {
+	return nil, nil
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
@@ -180,12 +212,13 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 func TestCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
-		dbInstance    *RDSInstance
-		dbAdapter     dbAdapter
-		expectedErr   error
-		expectedState base.InstanceState
-		password      string
-		queueManager  *taskqueue.TaskQueueManager
+		dbInstance          *RDSInstance
+		dbAdapter           dbAdapter
+		expectedErr         error
+		expectedState       base.InstanceState
+		password            string
+		queueManager        taskqueue.QueueManager
+		expectedAsyncStates []base.InstanceState
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -197,16 +230,28 @@ func TestCreateDb(t *testing.T) {
 			dbInstance:    NewRDSInstance(),
 			expectedErr:   createDbErr,
 			expectedState: base.InstanceNotCreated,
-			queueManager:  taskqueue.NewTaskQueueManager(),
+			queueManager:  &mockQueueManager{},
 		},
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds:                  &mockRdsClientForAdapterTests{},
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
 			},
-			dbInstance:    NewRDSInstance(),
+			dbInstance: &RDSInstance{
+				ReplicaDatabase: "replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
 			expectedState: base.InstanceInProgress,
-			queueManager:  taskqueue.NewTaskQueueManager(),
+			queueManager: &mockQueueManager{
+				jobChan: make(chan taskqueue.AsyncJobMsg),
+			},
+			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
 		},
 	}
 
@@ -221,6 +266,17 @@ func TestCreateDb(t *testing.T) {
 			}
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
+			}
+			if len(test.expectedAsyncStates) > 0 {
+				if mockQueueManager, ok := test.queueManager.(*mockQueueManager); ok {
+					counter := 0
+					for jobMsg := range mockQueueManager.jobChan {
+						if jobMsg.JobState.State != test.expectedAsyncStates[counter] {
+							t.Fatalf("expected state: %s, got: %s", test.expectedAsyncStates[counter], jobMsg.JobState.State)
+						}
+						counter++
+					}
+				}
 			}
 		})
 	}
