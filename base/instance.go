@@ -31,19 +31,19 @@ const (
 func (i InstanceState) String() string {
 	switch i {
 	case InstanceNotCreated:
-		return "InstanceNotCreated"
+		return "not created"
 	case InstanceInProgress:
-		return "InstanceInProgress"
+		return "in progress"
 	case InstanceReady:
-		return "InstanceReady"
+		return "ready"
 	case InstanceGone:
-		return "InstanceGone"
+		return "deleted"
 	case InstanceNotGone:
-		return "InstanceNotGone"
+		return "not deleted"
 	case InstanceNotModified:
-		return "InstanceNotModified"
+		return "not modified"
 	default:
-		return "Unknown"
+		return "unknown"
 	}
 }
 
