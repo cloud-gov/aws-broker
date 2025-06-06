@@ -10,6 +10,7 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/go-test/deep"
 )
 
@@ -156,11 +157,12 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 func TestCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
-		dbInstance           *RDSInstance
-		dbAdapter            dbAdapter
-		expectedErr          error
-		expectedResponseCode base.InstanceState
-		password             string
+		dbInstance    *RDSInstance
+		dbAdapter     dbAdapter
+		expectedErr   error
+		expectedState base.InstanceState
+		password      string
+		queueManager  *taskqueue.QueueManager
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -169,23 +171,33 @@ func TestCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:           NewRDSInstance(),
-			expectedErr:          createDbErr,
-			expectedResponseCode: base.InstanceNotCreated,
+			dbInstance:    NewRDSInstance(),
+			expectedErr:   createDbErr,
+			expectedState: base.InstanceNotCreated,
+			queueManager:  taskqueue.NewQueueManager(),
+		},
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds:                  &mockRdsClientForAdapterTests{},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance:    NewRDSInstance(),
+			expectedState: base.InstanceInProgress,
+			queueManager:  taskqueue.NewQueueManager(),
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password)
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, test.queueManager)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if responseCode != test.expectedResponseCode {
-				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
 			}
 		})
 	}
