@@ -13,6 +13,7 @@ import (
 
 	"errors"
 	"fmt"
+	"time"
 )
 
 type dbAdapter interface {
@@ -192,7 +193,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	var dbState base.InstanceState
 	var err error
 
-	for attempts < 10 {
+	for attempts < int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
 			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance %s: %s", i.Uuid, err)
@@ -208,7 +209,9 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		msg.JobState.Message = fmt.Sprintf("Still waiting for database creation to finish on service instance: %s", i.Uuid)
 		msg.JobState.State = base.InstanceInProgress
 		jobchan <- msg
+
 		attempts += 1
+		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
 	if dbState != base.InstanceReady {
