@@ -33,11 +33,12 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() {}
 type mockRdsClientForAdapterTests struct {
 	rdsiface.RDSAPI
 
-	createDbErr                  error
-	modifyDbErr                  error
-	describeDBInstancesCallNum   int
-	describeDBInstancesResponses []*string
-	describeDBInstancesErr       error
+	createDbErr                    error
+	modifyDbErr                    error
+	describeDBInstancesCallNum     int
+	describeDBInstancesResponses   []*string
+	describeDBInstancesErr         error
+	createDBInstanceReadReplicaErr error
 }
 
 func (m mockRdsClientForAdapterTests) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
@@ -70,7 +71,7 @@ func (m *mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstan
 }
 
 func (m mockRdsClientForAdapterTests) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
-	return nil, nil
+	return nil, m.createDBInstanceReadReplicaErr
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
@@ -292,6 +293,22 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			},
 			dbInstance:     NewRDSInstance(),
 			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceNotCreated},
+			jobchan:        make(chan taskqueue.AsyncJobMsg),
+		},
+		"error creating database replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses:   []*string{aws.String("available")},
+					createDBInstanceReadReplicaErr: errors.New("error creating database instance read replica"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance:     NewRDSInstance(),
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 	}
