@@ -91,13 +91,6 @@ func (q mockQueueManager) IsTaskScheduled(id string) bool {
 	return false
 }
 
-// func (q mockQueueManager) processMsg(id string) {}
-
-// func (q mockQueueManager) msgProcessor(jobChan chan taskqueue.AsyncJobMsg, key *taskqueue.AsyncJobQueueKey) {
-// }
-
-// func (q mockQueueManager) cleanupJobStates() {}
-
 func (q mockQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan taskqueue.AsyncJobMsg, error) {
 	return q.jobChan, nil
 }
