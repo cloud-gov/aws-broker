@@ -37,6 +37,7 @@ type mockRdsClientForAdapterTests struct {
 	modifyDbErr                  error
 	describeDBInstancesCallNum   int
 	describeDBInstancesResponses []*string
+	describeDBInstancesErr       error
 }
 
 func (m mockRdsClientForAdapterTests) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
@@ -54,6 +55,9 @@ func (m mockRdsClientForAdapterTests) ModifyDBInstance(*rds.ModifyDBInstanceInpu
 }
 
 func (m *mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
+	if m.describeDBInstancesErr != nil {
+		return nil, m.describeDBInstancesErr
+	}
 	output := &rds.DescribeDBInstancesOutput{
 		DBInstances: []*rds.DBInstance{
 			{
@@ -273,6 +277,21 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			},
 			dbInstance:     NewRDSInstance(),
 			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
+			jobchan:        make(chan taskqueue.AsyncJobMsg),
+		},
+		"error checking database creation status": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesErr: errors.New("error describing database instances"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance:     NewRDSInstance(),
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 	}
