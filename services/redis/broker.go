@@ -2,6 +2,7 @@ package redis
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -195,20 +196,13 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 
 	var state string
 
-	status, _ := adapter.checkRedisStatus(&existingInstance)
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceNotGone:
-		state = "failed"
-	default:
-		state = "in progress"
+	status, err := adapter.checkRedisStatus(&existingInstance)
+	if err != nil {
+		broker.logger.Error("Error checking Redis status", err)
+		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
-	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+
+	return response.NewSuccessLastOperation(state, fmt.Sprintf("The service instance status is %s", status))
 }
 
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
