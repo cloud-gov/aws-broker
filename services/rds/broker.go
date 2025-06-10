@@ -68,7 +68,7 @@ type rdsBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
 	tagManager brokertags.TagManager
-	taskqueue  *taskqueue.TaskQueueManager
+	taskqueue  taskqueue.QueueManager
 }
 
 // initializeAdapter is the main function to create database instances
@@ -319,7 +319,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	var status base.InstanceState
-	var state string
 	var err error
 
 	switch operation {
@@ -337,7 +336,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		}
 	}
 
-	return response.NewSuccessLastOperation(state, fmt.Sprintf("The service instance status is %s", status))
+	return response.NewSuccessLastOperation(status.String(), fmt.Sprintf("The service instance status is %s", status))
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {

@@ -1,13 +1,49 @@
 package rds
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
+	"github.com/cloud-gov/aws-broker/services/redis"
+	"github.com/cloud-gov/aws-broker/taskqueue"
+	"github.com/jinzhu/gorm"
+
+	brokertags "github.com/cloud-gov/go-broker-tags"
 )
+
+type mockTagManager struct{}
+
+func (t *mockTagManager) GenerateTags(
+	action brokertags.Action,
+	serviceName string,
+	servicePlanName string,
+	resourceGUIDs brokertags.ResourceGUIDs,
+	getMissingResources bool,
+) (map[string]string, error) {
+	return nil, nil
+}
+
+func testDBInit() (*gorm.DB, error) {
+	db, err := common.DBInit(&common.DBConfig{
+		DbType: "sqlite3",
+		DbName: ":memory:",
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Automigrate!
+	db.AutoMigrate(&RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}) // Add all your models here to help setup the database tables
+	return db, err
+}
 
 func TestValidate(t *testing.T) {
 	testCases := map[string]struct {
@@ -224,6 +260,153 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			}
 			if !reflect.DeepEqual(test.expectedOptions, options) {
 				t.Errorf("expected: %+v, got %+v", test.expectedOptions, options)
+			}
+		})
+	}
+}
+
+func TestCreateInstanceSuccess(t *testing.T) {
+	planID := "123"
+	catalog := &catalog.Catalog{
+		RdsService: catalog.RDSService{
+			Plans: []catalog.RDSPlan{
+				{
+					Plan: catalog.Plan{
+						ID: planID,
+					},
+				},
+			},
+		},
+	}
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	broker := &rdsBroker{
+		brokerDB: brokerDB,
+		settings: &config.Settings{
+			EncryptionKey: "12345678901234567890123456789012",
+			Environment:   "test", // use the mock adapter
+		},
+		tagManager: &mockTagManager{},
+		taskqueue:  &mockQueueManager{},
+	}
+	response := broker.CreateInstance(catalog, "foo", request.Request{
+		PlanID: planID,
+	})
+	if response.GetStatusCode() != http.StatusAccepted {
+		t.Fatal(response)
+	}
+}
+
+func TestLastOperation(t *testing.T) {
+	testCases := map[string]struct {
+		planID        string
+		dbInstance    *RDSInstance
+		expectedState base.InstanceState
+		queueManager  taskqueue.QueueManager
+		tagManager    brokertags.TagManager
+		settings      *config.Settings
+		catalog       *catalog.Catalog
+		operation     string
+	}{
+		"create": {
+			operation: base.CreateOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "456",
+				},
+			},
+			queueManager: &mockQueueManager{
+				taskState: &taskqueue.AsyncJobState{
+					State: base.InstanceInProgress,
+				},
+			},
+			tagManager: &mockTagManager{},
+			settings: &config.Settings{
+				EncryptionKey: "12345678901234567890123456789012",
+				Environment:   "test", // use the mock adapter
+			},
+			expectedState: base.InstanceInProgress,
+		},
+		"default": {
+			operation: base.ModifyOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "456",
+				},
+			},
+			queueManager: &mockQueueManager{},
+			tagManager:   &mockTagManager{},
+			settings: &config.Settings{
+				EncryptionKey: "12345678901234567890123456789012",
+				Environment:   "test", // use the mock adapter
+			},
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				settings:   test.settings,
+				tagManager: test.tagManager,
+				taskqueue:  test.queueManager,
+			}
+
+			err = brokerDB.Create(&RDSInstance{
+				Instance: base.Instance{
+					Uuid: test.dbInstance.Uuid,
+				},
+			}).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			response := broker.LastOperation(test.catalog, test.dbInstance.Uuid, base.Instance{
+				Request: request.Request{
+					PlanID: test.planID,
+				},
+			}, test.operation)
+
+			lastOperationResponse, ok := response.(*responseHelpers.LastOperationResponse)
+
+			if !ok {
+				t.Fatal(lastOperationResponse)
+			}
+
+			if lastOperationResponse.State != test.expectedState.String() {
+				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperationResponse.State)
 			}
 		})
 	}

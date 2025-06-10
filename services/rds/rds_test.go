@@ -76,7 +76,8 @@ func (m mockRdsClientForAdapterTests) CreateDBInstanceReadReplica(*rds.CreateDBI
 }
 
 type mockQueueManager struct {
-	jobChan chan taskqueue.AsyncJobMsg
+	jobChan   chan taskqueue.AsyncJobMsg
+	taskState *taskqueue.AsyncJobState
 }
 
 func (q mockQueueManager) ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error) {
@@ -96,7 +97,7 @@ func (q mockQueueManager) RequestTaskQueue(brokerid string, instanceid string, o
 }
 
 func (q mockQueueManager) GetTaskState(brokerid string, instanceid string, operation base.Operation) (*taskqueue.AsyncJobState, error) {
-	return nil, nil
+	return q.taskState, nil
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {

@@ -31,7 +31,7 @@ type asyncOperationResponse struct {
 	Operation string `json:"operation"`
 }
 
-type lastOperationResponse struct {
+type LastOperationResponse struct {
 	baseResponse
 	State       string `json:"state"`
 	Description string `json:"description"`
@@ -86,7 +86,7 @@ func NewSuccessBindResponse(credentials map[string]string) Response {
 
 // NewSuccessLastOperation for async responses
 func NewSuccessLastOperation(state string, description string) Response {
-	return &lastOperationResponse{baseResponse: baseResponse{StatusCode: http.StatusOK, StatusType: SuccessLastOperationResponseType}, State: state, Description: description}
+	return &LastOperationResponse{baseResponse: baseResponse{StatusCode: http.StatusOK, StatusType: SuccessLastOperationResponseType}, State: state, Description: description}
 }
 
 var (
