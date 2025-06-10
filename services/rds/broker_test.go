@@ -266,36 +266,67 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 }
 
 func TestCreateInstanceSuccess(t *testing.T) {
-	planID := "123"
-	catalog := &catalog.Catalog{
-		RdsService: catalog.RDSService{
-			Plans: []catalog.RDSPlan{
-				{
-					Plan: catalog.Plan{
-						ID: planID,
+	testCases := map[string]struct {
+		planID               string
+		dbInstance           *RDSInstance
+		expectedResponseCode int
+		queueManager         taskqueue.QueueManager
+		tagManager           brokertags.TagManager
+		settings             *config.Settings
+		catalog              *catalog.Catalog
+		createRequest        request.Request
+	}{
+		"success": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
 					},
 				},
 			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "456",
+				},
+			},
+			queueManager: &mockQueueManager{},
+			tagManager:   &mockTagManager{},
+			settings: &config.Settings{
+				EncryptionKey: "12345678901234567890123456789012",
+				Environment:   "test", // use the mock adapter
+			},
+			createRequest: request.Request{
+				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
 		},
 	}
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-	broker := &rdsBroker{
-		brokerDB: brokerDB,
-		settings: &config.Settings{
-			EncryptionKey: "12345678901234567890123456789012",
-			Environment:   "test", // use the mock adapter
-		},
-		tagManager: &mockTagManager{},
-		taskqueue:  &mockQueueManager{},
-	}
-	response := broker.CreateInstance(catalog, "foo", request.Request{
-		PlanID: planID,
-	})
-	if response.GetStatusCode() != http.StatusAccepted {
-		t.Fatal(response)
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				settings:   test.settings,
+				tagManager: test.tagManager,
+				taskqueue:  test.queueManager,
+			}
+
+			response := broker.CreateInstance(test.catalog, test.dbInstance.Uuid, test.createRequest)
+
+			if response.GetStatusCode() != test.expectedResponseCode {
+				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			}
+		})
 	}
 }
 

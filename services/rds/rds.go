@@ -30,10 +30,14 @@ type dbAdapter interface {
 // It is only here because *_test.go files are only compiled during "go test"
 // and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
 type mockDBAdapter struct {
+	createDBState *base.InstanceState
 }
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
+	if d.createDBState != nil {
+		return *d.createDBState, nil
+	}
 	return base.InstanceInProgress, nil
 }
 
