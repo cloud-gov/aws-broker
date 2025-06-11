@@ -71,6 +71,11 @@ func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstan
 }
 
 // END MockDBAdpater
+type DBEndpointDetails struct {
+	Port  int64
+	Host  string
+	State base.InstanceState
+}
 
 type dedicatedDBAdapter struct {
 	Plan                 catalog.RDSPlan
@@ -345,30 +350,43 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 	return base.InstanceNotCreated, nil
 }
 
+func (d *dedicatedDBAdapter) getDatabaseEndpointProperties(database string) (*DBEndpointDetails, error) {
+	dbInstance, err := d.describeDatabaseInstance(database)
+	if err != nil {
+		return nil, err
+	}
+
+	if dbInstance.DBInstanceStatus == nil || (dbInstance.DBInstanceStatus != nil && *(dbInstance.DBInstanceStatus) != "available") {
+		return nil, errors.New("instance not available yet. Please wait and try again")
+	}
+
+	if dbInstance.Endpoint == nil || dbInstance.Endpoint.Address == nil || dbInstance.Endpoint.Port == nil {
+		// Something went horribly wrong. Should never get here.
+		return nil, errors.New("endpoint information not available for database")
+	}
+
+	return &DBEndpointDetails{
+		Port:  *(dbInstance.Endpoint.Port),
+		Host:  *(dbInstance.Endpoint.Address),
+		State: base.InstanceReady,
+	}, nil
+}
+
 func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		dbInstance, err := d.describeDatabaseInstance(i.Database)
+		dbEndpointDetails, err := d.getDatabaseEndpointProperties(i.Database)
 		if err != nil {
 			return nil, err
 		}
 
-		// Get the details (host and port) for the instance.
-		if dbInstance.DBInstanceStatus != nil && *(dbInstance.DBInstanceStatus) == "available" {
-			if dbInstance.Endpoint != nil && dbInstance.Endpoint.Address != nil && dbInstance.Endpoint.Port != nil {
-				i.Port = *(dbInstance.Endpoint.Port)
-				i.Host = *(dbInstance.Endpoint.Address)
-				i.State = base.InstanceReady
-			} else {
-				// Something went horribly wrong. Should never get here.
-				return nil, errors.New("endpoint information not available for database")
-			}
-		} else {
-			// Instance not up yet.
-			return nil, errors.New("instance not available yet. Please wait and try again")
-		}
+		i.Port = dbEndpointDetails.Port
+		i.Host = dbEndpointDetails.Host
+		i.State = dbEndpointDetails.State
 	}
+
+	// handle replica creds
 
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
