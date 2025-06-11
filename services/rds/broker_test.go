@@ -330,7 +330,7 @@ func TestLastOperation(t *testing.T) {
 		catalog       *catalog.Catalog
 		operation     string
 	}{
-		"create": {
+		"create without replica": {
 			operation: base.CreateOp.String(),
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
@@ -348,6 +348,34 @@ func TestLastOperation(t *testing.T) {
 				Instance: base.Instance{
 					Uuid: "456",
 				},
+			},
+			queueManager: &mockQueueManager{},
+			tagManager:   &mockTagManager{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			expectedState: base.InstanceReady,
+		},
+		"create with replica": {
+			operation: base.CreateOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "456",
+				},
+				ReplicaDatabase: "replica",
 			},
 			queueManager: &mockQueueManager{
 				taskState: &taskqueue.AsyncJobState{
@@ -404,11 +432,7 @@ func TestLastOperation(t *testing.T) {
 				taskqueue:  test.queueManager,
 			}
 
-			err = brokerDB.Create(&RDSInstance{
-				Instance: base.Instance{
-					Uuid: test.dbInstance.Uuid,
-				},
-			}).Error
+			err = brokerDB.Create(test.dbInstance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
