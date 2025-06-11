@@ -246,6 +246,10 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
+	if plan.ReadReplica && i.ReplicaDatabase == "" {
+		i.ReplicaDatabase = i.generateDatabaseReplicaName()
+	}
+
 	return nil
 }
 
@@ -319,7 +323,7 @@ func (i *RDSInstance) init(
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
-	if plan.AddReadReplica {
+	if plan.ReadReplica {
 		i.ReplicaDatabase = i.generateDatabaseReplicaName()
 	}
 
