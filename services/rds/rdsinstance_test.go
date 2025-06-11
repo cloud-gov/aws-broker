@@ -13,43 +13,6 @@ import (
 	"github.com/go-test/deep"
 )
 
-type MockDbUtils struct {
-	mockFormattedDbName   string
-	mockDbName            string
-	mockUsername          string
-	mockSalt              string
-	mockEncryptedPassword string
-	mockClearPassword     string
-}
-
-func (m *MockDbUtils) FormatDBName(string, string) string {
-	return m.mockFormattedDbName
-}
-
-func (m *MockDbUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
-	return nil, nil
-}
-
-func (m *MockDbUtils) generateCredentials(settings *config.Settings) (string, string, string, error) {
-	return m.mockSalt, m.mockEncryptedPassword, m.mockClearPassword, nil
-}
-
-func (m *MockDbUtils) generatePassword(salt string, password string, key string) (string, string, error) {
-	return m.mockEncryptedPassword, m.mockClearPassword, nil
-}
-
-func (m *MockDbUtils) getPassword(salt string, password string, key string) (string, error) {
-	return m.mockClearPassword, nil
-}
-
-func (m *MockDbUtils) generateDatabaseName(settings *config.Settings) string {
-	return m.mockDbName
-}
-
-func (m *MockDbUtils) buildUsername() string {
-	return m.mockUsername
-}
-
 func TestFormatDBName(t *testing.T) {
 	i := &RDSInstance{
 		dbUtils: &MockDbUtils{

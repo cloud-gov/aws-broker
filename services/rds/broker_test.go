@@ -20,18 +20,6 @@ import (
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
 
-type mockTagManager struct{}
-
-func (t *mockTagManager) GenerateTags(
-	action brokertags.Action,
-	serviceName string,
-	servicePlanName string,
-	resourceGUIDs brokertags.ResourceGUIDs,
-	getMissingResources bool,
-) (map[string]string, error) {
-	return nil, nil
-}
-
 func testDBInit() (*gorm.DB, error) {
 	db, err := common.DBInit(&common.DBConfig{
 		DbType: "sqlite3",
