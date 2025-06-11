@@ -114,6 +114,7 @@ type MockDbUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string
 	mockClearPassword     string
+	mockCreds             map[string]string
 }
 
 func (m *MockDbUtils) FormatDBName(string, string) string {
@@ -121,7 +122,7 @@ func (m *MockDbUtils) FormatDBName(string, string) string {
 }
 
 func (m *MockDbUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
-	return nil, nil
+	return m.mockCreds, nil
 }
 
 func (m *MockDbUtils) generateCredentials(settings *config.Settings) (string, string, string, error) {

@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -593,6 +594,118 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 				t.Fatal("expected error but received none")
 			}
 			if diff := deep.Equal(dbInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestBindDBToApp(t *testing.T) {
+	testCases := map[string]struct {
+		dbAdapter        dbAdapter
+		expectErr        bool
+		rdsInstance      *RDSInstance
+		expectedCreds    map[string]string
+		password         string
+		expectedInstance *RDSInstance
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+								Endpoint: &rds.Endpoint{
+									Address: aws.String("db-address"),
+									Port:    aws.Int64(1234),
+								},
+							},
+						},
+					},
+				},
+			},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName: "db1",
+					mockCreds: map[string]string{
+						"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
+						"username": "user-1",
+						"password": "fake-pw",
+						"host":     "db-address",
+						"port":     strconv.FormatInt(1234, 10),
+						"db_name":  "db1",
+						"name":     "db1",
+					},
+				},
+			},
+			password: "fake-pw",
+			expectedCreds: map[string]string{
+				"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
+				"username": "user-1",
+				"password": "fake-pw",
+				"host":     "db-address",
+				"port":     strconv.FormatInt(1234, 10),
+				"db_name":  "db1",
+				"name":     "db1",
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Host:  "db-address",
+					Port:  1234,
+					State: base.InstanceReady,
+				},
+			},
+		},
+		"database not available": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("processing"),
+							},
+						},
+					},
+				},
+			},
+			rdsInstance:      &RDSInstance{},
+			expectedInstance: &RDSInstance{},
+			password:         "fake-pw",
+			expectErr:        true,
+		},
+		"database has no endpoint": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			rdsInstance:      &RDSInstance{},
+			password:         "fake-pw",
+			expectedInstance: &RDSInstance{},
+			expectErr:        true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			if diff := deep.Equal(creds, test.expectedCreds); diff != nil {
+				t.Error(diff)
+			}
+			if diff := deep.Equal(test.rdsInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)
 			}
 		})
