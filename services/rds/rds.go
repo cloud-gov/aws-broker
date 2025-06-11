@@ -278,13 +278,6 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceNotModified, err
 	}
 
-	// if i.ReplicaDatabase != "" {
-	// 	err = d.createDBReadReplica(i)
-	// 	if err != nil {
-	// 		return base.InstanceNotCreated, err
-	// 	}
-	// }
-
 	return base.InstanceInProgress, nil
 }
 

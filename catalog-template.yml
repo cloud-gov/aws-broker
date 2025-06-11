@@ -118,7 +118,7 @@ rds:
       dbType: postgres
       plan_updateable: true
       redundant: true
-      add_read_replica: true
+      read_replica: true
       encrypted: true
       storage_type: gp3
       backup_retention_period: 14
