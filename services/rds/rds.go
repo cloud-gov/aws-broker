@@ -290,40 +290,50 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, queue tas
 	return base.InstanceInProgress, nil
 }
 
+func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstance, error) {
+	params := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(database),
+	}
+
+	resp, err := d.rds.DescribeDBInstances(params)
+	if err != nil {
+		brokerErrs.LogAWSError(err)
+		return nil, err
+	}
+
+	numOfInstances := len(resp.DBInstances)
+	if numOfInstances == 0 {
+		return nil, errors.New("could not find any instances")
+	}
+
+	if numOfInstances > 1 {
+		return nil, fmt.Errorf("found more than one database for %s", database)
+	}
+
+	return resp.DBInstances[0], nil
+}
+
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
 	// First, we need to check if the instance is up and available.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(i.Database),
-		}
-
-		resp, err := d.rds.DescribeDBInstances(params)
+		dbInstance, err := d.describeDatabaseInstance(i.Database)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
 			return base.InstanceNotCreated, err
 		}
 
-		// Get the details (host and port) for the instance.
-		numOfInstances := len(resp.DBInstances)
-		if numOfInstances == 0 {
-			return base.InstanceNotCreated, errors.New("could not find any instances")
-		}
-		for _, value := range resp.DBInstances {
-			// First check that the instance is up.
-			fmt.Println("Database Instance:" + i.Database + " is " + *(value.DBInstanceStatus))
-			switch *(value.DBInstanceStatus) {
-			case "available":
-				return base.InstanceReady, nil
-			case "creating":
-				return base.InstanceInProgress, nil
-			case "deleting":
-				return base.InstanceNotGone, nil
-			case "failed":
-				return base.InstanceNotCreated, nil
-			default:
-				return base.InstanceInProgress, nil
-			}
+		fmt.Println("Database Instance:" + i.Database + " is " + *(dbInstance.DBInstanceStatus))
+		switch *(dbInstance.DBInstanceStatus) {
+		case "available":
+			return base.InstanceReady, nil
+		case "creating":
+			return base.InstanceInProgress, nil
+		case "deleting":
+			return base.InstanceNotGone, nil
+		case "failed":
+			return base.InstanceNotCreated, nil
+		default:
+			return base.InstanceInProgress, nil
 		}
 	}
 
@@ -334,44 +344,27 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(i.Database),
-			// MaxRecords: aws.Long(1),
-		}
-
-		resp, err := d.rds.DescribeDBInstances(params)
+		dbInstance, err := d.describeDatabaseInstance(i.Database)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
 			return nil, err
 		}
 
 		// Get the details (host and port) for the instance.
-		numOfInstances := len(resp.DBInstances)
-		if numOfInstances > 0 {
-			for _, value := range resp.DBInstances {
-				// First check that the instance is up.
-				if value.DBInstanceStatus != nil && *(value.DBInstanceStatus) == "available" {
-					if value.Endpoint != nil && value.Endpoint.Address != nil && value.Endpoint.Port != nil {
-						fmt.Printf("host: %s port: %d \n", *(value.Endpoint.Address), *(value.Endpoint.Port))
-						i.Port = *(value.Endpoint.Port)
-						i.Host = *(value.Endpoint.Address)
-						i.State = base.InstanceReady
-						// Should only be one regardless. Just return now.
-						break
-					} else {
-						// Something went horribly wrong. Should never get here.
-						return nil, errors.New("Inavlid memory for endpoint and/or endpoint members.")
-					}
-				} else {
-					// Instance not up yet.
-					return nil, errors.New("Instance not available yet. Please wait and try again..")
-				}
+		if dbInstance.DBInstanceStatus != nil && *(dbInstance.DBInstanceStatus) == "available" {
+			if dbInstance.Endpoint != nil && dbInstance.Endpoint.Address != nil && dbInstance.Endpoint.Port != nil {
+				i.Port = *(dbInstance.Endpoint.Port)
+				i.Host = *(dbInstance.Endpoint.Address)
+				i.State = base.InstanceReady
+			} else {
+				// Something went horribly wrong. Should never get here.
+				return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 			}
 		} else {
-			// Couldn't find any instances.
-			return nil, errors.New("Couldn't find any instances.")
+			// Instance not up yet.
+			return nil, errors.New("instance not available yet. Please wait and try again")
 		}
 	}
+
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
 }
