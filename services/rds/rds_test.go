@@ -518,3 +518,83 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		})
 	}
 }
+
+func TestDescribeDatbaseInstance(t *testing.T) {
+	testCases := map[string]struct {
+		dbAdapter        dbAdapter
+		expectErr        bool
+		database         string
+		expectedInstance *rds.DBInstance
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			database: "foo",
+			expectedInstance: &rds.DBInstance{
+				DBInstanceStatus: aws.String("available"),
+			},
+		},
+		"error describing database": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErr: errors.New("error describing database"),
+				},
+			},
+			database:  "foo",
+			expectErr: true,
+		},
+		"no databases found": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{},
+					},
+				},
+			},
+			database:  "foo",
+			expectErr: true,
+		},
+		"multiple databases found": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceIdentifier: aws.String("db1"),
+							},
+							{
+								DBInstanceIdentifier: aws.String("db2"),
+							},
+						},
+					},
+				},
+			},
+			database:  "foo",
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			dbInstance, err := test.dbAdapter.describeDatabaseInstance(test.database)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			if diff := deep.Equal(dbInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}

@@ -23,6 +23,7 @@ type dbAdapter interface {
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
+	describeDatabaseInstance(database string) (*rds.DBInstance, error)
 }
 
 // MockDBAdapter is a struct meant for testing.
@@ -63,6 +64,10 @@ func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string
 func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
+}
+
+func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstance, error) {
+	return nil, nil
 }
 
 // END MockDBAdpater
