@@ -254,7 +254,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue tas
 		return base.InstanceNotCreated, err
 	}
 
-	if i.ReplicaDatabase != "" {
+	if i.AddReadReplica {
 		jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.CreateOp)
 		if err == nil {
 			go d.waitAndCreateDBReadReplica(i, jobchan)

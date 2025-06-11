@@ -152,6 +152,7 @@ func TestCreateDb(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				ReplicaDatabase: "replica",
+				AddReadReplica:  true,
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceInProgress,
