@@ -299,6 +299,8 @@ func TestModifyDb(t *testing.T) {
 		expectedErr          error
 		expectedResponseCode base.InstanceState
 		password             string
+		queueManager         taskqueue.QueueManager
+		expectedAsyncStates  []base.InstanceState
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -310,12 +312,50 @@ func TestModifyDb(t *testing.T) {
 			dbInstance:           NewRDSInstance(),
 			expectedErr:          modifyDbErr,
 			expectedResponseCode: base.InstanceNotModified,
+			queueManager:         &mockQueueManager{},
+		},
+		"success without read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds:                  &mockRdsClientForAdapterTests{},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				dbUtils: &RDSDatabaseUtils{},
+			},
+			expectedResponseCode: base.InstanceInProgress,
+			queueManager:         &mockQueueManager{},
+		},
+		"success with read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				AddReadReplica:  true,
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedResponseCode: base.InstanceInProgress,
+			queueManager: &mockQueueManager{
+				jobChan: make(chan taskqueue.AsyncJobMsg),
+			},
+			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password)
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password, test.queueManager)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -324,6 +364,17 @@ func TestModifyDb(t *testing.T) {
 			}
 			if responseCode != test.expectedResponseCode {
 				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+			}
+			if len(test.expectedAsyncStates) > 0 {
+				if mockQueueManager, ok := test.queueManager.(*mockQueueManager); ok {
+					counter := 0
+					for jobMsg := range mockQueueManager.jobChan {
+						if jobMsg.JobState.State != test.expectedAsyncStates[counter] {
+							t.Fatalf("expected state: %s, got: %s", test.expectedAsyncStates[counter], jobMsg.JobState.State)
+						}
+						counter++
+					}
+				}
 			}
 		})
 	}
