@@ -10,6 +10,7 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
@@ -285,7 +286,7 @@ func TestCreateInstanceSuccess(t *testing.T) {
 			queueManager: &mockQueueManager{},
 			tagManager:   &mockTagManager{},
 			settings: &config.Settings{
-				EncryptionKey: "12345678901234567890123456789012",
+				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
 			createRequest: request.Request{
@@ -355,7 +356,7 @@ func TestLastOperation(t *testing.T) {
 			},
 			tagManager: &mockTagManager{},
 			settings: &config.Settings{
-				EncryptionKey: "12345678901234567890123456789012",
+				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: base.InstanceInProgress,
@@ -382,7 +383,7 @@ func TestLastOperation(t *testing.T) {
 			queueManager: &mockQueueManager{},
 			tagManager:   &mockTagManager{},
 			settings: &config.Settings{
-				EncryptionKey: "12345678901234567890123456789012",
+				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: base.InstanceReady,
