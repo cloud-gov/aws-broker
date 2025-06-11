@@ -45,8 +45,7 @@ func (s *Settings) LoadFromEnv() error {
 	dbConfig.Username = os.Getenv("DB_USER")
 	dbConfig.Password = os.Getenv("DB_PASS")
 	dbConfig.DbName = os.Getenv("DB_NAME")
-	sslMode := os.Getenv("DB_SSLMODE")
-	if sslMode == "" {
+	if dbConfig.Sslmode = os.Getenv("DB_SSLMODE"); dbConfig.Sslmode == "" {
 		dbConfig.Sslmode = "require"
 	}
 
