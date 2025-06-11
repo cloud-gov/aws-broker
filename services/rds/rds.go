@@ -19,7 +19,7 @@ import (
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
 	waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg)
-	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
+	modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
@@ -45,7 +45,7 @@ func (d *mockDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan 
 	// TODO
 }
 
-func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -266,7 +266,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue tas
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
 // cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
-func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	params, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
 		return base.InstanceNotModified, err
@@ -276,6 +276,15 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		return base.InstanceNotModified, err
+	}
+
+	// If we are updating to a plan that supports read replicas, but one does not already
+	// exist, we need to create a read replica
+	if i.AddReadReplica {
+		jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.ModifyOp)
+		if err == nil {
+			go d.waitAndCreateDBReadReplica(i, jobchan)
+		}
 	}
 
 	return base.InstanceInProgress, nil
