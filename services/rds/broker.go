@@ -320,16 +320,29 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 
 	var status base.InstanceState
 	var err error
+	var needTaskState bool
+	var instanceOperation base.Operation
 
 	switch operation {
-	// creation is a concurrent operation when creating a replica
 	case base.CreateOp.String():
-		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, base.CreateOp)
+		// creation uses a task state if a replica database is being created
+		needTaskState = existingInstance.ReplicaDatabase != ""
+		instanceOperation = base.CreateOp
+	case base.ModifyOp.String():
+		// modify uses a task state if a replica database is being created
+		needTaskState = existingInstance.ReplicaDatabase != ""
+		instanceOperation = base.ModifyOp
+	default:
+		needTaskState = false
+	}
+
+	if needTaskState {
+		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
 		status = jobstate.State
-	default:
+	} else {
 		status, err = adapter.checkDBStatus(existingInstance)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
