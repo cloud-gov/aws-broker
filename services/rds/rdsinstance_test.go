@@ -396,6 +396,7 @@ func TestInit(t *testing.T) {
 				Password:              "encrypted-pw",
 				ClearPassword:         "clear-pw",
 				ReplicaDatabase:       "db-replica",
+				AddReadReplica:        true,
 			},
 		},
 	}
@@ -585,6 +586,22 @@ func TestModifyInstance(t *testing.T) {
 			options: Options{},
 			existingInstance: &RDSInstance{
 				Database: "db",
+			},
+			expectedInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "db-replica",
+				AddReadReplica:  true,
+			},
+			plan: catalog.RDSPlan{
+				ReadReplica: true,
+			},
+			settings: &config.Settings{},
+		},
+		"update to plan with read replica enabled, instance already has replica": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "db-replica",
 			},
 			expectedInstance: &RDSInstance{
 				Database:        "db",

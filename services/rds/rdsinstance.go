@@ -65,6 +65,7 @@ type RDSInstance struct {
 
 	StorageType string `sql:"size(255)"`
 
+	AddReadReplica  bool   `sql:"-"`
 	ReplicaDatabase string `sql:"size(255)"`
 }
 
@@ -247,6 +248,7 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
 	if plan.ReadReplica && i.ReplicaDatabase == "" {
+		i.AddReadReplica = true
 		i.ReplicaDatabase = i.generateDatabaseReplicaName()
 	}
 
@@ -324,6 +326,7 @@ func (i *RDSInstance) init(
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
 	if plan.ReadReplica {
+		i.AddReadReplica = true
 		i.ReplicaDatabase = i.generateDatabaseReplicaName()
 	}
 
