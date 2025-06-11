@@ -416,6 +416,65 @@ func TestLastOperation(t *testing.T) {
 			},
 			expectedState: base.InstanceReady,
 		},
+		"modify without replica": {
+			operation: base.ModifyOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "456",
+				},
+			},
+			queueManager: &mockQueueManager{},
+			tagManager:   &mockTagManager{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			expectedState: base.InstanceReady,
+		},
+		"modify with replica": {
+			operation: base.ModifyOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "456",
+				},
+				ReplicaDatabase: "replica",
+			},
+			queueManager: &mockQueueManager{
+				taskState: &taskqueue.AsyncJobState{
+					State: base.InstanceInProgress,
+				},
+			},
+			tagManager: &mockTagManager{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			expectedState: base.InstanceInProgress,
+		},
 	}
 
 	for name, test := range testCases {
