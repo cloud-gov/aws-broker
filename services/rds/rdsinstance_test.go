@@ -1,7 +1,6 @@
 package rds
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -333,6 +332,72 @@ func TestInit(t *testing.T) {
 				ClearPassword:      "clear-pw",
 			},
 		},
+		"plan has read replica enabled": {
+			options: Options{
+				BackupRetentionPeriod: aws.Int64(21),
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
+				},
+				Adapter:          "adapter-1",
+				DbType:           "postgres",
+				DbVersion:        "15",
+				SubnetGroup:      "subnet-1",
+				SecurityGroup:    "security-group-1",
+				LicenseModel:     "license-model",
+				StorageType:      "gp3",
+				AllocatedStorage: 20,
+				Tags:             map[string]string{},
+				ReadReplica:      true,
+			},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName:   "test-db",
+					mockDbName:            "db",
+					mockUsername:          "fake-user",
+					mockSalt:              "salt",
+					mockEncryptedPassword: "encrypted-pw",
+					mockClearPassword:     "clear-pw",
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Database: "db",
+				Username: "fake-user",
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				Adapter:               "adapter-1",
+				DbType:                "postgres",
+				DbVersion:             "15",
+				BackupRetentionPeriod: 21,
+				Tags:                  map[string]string{},
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				LicenseModel:          "license-model",
+				DbSubnetGroup:         "subnet-1",
+				SecGroup:              "security-group-1",
+				Salt:                  "salt",
+				Password:              "encrypted-pw",
+				ClearPassword:         "clear-pw",
+				ReplicaDatabase:       "db-replica",
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -516,6 +581,20 @@ func TestModifyInstance(t *testing.T) {
 				MinBackupRetention: 14,
 			},
 		},
+		"update to plan with read replica enabled, instance has no replica": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database: "db",
+			},
+			expectedInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "db-replica",
+			},
+			plan: catalog.RDSPlan{
+				ReadReplica: true,
+			},
+			settings: &config.Settings{},
+		},
 	}
 
 	for name, test := range testCases {
@@ -527,8 +606,8 @@ func TestModifyInstance(t *testing.T) {
 			if test.expectErr && err == nil {
 				t.Errorf("expected error, got nil")
 			}
-			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
-				t.Fatalf("expected instance: %+v, got instance: %+v", test.expectedInstance, test.existingInstance)
+			if diff := deep.Equal(test.existingInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
