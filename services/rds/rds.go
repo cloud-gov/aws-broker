@@ -362,7 +362,7 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 				i.State = base.InstanceReady
 			} else {
 				// Something went horribly wrong. Should never get here.
-				return nil, errors.New("invalid memory for endpoint and/or endpoint members")
+				return nil, errors.New("endpoint information not available for database")
 			}
 		} else {
 			// Instance not up yet.
