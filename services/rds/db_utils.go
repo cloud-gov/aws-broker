@@ -98,6 +98,11 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 		"db_name":  dbName,
 		"name":     dbName,
 	}
+
+	if i.ReplicaDatabaseHost != "" {
+		credentials["replica_host"] = i.ReplicaDatabaseHost
+	}
+
 	return credentials, nil
 }
 

@@ -46,8 +46,9 @@ type RDSInstance struct {
 
 	StorageType string `sql:"size(255)"`
 
-	AddReadReplica  bool   `sql:"-"`
-	ReplicaDatabase string `sql:"size(255)"`
+	AddReadReplica      bool   `sql:"-"`
+	ReplicaDatabase     string `sql:"size(255)"`
+	ReplicaDatabaseHost string `sql:"size(255)"`
 }
 
 func NewRDSInstance() *RDSInstance {

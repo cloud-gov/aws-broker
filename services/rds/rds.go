@@ -383,6 +383,14 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 	}
 
 	// handle replica creds
+	if i.ReplicaDatabase != "" {
+		dbEndpointDetails, err := d.getDatabaseEndpointProperties(i.ReplicaDatabase)
+		if err != nil {
+			return nil, err
+		}
+
+		i.ReplicaDatabaseHost = dbEndpointDetails.Host
+	}
 
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
