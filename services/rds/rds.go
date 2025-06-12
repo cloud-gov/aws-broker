@@ -199,15 +199,11 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		JobState:   taskqueue.AsyncJobState{},
 	}
 
-	msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance")
-	msg.JobState.State = base.InstanceInProgress
-	jobchan <- msg
-
-	attempts := 0
+	attempts := 1
 	var dbState base.InstanceState
 	var err error
 
-	for attempts < int(d.settings.PollAwsMaxRetries) {
+	for attempts <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
 			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance: %s", err)
@@ -220,7 +216,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 			break
 		}
 
-		msg.JobState.Message = fmt.Sprintf("Still waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempts, d.settings.PollAwsMaxRetries)
+		msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempts, d.settings.PollAwsMaxRetries)
 		msg.JobState.State = base.InstanceInProgress
 		jobchan <- msg
 

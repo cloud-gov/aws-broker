@@ -160,7 +160,7 @@ func TestCreateDb(t *testing.T) {
 			queueManager: &mockQueueManager{
 				jobChan: make(chan taskqueue.AsyncJobMsg),
 			},
-			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
+			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
 		},
 	}
 
@@ -212,7 +212,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 			},
 			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 		"waits with retries for database creation": {
@@ -227,7 +227,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 			},
 			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 		"gives up after maximum retries for database creation": {
@@ -242,7 +242,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 			},
 			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 		"error checking database creation status": {
@@ -257,7 +257,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 			},
 			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceNotCreated},
+			expectedStates: []base.InstanceState{base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 		"error creating database replica": {
@@ -273,7 +273,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 			},
 			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
+			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceNotCreated},
 			jobchan:        make(chan taskqueue.AsyncJobMsg),
 		},
 	}
@@ -350,7 +350,7 @@ func TestModifyDb(t *testing.T) {
 			queueManager: &mockQueueManager{
 				jobChan: make(chan taskqueue.AsyncJobMsg),
 			},
-			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
+			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
 		},
 	}
 
