@@ -213,6 +213,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		}
 
 		if dbState == base.InstanceReady {
+			fmt.Printf("Database instance %s is ready", i.Database)
 			break
 		}
 
@@ -224,6 +225,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
+	fmt.Printf("Database instance %s is %s", i.Database, dbState)
 	if dbState != base.InstanceReady {
 		msg.JobState.Message = "Could not verify database creation on service instance"
 		msg.JobState.State = base.InstanceNotCreated
@@ -320,6 +322,8 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBI
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
+	fmt.Printf("checking database status for instance %s. current status %s", i.Database, i.State)
+
 	// First, we need to check if the instance is up and available.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
