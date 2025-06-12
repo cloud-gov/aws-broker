@@ -199,7 +199,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		JobState:   taskqueue.AsyncJobState{},
 	}
 
-	msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance: %s", i.Uuid)
+	msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance")
 	msg.JobState.State = base.InstanceInProgress
 	jobchan <- msg
 
@@ -210,7 +210,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	for attempts < int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
-			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance %s: %s", i.Uuid, err)
+			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance: %s", err)
 			msg.JobState.State = base.InstanceNotCreated
 			jobchan <- msg
 			return
@@ -220,7 +220,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 			break
 		}
 
-		msg.JobState.Message = fmt.Sprintf("Still waiting for database creation to finish on service instance: %s", i.Uuid)
+		msg.JobState.Message = "Still waiting for database creation to finish on service instance"
 		msg.JobState.State = base.InstanceInProgress
 		jobchan <- msg
 
@@ -229,25 +229,25 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	}
 
 	if dbState != base.InstanceReady {
-		msg.JobState.Message = fmt.Sprintf("Could not verify database creation on service instance: %s", i.Uuid)
+		msg.JobState.Message = "Could not verify database creation on service instance"
 		msg.JobState.State = base.InstanceNotCreated
 		jobchan <- msg
 		return
 	}
 
-	msg.JobState.Message = fmt.Sprintf("Creating database read replica for service instance: %s", i.Uuid)
+	msg.JobState.Message = "Creating database read replica for service instance"
 	msg.JobState.State = base.InstanceInProgress
 	jobchan <- msg
 
 	err = d.createDBReadReplica(i)
 	if err != nil {
-		msg.JobState.Message = fmt.Sprintf("Creating database read replica on instance %s failed: %s", i.Uuid, err)
+		msg.JobState.Message = fmt.Sprintf("Creating database read replica on instance failed: %s", err)
 		msg.JobState.State = base.InstanceNotCreated
 		jobchan <- msg
 		return
 	}
 
-	msg.JobState.Message = fmt.Sprintf("Database provisioning finished for service instance: %s", i.Uuid)
+	msg.JobState.Message = "Database provisioning finished for service instance"
 	msg.JobState.State = base.InstanceReady
 	jobchan <- msg
 }
