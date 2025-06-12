@@ -220,7 +220,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 			break
 		}
 
-		msg.JobState.Message = "Still waiting for database creation to finish on service instance"
+		msg.JobState.Message = fmt.Sprintf("Still waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempts, d.settings.PollAwsMaxRetries)
 		msg.JobState.State = base.InstanceInProgress
 		jobchan <- msg
 
