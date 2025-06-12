@@ -322,6 +322,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	var err error
 	var needTaskState bool
 	var instanceOperation base.Operation
+	var statusMessage string
 
 	switch operation {
 	case base.CreateOp.String():
@@ -342,14 +343,16 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
 		status = jobstate.State
+		statusMessage = jobstate.Message
 	} else {
 		status, err = adapter.checkDBStatus(existingInstance)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
+		statusMessage = fmt.Sprintf("The database status is %s", status)
 	}
 
-	return response.NewSuccessLastOperation(status.String(), fmt.Sprintf("The service instance status is %s", status))
+	return response.NewSuccessLastOperation(status.String(), statusMessage)
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
