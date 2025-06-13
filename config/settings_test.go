@@ -42,8 +42,8 @@ func TestSettings(t *testing.T) {
 		CfApiUrl:                  "fake-api",
 		CfApiClientId:             "fake-client-id",
 		CfApiClientSecret:         "fake-client-secret",
-		PollAwsMaxRetries:         120,
-		PollAwsRetryDelaySeconds:  30,
+		PollAwsMaxRetries:         60,
+		PollAwsRetryDelaySeconds:  60,
 	}
 	if diff := deep.Equal(settings, expectedSettings); diff != nil {
 		t.Error(diff)
