@@ -173,7 +173,6 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
 		DBInstanceIdentifier:       &i.ReplicaDatabase,
-		DBSubnetGroupName:          &i.DbSubnetGroup,
 		SourceDBInstanceIdentifier: &i.Database,
 		MultiAZ:                    &d.Plan.Redundant,
 		PubliclyAccessible:         aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),

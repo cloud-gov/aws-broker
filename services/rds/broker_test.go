@@ -323,7 +323,7 @@ func TestLastOperation(t *testing.T) {
 	testCases := map[string]struct {
 		planID        string
 		dbInstance    *RDSInstance
-		expectedState base.InstanceState
+		expectedState string
 		queueManager  taskqueue.QueueManager
 		tagManager    brokertags.TagManager
 		settings      *config.Settings
@@ -355,7 +355,7 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: base.InstanceReady,
+			expectedState: "succeeded",
 		},
 		"create with replica": {
 			operation: base.CreateOp.String(),
@@ -387,7 +387,7 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: base.InstanceInProgress,
+			expectedState: "in progress",
 		},
 		"default": {
 			operation: base.ModifyOp.String(),
@@ -414,7 +414,7 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: base.InstanceReady,
+			expectedState: "succeeded",
 		},
 		"modify without replica": {
 			operation: base.ModifyOp.String(),
@@ -441,7 +441,7 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: base.InstanceReady,
+			expectedState: "succeeded",
 		},
 		"modify with replica": {
 			operation: base.ModifyOp.String(),
@@ -473,7 +473,7 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: base.InstanceInProgress,
+			expectedState: "in progress",
 		},
 	}
 
@@ -508,7 +508,7 @@ func TestLastOperation(t *testing.T) {
 				t.Fatal(lastOperationResponse)
 			}
 
-			if lastOperationResponse.State != test.expectedState.String() {
+			if lastOperationResponse.State != test.expectedState {
 				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperationResponse.State)
 			}
 		})

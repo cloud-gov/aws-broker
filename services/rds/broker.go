@@ -318,8 +318,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return adapterErr
 	}
 
-	var status base.InstanceState
-	var err error
+	var status string
 	var needTaskState bool
 	var instanceOperation base.Operation
 	var statusMessage string
@@ -342,17 +341,31 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
-		status = jobstate.State
+		status = jobstate.State.String()
 		statusMessage = jobstate.Message
 	} else {
-		status, err = adapter.checkDBStatus(existingInstance)
+		dbState, err := adapter.checkDBStatus(existingInstance)
+		switch dbState {
+		case base.InstanceInProgress:
+			status = "in progress"
+		case base.InstanceReady:
+			status = "succeeded"
+		case base.InstanceNotCreated:
+			status = "failed"
+		case base.InstanceNotModified:
+			status = "failed"
+		case base.InstanceNotGone:
+			status = "failed"
+		default:
+			status = "in progress"
+		}
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
 		statusMessage = fmt.Sprintf("The database status is %s", status)
 	}
 
-	return response.NewSuccessLastOperation(status.String(), statusMessage)
+	return response.NewSuccessLastOperation(status, statusMessage)
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
