@@ -1,6 +1,8 @@
 package rds
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -13,7 +15,6 @@ import (
 
 	"errors"
 	"fmt"
-	"time"
 )
 
 type dbAdapter interface {
@@ -189,26 +190,45 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
-	defer close(jobchan)
-
-	msg := taskqueue.AsyncJobMsg{
+func updateJobMessage(i *RDSInstance, state base.InstanceState, message string) taskqueue.AsyncJobMsg {
+	return taskqueue.AsyncJobMsg{
 		BrokerId:   i.ServiceID,
 		InstanceId: i.Uuid,
 		JobType:    base.CreateOp,
-		JobState:   taskqueue.AsyncJobState{},
+		JobState: taskqueue.AsyncJobState{
+			Message: message,
+			State:   state,
+		},
+		ProcessedStatus: make(chan bool),
 	}
+}
 
-	attempts := 1
+func createAsyncJobMessage(i *RDSInstance, jobType base.Operation, state base.InstanceState, message string) taskqueue.AsyncJobMsg {
+	return taskqueue.AsyncJobMsg{
+		BrokerId:   i.ServiceID,
+		InstanceId: i.Uuid,
+		JobType:    jobType,
+		JobState: taskqueue.AsyncJobState{
+			Message: message,
+			State:   state,
+		},
+		ProcessedStatus: make(chan bool),
+	}
+}
+
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
+	defer close(jobchan)
+
+	attempt := 1
 	var dbState base.InstanceState
 	var err error
 
-	for attempts <= int(d.settings.PollAwsMaxRetries) {
+	for attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
-			msg.JobState.Message = fmt.Sprintf("Failed to get database status on instance: %s", err)
-			msg.JobState.State = base.InstanceNotCreated
+			msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status on instance: %s", err))
 			jobchan <- msg
+			<-msg.ProcessedStatus
 			return
 		}
 
@@ -216,42 +236,43 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 			break
 		}
 
-		msg.JobState.Message = fmt.Sprintf("Waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempts, d.settings.PollAwsMaxRetries)
-		msg.JobState.State = base.InstanceInProgress
-		jobchan <- msg
+		msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceInProgress, fmt.Sprintf("Waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
 
-		attempts += 1
+		jobchan <- msg
+		<-msg.ProcessedStatus
+
+		attempt += 1
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
 	fmt.Printf("Database instance %s is %s\n", i.Database, dbState)
 
 	if dbState != base.InstanceReady {
-		msg.JobState.Message = "Could not verify database creation on service instance"
-		msg.JobState.State = base.InstanceNotCreated
+		msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceNotCreated, "Could not verify database creation on service instance")
 		jobchan <- msg
+		<-msg.ProcessedStatus
 		return
 	}
 
 	fmt.Printf("Preparing to create read replica for %s\n", i.Database)
 
-	msg.JobState.Message = "Creating database read replica for service instance"
-	msg.JobState.State = base.InstanceInProgress
+	msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceInProgress, "Creating database read replica for service instance")
 	jobchan <- msg
+	<-msg.ProcessedStatus
 
 	err = d.createDBReadReplica(i)
 	if err != nil {
-		msg.JobState.Message = fmt.Sprintf("Creating database read replica on instance failed: %s", err)
-		msg.JobState.State = base.InstanceNotCreated
+		msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica on instance failed: %s", err))
 		jobchan <- msg
+		<-msg.ProcessedStatus
 		return
 	}
 
 	fmt.Printf("Initiated creation of read replica for %s\n", i.Database)
 
-	msg.JobState.Message = "Database provisioning finished for service instance"
-	msg.JobState.State = base.InstanceReady
+	msg = createAsyncJobMessage(i, base.CreateOp, base.InstanceReady, "Database provisioning finished for service instance")
 	jobchan <- msg
+	<-msg.ProcessedStatus
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {

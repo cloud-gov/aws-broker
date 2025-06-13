@@ -10,6 +10,8 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/helpers"
+	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/go-test/deep"
 )
@@ -193,12 +195,10 @@ func TestCreateDb(t *testing.T) {
 
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance     *RDSInstance
-		dbAdapter      dbAdapter
-		expectedErr    error
-		expectedStates []base.InstanceState
-		password       string
-		jobchan        chan taskqueue.AsyncJobMsg
+		dbInstance    *RDSInstance
+		dbAdapter     dbAdapter
+		queueManager  taskqueue.QueueManager
+		expectedState base.InstanceState
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -211,9 +211,17 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxRetries:        5,
 				},
 			},
-			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
-			jobchan:        make(chan taskqueue.AsyncJobMsg),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceReady,
 		},
 		"waits with retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -226,9 +234,17 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxRetries:        5,
 				},
 			},
-			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceReady},
-			jobchan:        make(chan taskqueue.AsyncJobMsg),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceReady,
 		},
 		"gives up after maximum retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -241,9 +257,17 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxRetries:        5,
 				},
 			},
-			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceInProgress, base.InstanceNotCreated},
-			jobchan:        make(chan taskqueue.AsyncJobMsg),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceNotCreated,
 		},
 		"error checking database creation status": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -256,9 +280,17 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxRetries:        5,
 				},
 			},
-			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceNotCreated},
-			jobchan:        make(chan taskqueue.AsyncJobMsg),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceNotCreated,
 		},
 		"error creating database replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -272,21 +304,36 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxRetries:        5,
 				},
 			},
-			dbInstance:     NewRDSInstance(),
-			expectedStates: []base.InstanceState{base.InstanceInProgress, base.InstanceNotCreated},
-			jobchan:        make(chan taskqueue.AsyncJobMsg),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceNotCreated,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			go test.dbAdapter.waitAndCreateDBReadReplica(test.dbInstance, test.jobchan)
-			counter := 0
-			for jobMsg := range test.jobchan {
-				if jobMsg.JobState.State != test.expectedStates[counter] {
-					t.Fatalf("expected state: %s, got: %s", test.expectedStates[counter], jobMsg.JobState.State)
-				}
-				counter++
+			jobchan, err := test.queueManager.RequestTaskQueue(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
+			test.dbAdapter.waitAndCreateDBReadReplica(test.dbInstance, jobchan)
+
+			jobMsg, err := test.queueManager.GetTaskState(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if jobMsg.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, jobMsg.State)
 			}
 		})
 	}

@@ -107,9 +107,9 @@ func (q *TaskQueueManager) processMsg(msg AsyncJobMsg) {
 		Operation:  msg.JobType,
 	}
 	q.jobStates[*key] = msg.JobState
-	fmt.Printf("processed message %+v for %+v\n", msg, key)
 	if msg.ProcessedStatus != nil {
 		msg.ProcessedStatus <- true
+		fmt.Printf("taskqueue: processed message %+v for %+v\n", msg, key)
 		close(msg.ProcessedStatus)
 	}
 }
@@ -120,7 +120,7 @@ func (q *TaskQueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQ
 	for job := range jobChan {
 		q.processMsg(job)
 	}
-	fmt.Printf("done processing messages for %+v\n", key)
+	fmt.Printf("taskqueue: done processing messages for %+v\n", key)
 	// channel is closed so remove key from chan queue and mark state queue for cleanup
 	delete(q.brokerQueues, *key)
 	// schedule clean up of this job's state in the future
@@ -136,7 +136,7 @@ func (q *TaskQueueManager) cleanupJobStates() {
 	now := time.Now()
 	for key, due := range q.cleanup {
 		if now.After(due) {
-			fmt.Printf("cleaning up job states for %+v, due: %s, now: %s\n", key, due, now)
+			fmt.Printf("taskqueue: cleaning up job states for %+v, due: %s, now: %s\n", key, due, now)
 			delete(q.jobStates, key)
 			delete(q.cleanup, key)
 		}

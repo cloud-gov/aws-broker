@@ -280,7 +280,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			return base.InstanceNotCreated, err
 		}
 
-		fmt.Println(fmt.Printf("domain status: %s", resp.DomainStatus))
+		fmt.Printf("domain status: %+v\n", resp.DomainStatus)
 
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {
