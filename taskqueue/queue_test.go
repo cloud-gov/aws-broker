@@ -14,7 +14,7 @@ var jobstate base.InstanceState = base.InstanceInProgress
 var jobmsg string = "testing in-progress"
 
 func TestRequestTaskQueue(t *testing.T) {
-	quemgr := NewQueueManager()
+	quemgr := NewTaskQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
 	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
 	if err != nil {
@@ -40,7 +40,7 @@ func TestRequestTaskQueue(t *testing.T) {
 }
 
 func TestGetJobState(t *testing.T) {
-	quemgr := NewQueueManager()
+	quemgr := NewTaskQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
 	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
 	if err != nil {
@@ -78,7 +78,7 @@ func TestGetJobState(t *testing.T) {
 }
 
 func TestCleanUpJobState(t *testing.T) {
-	quemgr := NewQueueManager()
+	quemgr := NewTaskQueueManager()
 	quemgr.expiration = 10 * time.Millisecond
 	jobchan, err := quemgr.RequestTaskQueue(brokerid, instanceid, jobop)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestCleanUpJobState(t *testing.T) {
 }
 
 func TestScheduleTask(t *testing.T) {
-	quemgr := NewQueueManager()
+	quemgr := NewTaskQueueManager()
 	quemgr.scheduler.StartAsync()
 	_, err := quemgr.ScheduleTask("*/1 * * * *", "test", quemgr.cleanupJobStates)
 	if err != nil {
@@ -121,7 +121,7 @@ func TestScheduleTask(t *testing.T) {
 }
 
 func TestUnScheduleTask(t *testing.T) {
-	quemgr := NewQueueManager()
+	quemgr := NewTaskQueueManager()
 	quemgr.scheduler.StartAsync()
 	_, err := quemgr.ScheduleTask("*/1 * * * *", "test", quemgr.cleanupJobStates)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestUnScheduleTask(t *testing.T) {
 }
 
 func TestIsTaskScheduled(t *testing.T) {
-	quemgr := NewQueueManager()
+	quemgr := NewTaskQueueManager()
 	quemgr.scheduler.StartAsync()
 	_, err := quemgr.ScheduleTask("*/1 * * * *", "test", quemgr.cleanupJobStates)
 	if err != nil {

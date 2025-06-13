@@ -2,53 +2,19 @@ package rds
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/helpers"
+	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/go-test/deep"
 )
-
-type mockParameterGroupClient struct {
-	rds              rdsiface.RDSAPI
-	customPgroupName string
-	returnErr        error
-}
-
-func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error {
-	if m.returnErr != nil {
-		return m.returnErr
-	}
-	i.ParameterGroupName = m.customPgroupName
-	return nil
-}
-
-func (m *mockParameterGroupClient) CleanupCustomParameterGroups() {}
-
-type mockRdsClientForAdapterTests struct {
-	rdsiface.RDSAPI
-
-	createDbErr error
-	modifyDbErr error
-}
-
-func (m mockRdsClientForAdapterTests) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
-	if m.createDbErr != nil {
-		return nil, m.createDbErr
-	}
-	return nil, nil
-}
-
-func (m mockRdsClientForAdapterTests) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
-	if m.modifyDbErr != nil {
-		return nil, m.modifyDbErr
-	}
-	return nil, nil
-}
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
 	testErr := errors.New("fail")
@@ -156,11 +122,13 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 func TestCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
-		dbInstance           *RDSInstance
-		dbAdapter            dbAdapter
-		expectedErr          error
-		expectedResponseCode base.InstanceState
-		password             string
+		dbInstance            *RDSInstance
+		dbAdapter             dbAdapter
+		expectedErr           error
+		expectedState         base.InstanceState
+		password              string
+		queueManager          taskqueue.QueueManager
+		expectTaskQueueExists bool
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -169,23 +137,236 @@ func TestCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:           NewRDSInstance(),
-			expectedErr:          createDbErr,
-			expectedResponseCode: base.InstanceNotCreated,
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			password:      helpers.RandStr(10),
+			expectedErr:   createDbErr,
+			expectedState: base.InstanceNotCreated,
+			queueManager:  &mockQueueManager{},
+		},
+		"success without replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        0,
+				},
+			},
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceInProgress,
+			queueManager:  taskqueue.NewTaskQueueManager(),
+		},
+		"success with replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        0,
+				},
+			},
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "replica",
+				AddReadReplica:  true,
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState:         base.InstanceInProgress,
+			queueManager:          taskqueue.NewTaskQueueManager(),
+			expectTaskQueueExists: true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password)
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, test.queueManager)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if responseCode != test.expectedResponseCode {
-				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
+			}
+			if taskQueueExists := test.queueManager.TaskQueueExists(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp); taskQueueExists != test.expectTaskQueueExists {
+				t.Fatalf("expected TaskQueueExists(): %t, got: %t", test.expectTaskQueueExists, taskQueueExists)
+			}
+		})
+	}
+}
+
+func TestWaitAndCreateDBReadReplica(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance    *RDSInstance
+		dbAdapter     dbAdapter
+		queueManager  taskqueue.QueueManager
+		expectedState base.InstanceState
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceReady,
+		},
+		"waits with retries for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceReady,
+		},
+		"gives up after maximum retries for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceNotCreated,
+		},
+		"error checking database creation status": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesErr: errors.New("error describing database instances"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceNotCreated,
+		},
+		"error creating database replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses:   []*string{aws.String("available")},
+					createDBInstanceReadReplicaErr: errors.New("error creating database instance read replica"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState: base.InstanceNotCreated,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			jobchan, err := test.queueManager.RequestTaskQueue(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
+			test.dbAdapter.waitAndCreateDBReadReplica(test.dbInstance, jobchan)
+
+			jobMsg, err := test.queueManager.GetTaskState(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if jobMsg.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, jobMsg.State)
 			}
 		})
 	}
@@ -194,11 +375,13 @@ func TestCreateDb(t *testing.T) {
 func TestModifyDb(t *testing.T) {
 	modifyDbErr := errors.New("modify DB error")
 	testCases := map[string]struct {
-		dbInstance           *RDSInstance
-		dbAdapter            dbAdapter
-		expectedErr          error
-		expectedResponseCode base.InstanceState
-		password             string
+		dbInstance            *RDSInstance
+		dbAdapter             dbAdapter
+		expectedErr           error
+		expectedResponseCode  base.InstanceState
+		password              string
+		queueManager          taskqueue.QueueManager
+		expectTaskQueueExists bool
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -210,12 +393,55 @@ func TestModifyDb(t *testing.T) {
 			dbInstance:           NewRDSInstance(),
 			expectedErr:          modifyDbErr,
 			expectedResponseCode: base.InstanceNotModified,
+			queueManager:         &mockQueueManager{},
+		},
+		"success without read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds:                  &mockRdsClientForAdapterTests{},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        0,
+				},
+			},
+			dbInstance: &RDSInstance{
+				dbUtils: &RDSDatabaseUtils{},
+			},
+			expectedResponseCode: base.InstanceInProgress,
+			queueManager:         &mockQueueManager{},
+		},
+		"success with read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        0,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				AddReadReplica:  true,
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedResponseCode:  base.InstanceInProgress,
+			queueManager:          taskqueue.NewTaskQueueManager(),
+			expectTaskQueueExists: true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password)
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password, test.queueManager)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -224,6 +450,9 @@ func TestModifyDb(t *testing.T) {
 			}
 			if responseCode != test.expectedResponseCode {
 				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+			}
+			if taskQueueExists := test.queueManager.TaskQueueExists(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp); taskQueueExists != test.expectTaskQueueExists {
+				t.Fatalf("expected TaskQueueExists(): %t, got: %t", test.expectTaskQueueExists, taskQueueExists)
 			}
 		})
 	}
@@ -363,6 +592,198 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				if diff := deep.Equal(params, test.expectedParams); diff != nil {
 					t.Error(diff)
 				}
+			}
+		})
+	}
+}
+
+func TestDescribeDatbaseInstance(t *testing.T) {
+	testCases := map[string]struct {
+		dbAdapter        dbAdapter
+		expectErr        bool
+		database         string
+		expectedInstance *rds.DBInstance
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			database: "foo",
+			expectedInstance: &rds.DBInstance{
+				DBInstanceStatus: aws.String("available"),
+			},
+		},
+		"error describing database": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErr: errors.New("error describing database"),
+				},
+			},
+			database:  "foo",
+			expectErr: true,
+		},
+		"no databases found": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{},
+					},
+				},
+			},
+			database:  "foo",
+			expectErr: true,
+		},
+		"multiple databases found": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceIdentifier: aws.String("db1"),
+							},
+							{
+								DBInstanceIdentifier: aws.String("db2"),
+							},
+						},
+					},
+				},
+			},
+			database:  "foo",
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			dbInstance, err := test.dbAdapter.describeDatabaseInstance(test.database)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			if diff := deep.Equal(dbInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestBindDBToApp(t *testing.T) {
+	testCases := map[string]struct {
+		dbAdapter        dbAdapter
+		expectErr        bool
+		rdsInstance      *RDSInstance
+		expectedCreds    map[string]string
+		password         string
+		expectedInstance *RDSInstance
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+								Endpoint: &rds.Endpoint{
+									Address: aws.String("db-address"),
+									Port:    aws.Int64(1234),
+								},
+							},
+						},
+					},
+				},
+			},
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName: "db1",
+					mockCreds: map[string]string{
+						"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
+						"username": "user-1",
+						"password": "fake-pw",
+						"host":     "db-address",
+						"port":     strconv.FormatInt(1234, 10),
+						"db_name":  "db1",
+						"name":     "db1",
+					},
+				},
+			},
+			password: "fake-pw",
+			expectedCreds: map[string]string{
+				"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
+				"username": "user-1",
+				"password": "fake-pw",
+				"host":     "db-address",
+				"port":     strconv.FormatInt(1234, 10),
+				"db_name":  "db1",
+				"name":     "db1",
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Host:  "db-address",
+					Port:  1234,
+					State: base.InstanceReady,
+				},
+			},
+		},
+		"database not available": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("processing"),
+							},
+						},
+					},
+				},
+			},
+			rdsInstance:      &RDSInstance{},
+			expectedInstance: &RDSInstance{},
+			password:         "fake-pw",
+			expectErr:        true,
+		},
+		"database has no endpoint": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
+						DBInstances: []*rds.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			rdsInstance:      &RDSInstance{},
+			password:         "fake-pw",
+			expectedInstance: &RDSInstance{},
+			expectErr:        true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			if diff := deep.Equal(creds, test.expectedCreds); diff != nil {
+				t.Error(diff)
+			}
+			if diff := deep.Equal(test.rdsInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

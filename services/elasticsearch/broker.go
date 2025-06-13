@@ -46,7 +46,7 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 type elasticsearchBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
-	taskqueue  *taskqueue.QueueManager
+	taskqueue  *taskqueue.TaskQueueManager
 	logger     lager.Logger
 	tagManager brokertags.TagManager
 }
@@ -55,7 +55,7 @@ type elasticsearchBroker struct {
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
-	taskqueue *taskqueue.QueueManager,
+	taskqueue *taskqueue.TaskQueueManager,
 	tagManager brokertags.TagManager,
 ) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
@@ -287,7 +287,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	default: //all other ops use synchronous checking of aws api
 		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
-			fmt.Printf("Error checking Elasticsearch status: %v", statusErr)
+			broker.logger.Error("Error checking Elasticsearch status", statusErr)
 			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
 		}
 		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
@@ -313,7 +313,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	}
 
 	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
-	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+	return response.NewSuccessLastOperation(state, fmt.Sprintf("The service instance status is %s", state))
 }
 
 func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {

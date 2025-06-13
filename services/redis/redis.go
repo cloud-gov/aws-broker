@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	"github.com/aws/aws-sdk-go/service/elasticache/elasticacheiface"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/jinzhu/gorm"
 
 	"bytes"
 	"fmt"
@@ -57,30 +56,6 @@ func (d *mockRedisAdapter) bindRedisToApp(i *RedisInstance, password string) (ma
 
 func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
 	// TODO
-	return base.InstanceGone, nil
-}
-
-type sharedRedisAdapter struct {
-	SharedRedisConn *gorm.DB
-}
-
-func (d *sharedRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	return base.InstanceReady, nil
-}
-
-func (d *sharedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	return base.InstanceReady, nil
-}
-
-func (d *sharedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
-	return base.InstanceReady, nil
-}
-
-func (d *sharedRedisAdapter) bindDBToApp(i *RedisInstance, password string) (map[string]string, error) {
-	return i.getCredentials(password)
-}
-
-func (d *sharedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
 	return base.InstanceGone, nil
 }
 

@@ -1,6 +1,8 @@
 package rds
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -9,17 +11,20 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	brokerErrs "github.com/cloud-gov/aws-broker/errors"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 
 	"errors"
 	"fmt"
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, password string) (base.InstanceState, error)
-	modifyDB(i *RDSInstance, password string) (base.InstanceState, error)
+	createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
+	waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg)
+	modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
+	describeDatabaseInstance(database string) (*rds.DBInstance, error)
 }
 
 // MockDBAdapter is a struct meant for testing.
@@ -27,14 +32,22 @@ type dbAdapter interface {
 // It is only here because *_test.go files are only compiled during "go test"
 // and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
 type mockDBAdapter struct {
+	createDBState *base.InstanceState
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
-	return base.InstanceReady, nil
+	if d.createDBState != nil {
+		return *d.createDBState, nil
+	}
+	return base.InstanceInProgress, nil
 }
 
-func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *mockDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
+	// TODO
+}
+
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -54,7 +67,16 @@ func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	return base.InstanceGone, nil
 }
 
+func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstance, error) {
+	return nil, nil
+}
+
 // END MockDBAdpater
+type DBEndpointDetails struct {
+	Port  int64
+	Host  string
+	State base.InstanceState
+}
 
 type dedicatedDBAdapter struct {
 	Plan                 catalog.RDSPlan
@@ -146,16 +168,116 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
-	params, err := d.prepareCreateDbInput(i, password)
+func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
+	rdsTags := ConvertTagsToRDSTags(i.Tags)
+	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
+		AutoMinorVersionUpgrade:    aws.Bool(true),
+		DBInstanceIdentifier:       &i.ReplicaDatabase,
+		SourceDBInstanceIdentifier: &i.Database,
+		MultiAZ:                    &d.Plan.Redundant,
+		PubliclyAccessible:         aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
+		StorageType:                aws.String(i.StorageType),
+		Tags:                       rdsTags,
+		VpcSecurityGroupIds: []*string{
+			&i.SecGroup,
+		},
+	}
+	if i.ParameterGroupName != "" {
+		createReadReplicaParams.DBParameterGroupName = aws.String(i.ParameterGroupName)
+	}
+	_, err := d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
+	return err
+}
+
+func createAsyncJobMessage(i *RDSInstance, jobType base.Operation, state base.InstanceState, message string) taskqueue.AsyncJobMsg {
+	return taskqueue.AsyncJobMsg{
+		BrokerId:   i.ServiceID,
+		InstanceId: i.Uuid,
+		JobType:    jobType,
+		JobState: taskqueue.AsyncJobState{
+			Message: message,
+			State:   state,
+		},
+		ProcessedStatus: make(chan bool),
+	}
+}
+
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg) {
+	defer close(jobchan)
+
+	attempt := 1
+	var dbState base.InstanceState
+	var err error
+
+	for attempt <= int(d.settings.PollAwsMaxRetries) {
+		dbState, err = d.checkDBStatus(i)
+		if err != nil {
+			msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status on instance: %s", err))
+			jobchan <- msg
+			<-msg.ProcessedStatus
+			return
+		}
+
+		if dbState == base.InstanceReady {
+			break
+		}
+
+		msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceInProgress, fmt.Sprintf("Waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+
+		jobchan <- msg
+		<-msg.ProcessedStatus
+
+		attempt += 1
+		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
+	}
+
+	fmt.Printf("Database instance %s is %s\n", i.Database, dbState)
+
+	if dbState != base.InstanceReady {
+		msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceNotCreated, "Could not verify database creation on service instance")
+		jobchan <- msg
+		<-msg.ProcessedStatus
+		return
+	}
+
+	fmt.Printf("Preparing to create read replica for %s\n", i.Database)
+
+	msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceInProgress, "Creating database read replica for service instance")
+	jobchan <- msg
+	<-msg.ProcessedStatus
+
+	err = d.createDBReadReplica(i)
+	if err != nil {
+		msg := createAsyncJobMessage(i, base.CreateOp, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica on instance failed: %s", err))
+		jobchan <- msg
+		<-msg.ProcessedStatus
+		return
+	}
+
+	fmt.Printf("Initiated creation of read replica for %s\n", i.Database)
+
+	msg = createAsyncJobMessage(i, base.CreateOp, base.InstanceReady, "Database provisioning finished for service instance")
+	jobchan <- msg
+	<-msg.ProcessedStatus
+}
+
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
+	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
 
-	_, err = d.rds.CreateDBInstance(params)
+	_, err = d.rds.CreateDBInstance(createDbInputParams)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		return base.InstanceNotCreated, err
+	}
+
+	if i.AddReadReplica {
+		jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.CreateOp)
+		if err == nil {
+			go d.waitAndCreateDBReadReplica(i, jobchan)
+		}
 	}
 
 	return base.InstanceInProgress, nil
@@ -163,7 +285,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
 // cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
-func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
 	params, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
 		return base.InstanceNotModified, err
@@ -175,94 +297,116 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceNotModified, err
 	}
 
+	// If we are updating to a plan that supports read replicas, but one does not already
+	// exist, we need to create a read replica
+	if i.AddReadReplica {
+		jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.ModifyOp)
+		if err == nil {
+			go d.waitAndCreateDBReadReplica(i, jobchan)
+		}
+	}
+
 	return base.InstanceInProgress, nil
 }
 
+func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstance, error) {
+	params := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(database),
+	}
+
+	resp, err := d.rds.DescribeDBInstances(params)
+	if err != nil {
+		brokerErrs.LogAWSError(err)
+		return nil, err
+	}
+
+	numOfInstances := len(resp.DBInstances)
+	if numOfInstances == 0 {
+		return nil, errors.New("could not find any instances")
+	}
+
+	if numOfInstances > 1 {
+		return nil, fmt.Errorf("found more than one database for %s", database)
+	}
+
+	return resp.DBInstances[0], nil
+}
+
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
+	fmt.Printf("checking database status for instance %s. current status %s\n", i.Database, i.State)
+
 	// First, we need to check if the instance is up and available.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(i.Database),
-		}
-
-		resp, err := d.rds.DescribeDBInstances(params)
+		dbInstance, err := d.describeDatabaseInstance(i.Database)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
 			return base.InstanceNotCreated, err
 		}
 
-		// Get the details (host and port) for the instance.
-		numOfInstances := len(resp.DBInstances)
-		if numOfInstances > 0 {
-			for _, value := range resp.DBInstances {
-				// First check that the instance is up.
-				fmt.Println("Database Instance:" + i.Database + " is " + *(value.DBInstanceStatus))
-				switch *(value.DBInstanceStatus) {
-				case "available":
-					return base.InstanceReady, nil
-				case "creating":
-					return base.InstanceInProgress, nil
-				case "deleting":
-					return base.InstanceNotGone, nil
-				case "failed":
-					return base.InstanceNotCreated, nil
-				default:
-					return base.InstanceInProgress, nil
-				}
-
-			}
-		} else {
-			// Couldn't find any instances.
-			return base.InstanceNotCreated, errors.New("Couldn't find any instances.")
+		fmt.Printf("%s is %s\n", i.Database, *dbInstance.DBInstanceStatus)
+		switch *(dbInstance.DBInstanceStatus) {
+		case "available":
+			return base.InstanceReady, nil
+		case "creating":
+			return base.InstanceInProgress, nil
+		case "deleting":
+			return base.InstanceNotGone, nil
+		case "failed":
+			return base.InstanceNotCreated, nil
+		default:
+			return base.InstanceInProgress, nil
 		}
 	}
 
 	return base.InstanceNotCreated, nil
 }
 
+func (d *dedicatedDBAdapter) getDatabaseEndpointProperties(database string) (*DBEndpointDetails, error) {
+	dbInstance, err := d.describeDatabaseInstance(database)
+	if err != nil {
+		return nil, err
+	}
+
+	if dbInstance.DBInstanceStatus == nil || (dbInstance.DBInstanceStatus != nil && *(dbInstance.DBInstanceStatus) != "available") {
+		return nil, errors.New("instance not available yet. Please wait and try again")
+	}
+
+	if dbInstance.Endpoint == nil || dbInstance.Endpoint.Address == nil || dbInstance.Endpoint.Port == nil {
+		// Something went horribly wrong. Should never get here.
+		return nil, errors.New("endpoint information not available for database")
+	}
+
+	return &DBEndpointDetails{
+		Port:  *(dbInstance.Endpoint.Port),
+		Host:  *(dbInstance.Endpoint.Address),
+		State: base.InstanceReady,
+	}, nil
+}
+
 func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
-		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(i.Database),
-			// MaxRecords: aws.Long(1),
-		}
-
-		resp, err := d.rds.DescribeDBInstances(params)
+		dbEndpointDetails, err := d.getDatabaseEndpointProperties(i.Database)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
 			return nil, err
 		}
 
-		// Get the details (host and port) for the instance.
-		numOfInstances := len(resp.DBInstances)
-		if numOfInstances > 0 {
-			for _, value := range resp.DBInstances {
-				// First check that the instance is up.
-				if value.DBInstanceStatus != nil && *(value.DBInstanceStatus) == "available" {
-					if value.Endpoint != nil && value.Endpoint.Address != nil && value.Endpoint.Port != nil {
-						fmt.Printf("host: %s port: %d \n", *(value.Endpoint.Address), *(value.Endpoint.Port))
-						i.Port = *(value.Endpoint.Port)
-						i.Host = *(value.Endpoint.Address)
-						i.State = base.InstanceReady
-						// Should only be one regardless. Just return now.
-						break
-					} else {
-						// Something went horribly wrong. Should never get here.
-						return nil, errors.New("Inavlid memory for endpoint and/or endpoint members.")
-					}
-				} else {
-					// Instance not up yet.
-					return nil, errors.New("Instance not available yet. Please wait and try again..")
-				}
-			}
-		} else {
-			// Couldn't find any instances.
-			return nil, errors.New("Couldn't find any instances.")
-		}
+		i.Port = dbEndpointDetails.Port
+		i.Host = dbEndpointDetails.Host
+		i.State = dbEndpointDetails.State
 	}
+
+	// handle replica creds
+	if i.ReplicaDatabase != "" {
+		dbEndpointDetails, err := d.getDatabaseEndpointProperties(i.ReplicaDatabase)
+		if err != nil {
+			return nil, err
+		}
+
+		i.ReplicaDatabaseHost = dbEndpointDetails.Host
+	}
+
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
 }

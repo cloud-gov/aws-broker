@@ -18,6 +18,8 @@ import (
 	"os"
 	"testing"
 
+	brokertags "github.com/cloud-gov/go-broker-tags"
+
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/db"
@@ -235,6 +237,20 @@ var modifyElasticsearchInstanceParamsReq = []byte(
 
 var brokerDB *gorm.DB
 
+type mockTagGenerator struct {
+	tags map[string]string
+}
+
+func (mt *mockTagGenerator) GenerateTags(
+	action brokertags.Action,
+	serviceName string,
+	servicePlanName string,
+	resourceGUIDs brokertags.ResourceGUIDs,
+	getMissingResources bool,
+) (map[string]string, error) {
+	return mt.tags, nil
+}
+
 func initTestDbConfig() (*common.DBConfig, error) {
 	var dbConfig common.DBConfig
 	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
@@ -287,10 +303,10 @@ func setup() *martini.ClassicMartini {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tq := taskqueue.NewQueueManager()
+	tq := taskqueue.NewTaskQueueManager()
 	tq.Init()
 
-	m := App(&s, brokerDB, tq)
+	m := App(&s, brokerDB, tq, &mockTagGenerator{})
 
 	return m
 }
@@ -370,10 +386,6 @@ func TestCreateRDSInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -411,10 +423,6 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -452,10 +460,6 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -497,10 +501,6 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -561,10 +561,6 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -718,8 +714,6 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error("The instance was not saved to the DB.")
 	}
 
-	println(i.AllocatedStorage)
-
 	// Check to make sure the instance has the original plan set on it.
 	if i.PlanID != originalRDSPlanID {
 		t.Error("The instance should have the plan provided with the create request.")
@@ -747,7 +741,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
+	if !strings.Contains(resp.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
@@ -808,7 +802,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
+	if !strings.Contains(resp.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
@@ -868,7 +862,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
+	if !strings.Contains(resp.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
@@ -920,7 +914,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
+	if !strings.Contains(resp.Body.String(), "accepted") {
 		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
 	}
 	// Is it in the database and does it have correct storage?
