@@ -213,7 +213,6 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		}
 
 		if dbState == base.InstanceReady {
-			fmt.Printf("Database instance %s is ready", i.Database)
 			break
 		}
 
@@ -225,13 +224,16 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
-	fmt.Printf("Database instance %s is %s", i.Database, dbState)
+	fmt.Printf("Database instance %s is %s\n", i.Database, dbState)
+
 	if dbState != base.InstanceReady {
 		msg.JobState.Message = "Could not verify database creation on service instance"
 		msg.JobState.State = base.InstanceNotCreated
 		jobchan <- msg
 		return
 	}
+
+	fmt.Printf("Preparing to create read replica for %s\n", i.Database)
 
 	msg.JobState.Message = "Creating database read replica for service instance"
 	msg.JobState.State = base.InstanceInProgress
@@ -244,6 +246,8 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 		jobchan <- msg
 		return
 	}
+
+	fmt.Printf("Initiated creation of read replica for %s\n", i.Database)
 
 	msg.JobState.Message = "Database provisioning finished for service instance"
 	msg.JobState.State = base.InstanceReady
@@ -322,7 +326,7 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBI
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
-	fmt.Printf("checking database status for instance %s. current status %s", i.Database, i.State)
+	fmt.Printf("checking database status for instance %s. current status %s\n", i.Database, i.State)
 
 	// First, we need to check if the instance is up and available.
 	// Only search for details if the instance was not indicated as ready.
@@ -332,7 +336,7 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 			return base.InstanceNotCreated, err
 		}
 
-		fmt.Println("Database Instance:" + i.Database + " is " + *(dbInstance.DBInstanceStatus))
+		fmt.Printf("%s is %s\n", i.Database, *dbInstance.DBInstanceStatus)
 		switch *(dbInstance.DBInstanceStatus) {
 		case "available":
 			return base.InstanceReady, nil

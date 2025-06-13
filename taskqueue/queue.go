@@ -89,7 +89,6 @@ func (q *TaskQueueManager) UnScheduleTask(id string) error {
 
 // Determine if job(id) is scheduled
 func (q *TaskQueueManager) IsTaskScheduled(id string) bool {
-
 	for _, job := range q.scheduler.Jobs() {
 		for _, tag := range job.Tags() {
 			if id == tag {
@@ -108,6 +107,7 @@ func (q *TaskQueueManager) processMsg(msg AsyncJobMsg) {
 		Operation:  msg.JobType,
 	}
 	q.jobStates[*key] = msg.JobState
+	fmt.Printf("processed message %+v for %+v\n", msg, key)
 	if msg.ProcessedStatus != nil {
 		msg.ProcessedStatus <- true
 		close(msg.ProcessedStatus)
@@ -120,6 +120,7 @@ func (q *TaskQueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQ
 	for job := range jobChan {
 		q.processMsg(job)
 	}
+	fmt.Printf("done processing messages for %+v\n", key)
 	// channel is closed so remove key from chan queue and mark state queue for cleanup
 	delete(q.brokerQueues, *key)
 	// schedule clean up of this job's state in the future
@@ -135,6 +136,7 @@ func (q *TaskQueueManager) cleanupJobStates() {
 	now := time.Now()
 	for key, due := range q.cleanup {
 		if now.After(due) {
+			fmt.Printf("cleaning up job states for %+v, due: %s, now: %s\n", key, due, now)
 			delete(q.jobStates, key)
 			delete(q.cleanup, key)
 		}
@@ -157,7 +159,7 @@ func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, 
 		go q.msgProcessor(jobchan, key)
 		return jobchan, nil
 	}
-	return nil, fmt.Errorf("taskqueue: a job queue already exists for that key: %v ", key)
+	return nil, fmt.Errorf("taskqueue: a job queue already exists for that key: %v", key)
 }
 
 // a broker or adapter can query the state of a job, will return an error if there is no known state.
