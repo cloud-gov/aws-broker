@@ -201,7 +201,18 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 		broker.logger.Error("Error checking Redis status", err)
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
-
+	switch status {
+	case base.InstanceInProgress:
+		state = "in progress"
+	case base.InstanceReady:
+		state = "succeeded"
+	case base.InstanceNotCreated:
+		state = "failed"
+	case base.InstanceNotGone:
+		state = "failed"
+	default:
+		state = "in progress"
+	}
 	return response.NewSuccessLastOperation(state, fmt.Sprintf("The service instance status is %s", status))
 }
 
