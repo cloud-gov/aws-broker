@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/cloud-gov/aws-broker/config"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-martini/martini"
 	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/auth"
@@ -20,22 +23,30 @@ func main() {
 
 	// Load settings from environment
 	if err := settings.LoadFromEnv(); err != nil {
-		log.Println("There was an error loading settings")
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 
 	DB, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
-		log.Println("There was an error with the DB. Error: " + err.Error())
-		return
+		log.Fatal(fmt.Errorf("There was an error with the DB. Error: " + err.Error()))
 	}
 
 	Queue := taskqueue.NewTaskQueueManager()
 	Queue.Init()
 
+	tagManager, err := brokertags.NewCFTagManager(
+		"AWS broker",
+		settings.Environment,
+		settings.CfApiUrl,
+		settings.CfApiClientId,
+		settings.CfApiClientSecret,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Try to connect and create the app.
-	if m := App(&settings, DB, Queue); m != nil {
+	if m := App(&settings, DB, Queue, tagManager); m != nil {
 		log.Println("Starting app...")
 		m.Run()
 	} else {
@@ -44,7 +55,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.TaskQueueManager) *martini.ClassicMartini {
+func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) *martini.ClassicMartini {
 
 	m := martini.Classic()
 
@@ -57,6 +68,7 @@ func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.TaskQueueM
 	m.Map(DB)
 	m.Map(settings)
 	m.Map(TaskQueue)
+	m.Map(tagManager)
 
 	path, _ := os.Getwd()
 	m.Map(catalog.InitCatalog(path))

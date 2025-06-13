@@ -18,6 +18,8 @@ import (
 	"os"
 	"testing"
 
+	brokertags "github.com/cloud-gov/go-broker-tags"
+
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/db"
@@ -235,6 +237,20 @@ var modifyElasticsearchInstanceParamsReq = []byte(
 
 var brokerDB *gorm.DB
 
+type mockTagGenerator struct {
+	tags map[string]string
+}
+
+func (mt *mockTagGenerator) GenerateTags(
+	action brokertags.Action,
+	serviceName string,
+	servicePlanName string,
+	resourceGUIDs brokertags.ResourceGUIDs,
+	getMissingResources bool,
+) (map[string]string, error) {
+	return mt.tags, nil
+}
+
 func initTestDbConfig() (*common.DBConfig, error) {
 	var dbConfig common.DBConfig
 	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
@@ -290,7 +306,7 @@ func setup() *martini.ClassicMartini {
 	tq := taskqueue.NewTaskQueueManager()
 	tq.Init()
 
-	m := App(&s, brokerDB, tq)
+	m := App(&s, brokerDB, tq, &mockTagGenerator{})
 
 	return m
 }
