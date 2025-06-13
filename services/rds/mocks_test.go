@@ -107,6 +107,10 @@ func (q mockQueueManager) GetTaskState(brokerid string, instanceid string, opera
 	return q.taskState, nil
 }
 
+func (q mockQueueManager) TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool {
+	return false
+}
+
 type MockDbUtils struct {
 	mockFormattedDbName   string
 	mockDbName            string

@@ -190,19 +190,6 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func updateJobMessage(i *RDSInstance, state base.InstanceState, message string) taskqueue.AsyncJobMsg {
-	return taskqueue.AsyncJobMsg{
-		BrokerId:   i.ServiceID,
-		InstanceId: i.Uuid,
-		JobType:    base.CreateOp,
-		JobState: taskqueue.AsyncJobState{
-			Message: message,
-			State:   state,
-		},
-		ProcessedStatus: make(chan bool),
-	}
-}
-
 func createAsyncJobMessage(i *RDSInstance, jobType base.Operation, state base.InstanceState, message string) taskqueue.AsyncJobMsg {
 	return taskqueue.AsyncJobMsg{
 		BrokerId:   i.ServiceID,

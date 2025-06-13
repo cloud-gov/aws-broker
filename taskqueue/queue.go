@@ -14,6 +14,7 @@ type QueueManager interface {
 	IsTaskScheduled(id string) bool
 	RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error)
 	GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error)
+	TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool
 }
 
 // job state object persisted for brokers to access
@@ -143,16 +144,20 @@ func (q *TaskQueueManager) cleanupJobStates() {
 	}
 }
 
+func (q *TaskQueueManager) getTaskQueueJobKey(brokerid string, instanceid string, operation base.Operation) *AsyncJobQueueKey {
+	return &AsyncJobQueueKey{
+		BrokerId:   brokerid,
+		InstanceId: instanceid,
+		Operation:  operation,
+	}
+}
+
 // a broker or adapter can request a channel to communicate state of async processes.
 // the queue manager will launch a channel monitor to recieve messages and update the state of that async operation.
 // will return an error if a channel has already been launched. Channels must be closed by the recipient after use.
 // job state will be persisted and retained for a period of time before being cleaned up.
 func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
-	key := &AsyncJobQueueKey{
-		BrokerId:   brokerid,
-		InstanceId: instanceid,
-		Operation:  operation,
-	}
+	key := q.getTaskQueueJobKey(brokerid, instanceid, operation)
 	if _, present := q.brokerQueues[*key]; !present {
 		jobchan := make(chan AsyncJobMsg)
 		q.brokerQueues[*key] = jobchan
@@ -160,6 +165,12 @@ func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, 
 		return jobchan, nil
 	}
 	return nil, fmt.Errorf("taskqueue: a job queue already exists for that key: %v", key)
+}
+
+func (q *TaskQueueManager) TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool {
+	key := q.getTaskQueueJobKey(brokerid, instanceid, operation)
+	_, present := q.brokerQueues[*key]
+	return present
 }
 
 // a broker or adapter can query the state of a job, will return an error if there is no known state.

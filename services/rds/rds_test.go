@@ -122,13 +122,13 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 func TestCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
-		dbInstance          *RDSInstance
-		dbAdapter           dbAdapter
-		expectedErr         error
-		expectedState       base.InstanceState
-		password            string
-		queueManager        taskqueue.QueueManager
-		expectedAsyncStates []base.InstanceState
+		dbInstance            *RDSInstance
+		dbAdapter             dbAdapter
+		expectedErr           error
+		expectedState         base.InstanceState
+		password              string
+		queueManager          taskqueue.QueueManager
+		expectTaskQueueExists bool
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -137,12 +137,22 @@ func TestCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:    NewRDSInstance(),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			password:      helpers.RandStr(10),
 			expectedErr:   createDbErr,
 			expectedState: base.InstanceNotCreated,
 			queueManager:  &mockQueueManager{},
 		},
-		"success": {
+		"success without replica": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRdsClientForAdapterTests{
 					describeDBInstancesResponses: []*string{aws.String("available")},
@@ -150,19 +160,50 @@ func TestCreateDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
+					PollAwsMaxRetries:        0,
 				},
 			},
+			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceInProgress,
+			queueManager:  taskqueue.NewTaskQueueManager(),
+		},
+		"success with replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRdsClientForAdapterTests{
+					describeDBInstancesResponses: []*string{aws.String("available")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        0,
+				},
+			},
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			expectedState: base.InstanceInProgress,
-			queueManager: &mockQueueManager{
-				jobChan: make(chan taskqueue.AsyncJobMsg),
-			},
-			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
+			expectedState:         base.InstanceInProgress,
+			queueManager:          taskqueue.NewTaskQueueManager(),
+			expectTaskQueueExists: true,
 		},
 	}
 
@@ -178,16 +219,8 @@ func TestCreateDb(t *testing.T) {
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
 			}
-			if len(test.expectedAsyncStates) > 0 {
-				if mockQueueManager, ok := test.queueManager.(*mockQueueManager); ok {
-					counter := 0
-					for jobMsg := range mockQueueManager.jobChan {
-						if jobMsg.JobState.State != test.expectedAsyncStates[counter] {
-							t.Fatalf("expected state: %s, got: %s", test.expectedAsyncStates[counter], jobMsg.JobState.State)
-						}
-						counter++
-					}
-				}
+			if taskQueueExists := test.queueManager.TaskQueueExists(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp); taskQueueExists != test.expectTaskQueueExists {
+				t.Fatalf("expected TaskQueueExists(): %t, got: %t", test.expectTaskQueueExists, taskQueueExists)
 			}
 		})
 	}
