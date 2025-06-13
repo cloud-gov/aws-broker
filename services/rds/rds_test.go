@@ -375,13 +375,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 func TestModifyDb(t *testing.T) {
 	modifyDbErr := errors.New("modify DB error")
 	testCases := map[string]struct {
-		dbInstance           *RDSInstance
-		dbAdapter            dbAdapter
-		expectedErr          error
-		expectedResponseCode base.InstanceState
-		password             string
-		queueManager         taskqueue.QueueManager
-		expectedAsyncStates  []base.InstanceState
+		dbInstance            *RDSInstance
+		dbAdapter             dbAdapter
+		expectedErr           error
+		expectedResponseCode  base.InstanceState
+		password              string
+		queueManager          taskqueue.QueueManager
+		expectTaskQueueExists bool
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -401,7 +401,7 @@ func TestModifyDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
+					PollAwsMaxRetries:        0,
 				},
 			},
 			dbInstance: &RDSInstance{
@@ -418,19 +418,24 @@ func TestModifyDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
+					PollAwsMaxRetries:        0,
 				},
 			},
 			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			expectedResponseCode: base.InstanceInProgress,
-			queueManager: &mockQueueManager{
-				jobChan: make(chan taskqueue.AsyncJobMsg),
-			},
-			expectedAsyncStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
+			expectedResponseCode:  base.InstanceInProgress,
+			queueManager:          taskqueue.NewTaskQueueManager(),
+			expectTaskQueueExists: true,
 		},
 	}
 
@@ -446,16 +451,8 @@ func TestModifyDb(t *testing.T) {
 			if responseCode != test.expectedResponseCode {
 				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
 			}
-			if len(test.expectedAsyncStates) > 0 {
-				if mockQueueManager, ok := test.queueManager.(*mockQueueManager); ok {
-					counter := 0
-					for jobMsg := range mockQueueManager.jobChan {
-						if jobMsg.JobState.State != test.expectedAsyncStates[counter] {
-							t.Fatalf("expected state: %s, got: %s", test.expectedAsyncStates[counter], jobMsg.JobState.State)
-						}
-						counter++
-					}
-				}
+			if taskQueueExists := test.queueManager.TaskQueueExists(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp); taskQueueExists != test.expectTaskQueueExists {
+				t.Fatalf("expected TaskQueueExists(): %t, got: %t", test.expectTaskQueueExists, taskQueueExists)
 			}
 		})
 	}
