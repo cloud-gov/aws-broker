@@ -176,7 +176,7 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	if s.PollAwsMaxRetries == 0 {
-		s.PollAwsMaxRetries = 20
+		s.PollAwsMaxRetries = 120
 	}
 
 	if val, ok := os.LookupEnv("POLL_AWS_RETRY_DELAY_SECONDS"); ok {
@@ -187,7 +187,7 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	if s.PollAwsRetryDelaySeconds == 0 {
-		s.PollAwsRetryDelaySeconds = 60
+		s.PollAwsRetryDelaySeconds = 30
 	}
 
 	return nil
