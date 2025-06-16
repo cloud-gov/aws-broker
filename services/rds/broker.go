@@ -72,7 +72,7 @@ type rdsBroker struct {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Catalog) (dbAdapter, response.Response) {
+func initializeAdapter(plan catalog.RDSPlan, s *config.Settings) (dbAdapter, response.Response) {
 
 	var dbAdapter dbAdapter
 	// For test environments, use a mock adapter.
@@ -185,13 +185,13 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
 	// Create the database instance.
-	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.taskqueue)
+	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.taskqueue, broker.brokerDB)
 
 	switch status {
 	case base.InstanceNotCreated:
@@ -270,7 +270,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Connect to the existing instance.
-	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(newPlan, broker.settings)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -313,7 +313,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -392,7 +392,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	}
 
 	// Get the correct database logic depending on the type of plan.
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -425,7 +425,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings)
 	if adapterErr != nil {
 		return adapterErr
 	}

@@ -22,15 +22,16 @@ import (
 )
 
 func testDBInit() (*gorm.DB, error) {
-	db, err := common.DBInit(&common.DBConfig{
-		DbType: "sqlite3",
-		DbName: ":memory:",
-	})
+	config, err := common.InitTestDbConfig()
+	if err != nil {
+		return nil, err
+	}
+	db, err := common.DBInit(config)
 	if err != nil {
 		return nil, err
 	}
 	// Automigrate!
-	db.AutoMigrate(&RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}) // Add all your models here to help setup the database tables
+	db.AutoMigrate(&RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncTask{}) // Add all your models here to help setup the database tables
 	return db, err
 }
 

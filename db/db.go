@@ -8,6 +8,7 @@ import (
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
+	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/jinzhu/gorm"
 )
 
@@ -24,7 +25,7 @@ func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	log.Println("Migrating")
 	// db.LogMode(true)
 	// Automigrate!
-	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}) // Add all your models here to help setup the database tables
+	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncTask{}) // Add all your models here to help setup the database tables
 	log.Println("Migrated")
 	return db, err
 }
