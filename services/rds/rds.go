@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/jinzhu/gorm"
 
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -18,7 +19,7 @@ import (
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
+	createDB(i *RDSInstance, password string, queue taskqueue.QueueManager, db *gorm.DB) (base.InstanceState, error)
 	waitAndCreateDBReadReplica(i *RDSInstance, jobchan chan taskqueue.AsyncJobMsg)
 	modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
@@ -35,7 +36,7 @@ type mockDBAdapter struct {
 	createDBState *base.InstanceState
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
+func (d *mockDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager, db *gorm.DB) (base.InstanceState, error) {
 	// TODO
 	if d.createDBState != nil {
 		return *d.createDBState, nil
@@ -261,7 +262,19 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(i *RDSInstance, jobchan 
 	<-msg.ProcessedStatus
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, queue taskqueue.QueueManager, db *gorm.DB) (base.InstanceState, error) {
+	asyncTask := &taskqueue.AsyncTask{
+		Message:    "Starting up database creation process",
+		BrokerId:   i.ServiceID,
+		InstanceId: i.Uuid,
+		Operation:  base.CreateOp,
+	}
+	db.NewRecord(asyncTask)
+	err := db.Create(asyncTask).Error
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		return base.InstanceNotCreated, err

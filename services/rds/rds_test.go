@@ -123,12 +123,13 @@ func TestCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
-		dbAdapter             dbAdapter
+		dbAdapter             *dedicatedDBAdapter
 		expectedErr           error
 		expectedState         base.InstanceState
 		password              string
 		queueManager          taskqueue.QueueManager
 		expectTaskQueueExists bool
+		expectedTaskState     taskqueue.TaskState
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -147,10 +148,11 @@ func TestCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			password:      helpers.RandStr(10),
-			expectedErr:   createDbErr,
-			expectedState: base.InstanceNotCreated,
-			queueManager:  &mockQueueManager{},
+			password:          helpers.RandStr(10),
+			expectedErr:       createDbErr,
+			expectedState:     base.InstanceNotCreated,
+			queueManager:      &mockQueueManager{},
+			expectedTaskState: taskqueue.TaskRunning,
 		},
 		"success without replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -174,8 +176,9 @@ func TestCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			expectedState: base.InstanceInProgress,
-			queueManager:  taskqueue.NewTaskQueueManager(),
+			expectedState:     base.InstanceInProgress,
+			queueManager:      taskqueue.NewTaskQueueManager(),
+			expectedTaskState: taskqueue.TaskRunning,
 		},
 		"success with replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -204,23 +207,34 @@ func TestCreateDb(t *testing.T) {
 			expectedState:         base.InstanceInProgress,
 			queueManager:          taskqueue.NewTaskQueueManager(),
 			expectTaskQueueExists: true,
+			expectedTaskState:     taskqueue.TaskRunning,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, test.queueManager)
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, test.queueManager, brokerDB)
+
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
+
+			task := taskqueue.AsyncTask{}
+			brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("operation = ?", base.CreateOp).First(&task)
+			if task.State != test.expectedTaskState {
+				t.Fatalf("expected task state: %s, got: %s", test.expectedTaskState, task.State)
+			}
+
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
-			}
-			if taskQueueExists := test.queueManager.TaskQueueExists(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp); taskQueueExists != test.expectTaskQueueExists {
-				t.Fatalf("expected TaskQueueExists(): %t, got: %t", test.expectTaskQueueExists, taskQueueExists)
 			}
 		})
 	}
