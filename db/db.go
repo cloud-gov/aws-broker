@@ -23,7 +23,6 @@ func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	}
 	db.DB().SetMaxOpenConns(maxDbConnections)
 	log.Println("Migrating")
-	// db.LogMode(true)
 	// Automigrate!
 	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{}) // Add all your models here to help setup the database tables
 	log.Println("Migrated")

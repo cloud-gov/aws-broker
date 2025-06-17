@@ -18,9 +18,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
@@ -236,58 +237,25 @@ var modifyElasticsearchInstanceParamsReq = []byte(
 
 var brokerDB *gorm.DB
 
-func initTestDbConfig() (*common.DBConfig, error) {
-	var dbConfig common.DBConfig
-	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
-		dbConfig.DbType = "sqlite3"
-	}
-	switch dbConfig.DbType {
-	case "postgres":
-		dbConfig.DbType = "postgres"
-		dbConfig.DbName = os.Getenv("POSTGRES_USER")
-		dbConfig.Password = os.Getenv("POSTGRES_PASSWORD")
-		dbConfig.Sslmode = "disable"
-		dbConfig.Port = 5432
-		dbConfig.Username = os.Getenv("POSTGRES_USER")
-		dbConfig.URL = "localhost"
-	case "sqlite3":
-		dbConfig.DbType = "sqlite3"
-		dbConfig.DbName = ":memory:"
-	default:
-		return nil, fmt.Errorf("unsupported db type: %s", dbConfig.DbType)
-	}
-	return &dbConfig, nil
-}
-
-func initTestDb(dbConfig *common.DBConfig) (*gorm.DB, error) {
-	brokerDB, err := db.InternalDBInit(dbConfig)
-	if err != nil {
-		return nil, err
-	}
-	return brokerDB, nil
-}
-
 func setup() *martini.ClassicMartini {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
 	var s config.Settings
 
-	dbConfig, err := initTestDbConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s.EncryptionKey = "12345678901234567890123456789012"
+	s.EncryptionKey = helpers.RandStr(32)
 	s.Environment = "test"
 	s.MaxAllocatedStorage = 1024
 	s.CfApiUrl = "fake-api-url"
 	s.CfApiClientId = "fake-client-id"
 	s.CfApiClientSecret = "fake-client-secret"
 
-	brokerDB, err = initTestDb(dbConfig)
+	var err error
+	brokerDB, err = common.TestDbInit()
 	if err != nil {
 		log.Fatal(err)
 	}
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
+
 	tq := taskqueue.NewTaskQueueManager()
 	tq.Init()
 

@@ -117,3 +117,15 @@ func InitTestDbConfig() (*DBConfig, error) {
 	}
 	return &dbConfig, nil
 }
+
+func TestDbInit() (*gorm.DB, error) {
+	config, err := InitTestDbConfig()
+	if err != nil {
+		return nil, err
+	}
+	db, err := DBInit(config)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}

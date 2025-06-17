@@ -11,23 +11,14 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/mocks"
-	"github.com/cloud-gov/aws-broker/services/elasticsearch"
-	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/jinzhu/gorm"
 )
 
 func testDBInit() (*gorm.DB, error) {
-	config, err := common.InitTestDbConfig()
-	if err != nil {
-		return nil, err
-	}
-	db, err := common.DBInit(config)
-	if err != nil {
-		return nil, err
-	}
+	db, err := common.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&rds.RDSInstance{}, &RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{}) // Add all your models here to help setup the database tables
+	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
 	return db, err
 }
 

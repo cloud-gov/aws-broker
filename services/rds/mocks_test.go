@@ -4,10 +4,19 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/go-co-op/gocron"
+	"github.com/jinzhu/gorm"
 )
+
+func testDBInit() (*gorm.DB, error) {
+	db, err := common.TestDbInit()
+	// Automigrate!
+	db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
+	return db, err
+}
 
 type mockParameterGroupClient struct {
 	rds              rdsiface.RDSAPI

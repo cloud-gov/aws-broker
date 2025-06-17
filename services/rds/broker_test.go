@@ -8,33 +8,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
-	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
 	"github.com/cloud-gov/aws-broker/mocks"
-	"github.com/cloud-gov/aws-broker/services/elasticsearch"
-	"github.com/cloud-gov/aws-broker/services/redis"
 	"github.com/cloud-gov/aws-broker/taskqueue"
-	"github.com/jinzhu/gorm"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
-
-func testDBInit() (*gorm.DB, error) {
-	config, err := common.InitTestDbConfig()
-	if err != nil {
-		return nil, err
-	}
-	db, err := common.DBInit(config)
-	if err != nil {
-		return nil, err
-	}
-	// Automigrate!
-	db.AutoMigrate(&RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{}) // Add all your models here to help setup the database tables
-	return db, err
-}
 
 func TestValidate(t *testing.T) {
 	testCases := map[string]struct {
