@@ -426,7 +426,7 @@ func TestModifyDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        0,
+					PollAwsMaxRetries:        1,
 				},
 			},
 			dbInstance: &RDSInstance{
