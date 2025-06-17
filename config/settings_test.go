@@ -14,8 +14,9 @@ func TestSettings(t *testing.T) {
 	os.Setenv("CF_API_URL", "fake-api")
 	os.Setenv("CF_API_CLIENT_ID", "fake-client-id")
 	os.Setenv("CF_API_CLIENT_SECRET", "fake-client-secret")
-	// ensure that this is set to empty to override any test environment variables in .env
+	// ensure that these are set to empty to override any test environment variables in .env
 	os.Setenv("DB_SSLMODE", "")
+	os.Setenv("DB_TYPE", "")
 
 	settings := &Settings{}
 	err := settings.LoadFromEnv()
