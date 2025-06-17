@@ -17,44 +17,6 @@ type QueueManager interface {
 	TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool
 }
 
-// job state object persisted for brokers to access
-type AsyncJobState struct {
-	State   base.InstanceState
-	Message string
-}
-
-// messages of job state delivered over chan that are persisted
-type AsyncJobMsg struct {
-	BrokerId        string         `gorm:"primary_key; not null"`
-	InstanceId      string         `gorm:"primary_key; not null"`
-	JobType         base.Operation `gorm:"primary_key; not null"`
-	JobState        AsyncJobState  `gorm:"embedded"`
-	ProcessedStatus chan bool      `sql:"-"`
-}
-
-// Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
-// this identifier is used as the unique key to retrieve a chan and or job state
-type AsyncJobQueueKey struct {
-	BrokerId   string
-	InstanceId string
-	Operation  base.Operation
-}
-
-// TaskQueueManager maintains:
-//
-//	 	A set of open channels for active jobs
-//		A list of jobstates for requested job
-//		A task scheduler for cleanup of jobstates
-//		A list of jobstates that need cleanup
-type TaskQueueManager struct {
-	jobStates    map[AsyncJobQueueKey]AsyncJobState
-	brokerQueues map[AsyncJobQueueKey]chan AsyncJobMsg
-	cleanup      map[AsyncJobQueueKey]time.Time
-	scheduler    *gocron.Scheduler
-	expiration   time.Duration
-	check        time.Duration
-}
-
 // can be called to initialize the manager
 // defaults to do clean-up of jobstates after an hour.
 // runs clean up check every 15 minutes

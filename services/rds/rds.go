@@ -190,42 +190,6 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func updateAsyncJobMessage(db *gorm.DB, i *RDSInstance, operation base.Operation, state base.InstanceState, message string) error {
-	asyncJobMsg := &taskqueue.AsyncJobMsg{
-		BrokerId:   i.ServiceID,
-		InstanceId: i.Uuid,
-		JobType:    operation,
-		JobState: taskqueue.AsyncJobState{
-			Message: message,
-			State:   state,
-		},
-	}
-	err := db.Save(asyncJobMsg).Error
-	// TODO: better handling of this error
-	if err != nil {
-		fmt.Println(err)
-	}
-	return err
-}
-
-func createAsyncJobMessage(db *gorm.DB, i *RDSInstance, operation base.Operation, state base.InstanceState, message string) error {
-	asyncJobMsg := &taskqueue.AsyncJobMsg{
-		BrokerId:   i.ServiceID,
-		InstanceId: i.Uuid,
-		JobType:    operation,
-		JobState: taskqueue.AsyncJobState{
-			Message: message,
-			State:   state,
-		},
-	}
-	err := db.Save(asyncJobMsg).Error
-	// TODO: better handling of this error
-	if err != nil {
-		fmt.Println(err)
-	}
-	return err
-}
-
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) {
 	attempt := 1
 	var dbState base.InstanceState
@@ -234,7 +198,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 	for attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
-			updateAsyncJobMessage(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
+			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
 			return
 		}
 
@@ -242,26 +206,26 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 			break
 		}
 
-		updateAsyncJobMessage(db, i, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
 
 		attempt += 1
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
 	if dbState != base.InstanceReady {
-		updateAsyncJobMessage(db, i, operation, base.InstanceNotCreated, "Timed out waiting for database to be available")
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Timed out waiting for database to be available")
 		return
 	}
 
-	updateAsyncJobMessage(db, i, operation, base.InstanceInProgress, "Creating database read replica")
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	err = d.createDBReadReplica(i)
 	if err != nil {
-		updateAsyncJobMessage(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica  failed: %s", err))
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica  failed: %s", err))
 		return
 	}
 
-	updateAsyncJobMessage(db, i, operation, base.InstanceReady, "Database provisioning finished for service instance")
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Database provisioning finished for service instance")
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
@@ -277,7 +241,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 	}
 
 	if i.AddReadReplica {
-		err := createAsyncJobMessage(db, i, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
+		err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
 		if err != nil {
 			return base.InstanceNotCreated, err
 		}
@@ -304,7 +268,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.
 	// If we are updating to a plan that supports read replicas, but one does not already
 	// exist, we need to create a read replica
 	if i.AddReadReplica {
-		err := createAsyncJobMessage(db, i, base.ModifyOp, base.InstanceInProgress, "Modifying database")
+		err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Modifying database")
 		if err != nil {
 			return base.InstanceNotModified, err
 		}
