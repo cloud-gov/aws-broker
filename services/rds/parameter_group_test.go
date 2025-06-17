@@ -938,10 +938,12 @@ func TestGetDatabaseEngineVersion(t *testing.T) {
 			expectedDbVersion: "version1",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								EngineVersion: aws.String("version1"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									EngineVersion: aws.String("version1"),
+								},
 							},
 						},
 					},
@@ -1001,10 +1003,12 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			expectedPGroupFamily: "postgres1",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								EngineVersion: aws.String("version1"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									EngineVersion: aws.String("version1"),
+								},
 							},
 						},
 					},

@@ -118,6 +118,8 @@ func (m *MockDbUtils) buildUsername() string {
 type mockRDSClient struct {
 	rdsiface.RDSAPI
 
+	createDbErr                         error
+	createDBInstanceReadReplicaErr      error
 	dbEngineVersions                    []*rds.DBEngineVersion
 	describeEngVersionsErr              error
 	describeDbParamsErr                 error
@@ -130,8 +132,17 @@ type mockRDSClient struct {
 	describeDbParamsResults             []*rds.DescribeDBParametersOutput
 	describeDbParamsNumPages            int
 	describeDbParamsPageNum             int
-	describeDbInstancesResults          *rds.DescribeDBInstancesOutput
+	describeDBInstancesCallNum          int
+	describeDbInstancesResults          []*rds.DescribeDBInstancesOutput
 	describeDbInstancesErr              error
+	modifyDbErr                         error
+}
+
+func (m mockRDSClient) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
+	if m.createDbErr != nil {
+		return nil, m.createDbErr
+	}
+	return nil, nil
 }
 
 func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
@@ -196,8 +207,25 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 }
 
 func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
+	// if m.describeDbInstancesErr != nil {
+	// 	return nil, m.describeDbInstancesErr
+	// }
+	// return m.describeDbInstancesResults, nil
 	if m.describeDbInstancesErr != nil {
 		return nil, m.describeDbInstancesErr
 	}
-	return m.describeDbInstancesResults, nil
+	output := m.describeDbInstancesResults[m.describeDBInstancesCallNum]
+	m.describeDBInstancesCallNum++
+	return output, nil
+}
+
+func (m mockRDSClient) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
+	return nil, m.createDBInstanceReadReplicaErr
+}
+
+func (m mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
+	if m.modifyDbErr != nil {
+		return nil, m.modifyDbErr
+	}
+	return nil, nil
 }

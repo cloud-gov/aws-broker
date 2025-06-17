@@ -131,7 +131,7 @@ func TestCreateDb(t *testing.T) {
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
+				rds: &mockRDSClient{
 					createDbErr: createDbErr,
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
@@ -152,8 +152,16 @@ func TestCreateDb(t *testing.T) {
 		},
 		"success without replica": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("available")},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -176,8 +184,16 @@ func TestCreateDb(t *testing.T) {
 		},
 		"success with replica": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("available")},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -247,8 +263,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("available")},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -270,8 +294,30 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"waits with retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("available")},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -293,13 +339,35 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"gives up after maximum retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating"), aws.String("creating")},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
+					PollAwsMaxRetries:        3,
 				},
 			},
 			dbInstance: &RDSInstance{
@@ -316,8 +384,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"error checking database creation status": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesErr: errors.New("error describing database instances"),
+				rds: &mockRDSClient{
+					describeDbInstancesErr: errors.New("error describing database instances"),
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -339,9 +407,17 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"error creating database replica": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses:   []*string{aws.String("available")},
+				rds: &mockRDSClient{
 					createDBInstanceReadReplicaErr: errors.New("error creating database instance read replica"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -395,7 +471,7 @@ func TestModifyDb(t *testing.T) {
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
+				rds: &mockRDSClient{
 					modifyDbErr: modifyDbErr,
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
@@ -406,7 +482,7 @@ func TestModifyDb(t *testing.T) {
 		},
 		"success without read replica": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds:                  &mockRdsClientForAdapterTests{},
+				rds:                  &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
@@ -420,8 +496,16 @@ func TestModifyDb(t *testing.T) {
 		},
 		"success with read replica": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRdsClientForAdapterTests{
-					describeDBInstancesResponses: []*string{aws.String("available")},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -629,10 +713,12 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
 							},
 						},
 					},
@@ -655,8 +741,10 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"no databases found": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{},
+						},
 					},
 				},
 			},
@@ -666,13 +754,15 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"multiple databases found": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								DBInstanceIdentifier: aws.String("db1"),
-							},
-							{
-								DBInstanceIdentifier: aws.String("db2"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceIdentifier: aws.String("db1"),
+								},
+								{
+									DBInstanceIdentifier: aws.String("db2"),
+								},
 							},
 						},
 					},
@@ -711,13 +801,15 @@ func TestBindDBToApp(t *testing.T) {
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
-								Endpoint: &rds.Endpoint{
-									Address: aws.String("db-address"),
-									Port:    aws.Int64(1234),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+									Endpoint: &rds.Endpoint{
+										Address: aws.String("db-address"),
+										Port:    aws.Int64(1234),
+									},
 								},
 							},
 						},
@@ -759,10 +851,12 @@ func TestBindDBToApp(t *testing.T) {
 		"database not available": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								DBInstanceStatus: aws.String("processing"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("processing"),
+								},
 							},
 						},
 					},
@@ -776,10 +870,12 @@ func TestBindDBToApp(t *testing.T) {
 		"database has no endpoint": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesResults: &rds.DescribeDBInstancesOutput{
-						DBInstances: []*rds.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
 							},
 						},
 					},
