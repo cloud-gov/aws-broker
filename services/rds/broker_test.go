@@ -281,7 +281,7 @@ func TestCreateInstanceSuccess(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "456",
+					Uuid: helpers.RandStr(10),
 				},
 			},
 			queueManager: &mockQueueManager{},
@@ -325,11 +325,11 @@ func TestLastOperation(t *testing.T) {
 		planID        string
 		dbInstance    *RDSInstance
 		expectedState string
-		queueManager  taskqueue.QueueManager
 		tagManager    brokertags.TagManager
 		settings      *config.Settings
 		catalog       *catalog.Catalog
 		operation     string
+		asyncJobMsg   *taskqueue.AsyncJobMsg
 	}{
 		"create without replica": {
 			operation: base.CreateOp.String(),
@@ -347,11 +347,10 @@ func TestLastOperation(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "456",
+					Uuid: helpers.RandStr(10),
 				},
 			},
-			queueManager: &mockQueueManager{},
-			tagManager:   &mockTagManager{},
+			tagManager: &mockTagManager{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -374,21 +373,26 @@ func TestLastOperation(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "456",
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
 				},
 				ReplicaDatabase: "replica",
-			},
-			queueManager: &mockQueueManager{
-				taskState: &taskqueue.AsyncJobState{
-					State: base.InstanceInProgress,
-				},
 			},
 			tagManager: &mockTagManager{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: "in progress",
+			expectedState: "succeeded",
+			asyncJobMsg: &taskqueue.AsyncJobMsg{
+				JobType: base.CreateOp,
+				JobState: taskqueue.AsyncJobState{
+					Message: "completed",
+					State:   base.InstanceReady,
+				},
+			},
 		},
 		"default": {
 			operation: base.ModifyOp.String(),
@@ -406,11 +410,10 @@ func TestLastOperation(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "456",
+					Uuid: helpers.RandStr(10),
 				},
 			},
-			queueManager: &mockQueueManager{},
-			tagManager:   &mockTagManager{},
+			tagManager: &mockTagManager{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -433,11 +436,10 @@ func TestLastOperation(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "456",
+					Uuid: helpers.RandStr(10),
 				},
 			},
-			queueManager: &mockQueueManager{},
-			tagManager:   &mockTagManager{},
+			tagManager: &mockTagManager{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -460,21 +462,26 @@ func TestLastOperation(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "456",
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
 				},
 				ReplicaDatabase: "replica",
-			},
-			queueManager: &mockQueueManager{
-				taskState: &taskqueue.AsyncJobState{
-					State: base.InstanceInProgress,
-				},
 			},
 			tagManager: &mockTagManager{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: "in progress",
+			expectedState: "succeeded",
+			asyncJobMsg: &taskqueue.AsyncJobMsg{
+				JobType: base.ModifyOp,
+				JobState: taskqueue.AsyncJobState{
+					Message: "completed",
+					State:   base.InstanceReady,
+				},
+			},
 		},
 	}
 
@@ -489,12 +496,20 @@ func TestLastOperation(t *testing.T) {
 				brokerDB:   brokerDB,
 				settings:   test.settings,
 				tagManager: test.tagManager,
-				taskqueue:  test.queueManager,
 			}
 
 			err = brokerDB.Create(test.dbInstance).Error
 			if err != nil {
 				t.Fatal(err)
+			}
+
+			if test.asyncJobMsg != nil {
+				test.asyncJobMsg.BrokerId = test.dbInstance.ServiceID
+				test.asyncJobMsg.InstanceId = test.dbInstance.Uuid
+				err := brokerDB.Create(test.asyncJobMsg).Error
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 
 			response := broker.LastOperation(test.catalog, test.dbInstance.Uuid, base.Instance{

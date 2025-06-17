@@ -321,51 +321,58 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return adapterErr
 	}
 
+	var state base.InstanceState
 	var status string
-	var needTaskState bool
+	var needAsyncJobState bool
 	var instanceOperation base.Operation
 	var statusMessage string
 
 	switch operation {
 	case base.CreateOp.String():
 		// creation uses a task state if a replica database is being created
-		needTaskState = existingInstance.ReplicaDatabase != ""
+		needAsyncJobState = existingInstance.ReplicaDatabase != ""
 		instanceOperation = base.CreateOp
 	case base.ModifyOp.String():
 		// modify uses a task state if a replica database is being created
-		needTaskState = existingInstance.ReplicaDatabase != ""
+		needAsyncJobState = existingInstance.ReplicaDatabase != ""
 		instanceOperation = base.ModifyOp
 	default:
-		needTaskState = false
+		needAsyncJobState = false
 	}
 
-	if needTaskState {
-		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
-		if err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+	if needAsyncJobState {
+		asyncJobMsg := taskqueue.AsyncJobMsg{}
+		result := broker.brokerDB.Where("broker_id = ?", existingInstance.ServiceID).Where("instance_id = ?", existingInstance.Uuid).Where("job_type = ?", instanceOperation).First(&asyncJobMsg)
+		if result.RowsAffected == 0 {
+			return response.NewErrorResponse(http.StatusInternalServerError, "Could not find async job status message")
 		}
-		status = jobstate.State.String()
-		statusMessage = jobstate.Message
+		if result.Error != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, result.Error.Error())
+		}
+		state = asyncJobMsg.JobState.State
+		statusMessage = asyncJobMsg.JobState.Message
 	} else {
 		dbState, err := adapter.checkDBStatus(existingInstance)
-		switch dbState {
-		case base.InstanceInProgress:
-			status = "in progress"
-		case base.InstanceReady:
-			status = "succeeded"
-		case base.InstanceNotCreated:
-			status = "failed"
-		case base.InstanceNotModified:
-			status = "failed"
-		case base.InstanceNotGone:
-			status = "failed"
-		default:
-			status = "in progress"
-		}
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
-		statusMessage = fmt.Sprintf("The database status is %s", status)
+		state = dbState
+		statusMessage = fmt.Sprintf("The database status is %s", state)
+	}
+
+	switch state {
+	case base.InstanceInProgress:
+		status = "in progress"
+	case base.InstanceReady:
+		status = "succeeded"
+	case base.InstanceNotCreated:
+		status = "failed"
+	case base.InstanceNotModified:
+		status = "failed"
+	case base.InstanceNotGone:
+		status = "failed"
+	default:
+		status = "in progress"
 	}
 
 	return response.NewSuccessLastOperation(status, statusMessage)
