@@ -256,7 +256,7 @@ func TestCreateDb(t *testing.T) {
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
-		dbAdapter     dbAdapter
+		dbAdapter     *dedicatedDBAdapter
 		queueManager  taskqueue.QueueManager
 		expectedState base.InstanceState
 	}{

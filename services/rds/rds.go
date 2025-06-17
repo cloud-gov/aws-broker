@@ -20,7 +20,6 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
-	waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance)
 	modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
@@ -42,10 +41,6 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (
 		return *d.createDBState, nil
 	}
 	return base.InstanceInProgress, nil
-}
-
-func (d *mockDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) {
-	// TODO
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
