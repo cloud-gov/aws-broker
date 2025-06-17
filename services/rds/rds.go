@@ -302,8 +302,6 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBI
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
-	fmt.Printf("checking database status for instance %s. current status %s\n", i.Database, i.State)
-
 	// First, we need to check if the instance is up and available.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
@@ -312,7 +310,6 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 			return base.InstanceNotCreated, err
 		}
 
-		fmt.Printf("%s is %s\n", i.Database, *dbInstance.DBInstanceStatus)
 		switch *(dbInstance.DBInstanceStatus) {
 		case "available":
 			return base.InstanceReady, nil
