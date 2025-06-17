@@ -20,7 +20,7 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
-		return rds.InitRDSBroker(brokerDb, settings, taskqueue, tagManager), nil
+		return rds.InitRDSBroker(brokerDb, settings, tagManager), nil
 	case c.RedisService.ID:
 		return redis.InitRedisBroker(brokerDb, settings, tagManager), nil
 	case c.ElasticsearchService.ID:

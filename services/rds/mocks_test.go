@@ -7,7 +7,6 @@ import (
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/taskqueue"
-	"github.com/go-co-op/gocron"
 	"github.com/jinzhu/gorm"
 )
 
@@ -76,35 +75,6 @@ func (m *mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstan
 
 func (m mockRdsClientForAdapterTests) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
 	return nil, m.createDBInstanceReadReplicaErr
-}
-
-type mockQueueManager struct {
-	jobChan   chan taskqueue.AsyncJobMsg
-	taskState *taskqueue.AsyncJobState
-}
-
-func (q mockQueueManager) ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error) {
-	return nil, nil
-}
-
-func (q mockQueueManager) UnScheduleTask(id string) error {
-	return nil
-}
-
-func (q mockQueueManager) IsTaskScheduled(id string) bool {
-	return false
-}
-
-func (q mockQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan taskqueue.AsyncJobMsg, error) {
-	return q.jobChan, nil
-}
-
-func (q mockQueueManager) GetTaskState(brokerid string, instanceid string, operation base.Operation) (*taskqueue.AsyncJobState, error) {
-	return q.taskState, nil
-}
-
-func (q mockQueueManager) TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool {
-	return false
 }
 
 type MockDbUtils struct {

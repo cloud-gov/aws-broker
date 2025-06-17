@@ -68,7 +68,6 @@ type rdsBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
 	tagManager brokertags.TagManager
-	taskqueue  taskqueue.QueueManager
 }
 
 // initializeAdapter is the main function to create database instances
@@ -99,8 +98,8 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings) (dbAdapter, res
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) base.Broker {
-	return &rdsBroker{brokerDB, settings, tagManager, taskqueue}
+func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) base.Broker {
+	return &rdsBroker{brokerDB, settings, tagManager}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async

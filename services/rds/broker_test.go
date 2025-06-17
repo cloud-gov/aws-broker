@@ -243,7 +243,6 @@ func TestCreateInstanceSuccess(t *testing.T) {
 		planID               string
 		dbInstance           *RDSInstance
 		expectedResponseCode int
-		queueManager         taskqueue.QueueManager
 		tagManager           brokertags.TagManager
 		settings             *config.Settings
 		catalog              *catalog.Catalog
@@ -267,8 +266,7 @@ func TestCreateInstanceSuccess(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			queueManager: &mockQueueManager{},
-			tagManager:   &mocks.MockTagGenerator{},
+			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -291,7 +289,6 @@ func TestCreateInstanceSuccess(t *testing.T) {
 				brokerDB:   brokerDB,
 				settings:   test.settings,
 				tagManager: test.tagManager,
-				taskqueue:  test.queueManager,
 			}
 
 			response := broker.CreateInstance(test.catalog, test.dbInstance.Uuid, test.createRequest)
