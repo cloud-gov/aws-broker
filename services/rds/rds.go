@@ -229,6 +229,8 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 		return
 	}
 
+	// TODO: add wait for replica to finish being created
+
 	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Database provisioning finished for service instance")
 }
 
