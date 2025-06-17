@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -122,12 +123,12 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 func TestCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
-		dbAdapter             *dedicatedDBAdapter
-		expectedErr           error
-		expectedState         base.InstanceState
-		password              string
-		expectedJobMsgRecords int64
+		dbInstance             *RDSInstance
+		dbAdapter              *dedicatedDBAdapter
+		expectedErr            error
+		expectedState          base.InstanceState
+		password               string
+		expectedAsyncJobStates []base.InstanceState
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -214,8 +215,8 @@ func TestCreateDb(t *testing.T) {
 				AddReadReplica:  true,
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			expectedState:         base.InstanceInProgress,
-			expectedJobMsgRecords: 1,
+			expectedState:          base.InstanceInProgress,
+			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
 		},
 	}
 
@@ -235,14 +236,16 @@ func TestCreateDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if test.expectedJobMsgRecords > 0 {
+			if len(test.expectedAsyncJobStates) > 0 {
 				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				if asyncJobMsg.JobState.State != test.expectedState {
-					t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+				// The exact database state at this point in the test is non-deterministic, since the database updates
+				// are being done in a goroutine. So we test against a set of possible job states
+				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
+					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
 				}
 			}
 
@@ -257,7 +260,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
-		queueManager  taskqueue.QueueManager
 		expectedState base.InstanceState
 	}{
 		"success": {
@@ -288,7 +290,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			queueManager:  taskqueue.NewTaskQueueManager(),
 			expectedState: base.InstanceReady,
 		},
 		"waits with retries for database creation": {
@@ -333,7 +334,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			queueManager:  taskqueue.NewTaskQueueManager(),
 			expectedState: base.InstanceReady,
 		},
 		"gives up after maximum retries for database creation": {
@@ -378,7 +378,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			queueManager:  taskqueue.NewTaskQueueManager(),
 			expectedState: base.InstanceNotCreated,
 		},
 		"error checking database creation status": {
@@ -401,7 +400,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			queueManager:  taskqueue.NewTaskQueueManager(),
 			expectedState: base.InstanceNotCreated,
 		},
 		"error creating database replica": {
@@ -433,7 +431,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			queueManager:  taskqueue.NewTaskQueueManager(),
 			expectedState: base.InstanceNotCreated,
 		},
 	}
@@ -463,12 +460,12 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 func TestModifyDb(t *testing.T) {
 	modifyDbErr := errors.New("modify DB error")
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
-		dbAdapter             dbAdapter
-		expectedErr           error
-		expectedState         base.InstanceState
-		password              string
-		expectedJobMsgRecords int64
+		dbInstance             *RDSInstance
+		dbAdapter              dbAdapter
+		expectedErr            error
+		expectedState          base.InstanceState
+		expectedAsyncJobStates []base.InstanceState
+		password               string
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -526,8 +523,8 @@ func TestModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			expectedState:         base.InstanceInProgress,
-			expectedJobMsgRecords: 1,
+			expectedState:          base.InstanceInProgress,
+			expectedAsyncJobStates: []base.InstanceState{base.InstanceReady, base.InstanceInProgress},
 		},
 	}
 
@@ -546,15 +543,16 @@ func TestModifyDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if test.expectedJobMsgRecords > 0 {
+			if len(test.expectedAsyncJobStates) > 0 {
 				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
-
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				if asyncJobMsg.JobState.State != test.expectedState {
-					t.Fatalf("expected task state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+				// The exact database state at this point in the test is non-deterministic, since the database updates
+				// are being done in a goroutine. So we test against a set of possible job states
+				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
+					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
 				}
 			}
 

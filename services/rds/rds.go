@@ -44,7 +44,6 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
-	// TODO
 	return base.InstanceReady, nil
 }
 
