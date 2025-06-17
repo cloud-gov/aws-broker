@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"testing"
 
 	"github.com/cloud-gov/aws-broker/common"
@@ -9,14 +8,14 @@ import (
 )
 
 func TestSettings(t *testing.T) {
-	os.Setenv("AWS_DEFAULT_REGION", "region-1")
-	os.Setenv("ENC_KEY", "fake-key")
-	os.Setenv("CF_API_URL", "fake-api")
-	os.Setenv("CF_API_CLIENT_ID", "fake-client-id")
-	os.Setenv("CF_API_CLIENT_SECRET", "fake-client-secret")
+	t.Setenv("AWS_DEFAULT_REGION", "region-1")
+	t.Setenv("ENC_KEY", "fake-key")
+	t.Setenv("CF_API_URL", "fake-api")
+	t.Setenv("CF_API_CLIENT_ID", "fake-client-id")
+	t.Setenv("CF_API_CLIENT_SECRET", "fake-client-secret")
 	// ensure that these are set to empty to override any test environment variables in .env
-	os.Setenv("DB_SSLMODE", "")
-	os.Setenv("DB_TYPE", "")
+	t.Setenv("DB_SSLMODE", "")
+	t.Setenv("DB_TYPE", "")
 
 	settings := &Settings{}
 	err := settings.LoadFromEnv()
