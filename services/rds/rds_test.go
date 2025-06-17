@@ -243,7 +243,7 @@ func TestCreateDb(t *testing.T) {
 				}
 
 				if jobMsg.JobState.State != test.expectedState {
-					t.Fatalf("expected task state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
+					t.Fatalf("expected async job state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
 				}
 			}
 
