@@ -236,14 +236,13 @@ func TestCreateDb(t *testing.T) {
 			}
 
 			if test.expectedJobMsgRecords > 0 {
-				jobMsg := taskqueue.AsyncJobMsg{}
-				result := brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.CreateOp).First(&jobMsg)
-				if result.RowsAffected != test.expectedJobMsgRecords {
-					t.Fatalf("expected to find %d async job message records, found %d", test.expectedJobMsgRecords, result.RowsAffected)
+				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+				if err != nil {
+					t.Fatal(err)
 				}
 
-				if jobMsg.JobState.State != test.expectedState {
-					t.Fatalf("expected async job state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
+				if asyncJobMsg.JobState.State != test.expectedState {
+					t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 				}
 			}
 
@@ -449,11 +448,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
 			test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, base.CreateOp, test.dbInstance)
 
-			jobMsg := taskqueue.AsyncJobMsg{}
-			brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.CreateOp).First(&jobMsg)
+			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			if jobMsg.JobState.State != test.expectedState {
-				t.Fatalf("expected state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
+			if asyncJobMsg.JobState.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 		})
 	}
@@ -546,14 +547,14 @@ func TestModifyDb(t *testing.T) {
 			}
 
 			if test.expectedJobMsgRecords > 0 {
-				jobMsg := taskqueue.AsyncJobMsg{}
-				result := brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.ModifyOp).First(&jobMsg)
-				if result.RowsAffected != test.expectedJobMsgRecords {
-					t.Fatalf("expected to find %d async job message records, found %d", test.expectedJobMsgRecords, result.RowsAffected)
+				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
+
+				if err != nil {
+					t.Fatal(err)
 				}
 
-				if jobMsg.JobState.State != test.expectedState {
-					t.Fatalf("expected task state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
+				if asyncJobMsg.JobState.State != test.expectedState {
+					t.Fatalf("expected task state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 				}
 			}
 
