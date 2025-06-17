@@ -310,6 +310,7 @@ func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, 
 			return base.InstanceNotCreated, err
 		}
 
+		// Possible instance statuses: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/accessing-monitoring.html#Overview.DBInstance.Status
 		switch *(dbInstance.DBInstanceStatus) {
 		case "available":
 			return base.InstanceReady, nil
