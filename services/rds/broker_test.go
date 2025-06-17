@@ -13,6 +13,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/redis"
 	"github.com/cloud-gov/aws-broker/taskqueue"
@@ -285,7 +286,7 @@ func TestCreateInstanceSuccess(t *testing.T) {
 				},
 			},
 			queueManager: &mockQueueManager{},
-			tagManager:   &mockTagManager{},
+			tagManager:   &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -350,7 +351,7 @@ func TestLastOperation(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			tagManager: &mockTagManager{},
+			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -380,7 +381,7 @@ func TestLastOperation(t *testing.T) {
 				},
 				ReplicaDatabase: "replica",
 			},
-			tagManager: &mockTagManager{},
+			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -413,7 +414,7 @@ func TestLastOperation(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			tagManager: &mockTagManager{},
+			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -439,7 +440,7 @@ func TestLastOperation(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			tagManager: &mockTagManager{},
+			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
@@ -469,7 +470,7 @@ func TestLastOperation(t *testing.T) {
 				},
 				ReplicaDatabase: "replica",
 			},
-			tagManager: &mockTagManager{},
+			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter

@@ -6,21 +6,8 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/taskqueue"
-	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-co-op/gocron"
 )
-
-type mockTagManager struct{}
-
-func (t *mockTagManager) GenerateTags(
-	action brokertags.Action,
-	serviceName string,
-	servicePlanName string,
-	resourceGUIDs brokertags.ResourceGUIDs,
-	getMissingResources bool,
-) (map[string]string, error) {
-	return nil, nil
-}
 
 type mockParameterGroupClient struct {
 	rds              rdsiface.RDSAPI
