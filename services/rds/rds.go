@@ -190,7 +190,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func updateAsyncJobStatus(db *gorm.DB, i *RDSInstance, operation base.Operation, state base.InstanceState, message string) error {
+func updateAsyncJobMessage(db *gorm.DB, i *RDSInstance, operation base.Operation, state base.InstanceState, message string) error {
 	asyncJobMsg := &taskqueue.AsyncJobMsg{
 		BrokerId:   i.ServiceID,
 		InstanceId: i.Uuid,
@@ -208,7 +208,7 @@ func updateAsyncJobStatus(db *gorm.DB, i *RDSInstance, operation base.Operation,
 	return err
 }
 
-func createAsyncJobStatus(db *gorm.DB, i *RDSInstance, operation base.Operation, state base.InstanceState, message string) error {
+func createAsyncJobMessage(db *gorm.DB, i *RDSInstance, operation base.Operation, state base.InstanceState, message string) error {
 	asyncJobMsg := &taskqueue.AsyncJobMsg{
 		BrokerId:   i.ServiceID,
 		InstanceId: i.Uuid,
@@ -234,7 +234,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 	for attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
-			updateAsyncJobStatus(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
+			updateAsyncJobMessage(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
 			return
 		}
 
@@ -242,26 +242,26 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 			break
 		}
 
-		updateAsyncJobStatus(db, i, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		updateAsyncJobMessage(db, i, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
 
 		attempt += 1
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
 	if dbState != base.InstanceReady {
-		updateAsyncJobStatus(db, i, operation, base.InstanceNotCreated, "Timed out waiting for database to be available")
+		updateAsyncJobMessage(db, i, operation, base.InstanceNotCreated, "Timed out waiting for database to be available")
 		return
 	}
 
-	updateAsyncJobStatus(db, i, operation, base.InstanceInProgress, "Creating database read replica")
+	updateAsyncJobMessage(db, i, operation, base.InstanceInProgress, "Creating database read replica")
 
 	err = d.createDBReadReplica(i)
 	if err != nil {
-		updateAsyncJobStatus(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica  failed: %s", err))
+		updateAsyncJobMessage(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica  failed: %s", err))
 		return
 	}
 
-	updateAsyncJobStatus(db, i, operation, base.InstanceReady, "Database provisioning finished for service instance")
+	updateAsyncJobMessage(db, i, operation, base.InstanceReady, "Database provisioning finished for service instance")
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
@@ -277,7 +277,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 	}
 
 	if i.AddReadReplica {
-		err := createAsyncJobStatus(db, i, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
+		err := createAsyncJobMessage(db, i, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
 		if err != nil {
 			return base.InstanceNotCreated, err
 		}
@@ -304,7 +304,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.
 	// If we are updating to a plan that supports read replicas, but one does not already
 	// exist, we need to create a read replica
 	if i.AddReadReplica {
-		err := createAsyncJobStatus(db, i, base.ModifyOp, base.InstanceInProgress, "Modifying database")
+		err := createAsyncJobMessage(db, i, base.ModifyOp, base.InstanceInProgress, "Modifying database")
 		if err != nil {
 			return base.InstanceNotModified, err
 		}
