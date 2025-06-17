@@ -371,7 +371,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			}
 
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, test.dbInstance)
+			test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, base.CreateOp, test.dbInstance)
 
 			jobMsg := taskqueue.AsyncJobMsg{}
 			brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.CreateOp).First(&jobMsg)
@@ -389,10 +389,9 @@ func TestModifyDb(t *testing.T) {
 		dbInstance            *RDSInstance
 		dbAdapter             dbAdapter
 		expectedErr           error
-		expectedResponseCode  base.InstanceState
+		expectedState         base.InstanceState
 		password              string
-		queueManager          taskqueue.QueueManager
-		expectTaskQueueExists bool
+		expectedJobMsgRecords int64
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -401,10 +400,9 @@ func TestModifyDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:           NewRDSInstance(),
-			expectedErr:          modifyDbErr,
-			expectedResponseCode: base.InstanceNotModified,
-			queueManager:         &mockQueueManager{},
+			dbInstance:    NewRDSInstance(),
+			expectedErr:   modifyDbErr,
+			expectedState: base.InstanceNotModified,
 		},
 		"success without read replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -418,8 +416,7 @@ func TestModifyDb(t *testing.T) {
 			dbInstance: &RDSInstance{
 				dbUtils: &RDSDatabaseUtils{},
 			},
-			expectedResponseCode: base.InstanceInProgress,
-			queueManager:         &mockQueueManager{},
+			expectedState: base.InstanceInProgress,
 		},
 		"success with read replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -444,26 +441,40 @@ func TestModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			expectedResponseCode:  base.InstanceInProgress,
-			queueManager:          taskqueue.NewTaskQueueManager(),
-			expectTaskQueueExists: true,
+			expectedState:         base.InstanceInProgress,
+			expectedJobMsgRecords: 1,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password, test.queueManager)
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password, brokerDB)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if responseCode != test.expectedResponseCode {
-				t.Errorf("expected response: %s, got: %s", test.expectedResponseCode, responseCode)
+
+			if test.expectedJobMsgRecords > 0 {
+				jobMsg := taskqueue.AsyncJobMsg{}
+				result := brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.ModifyOp).First(&jobMsg)
+				if result.RowsAffected != test.expectedJobMsgRecords {
+					t.Fatalf("expected to find %d async job message records, found %d", test.expectedJobMsgRecords, result.RowsAffected)
+				}
+
+				if jobMsg.JobState.State != test.expectedState {
+					t.Fatalf("expected task state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
+				}
 			}
-			if taskQueueExists := test.queueManager.TaskQueueExists(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp); taskQueueExists != test.expectTaskQueueExists {
-				t.Fatalf("expected TaskQueueExists(): %t, got: %t", test.expectTaskQueueExists, taskQueueExists)
+
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
 			}
 		})
 	}

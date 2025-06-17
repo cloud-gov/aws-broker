@@ -20,8 +20,8 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
-	waitAndCreateDBReadReplica(db *gorm.DB, i *RDSInstance)
-	modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error)
+	waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance)
+	modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
 	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
@@ -44,11 +44,11 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (
 	return base.InstanceInProgress, nil
 }
 
-func (d *mockDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, i *RDSInstance) {
+func (d *mockDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) {
 	// TODO
 }
 
-func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -226,9 +226,7 @@ func createAsyncJobStatus(db *gorm.DB, i *RDSInstance, operation base.Operation,
 	return err
 }
 
-func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, i *RDSInstance) {
-	createAsyncJobStatus(db, i, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
-
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) {
 	attempt := 1
 	var dbState base.InstanceState
 	var err error
@@ -236,7 +234,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, i *RDSInsta
 	for attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(i)
 		if err != nil {
-			updateAsyncJobStatus(db, i, base.CreateOp, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status on instance: %s", err))
+			updateAsyncJobStatus(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
 			return
 		}
 
@@ -244,26 +242,26 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, i *RDSInsta
 			break
 		}
 
-		updateAsyncJobStatus(db, i, base.CreateOp, base.InstanceInProgress, fmt.Sprintf("Waiting for database creation to finish on service instance. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		updateAsyncJobStatus(db, i, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
 
 		attempt += 1
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
 	if dbState != base.InstanceReady {
-		updateAsyncJobStatus(db, i, base.CreateOp, base.InstanceNotCreated, "Could not verify database creation on service instance")
+		updateAsyncJobStatus(db, i, operation, base.InstanceNotCreated, "Timed out waiting for database to be available")
 		return
 	}
 
-	updateAsyncJobStatus(db, i, base.CreateOp, base.InstanceInProgress, "Creating database read replica for service instance")
+	updateAsyncJobStatus(db, i, operation, base.InstanceInProgress, "Creating database read replica")
 
 	err = d.createDBReadReplica(i)
 	if err != nil {
-		updateAsyncJobStatus(db, i, base.CreateOp, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica on instance failed: %s", err))
+		updateAsyncJobStatus(db, i, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica  failed: %s", err))
 		return
 	}
 
-	updateAsyncJobStatus(db, i, base.CreateOp, base.InstanceReady, "Database provisioning finished for service instance")
+	updateAsyncJobStatus(db, i, operation, base.InstanceReady, "Database provisioning finished for service instance")
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
@@ -279,7 +277,11 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 	}
 
 	if i.AddReadReplica {
-		go d.waitAndCreateDBReadReplica(db, i)
+		err := createAsyncJobStatus(db, i, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
+		if err != nil {
+			return base.InstanceNotCreated, err
+		}
+		go d.waitAndCreateDBReadReplica(db, base.CreateOp, i)
 	}
 
 	return base.InstanceInProgress, nil
@@ -287,7 +289,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
 // cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
-func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, queue taskqueue.QueueManager) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
 	params, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
 		return base.InstanceNotModified, err
@@ -301,12 +303,13 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, queue tas
 
 	// If we are updating to a plan that supports read replicas, but one does not already
 	// exist, we need to create a read replica
-	// if i.AddReadReplica {
-	// 	jobchan, err := queue.RequestTaskQueue(i.ServiceID, i.Uuid, base.ModifyOp)
-	// 	if err == nil {
-	// 		go d.waitAndCreateDBReadReplica(i,)
-	// 	}
-	// }
+	if i.AddReadReplica {
+		err := createAsyncJobStatus(db, i, base.ModifyOp, base.InstanceInProgress, "Modifying database")
+		if err != nil {
+			return base.InstanceNotModified, err
+		}
+		go d.waitAndCreateDBReadReplica(db, base.ModifyOp, i)
+	}
 
 	return base.InstanceInProgress, nil
 }
