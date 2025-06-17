@@ -322,7 +322,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	var state base.InstanceState
-	var status string
 	var needAsyncJobState bool
 	var instanceOperation base.Operation
 	var statusMessage string
@@ -360,22 +359,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		statusMessage = fmt.Sprintf("The database status is %s", state)
 	}
 
-	switch state {
-	case base.InstanceInProgress:
-		status = "in progress"
-	case base.InstanceReady:
-		status = "succeeded"
-	case base.InstanceNotCreated:
-		status = "failed"
-	case base.InstanceNotModified:
-		status = "failed"
-	case base.InstanceNotGone:
-		status = "failed"
-	default:
-		status = "in progress"
-	}
-
-	return response.NewSuccessLastOperation(status, statusMessage)
+	return response.NewSuccessLastOperation(state.ToLastOperationStatus(), statusMessage)
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {

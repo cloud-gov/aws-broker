@@ -194,26 +194,13 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 		return adapterErr
 	}
 
-	var state string
-
 	status, err := adapter.checkRedisStatus(&existingInstance)
 	if err != nil {
 		broker.logger.Error("Error checking Redis status", err)
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceNotGone:
-		state = "failed"
-	default:
-		state = "in progress"
-	}
-	return response.NewSuccessLastOperation(state, fmt.Sprintf("The service instance status is %s", status))
+
+	return response.NewSuccessLastOperation(status.ToLastOperationStatus(), fmt.Sprintf("The service instance status is %s", status))
 }
 
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {

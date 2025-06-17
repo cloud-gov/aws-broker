@@ -47,6 +47,24 @@ func (i InstanceState) String() string {
 	}
 }
 
+// Convert the instance state to a valid LastOperation status
+//
+// Valid values for a LastOperation response in the Open Service Broker API spec:
+//
+//	https://github.com/cloudfoundry/servicebroker/blob/master/spec.md#body-1
+func (i InstanceState) ToLastOperationStatus() string {
+	switch i {
+	case InstanceInProgress:
+		return "in progress"
+	case InstanceReady, InstanceGone:
+		return "succeeded"
+	case InstanceNotCreated, InstanceNotModified, InstanceNotGone:
+		return "failed"
+	default:
+		return "in progress"
+	}
+}
+
 type Instance struct {
 	Uuid string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
 

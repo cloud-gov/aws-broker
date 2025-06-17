@@ -295,25 +295,13 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		}
 	}
 
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceGone:
-		state = "succeeded"
+	if status == base.InstanceGone {
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
 		broker.brokerDB.Unscoped().Delete(&baseInstance)
-	case base.InstanceNotGone:
-		state = "failed"
-	default:
-		state = "in progress"
 	}
 
 	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
-	return response.NewSuccessLastOperation(state, fmt.Sprintf("The service instance status is %s", state))
+	return response.NewSuccessLastOperation(status.ToLastOperationStatus(), fmt.Sprintf("The service instance status is %s", state))
 }
 
 func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
