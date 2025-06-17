@@ -33,50 +33,6 @@ func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *R
 
 func (m *mockParameterGroupClient) CleanupCustomParameterGroups() {}
 
-type mockRdsClientForAdapterTests struct {
-	rdsiface.RDSAPI
-
-	createDbErr                    error
-	modifyDbErr                    error
-	describeDBInstancesCallNum     int
-	describeDBInstancesResponses   []*string
-	describeDBInstancesErr         error
-	createDBInstanceReadReplicaErr error
-}
-
-func (m mockRdsClientForAdapterTests) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
-	if m.createDbErr != nil {
-		return nil, m.createDbErr
-	}
-	return nil, nil
-}
-
-func (m mockRdsClientForAdapterTests) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
-	if m.modifyDbErr != nil {
-		return nil, m.modifyDbErr
-	}
-	return nil, nil
-}
-
-func (m *mockRdsClientForAdapterTests) DescribeDBInstances(*rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
-	if m.describeDBInstancesErr != nil {
-		return nil, m.describeDBInstancesErr
-	}
-	output := &rds.DescribeDBInstancesOutput{
-		DBInstances: []*rds.DBInstance{
-			{
-				DBInstanceStatus: m.describeDBInstancesResponses[m.describeDBInstancesCallNum],
-			},
-		},
-	}
-	m.describeDBInstancesCallNum++
-	return output, nil
-}
-
-func (m mockRdsClientForAdapterTests) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
-	return nil, m.createDBInstanceReadReplicaErr
-}
-
 type MockDbUtils struct {
 	mockFormattedDbName   string
 	mockDbName            string
