@@ -339,13 +339,9 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	if needAsyncJobState {
-		asyncJobMsg := taskqueue.AsyncJobMsg{}
-		result := broker.brokerDB.Where("broker_id = ?", existingInstance.ServiceID).Where("instance_id = ?", existingInstance.Uuid).Where("job_type = ?", instanceOperation).First(&asyncJobMsg)
-		if result.RowsAffected == 0 {
-			return response.NewErrorResponse(http.StatusInternalServerError, "Could not find async job status message")
-		}
-		if result.Error != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, result.Error.Error())
+		asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
 		state = asyncJobMsg.JobState.State
 		statusMessage = asyncJobMsg.JobState.Message
