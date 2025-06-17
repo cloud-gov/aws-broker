@@ -101,6 +101,15 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 
 	if i.ReplicaDatabaseHost != "" {
 		credentials["replica_host"] = i.ReplicaDatabaseHost
+		credentials["replica_uri"] = fmt.Sprintf(
+			"%s://%s:%s@%s:%d/%s",
+			dbScheme,
+			i.Username,
+			password,
+			i.ReplicaDatabaseHost,
+			i.Port,
+			dbName,
+		)
 	}
 
 	return credentials, nil

@@ -80,6 +80,7 @@ func TestGetCredentials(t *testing.T) {
 				"db_name":      "db1",
 				"name":         "db1",
 				"replica_host": "replica-host",
+				"replica_uri":  "postgres://user-1:fake-pw@replica-host:5432/db1",
 			},
 		},
 	}
