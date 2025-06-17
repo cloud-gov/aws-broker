@@ -31,7 +31,7 @@ func testDBInit() (*gorm.DB, error) {
 		return nil, err
 	}
 	// Automigrate!
-	db.AutoMigrate(&RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncTask{}) // Add all your models here to help setup the database tables
+	db.AutoMigrate(&RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{}) // Add all your models here to help setup the database tables
 	return db, err
 }
 

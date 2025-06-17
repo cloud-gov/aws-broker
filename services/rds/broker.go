@@ -191,7 +191,10 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	}
 
 	// Create the database instance.
-	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.taskqueue, broker.brokerDB)
+	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.brokerDB)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+	}
 
 	switch status {
 	case base.InstanceNotCreated:

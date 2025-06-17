@@ -127,9 +127,7 @@ func TestCreateDb(t *testing.T) {
 		expectedErr           error
 		expectedState         base.InstanceState
 		password              string
-		queueManager          taskqueue.QueueManager
-		expectTaskQueueExists bool
-		expectedTaskState     taskqueue.TaskState
+		expectedJobMsgRecords int64
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -148,11 +146,9 @@ func TestCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			password:          helpers.RandStr(10),
-			expectedErr:       createDbErr,
-			expectedState:     base.InstanceNotCreated,
-			queueManager:      &mockQueueManager{},
-			expectedTaskState: taskqueue.TaskRunning,
+			password:      helpers.RandStr(10),
+			expectedErr:   createDbErr,
+			expectedState: base.InstanceNotCreated,
 		},
 		"success without replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -176,9 +172,7 @@ func TestCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			expectedState:     base.InstanceInProgress,
-			queueManager:      taskqueue.NewTaskQueueManager(),
-			expectedTaskState: taskqueue.TaskRunning,
+			expectedState: base.InstanceInProgress,
 		},
 		"success with replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -188,7 +182,7 @@ func TestCreateDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        0,
+					PollAwsMaxRetries:        1,
 				},
 			},
 			password: helpers.RandStr(10),
@@ -205,9 +199,7 @@ func TestCreateDb(t *testing.T) {
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState:         base.InstanceInProgress,
-			queueManager:          taskqueue.NewTaskQueueManager(),
-			expectTaskQueueExists: true,
-			expectedTaskState:     taskqueue.TaskRunning,
+			expectedJobMsgRecords: 1,
 		},
 	}
 
@@ -218,7 +210,7 @@ func TestCreateDb(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, test.queueManager, brokerDB)
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, brokerDB)
 
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -227,10 +219,16 @@ func TestCreateDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			task := taskqueue.AsyncTask{}
-			brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("operation = ?", base.CreateOp).First(&task)
-			if task.State != test.expectedTaskState {
-				t.Fatalf("expected task state: %s, got: %s", test.expectedTaskState, task.State)
+			if test.expectedJobMsgRecords > 0 {
+				jobMsg := taskqueue.AsyncJobMsg{}
+				result := brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.CreateOp).First(&jobMsg)
+				if result.RowsAffected != test.expectedJobMsgRecords {
+					t.Fatalf("expected to find %d async job message records, found %d", test.expectedJobMsgRecords, result.RowsAffected)
+				}
+
+				if jobMsg.JobState.State != test.expectedState {
+					t.Fatalf("expected task state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
+				}
 			}
 
 			if responseCode != test.expectedState {
@@ -367,20 +365,19 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			jobchan, err := test.queueManager.RequestTaskQueue(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			brokerDB, err := testDBInit()
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			test.dbAdapter.waitAndCreateDBReadReplica(test.dbInstance, jobchan)
+			test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, test.dbInstance)
 
-			jobMsg, err := test.queueManager.GetTaskState(test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if jobMsg.State != test.expectedState {
-				t.Fatalf("expected state: %s, got: %s", test.expectedState, jobMsg.State)
+			jobMsg := taskqueue.AsyncJobMsg{}
+			brokerDB.Where("broker_id = ?", test.dbInstance.ServiceID).Where("instance_id = ?", test.dbInstance.Uuid).Where("job_type = ?", base.CreateOp).First(&jobMsg)
+
+			if jobMsg.JobState.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, jobMsg.JobState.State)
 			}
 		})
 	}

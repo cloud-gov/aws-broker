@@ -25,11 +25,11 @@ type AsyncJobState struct {
 
 // messages of job state delivered over chan that are persisted
 type AsyncJobMsg struct {
-	BrokerId        string
-	InstanceId      string
-	JobType         base.Operation
-	JobState        AsyncJobState
-	ProcessedStatus chan bool
+	BrokerId        string         `gorm:"primary_key; not null"`
+	InstanceId      string         `gorm:"primary_key; not null"`
+	JobType         base.Operation `gorm:"primary_key; not null"`
+	JobState        AsyncJobState  `gorm:"embedded"`
+	ProcessedStatus chan bool      `sql:"-"`
 }
 
 // Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
@@ -110,7 +110,6 @@ func (q *TaskQueueManager) processMsg(msg AsyncJobMsg) {
 	q.jobStates[*key] = msg.JobState
 	if msg.ProcessedStatus != nil {
 		msg.ProcessedStatus <- true
-		fmt.Printf("taskqueue: processed message %+v for %+v\n", msg, key)
 		close(msg.ProcessedStatus)
 	}
 }
@@ -121,7 +120,6 @@ func (q *TaskQueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQ
 	for job := range jobChan {
 		q.processMsg(job)
 	}
-	fmt.Printf("taskqueue: done processing messages for %+v\n", key)
 	// channel is closed so remove key from chan queue and mark state queue for cleanup
 	delete(q.brokerQueues, *key)
 	// schedule clean up of this job's state in the future
@@ -137,7 +135,6 @@ func (q *TaskQueueManager) cleanupJobStates() {
 	now := time.Now()
 	for key, due := range q.cleanup {
 		if now.After(due) {
-			fmt.Printf("taskqueue: cleaning up job states for %+v, due: %s, now: %s\n", key, due, now)
 			delete(q.jobStates, key)
 			delete(q.cleanup, key)
 		}
