@@ -419,7 +419,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return adapterErr
 	}
 	// Delete the database instance.
-	if status, err := adapter.deleteDB(existingInstance); status == base.InstanceNotGone {
+	if status, err := adapter.deleteDB(existingInstance, broker.brokerDB); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()

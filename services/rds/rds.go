@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
+	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/jinzhu/gorm"
@@ -23,7 +25,7 @@ type dbAdapter interface {
 	modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
 	checkDBStatus(database string) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
-	deleteDB(i *RDSInstance) (base.InstanceState, error)
+	deleteDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error)
 	describeDatabaseInstance(database string) (*rds.DBInstance, error)
 }
 
@@ -57,7 +59,7 @@ func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string
 	return i.getCredentials(password)
 }
 
-func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *mockDBAdapter) deleteDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -391,21 +393,96 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
-	params := &rds.DeleteDBInstanceInput{
-		DBInstanceIdentifier: aws.String(i.Database), // Required
-		// FinalDBSnapshotIdentifier: aws.String("String"),
+func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operation, i *RDSInstance, database string) error {
+	attempt := 1
+	var dbState base.InstanceState
+	var err error
+	var isDeleted bool
+
+	for !isDeleted && attempt <= int(d.settings.PollAwsMaxRetries) {
+		dbState, err = d.checkDBStatus(database)
+		if err != nil {
+			awsErr, ok := err.(awserr.Error)
+			if !ok {
+				return err
+			}
+			if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
+				isDeleted = true
+				break
+			} else {
+				return err
+			}
+		}
+
+		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be be deleted. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		if err != nil {
+			return err
+		}
+
+		attempt += 1
+		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
+	}
+
+	if !isDeleted {
+		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be deleted")
+		if err != nil {
+			return err
+		}
+		return errors.New("exhausted maximum retries waiting for database to be deleted")
+	}
+
+	return nil
+}
+
+func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation, i *RDSInstance) {
+	if i.ReplicaDatabase != "" {
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be available")
+
+		params := prepareDeleteDbInput(i.ReplicaDatabase)
+		_, err := d.rds.DeleteDBInstance(params)
+		if err != nil {
+			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete replica database: %s", err))
+		}
+
+		err = d.waitForDbDeleted(db, operation, i, i.ReplicaDatabase)
+		if err != nil {
+			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
+		}
+	}
+
+	params := prepareDeleteDbInput(i.Database)
+	_, err := d.rds.DeleteDBInstance(params)
+	if err != nil {
+		brokerErrs.LogAWSError(err)
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete database: %s", err))
+	}
+
+	err = d.waitForDbDeleted(db, operation, i, i.Database)
+	if err != nil {
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to confirm database deletion: %s", err))
+	}
+
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
+	d.parameterGroupClient.CleanupCustomParameterGroups()
+
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
+}
+
+func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error) {
+	err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deleting database resources")
+	if err != nil {
+		return base.InstanceNotModified, err
+	}
+
+	go d.asyncDeleteDB(db, base.DeleteOp, i)
+
+	return base.InstanceInProgress, nil
+}
+
+func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
+	return &rds.DeleteDBInstanceInput{
+		DBInstanceIdentifier:   aws.String(database), // Required
 		DeleteAutomatedBackups: aws.Bool(false),
 		SkipFinalSnapshot:      aws.Bool(true),
 	}
-	_, err := d.rds.DeleteDBInstance(params)
-
-	if err != nil {
-		brokerErrs.LogAWSError(err)
-		return base.InstanceNotGone, err
-	}
-
-	// clean up custom parameter groups
-	d.parameterGroupClient.CleanupCustomParameterGroups()
-	return base.InstanceGone, nil
 }
