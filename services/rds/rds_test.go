@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -399,7 +400,7 @@ func TestWaitForDbReady(t *testing.T) {
 		"error checking database creation status": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesErr: errors.New("error describing database instances"),
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -495,7 +496,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		"error checking database creation status": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesErr: errors.New("error describing database instances"),
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
@@ -850,7 +851,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"error describing database": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					describeDbInstancesErr: errors.New("error describing database"),
+					describeDbInstancesErrs: []error{errors.New("error describing database")},
 				},
 			},
 			database:  "foo",
@@ -1020,6 +1021,173 @@ func TestBindDBToApp(t *testing.T) {
 			}
 			if diff := deep.Equal(test.rdsInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWaitForDbDeleted(t *testing.T) {
+	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+
+	testCases := map[string]struct {
+		dbInstance            *RDSInstance
+		dbAdapter             *dedicatedDBAdapter
+		expectedState         base.InstanceState
+		expectErr             bool
+		expectAsyncJobMessage bool
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+		},
+		"waits with retries for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("deleting"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("deleting"),
+								},
+							},
+						},
+					},
+					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        3,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+		},
+		"gives up after maximum retries for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("deleting"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("deleting"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("deleting"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        3,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState:         base.InstanceNotGone,
+			expectErr:             true,
+			expectAsyncJobMessage: true,
+		},
+		"error checking database creation status": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState:         base.InstanceNotGone,
+			expectErr:             true,
+			expectAsyncJobMessage: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
+			err = test.dbAdapter.waitForDbDeleted(brokerDB, base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			if !test.expectErr && err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectAsyncJobMessage {
+				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if asyncJobMsg.JobState.State != test.expectedState {
+					t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+				}
 			}
 		})
 	}

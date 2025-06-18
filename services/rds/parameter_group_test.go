@@ -967,7 +967,7 @@ func TestGetDatabaseEngineVersion(t *testing.T) {
 			expectedErr: "describe db instances error",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbInstancesErr: errors.New("describe db instances error"),
+					describeDbInstancesErrs: []error{errors.New("describe db instances error")},
 				},
 			},
 		},

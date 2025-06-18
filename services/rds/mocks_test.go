@@ -90,7 +90,7 @@ type mockRDSClient struct {
 	describeDbParamsPageNum             int
 	describeDBInstancesCallNum          int
 	describeDbInstancesResults          []*rds.DescribeDBInstancesOutput
-	describeDbInstancesErr              error
+	describeDbInstancesErrs             []error
 	modifyDbErr                         error
 }
 
@@ -163,8 +163,8 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 }
 
 func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
-	if m.describeDbInstancesErr != nil {
-		return nil, m.describeDbInstancesErr
+	if len(m.describeDbInstancesErrs) > 0 && m.describeDbInstancesErrs[m.describeDBInstancesCallNum] != nil {
+		return nil, m.describeDbInstancesErrs[m.describeDBInstancesCallNum]
 	}
 	output := m.describeDbInstancesResults[m.describeDBInstancesCallNum]
 	m.describeDBInstancesCallNum++

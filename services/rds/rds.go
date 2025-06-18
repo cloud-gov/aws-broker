@@ -403,15 +403,13 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
 			awsErr, ok := err.(awserr.Error)
-			if !ok {
+			if !ok || awsErr.Code() != awsRds.ErrCodeDBInstanceNotFoundFault {
+				taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Could not check database status: %s", err))
 				return err
 			}
-			if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
-				isDeleted = true
-				break
-			} else {
-				return err
-			}
+
+			isDeleted = true
+			break
 		}
 
 		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be be deleted. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
@@ -424,7 +422,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 	}
 
 	if !isDeleted {
-		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be deleted")
+		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, "Exhausted maximum retries waiting for database to be deleted")
 		if err != nil {
 			return err
 		}
