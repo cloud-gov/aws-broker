@@ -327,6 +327,9 @@ func TestLastOperation(t *testing.T) {
 			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
 					Uuid: helpers.RandStr(10),
 				},
 			},
@@ -334,6 +337,13 @@ func TestLastOperation(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
+			},
+			asyncJobMsg: &taskqueue.AsyncJobMsg{
+				JobType: base.CreateOp,
+				JobState: taskqueue.AsyncJobState{
+					Message: "completed",
+					State:   base.InstanceReady,
+				},
 			},
 			expectedState: "succeeded",
 		},
@@ -499,7 +509,6 @@ func TestLastOperation(t *testing.T) {
 			}, test.operation)
 
 			lastOperationResponse, ok := response.(*responseHelpers.LastOperationResponse)
-
 			if !ok {
 				t.Fatal(lastOperationResponse)
 			}
