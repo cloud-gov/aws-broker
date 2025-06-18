@@ -327,13 +327,17 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 
 	switch operation {
 	case base.CreateOp.String():
-		// creation uses an async job if a replica database is being created
-		needAsyncJobState = existingInstance.ReplicaDatabase != ""
+		// creation always uses an async job
+		needAsyncJobState = true
 		instanceOperation = base.CreateOp
 	case base.ModifyOp.String():
 		// modify uses an async job if a replica database is being created
 		needAsyncJobState = existingInstance.ReplicaDatabase != ""
 		instanceOperation = base.ModifyOp
+	case base.DeleteOp.String():
+		// deletion always uses an async job
+		needAsyncJobState = true
+		instanceOperation = base.DeleteOp
 	default:
 		needAsyncJobState = false
 	}

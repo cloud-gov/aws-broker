@@ -225,49 +225,61 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 	return nil
 }
 
-func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) {
-	err := d.waitForDbReady(db, operation, i, i.Database)
-	if err != nil {
-		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return
-	}
-
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) error {
 	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
-	err = d.createDBReadReplica(i)
+	err := d.createDBReadReplica(i)
 	if err != nil {
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
-		return
+		return err
 	}
 
 	err = d.waitForDbReady(db, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
-		return
+		return err
 	}
 
-	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Database provisioning finished for service instance")
+	return nil
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) asyncCreateDB(db *gorm.DB, operation base.Operation, i *RDSInstance, password string) {
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
-		return base.InstanceNotCreated, err
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
+		return
 	}
 
 	_, err = d.rds.CreateDBInstance(createDbInputParams)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
-		return base.InstanceNotCreated, err
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
+		return
+	}
+
+	err = d.waitForDbReady(db, operation, i, i.Database)
+	if err != nil {
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		return
 	}
 
 	if i.AddReadReplica {
-		err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
+		err := d.waitAndCreateDBReadReplica(db, operation, i)
 		if err != nil {
-			return base.InstanceNotCreated, err
+			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
 		}
-		go d.waitAndCreateDBReadReplica(db, base.CreateOp, i)
 	}
+
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
+}
+
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+	err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
+	go d.asyncCreateDB(db, base.CreateOp, i, password)
 
 	return base.InstanceInProgress, nil
 }

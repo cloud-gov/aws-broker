@@ -121,15 +121,14 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 	}
 }
 
-func TestCreateDb(t *testing.T) {
+func TestAsyncCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		dbAdapter              *dedicatedDBAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		password               string
-		expectedAsyncJobStates []base.InstanceState
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedErr   error
+		expectedState base.InstanceState
+		password      string
 	}{
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -175,7 +174,7 @@ func TestCreateDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        0,
+					PollAwsMaxRetries:        1,
 				},
 			},
 			password: helpers.RandStr(10),
@@ -189,9 +188,82 @@ func TestCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			expectedState: base.InstanceInProgress,
+			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "replica",
+				AddReadReplica:  true,
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			test.dbAdapter.asyncCreateDB(brokerDB, base.CreateOp, test.dbInstance, test.password)
+
+			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+		})
+	}
+}
+
+func TestCreateDb(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		dbAdapter              *dedicatedDBAdapter
+		expectedErr            error
+		expectedState          base.InstanceState
+		password               string
+		expectedAsyncJobStates []base.InstanceState
+	}{
+		"success": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -455,6 +527,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
+		expectErr     bool
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -491,7 +564,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceReady,
+			expectedState: base.InstanceInProgress,
 		},
 		"error checking database creation status": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -514,6 +587,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				Database: helpers.RandStr(10),
 			},
 			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 		"error creating database replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -545,6 +619,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				Database: helpers.RandStr(10),
 			},
 			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 	}
 
@@ -555,8 +630,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, base.CreateOp, test.dbInstance)
+			err = test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, base.CreateOp, test.dbInstance)
+			if !test.expectErr && err != nil {
+				t.Fatal(err)
+			}
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
