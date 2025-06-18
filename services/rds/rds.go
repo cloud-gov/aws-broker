@@ -21,7 +21,7 @@ import (
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
 	modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
-	checkDBStatus(i *RDSInstance) (base.InstanceState, error)
+	checkDBStatus(database string) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 	describeDatabaseInstance(database string) (*rds.DBInstance, error)
@@ -47,7 +47,7 @@ func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (
 	return base.InstanceReady, nil
 }
 
-func (d *mockDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
+func (d *mockDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceReady, nil
 }
@@ -184,13 +184,13 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 	return err
 }
 
-func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operation, i *RDSInstance) error {
+func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operation, i *RDSInstance, database string) error {
 	attempt := 1
 	var dbState base.InstanceState
 	var err error
 
 	for attempt <= int(d.settings.PollAwsMaxRetries) {
-		dbState, err = d.checkDBStatus(i)
+		dbState, err = d.checkDBStatus(database)
 		if err != nil {
 			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
 			return err
@@ -215,7 +215,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 }
 
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) {
-	err := d.waitForDbReady(db, operation, i)
+	err := d.waitForDbReady(db, operation, i, i.Database)
 	if err != nil {
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return
@@ -229,7 +229,11 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 		return
 	}
 
-	// TODO: add wait for replica to finish being created
+	err = d.waitForDbReady(db, operation, i, i.ReplicaDatabase)
+	if err != nil {
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		return
+	}
 
 	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Database provisioning finished for service instance")
 }
@@ -307,31 +311,25 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBI
 	return resp.DBInstances[0], nil
 }
 
-func (d *dedicatedDBAdapter) checkDBStatus(i *RDSInstance) (base.InstanceState, error) {
-	// First, we need to check if the instance is up and available.
-	// Only search for details if the instance was not indicated as ready.
-	if i.State != base.InstanceReady {
-		dbInstance, err := d.describeDatabaseInstance(i.Database)
-		if err != nil {
-			return base.InstanceNotCreated, err
-		}
-
-		// Possible instance statuses: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/accessing-monitoring.html#Overview.DBInstance.Status
-		switch *(dbInstance.DBInstanceStatus) {
-		case "available":
-			return base.InstanceReady, nil
-		case "creating":
-			return base.InstanceInProgress, nil
-		case "deleting":
-			return base.InstanceNotGone, nil
-		case "failed":
-			return base.InstanceNotCreated, nil
-		default:
-			return base.InstanceInProgress, nil
-		}
+func (d *dedicatedDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
+	dbInstance, err := d.describeDatabaseInstance(database)
+	if err != nil {
+		return base.InstanceNotCreated, err
 	}
 
-	return base.InstanceNotCreated, nil
+	// Possible instance statuses: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/accessing-monitoring.html#Overview.DBInstance.Status
+	switch *(dbInstance.DBInstanceStatus) {
+	case "available":
+		return base.InstanceReady, nil
+	case "creating":
+		return base.InstanceInProgress, nil
+	case "deleting":
+		return base.InstanceNotGone, nil
+	case "failed":
+		return base.InstanceNotCreated, nil
+	default:
+		return base.InstanceInProgress, nil
+	}
 }
 
 func (d *dedicatedDBAdapter) getDatabaseEndpointProperties(database string) (*DBEndpointDetails, error) {

@@ -346,7 +346,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		state = asyncJobMsg.JobState.State
 		statusMessage = asyncJobMsg.JobState.Message
 	} else {
-		dbState, err := adapter.checkDBStatus(existingInstance)
+		dbState, err := adapter.checkDBStatus(existingInstance.Database)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}

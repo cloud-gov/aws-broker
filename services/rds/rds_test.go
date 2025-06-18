@@ -162,6 +162,13 @@ func TestCreateDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
@@ -187,6 +194,13 @@ func TestCreateDb(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []*rds.DBInstance{
 								{
@@ -273,6 +287,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
@@ -307,6 +328,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 							DBInstances: []*rds.DBInstance{
 								{
 									DBInstanceStatus: aws.String("creating"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
@@ -496,6 +524,13 @@ func TestModifyDb(t *testing.T) {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []*rds.DBInstance{
 								{

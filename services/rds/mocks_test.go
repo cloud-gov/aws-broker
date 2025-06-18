@@ -94,21 +94,21 @@ type mockRDSClient struct {
 	modifyDbErr                         error
 }
 
-func (m mockRDSClient) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
+func (m *mockRDSClient) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
 	if m.createDbErr != nil {
 		return nil, m.createDbErr
 	}
 	return nil, nil
 }
 
-func (m mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
+func (m *mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
 	if m.describeDbParamsErr != nil {
 		return nil, m.describeDbParamsErr
 	}
 	return nil, nil
 }
 
-func (m mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInput) (*rds.DescribeDBEngineVersionsOutput, error) {
+func (m *mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInput) (*rds.DescribeDBEngineVersionsOutput, error) {
 	if m.describeEngVersionsErr != nil {
 		return nil, m.describeEngVersionsErr
 	}
@@ -120,14 +120,14 @@ func (m mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInp
 	return nil, nil
 }
 
-func (m mockRDSClient) CreateDBParameterGroup(*rds.CreateDBParameterGroupInput) (*rds.CreateDBParameterGroupOutput, error) {
+func (m *mockRDSClient) CreateDBParameterGroup(*rds.CreateDBParameterGroupInput) (*rds.CreateDBParameterGroupOutput, error) {
 	if m.createDbParamGroupErr != nil {
 		return nil, m.createDbParamGroupErr
 	}
 	return nil, nil
 }
 
-func (m mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
+func (m *mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
 	if m.modifyDbParamGroupErr != nil {
 		return nil, m.modifyDbParamGroupErr
 	}
@@ -163,10 +163,6 @@ func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParameter
 }
 
 func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
-	// if m.describeDbInstancesErr != nil {
-	// 	return nil, m.describeDbInstancesErr
-	// }
-	// return m.describeDbInstancesResults, nil
 	if m.describeDbInstancesErr != nil {
 		return nil, m.describeDbInstancesErr
 	}
@@ -175,11 +171,11 @@ func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput)
 	return output, nil
 }
 
-func (m mockRDSClient) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
+func (m *mockRDSClient) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
 	return nil, m.createDBInstanceReadReplicaErr
 }
 
-func (m mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
+func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
 	if m.modifyDbErr != nil {
 		return nil, m.modifyDbErr
 	}
