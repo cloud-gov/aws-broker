@@ -106,7 +106,7 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brok
 func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
 	switch o {
 	case base.DeleteOp:
-		return false
+		return true
 	case base.CreateOp:
 		return true
 	case base.ModifyOp:
