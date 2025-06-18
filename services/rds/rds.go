@@ -192,7 +192,10 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 	for attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
-			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
+			updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
+			if updateErr != nil {
+				return updateErr
+			}
 			return err
 		}
 
@@ -200,14 +203,20 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 			return nil
 		}
 
-		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		if err != nil {
+			return err
+		}
 
 		attempt += 1
 		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
 	}
 
 	if dbState != base.InstanceReady {
-		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be available")
+		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be available")
+		if err != nil {
+			return err
+		}
 		return errors.New("exhausted maximum retries waiting for database to be available")
 	}
 

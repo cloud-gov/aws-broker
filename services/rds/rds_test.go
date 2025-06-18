@@ -270,23 +270,18 @@ func TestCreateDb(t *testing.T) {
 	}
 }
 
-func TestWaitAndCreateDBReadReplica(t *testing.T) {
+func TestWaitForDbReady(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance    *RDSInstance
-		dbAdapter     *dedicatedDBAdapter
-		expectedState base.InstanceState
+		dbInstance            *RDSInstance
+		dbAdapter             *dedicatedDBAdapter
+		expectedState         base.InstanceState
+		expectErr             bool
+		expectAsyncJobMessage bool
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []*rds.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
 						{
 							DBInstances: []*rds.DBInstance{
 								{
@@ -311,7 +306,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceReady,
 		},
 		"waits with retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -338,19 +332,12 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 								},
 							},
 						},
-						{
-							DBInstances: []*rds.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
 					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
+					PollAwsMaxRetries:        3,
 				},
 			},
 			dbInstance: &RDSInstance{
@@ -362,7 +349,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceReady,
 		},
 		"gives up after maximum retries for database creation": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -406,7 +392,105 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceNotCreated,
+			expectedState:         base.InstanceNotCreated,
+			expectErr:             true,
+			expectAsyncJobMessage: true,
+		},
+		"error checking database creation status": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErr: errors.New("error describing database instances"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState:         base.InstanceNotCreated,
+			expectErr:             true,
+			expectAsyncJobMessage: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
+			err = test.dbAdapter.waitForDbReady(brokerDB, base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			if !test.expectErr && err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectAsyncJobMessage {
+				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if asyncJobMsg.JobState.State != test.expectedState {
+					t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+				}
+			}
+		})
+	}
+}
+
+func TestWaitAndCreateDBReadReplica(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedState base.InstanceState
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceReady,
 		},
 		"error checking database creation status": {
 			dbAdapter: &dedicatedDBAdapter{
