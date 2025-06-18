@@ -434,17 +434,19 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 
 func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation, i *RDSInstance) {
 	if i.ReplicaDatabase != "" {
-		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be available")
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, "Exhausted maximum retries waiting for database to be available")
 
 		params := prepareDeleteDbInput(i.ReplicaDatabase)
 		_, err := d.rds.DeleteDBInstance(params)
 		if err != nil {
 			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete replica database: %s", err))
+			return
 		}
 
 		err = d.waitForDbDeleted(db, operation, i, i.ReplicaDatabase)
 		if err != nil {
 			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
+			return
 		}
 	}
 
@@ -453,11 +455,13 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete database: %s", err))
+		return
 	}
 
 	err = d.waitForDbDeleted(db, operation, i, i.Database)
 	if err != nil {
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to confirm database deletion: %s", err))
+		return
 	}
 
 	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
@@ -469,7 +473,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error) {
 	err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deleting database resources")
 	if err != nil {
-		return base.InstanceNotModified, err
+		return base.InstanceNotGone, err
 	}
 
 	go d.asyncDeleteDB(db, base.DeleteOp, i)

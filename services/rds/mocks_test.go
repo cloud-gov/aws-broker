@@ -80,7 +80,8 @@ type mockRDSClient struct {
 	describeEngVersionsErr              error
 	describeDbParamsErr                 error
 	createDbParamGroupErr               error
-	modifyDbParamGroupErr               error
+	deleteDBInstancesCallNum            int
+	deleteDbInstancesErrs               []error
 	describeEngineDefaultParamsResults  []*rds.DescribeEngineDefaultParametersOutput
 	describeEngineDefaultParamsErr      error
 	describeEngineDefaultParamsNumPages int
@@ -92,6 +93,7 @@ type mockRDSClient struct {
 	describeDbInstancesResults          []*rds.DescribeDBInstancesOutput
 	describeDbInstancesErrs             []error
 	modifyDbErr                         error
+	modifyDbParamGroupErr               error
 }
 
 func (m *mockRDSClient) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
@@ -179,5 +181,13 @@ func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.Modif
 	if m.modifyDbErr != nil {
 		return nil, m.modifyDbErr
 	}
+	return nil, nil
+}
+
+func (m *mockRDSClient) DeleteDBInstance(*rds.DeleteDBInstanceInput) (*rds.DeleteDBInstanceOutput, error) {
+	if len(m.deleteDbInstancesErrs) > 0 && m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum] != nil {
+		return nil, m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum]
+	}
+	m.deleteDBInstancesCallNum++
 	return nil, nil
 }

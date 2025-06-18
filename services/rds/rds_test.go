@@ -1192,3 +1192,170 @@ func TestWaitForDbDeleted(t *testing.T) {
 		})
 	}
 }
+
+func TestAsyncDeleteDB(t *testing.T) {
+	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+
+	testCases := map[string]struct {
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedState base.InstanceState
+	}{
+		"success without replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceGone,
+		},
+		"success with replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceGone,
+		},
+		"error checking database status": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotGone,
+		},
+		"error checking replica database status": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotGone,
+		},
+		"error deleting database": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotGone,
+		},
+		"error deleting replica database": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotGone,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
+			test.dbAdapter.asyncDeleteDB(brokerDB, base.DeleteOp, test.dbInstance)
+
+			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if asyncJobMsg.JobState.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+		})
+	}
+}
