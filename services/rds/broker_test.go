@@ -311,7 +311,7 @@ func TestLastOperation(t *testing.T) {
 		operation     string
 		asyncJobMsg   *taskqueue.AsyncJobMsg
 	}{
-		"create without replica": {
+		"create": {
 			operation: base.CreateOp.String(),
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
@@ -347,44 +347,7 @@ func TestLastOperation(t *testing.T) {
 			},
 			expectedState: "succeeded",
 		},
-		"create with replica": {
-			operation: base.CreateOp.String(),
-			catalog: &catalog.Catalog{
-				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
-						{
-							Plan: catalog.Plan{
-								ID: "123",
-							},
-						},
-					},
-				},
-			},
-			planID: "123",
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				ReplicaDatabase: "replica",
-			},
-			tagManager: &mocks.MockTagGenerator{},
-			settings: &config.Settings{
-				EncryptionKey: helpers.RandStr(32),
-				Environment:   "test", // use the mock adapter
-			},
-			expectedState: "succeeded",
-			asyncJobMsg: &taskqueue.AsyncJobMsg{
-				JobType: base.CreateOp,
-				JobState: taskqueue.AsyncJobState{
-					Message: "completed",
-					State:   base.InstanceReady,
-				},
-			},
-		},
-		"modify without replica": {
+		"modify": {
 			operation: base.ModifyOp.String(),
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
@@ -420,8 +383,8 @@ func TestLastOperation(t *testing.T) {
 			},
 			expectedState: "succeeded",
 		},
-		"modify with replica": {
-			operation: base.ModifyOp.String(),
+		"delete": {
+			operation: base.DeleteOp.String(),
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
 					Plans: []catalog.RDSPlan{
@@ -441,7 +404,6 @@ func TestLastOperation(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ReplicaDatabase: "replica",
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -450,7 +412,7 @@ func TestLastOperation(t *testing.T) {
 			},
 			expectedState: "succeeded",
 			asyncJobMsg: &taskqueue.AsyncJobMsg{
-				JobType: base.ModifyOp,
+				JobType: base.DeleteOp,
 				JobState: taskqueue.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
