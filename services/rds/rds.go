@@ -22,7 +22,7 @@ import (
 
 type dbAdapter interface {
 	createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
-	modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
+	modifyDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error)
 	checkDBStatus(database string) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error)
@@ -45,7 +45,7 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, password string, db *gorm.DB) (
 	return base.InstanceInProgress, nil
 }
 
-func (d *mockDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error) {
 	return base.InstanceReady, nil
 }
 
@@ -284,29 +284,45 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 	return base.InstanceInProgress, nil
 }
 
-// This should ultimately get exposed as part of the "update-service" method for the broker:
-// cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
-func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation, i *RDSInstance) {
 	params, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
-		return base.InstanceNotModified, err
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
+		return
 	}
 
 	_, err = d.rds.ModifyDBInstance(params)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
-		return base.InstanceNotModified, err
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
+		return
 	}
 
-	// If we are updating to a plan that supports read replicas, but one does not already
-	// exist, we need to create a read replica
-	if i.AddReadReplica {
-		err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Modifying database")
-		if err != nil {
-			return base.InstanceNotModified, err
-		}
-		go d.waitAndCreateDBReadReplica(db, base.ModifyOp, i)
+	err = d.waitForDbReady(db, operation, i, i.Database)
+	if err != nil {
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		return
 	}
+
+	if i.AddReadReplica {
+		err := d.waitAndCreateDBReadReplica(db, operation, i)
+		if err != nil {
+			taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
+		}
+	}
+
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
+}
+
+// This should ultimately get exposed as part of the "update-service" method for the broker:
+// cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error) {
+	err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Database creation in progress")
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
+	go d.asyncModifyDb(db, base.ModifyOp, i)
 
 	return base.InstanceInProgress, nil
 }

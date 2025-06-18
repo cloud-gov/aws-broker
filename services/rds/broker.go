@@ -278,7 +278,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Modify the database instance.
-	status, err := adapter.modifyDB(existingInstance, existingInstance.ClearPassword, broker.brokerDB)
+	status, err := adapter.modifyDB(existingInstance, broker.brokerDB)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 

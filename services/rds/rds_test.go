@@ -126,7 +126,6 @@ func TestAsyncCreateDb(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
-		expectedErr   error
 		expectedState base.InstanceState
 		password      string
 	}{
@@ -148,7 +147,6 @@ func TestAsyncCreateDb(t *testing.T) {
 				dbUtils:  &RDSDatabaseUtils{},
 			},
 			password:      helpers.RandStr(10),
-			expectedErr:   createDbErr,
 			expectedState: base.InstanceNotCreated,
 		},
 		"success without replica": {
@@ -647,15 +645,12 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	}
 }
 
-func TestModifyDb(t *testing.T) {
+func TestAsyncModifyDb(t *testing.T) {
 	modifyDbErr := errors.New("modify DB error")
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		dbAdapter              dbAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		expectedAsyncJobStates []base.InstanceState
-		password               string
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedState base.InstanceState
 	}{
 		"modify DB error": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -664,25 +659,121 @@ func TestModifyDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			dbInstance:    NewRDSInstance(),
-			expectedErr:   modifyDbErr,
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
 			expectedState: base.InstanceNotModified,
 		},
 		"success without read replica": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds:                  &mockRDSClient{},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				settings: config.Settings{
 					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        0,
+					PollAwsMaxRetries:        1,
 				},
 			},
 			dbInstance: &RDSInstance{
-				dbUtils: &RDSDatabaseUtils{},
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
 			},
-			expectedState: base.InstanceInProgress,
+			expectedState: base.InstanceReady,
 		},
 		"success with read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				AddReadReplica:  true,
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			test.dbAdapter.asyncModifyDb(brokerDB, base.ModifyOp, test.dbInstance)
+
+			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+		})
+	}
+}
+
+func TestModifyDb(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		dbAdapter              dbAdapter
+		expectedErr            error
+		expectedState          base.InstanceState
+		expectedAsyncJobStates []base.InstanceState
+	}{
+		"success": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -732,7 +823,7 @@ func TestModifyDb(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.password, brokerDB)
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, brokerDB)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
