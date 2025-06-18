@@ -1359,3 +1359,77 @@ func TestAsyncDeleteDB(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteDb(t *testing.T) {
+	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+
+	testCases := map[string]struct {
+		dbInstance             *RDSInstance
+		dbAdapter              *dedicatedDBAdapter
+		expectedErr            error
+		expectedState          base.InstanceState
+		password               string
+		expectedAsyncJobStates []base.InstanceState
+	}{
+		"success": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			expectedState:          base.InstanceInProgress,
+			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceGone},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			responseCode, err := test.dbAdapter.deleteDB(test.dbInstance, brokerDB)
+
+			if err != nil && test.expectedErr == nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(test.expectedErr, err) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+
+			if len(test.expectedAsyncJobStates) > 0 {
+				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// The exact database state at this point in the test is non-deterministic, since the database updates
+				// are being done in a goroutine. So we test against a set of possible job states
+				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
+					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
+				}
+			}
+
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
+			}
+		})
+	}
+}
