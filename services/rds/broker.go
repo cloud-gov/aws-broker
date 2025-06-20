@@ -298,7 +298,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
-	return response.SuccessAcceptedResponse
+	return response.NewAsyncOperationResponse(base.ModifyOp.String())
 }
 
 func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
@@ -422,6 +422,7 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 	if adapterErr != nil {
 		return adapterErr
 	}
+
 	// Delete the database instance.
 	if status, err := adapter.deleteDB(existingInstance, broker.brokerDB); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
@@ -430,6 +431,11 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-	broker.brokerDB.Unscoped().Delete(existingInstance)
-	return response.SuccessDeleteResponse
+
+	err := broker.brokerDB.Unscoped().Delete(existingInstance).Error
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+	}
+
+	return response.NewAsyncOperationResponse(base.DeleteOp.String())
 }
