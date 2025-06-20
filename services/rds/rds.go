@@ -311,7 +311,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 		}
 	}
 
-	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
+	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
 }
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
