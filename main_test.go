@@ -800,6 +800,8 @@ func TestRDSDeleteInstance(t *testing.T) {
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
+	isAsyncOperationResponse(t, res, base.DeleteOp)
+
 	// Is it actually gone from the DB?
 	i = rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
