@@ -304,6 +304,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 		return
 	}
 
+	fmt.Printf("rds: asyncModifyDb, instance: %s, instance add read replica: %t, replica database: %s\n", i.Uuid, i.AddReadReplica, i.ReplicaDatabase)
 	if i.AddReadReplica {
 		err := d.waitAndCreateDBReadReplica(db, operation, i)
 		if err != nil {
