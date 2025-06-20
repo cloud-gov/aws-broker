@@ -319,7 +319,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error) {
 	err := taskqueue.CreateAsyncJobMessage(db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Database creation in progress")
 	if err != nil {
-		return base.InstanceNotCreated, err
+		return base.InstanceNotModified, err
 	}
 
 	go d.asyncModifyDb(db, base.ModifyOp, i)
