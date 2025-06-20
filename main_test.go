@@ -89,6 +89,16 @@ func validJSON(response []byte, url string, t *testing.T) {
 	}
 }
 
+func isAsyncOperationResponse(t *testing.T, response *httptest.ResponseRecorder, expectedOperation base.Operation) {
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(response.Body.Bytes(), &responseData); err != nil {
+		t.Fatal(err)
+	}
+	if responseData["operation"] != expectedOperation.String() {
+		t.Fatalf("expected async operation: %s, got: %s", expectedOperation, responseData["operation"])
+	}
+}
+
 func TestCatalog(t *testing.T) {
 	url := "/v2/catalog"
 	res, _ := doRequest(nil, url, "GET", false, nil)
@@ -132,6 +142,8 @@ func TestCreateRDSInstance(t *testing.T) {
 
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	isAsyncOperationResponse(t, res, base.CreateOp)
 
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
@@ -371,10 +383,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(resp.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
 
 	// Reload the instance and check to see that the plan has been modified.
 	i = rds.RDSInstance{}
@@ -487,10 +496,8 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(resp.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -548,10 +555,8 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(resp.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -608,10 +613,8 @@ func TestModifyEnablePgCron(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(resp.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -660,10 +663,8 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(resp.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -776,7 +777,7 @@ func TestRDSUnbind(t *testing.T) {
 
 func TestRDSDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, url, "DELETE", true, nil)
 
 	// With no instance
@@ -794,8 +795,8 @@ func TestRDSDeleteInstance(t *testing.T) {
 
 	res, _ = doRequest(m, url, "DELETE", true, nil)
 
-	if res.Code != http.StatusOK {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to delete instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
