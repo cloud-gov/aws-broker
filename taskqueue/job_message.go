@@ -2,7 +2,6 @@ package taskqueue
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/jinzhu/gorm"
@@ -19,10 +18,6 @@ func CreateAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, oper
 		},
 	}
 	err := db.Save(asyncJobMsg).Error
-	// TODO: better handling of this error
-	if err != nil {
-		fmt.Println(err)
-	}
 	return err
 }
 
@@ -37,10 +32,6 @@ func UpdateAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, oper
 		},
 	}
 	err := db.Save(asyncJobMsg).Error
-	// TODO: better handling of this error
-	if err != nil {
-		fmt.Println(err)
-	}
 	return err
 }
 
