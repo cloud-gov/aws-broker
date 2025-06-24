@@ -300,6 +300,79 @@ func TestCreateInstanceSuccess(t *testing.T) {
 	}
 }
 
+func TestModify(t *testing.T) {
+	testCases := map[string]struct {
+		planID               string
+		dbInstance           *RDSInstance
+		expectedResponseCode int
+		tagManager           brokertags.TagManager
+		settings             *config.Settings
+		catalog              *catalog.Catalog
+		modifyRequest        request.Request
+	}{
+		"success": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID:             "123",
+								PlanUpdateable: true,
+							},
+							ReadReplica: true,
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+						PlanID:    "456",
+					},
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			modifyRequest: request.Request{
+				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				settings:   test.settings,
+				tagManager: test.tagManager,
+			}
+
+			err = brokerDB.Create(test.dbInstance).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			response := broker.ModifyInstance(test.catalog, test.dbInstance.Uuid, test.modifyRequest, base.Instance{})
+
+			if response.GetStatusCode() != test.expectedResponseCode {
+				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			}
+		})
+	}
+}
+
 func TestLastOperation(t *testing.T) {
 	testCases := map[string]struct {
 		planID        string
