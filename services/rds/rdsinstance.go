@@ -101,6 +101,10 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 		i.StorageType = options.StorageType
 	}
 
+	if i.StorageType == "" {
+		i.StorageType = plan.StorageType
+	}
+
 	// Check if there is a backup retention change
 	if options.BackupRetentionPeriod != nil && *options.BackupRetentionPeriod > 0 {
 		i.BackupRetentionPeriod = *options.BackupRetentionPeriod
