@@ -79,6 +79,9 @@ func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
 }
 
 func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) error {
+	// needed to create an RDS read replica
+	i.SecGroup = plan.SecurityGroup
+
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
