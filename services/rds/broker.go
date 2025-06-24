@@ -342,6 +342,8 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		needAsyncJobState = false
 	}
 
+	fmt.Printf("fetching last operation for %s, needsAsyncJobState: %t\n", instanceOperation, needAsyncJobState)
+
 	if needAsyncJobState {
 		asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
@@ -357,6 +359,8 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		state = dbState
 		statusMessage = fmt.Sprintf("The database status is %s", state)
 	}
+
+	fmt.Printf("got last operation state: %s, message: %s\n", state, statusMessage)
 
 	return response.NewSuccessLastOperation(state.ToLastOperationStatus(), statusMessage)
 }

@@ -205,6 +205,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 			return nil
 		}
 
+		fmt.Printf("Database %s, state: %s, attempt: %d\n", database, dbState, attempt)
 		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
 		if err != nil {
 			return err
@@ -226,19 +227,26 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 }
 
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) error {
+	fmt.Printf("creating read replica for instance %s\n", i.Uuid)
 	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	err := d.createDBReadReplica(i)
 	if err != nil {
+		fmt.Println(err)
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
 		return err
 	}
 
+	fmt.Printf("initiated creation read replica for instance %s\n", i.Uuid)
+
 	err = d.waitForDbReady(db, operation, i, i.ReplicaDatabase)
 	if err != nil {
+		fmt.Println(err)
 		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return err
 	}
+
+	fmt.Printf("read replica for instance %s is ready\n", i.Uuid)
 
 	return nil
 }
@@ -437,6 +445,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 				return err
 			}
 
+			fmt.Printf("database %s is deleted", database)
 			isDeleted = true
 			break
 		}
@@ -463,7 +472,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 
 func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation, i *RDSInstance) {
 	if i.ReplicaDatabase != "" {
-		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, "Exhausted maximum retries waiting for database to be available")
+		taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, "Deleting database replica")
 
 		params := prepareDeleteDbInput(i.ReplicaDatabase)
 		_, err := d.rds.DeleteDBInstance(params)
