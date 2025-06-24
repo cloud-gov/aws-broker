@@ -492,7 +492,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 				return err
 			}
 
-			fmt.Printf("waitForDbDeleted: database %s is deleted", database)
+			fmt.Printf("waitForDbDeleted: database %s is deleted\n", database)
 			isDeleted = true
 			break
 		}
@@ -521,7 +521,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 	if i.ReplicaDatabase != "" {
 		updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, "Deleting database replica")
 		if updateErr != nil {
-			fmt.Printf("asyncDeleteDB: %s", updateErr)
+			fmt.Printf("asyncDeleteDB: %s\n", updateErr)
 			return
 		}
 
@@ -532,7 +532,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 			if updateErr != nil {
 				err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 			}
-			fmt.Printf("asyncDeleteDB: %s", err)
+			fmt.Printf("asyncDeleteDB: %s\n", err)
 			return
 		}
 
@@ -542,7 +542,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 			if updateErr != nil {
 				err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 			}
-			fmt.Printf("asyncDeleteDB: %s", err)
+			fmt.Printf("asyncDeleteDB: %s\n", err)
 			return
 		}
 	}
@@ -555,7 +555,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		fmt.Printf("asyncDeleteDB: %s", err)
+		fmt.Printf("asyncDeleteDB: %s\n", err)
 		return
 	}
 
@@ -565,7 +565,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		fmt.Printf("asyncDeleteDB: %s", err)
+		fmt.Printf("asyncDeleteDB: %s\n", err)
 		return
 	}
 

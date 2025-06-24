@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cloud-gov/aws-broker/base"
@@ -116,6 +117,7 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 	}
 	// pass in the operation parameter from request
 	operation := req.URL.Query().Get("operation")
+	fmt.Printf("lastOperation: instance %s, operation: %s\n", instance.Uuid, operation)
 	return broker.LastOperation(c, id, instance, operation)
 }
 
