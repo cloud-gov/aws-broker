@@ -24,7 +24,7 @@ type dbAdapter interface {
 	createDB(i *RDSInstance, password string, db *gorm.DB) (base.InstanceState, error)
 	modifyDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error)
 	checkDBStatus(database string) (base.InstanceState, error)
-	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
+	bindDBToApp(i *RDSInstance, password string, db *gorm.DB) (map[string]string, error)
 	deleteDB(i *RDSInstance, db *gorm.DB) (base.InstanceState, error)
 	describeDatabaseInstance(database string) (*rds.DBInstance, error)
 }
@@ -54,7 +54,7 @@ func (d *mockDBAdapter) checkDBStatus(database string) (base.InstanceState, erro
 	return base.InstanceReady, nil
 }
 
-func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string, db *gorm.DB) (map[string]string, error) {
 	// TODO
 	return i.getCredentials(password)
 }
@@ -444,7 +444,7 @@ func (d *dedicatedDBAdapter) getDatabaseEndpointProperties(database string) (*DB
 	}, nil
 }
 
-func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string]string, error) {
+func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string, db *gorm.DB) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
@@ -466,6 +466,11 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 		}
 
 		i.ReplicaDatabaseHost = dbEndpointDetails.Host
+	}
+
+	err := db.Save(i).Error
+	if err != nil {
+		return nil, err
 	}
 
 	// If we get here that means the instance is up and we have the information for it.

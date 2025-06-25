@@ -16,6 +16,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/taskqueue"
 	"github.com/go-test/deep"
+	"github.com/google/uuid"
 )
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
@@ -1116,6 +1117,9 @@ func TestBindDBToApp(t *testing.T) {
 						"name":     "db1",
 					},
 				},
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+				},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
@@ -1149,7 +1153,11 @@ func TestBindDBToApp(t *testing.T) {
 					},
 				},
 			},
-			rdsInstance:      &RDSInstance{},
+			rdsInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+				},
+			},
 			expectedInstance: &RDSInstance{},
 			password:         "fake-pw",
 			expectErr:        true,
@@ -1168,26 +1176,113 @@ func TestBindDBToApp(t *testing.T) {
 					},
 				},
 			},
-			rdsInstance:      &RDSInstance{},
+			rdsInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+				},
+			},
 			password:         "fake-pw",
 			expectedInstance: &RDSInstance{},
 			expectErr:        true,
+		},
+		"success with replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+									Endpoint: &rds.Endpoint{
+										Address: aws.String("db-address"),
+										Port:    aws.Int64(1234),
+									},
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+									Endpoint: &rds.Endpoint{
+										Address: aws.String("db-replica-address"),
+										Port:    aws.Int64(1234),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			rdsInstance: &RDSInstance{
+				dbUtils: &RDSDatabaseUtils{},
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+				},
+				ReplicaDatabase: "db-replica",
+				DbType:          "postgres",
+			},
+			password: "fake-pw",
+			expectedCreds: map[string]string{
+				"uri":          "postgres://user-1:fake-pw@db-address:1234/db1",
+				"username":     "user-1",
+				"password":     "fake-pw",
+				"host":         "db-address",
+				"port":         strconv.FormatInt(1234, 10),
+				"db_name":      "db1",
+				"name":         "db1",
+				"replica_host": "db-replica-address",
+				"replica_uri":  "postgres://user-1:fake-pw@db-replica-address:1234/db1",
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Host:  "db-address",
+					Port:  1234,
+					State: base.InstanceReady,
+				},
+				ReplicaDatabase:     "db-replica",
+				ReplicaDatabaseHost: "db-replica-address",
+				DbType:              "postgres",
+			},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password)
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			brokerDB.NewRecord(test.rdsInstance)
+			err = brokerDB.Create(test.rdsInstance).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password, brokerDB)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error but received none")
 			}
+
 			if diff := deep.Equal(creds, test.expectedCreds); diff != nil {
 				t.Error(diff)
 			}
+
+			test.expectedInstance.Uuid = test.rdsInstance.Uuid
+			test.expectedInstance.CreatedAt = test.rdsInstance.CreatedAt
+			test.expectedInstance.UpdatedAt = test.rdsInstance.UpdatedAt
+
 			if diff := deep.Equal(test.rdsInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
+			}
+
+			dbInstanceRecord := RDSInstance{}
+			brokerDB.Where("uuid = ?", test.rdsInstance.Uuid).First(&dbInstanceRecord)
+			if diff := deep.Equal(&dbInstanceRecord, test.expectedInstance); diff != nil {
 				t.Error(diff)
 			}
 		})
