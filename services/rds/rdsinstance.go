@@ -78,76 +78,80 @@ func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
 	return nil
 }
 
-func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) error {
+func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) (*RDSInstance, error) {
+	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
+	modifiedInstance := i
+	modifiedInstance.PlanID = plan.ID
+
 	// needed to create an RDS read replica
-	i.SecGroup = plan.SecurityGroup
+	modifiedInstance.SecGroup = plan.SecurityGroup
 
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
-		if options.AllocatedStorage < i.AllocatedStorage {
-			return errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
+		if options.AllocatedStorage < modifiedInstance.AllocatedStorage {
+			return nil, errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
 		}
 
 		// Update the existing instance with the new allocated storage.
-		i.AllocatedStorage = options.AllocatedStorage
+		modifiedInstance.AllocatedStorage = options.AllocatedStorage
 	}
 
-	if options.StorageType == "gp3" && i.AllocatedStorage < 20 {
-		return errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+	if options.StorageType == "gp3" && modifiedInstance.AllocatedStorage < 20 {
+		return nil, errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
 	}
 
-	if options.StorageType != i.StorageType {
-		i.StorageType = options.StorageType
+	if options.StorageType != modifiedInstance.StorageType {
+		modifiedInstance.StorageType = options.StorageType
 	}
 
-	if i.StorageType == "" {
-		i.StorageType = plan.StorageType
+	if modifiedInstance.StorageType == "" {
+		modifiedInstance.StorageType = plan.StorageType
 	}
 
 	// Check if there is a backup retention change
 	if options.BackupRetentionPeriod != nil && *options.BackupRetentionPeriod > 0 {
-		i.BackupRetentionPeriod = *options.BackupRetentionPeriod
+		modifiedInstance.BackupRetentionPeriod = *options.BackupRetentionPeriod
 	}
 
 	// There may be some instances which were previously updated to have
-	// i.BackupRetentionPeriod = 0. Make sure those instances get updated
+	// modifiedInstance.BackupRetentionPeriod = 0. Make sure those instances get updated
 	// to the minimum backup retention period, since 0 will disable backups
 	// on the database.
-	if i.BackupRetentionPeriod < settings.MinBackupRetention {
-		i.BackupRetentionPeriod = settings.MinBackupRetention
+	if modifiedInstance.BackupRetentionPeriod < settings.MinBackupRetention {
+		modifiedInstance.BackupRetentionPeriod = settings.MinBackupRetention
 	}
 
 	// Check if there is a binary log format change and if so, apply it
 	if options.BinaryLogFormat != "" {
-		i.BinaryLogFormat = options.BinaryLogFormat
+		modifiedInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
-	if options.EnablePgCron != i.EnablePgCron {
-		i.EnablePgCron = options.EnablePgCron
+	if options.EnablePgCron != modifiedInstance.EnablePgCron {
+		modifiedInstance.EnablePgCron = options.EnablePgCron
 	}
 
-	if options.EnableFunctions != i.EnableFunctions {
-		i.EnableFunctions = options.EnableFunctions
+	if options.EnableFunctions != modifiedInstance.EnableFunctions {
+		modifiedInstance.EnableFunctions = options.EnableFunctions
 	}
 
 	if options.RotateCredentials != nil && *options.RotateCredentials {
-		err := i.generateCredentials(settings)
+		err := modifiedInstance.generateCredentials(settings)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
-	fmt.Printf("rds: before modify instance, instance: %s, plan read replica: %t, replica database: %s\n", i.Uuid, plan.ReadReplica, i.ReplicaDatabase)
-	if plan.ReadReplica && i.ReplicaDatabase == "" {
-		i.AddReadReplica = true
-		i.ReplicaDatabase = i.generateDatabaseReplicaName()
+	fmt.Printf("rds: before modify instance, instance: %s, plan read replica: %t, replica database: %s\n", modifiedInstance.Uuid, plan.ReadReplica, modifiedInstance.ReplicaDatabase)
+	if plan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
+		modifiedInstance.AddReadReplica = true
+		modifiedInstance.ReplicaDatabase = modifiedInstance.generateDatabaseReplicaName()
 	}
-	fmt.Printf("rds: after modify instance, instance: %s, plan read replica: %t, replica database: %s\n", i.Uuid, plan.ReadReplica, i.ReplicaDatabase)
+	fmt.Printf("rds: after modify instance, instance: %s, plan read replica: %t, replica database: %s\n", modifiedInstance.Uuid, plan.ReadReplica, modifiedInstance.ReplicaDatabase)
 
-	return nil
+	return modifiedInstance, nil
 }
 
 func (i *RDSInstance) generateDatabaseReplicaName() string {

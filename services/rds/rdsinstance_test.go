@@ -436,6 +436,33 @@ func TestModifyInstance(t *testing.T) {
 		settings         *config.Settings
 		expectedErr      error
 	}{
+		"sets plan properties": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						PlanID: "plan-1",
+					},
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						PlanID: "plan-2",
+					},
+				},
+				SecGroup: "sec-group1",
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-2",
+				},
+				SecurityGroup: "sec-group1",
+			},
+			settings: &config.Settings{},
+		},
 		"update allocated storage": {
 			options: Options{
 				AllocatedStorage: 20,
@@ -454,9 +481,6 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 10,
 			},
 			existingInstance: &RDSInstance{
-				AllocatedStorage: 20,
-			},
-			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
 			expectErr: true,
@@ -547,9 +571,6 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 10,
 			},
-			expectedInstance: &RDSInstance{
-				AllocatedStorage: 10,
-			},
 			plan:      catalog.RDSPlan{},
 			settings:  &config.Settings{},
 			expectErr: true,
@@ -616,14 +637,14 @@ func TestModifyInstance(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.existingInstance.modify(test.options, test.plan, test.settings)
+			modifiedInstance, err := test.existingInstance.modify(test.options, test.plan, test.settings)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if test.expectErr && err == nil {
 				t.Errorf("expected error, got nil")
 			}
-			if diff := deep.Equal(test.existingInstance, test.expectedInstance); diff != nil {
+			if diff := deep.Equal(modifiedInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -687,14 +708,14 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 				Salt:          test.originalSalt,
 				dbUtils:       &RDSDatabaseUtils{},
 			}
-			err := existingInstance.modify(test.options, test.plan, test.settings)
+			modifiedInstance, err := existingInstance.modify(test.options, test.plan, test.settings)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
-			if test.shouldRotateCredentials && existingInstance.ClearPassword == test.originalPassword {
+			if test.shouldRotateCredentials && modifiedInstance.ClearPassword == test.originalPassword {
 				t.Fatal("instance password should have been updated")
 			}
-			if test.shouldRotateCredentials && existingInstance.Salt == test.originalSalt {
+			if test.shouldRotateCredentials && modifiedInstance.Salt == test.originalSalt {
 				t.Fatal("instance salt should have been updated")
 			}
 		})
