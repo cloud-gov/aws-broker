@@ -51,7 +51,20 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	}
 
 	// Create instance
-	return broker.CreateInstance(c, id, createRequest)
+	resp := broker.CreateInstance(c, id, createRequest)
+
+	if resp.GetResponseType() != response.ErrorResponseType {
+		instance := base.Instance{Uuid: id, Request: createRequest}
+		brokerDb.NewRecord(instance)
+
+		err := brokerDb.Create(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
+	}
+
+	return resp
 }
 
 func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) response.Response {
