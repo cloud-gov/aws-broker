@@ -307,16 +307,19 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
+		fmt.Printf("Instance %s not found\n", id)
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
 	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
+		fmt.Println(planErr)
 		return planErr
 	}
 
 	adapter, adapterErr := initializeAdapter(plan, broker.settings)
 	if adapterErr != nil {
+		fmt.Println(adapterErr)
 		return adapterErr
 	}
 
