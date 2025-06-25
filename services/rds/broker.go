@@ -304,9 +304,15 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
-	if count == 0 {
+	if count == 0 && operation != base.DeleteOp.String() {
 		fmt.Printf("Instance %s not found\n", id)
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	}
+
+	// When asynchronous deletion has finished, the instance record no longer exists, so
+	// return a last operation status indicating that the deletion was successful.
+	if count == 0 && operation == base.DeleteOp.String() {
+		return response.NewSuccessLastOperation(base.InstanceGone.ToLastOperationStatus(), "Successfully deleted instance")
 	}
 
 	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
