@@ -142,7 +142,11 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 
 	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
-	if plan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
+	if plan.ReadReplica && !plan.Redundant {
+		return nil, errors.New("database plan must be multi-AZ in order to support read replicas")
+	}
+
+	if plan.Redundant && plan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
 		modifiedInstance.AddReadReplica = true
 		modifiedInstance.ReplicaDatabase = modifiedInstance.generateDatabaseReplicaName()
 	}

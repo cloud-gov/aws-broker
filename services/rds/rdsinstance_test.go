@@ -615,6 +615,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			plan: catalog.RDSPlan{
 				ReadReplica: true,
+				Redundant:   true,
 			},
 			settings: &config.Settings{},
 		},
@@ -630,8 +631,21 @@ func TestModifyInstance(t *testing.T) {
 			},
 			plan: catalog.RDSPlan{
 				ReadReplica: true,
+				Redundant:   true,
 			},
 			settings: &config.Settings{},
+		},
+		"returns error if plan enables read replicas but is not multi-AZ": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database: "db",
+			},
+			plan: catalog.RDSPlan{
+				ReadReplica: true,
+				Redundant:   false,
+			},
+			settings:  &config.Settings{},
+			expectErr: true,
 		},
 	}
 
