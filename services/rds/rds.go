@@ -575,6 +575,11 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 	}
 	d.parameterGroupClient.CleanupCustomParameterGroups()
 
+	err = db.Unscoped().Delete(i).Error
+	if err != nil {
+		fmt.Println(fmt.Errorf("asyncDeleteDB, error deleting record: %w", err))
+	}
+
 	updateErr = taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
 	if updateErr != nil {
 		fmt.Println(fmt.Errorf("asyncDeleteDB: %w", err))

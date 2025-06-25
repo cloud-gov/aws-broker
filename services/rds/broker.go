@@ -313,13 +313,11 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 
 	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
 	if planErr != nil {
-		fmt.Println(planErr)
 		return planErr
 	}
 
 	adapter, adapterErr := initializeAdapter(plan, broker.settings)
 	if adapterErr != nil {
-		fmt.Println(adapterErr)
 		return adapterErr
 	}
 
@@ -431,17 +429,16 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 	}
 
 	// Delete the database instance.
-	if status, err := adapter.deleteDB(existingInstance, broker.brokerDB); status == base.InstanceNotGone {
+	status, err := adapter.deleteDB(existingInstance, broker.brokerDB)
+	if err != nil && status != base.InstanceNotGone {
+		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+	}
+	if status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
-	}
-
-	err := broker.brokerDB.Unscoped().Delete(existingInstance).Error
-	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
 
 	return response.NewAsyncOperationResponse(base.DeleteOp.String())

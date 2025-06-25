@@ -1365,9 +1365,10 @@ func TestAsyncDeleteDB(t *testing.T) {
 	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
 
 	testCases := map[string]struct {
-		dbInstance    *RDSInstance
-		dbAdapter     *dedicatedDBAdapter
-		expectedState base.InstanceState
+		dbInstance          *RDSInstance
+		dbAdapter           *dedicatedDBAdapter
+		expectedState       base.InstanceState
+		expectedRecordCount int64
 	}{
 		"success without replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1434,7 +1435,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceNotGone,
+			expectedState:       base.InstanceNotGone,
+			expectedRecordCount: 1,
 		},
 		"error checking replica database status": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1457,7 +1459,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceNotGone,
+			expectedState:       base.InstanceNotGone,
+			expectedRecordCount: 1,
 		},
 		"error deleting database": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1479,7 +1482,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceNotGone,
+			expectedState:       base.InstanceNotGone,
+			expectedRecordCount: 1,
 		},
 		"error deleting replica database": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1502,7 +1506,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceNotGone,
+			expectedState:       base.InstanceNotGone,
+			expectedRecordCount: 1,
 		},
 	}
 
@@ -1511,6 +1516,18 @@ func TestAsyncDeleteDB(t *testing.T) {
 			brokerDB, err := testDBInit()
 			if err != nil {
 				t.Fatal(err)
+			}
+
+			brokerDB.NewRecord(test.dbInstance)
+			err = brokerDB.Create(test.dbInstance).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var count int64
+			brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(test.dbInstance).Count(&count)
+			if count == 0 {
+				t.Fatal("The instance should be in the DB")
 			}
 
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
@@ -1523,6 +1540,11 @@ func TestAsyncDeleteDB(t *testing.T) {
 
 			if asyncJobMsg.JobState.State != test.expectedState {
 				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+
+			brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(test.dbInstance).Count(&count)
+			if count != test.expectedRecordCount {
+				t.Fatalf("expected %d records, found %d", test.expectedRecordCount, count)
 			}
 		})
 	}

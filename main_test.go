@@ -801,13 +801,6 @@ func TestRDSDeleteInstance(t *testing.T) {
 	}
 
 	isAsyncOperationResponse(t, res, base.DeleteOp)
-
-	// Is it actually gone from the DB?
-	i = rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if len(i.Uuid) > 0 {
-		t.Error("The instance shouldn't be in the DB")
-	}
 }
 
 /*
