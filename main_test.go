@@ -354,8 +354,9 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if i.Uuid == "0" {
+	var count int64
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i).Count(&count)
+	if count == 0 {
 		t.Error("The instance was not saved to the DB.")
 	}
 
@@ -369,7 +370,7 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
-		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+		t.Fatal(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
@@ -377,7 +378,7 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
-		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+		t.Fatal(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
 	// Is it a valid JSON?
