@@ -205,7 +205,6 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 			return nil
 		}
 
-		fmt.Printf("Database %s, state: %s, attempt: %d\n", database, dbState, attempt)
 		err := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
 		if err != nil {
 			return fmt.Errorf("waitForDbReady: %w", err)
@@ -227,7 +226,6 @@ func (d *dedicatedDBAdapter) waitForDbReady(db *gorm.DB, operation base.Operatio
 }
 
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation base.Operation, i *RDSInstance) error {
-	fmt.Printf("creating read replica for instance %s\n", i.Uuid)
 	taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	err := d.createDBReadReplica(i)
@@ -240,8 +238,6 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	fmt.Printf("initiated creation read replica for instance %s\n", i.Uuid)
-
 	err = d.waitForDbReady(db, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		fmt.Println(err)
@@ -251,8 +247,6 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(db *gorm.DB, operation b
 		}
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
-
-	fmt.Printf("read replica for instance %s is ready\n", i.Uuid)
 
 	return nil
 }
@@ -349,7 +343,6 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 		return
 	}
 
-	fmt.Printf("rds: asyncModifyDb, instance: %s, instance add read replica: %t, replica database: %s\n", i.Uuid, i.AddReadReplica, i.ReplicaDatabase)
 	if i.AddReadReplica {
 		err := d.waitAndCreateDBReadReplica(db, operation, i)
 		if err != nil {
@@ -497,7 +490,6 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(db *gorm.DB, operation base.Operat
 				return err
 			}
 
-			fmt.Printf("waitForDbDeleted: database %s is deleted\n", database)
 			isDeleted = true
 			break
 		}

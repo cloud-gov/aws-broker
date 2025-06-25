@@ -1,8 +1,6 @@
 package rds
 
 import (
-	"fmt"
-
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/lib/pq"
 
@@ -144,12 +142,10 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 
 	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
-	fmt.Printf("rds: before modify instance, instance: %s, plan read replica: %t, replica database: %s\n", modifiedInstance.Uuid, plan.ReadReplica, modifiedInstance.ReplicaDatabase)
 	if plan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
 		modifiedInstance.AddReadReplica = true
 		modifiedInstance.ReplicaDatabase = modifiedInstance.generateDatabaseReplicaName()
 	}
-	fmt.Printf("rds: after modify instance, instance: %s, plan read replica: %t, replica database: %s\n", modifiedInstance.Uuid, plan.ReadReplica, modifiedInstance.ReplicaDatabase)
 
 	return modifiedInstance, nil
 }
