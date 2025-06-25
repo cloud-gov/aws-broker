@@ -249,7 +249,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return newPlanErr
 	}
 
-	err = existingInstance.modify(options, newPlan, broker.settings)
+	modifiedInstance, err := existingInstance.modify(options, newPlan, broker.settings)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Failed to modify instance. Error: "+err.Error())
 	}
@@ -278,7 +278,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Modify the database instance.
-	status, err := adapter.modifyDB(existingInstance, broker.brokerDB)
+	status, err := adapter.modifyDB(modifiedInstance, broker.brokerDB)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
@@ -291,9 +291,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	// Update the existing instance in the broker.
 	existingInstance.State = status
-	existingInstance.PlanID = newPlan.ID
 	err = broker.brokerDB.Save(existingInstance).Error
-
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
