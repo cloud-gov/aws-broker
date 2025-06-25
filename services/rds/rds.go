@@ -361,6 +361,11 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 		}
 	}
 
+	err = db.Save(i).Error
+	if err != nil {
+		fmt.Printf("asyncModifyDb, error saving record: %s", err)
+	}
+
 	updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
 	if updateErr != nil {
 		fmt.Printf("asyncModifyDb: %s", updateErr)
