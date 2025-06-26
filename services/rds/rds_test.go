@@ -795,10 +795,50 @@ func TestAsyncModifyDb(t *testing.T) {
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
 	}{
+		"error preparing modify input": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					modifyDbErrs: []error{modifyDbErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{
+					returnErr: errors.New("fail"),
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceNotModified,
+		},
 		"modify primary DB error": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					modifyDbErrs: []error{modifyDbErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceNotModified,
+		},
+		"error waiting for database to be ready": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
