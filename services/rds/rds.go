@@ -179,9 +179,9 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 			&i.SecGroup,
 		},
 	}
-	if i.ParameterGroupName != "" {
-		createReadReplicaParams.DBParameterGroupName = aws.String(i.ParameterGroupName)
-	}
+	// if i.ParameterGroupName != "" && i.DbType != "postgres" {
+	// 	createReadReplicaParams.DBParameterGroupName = aws.String(i.ParameterGroupName)
+	// }
 	_, err := d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
 	return err
 }
@@ -352,6 +352,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 				err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 			}
 			fmt.Printf("asyncModifyDb, error creating read replica: %s\n", err)
+			return
 		}
 	} else if !i.AddReadReplica && i.ReplicaDatabase != "" {
 		// Modify existing read replica
@@ -371,6 +372,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 	err = db.Save(i).Error
 	if err != nil {
 		fmt.Printf("asyncModifyDb, error saving record: %s\n", err)
+		return
 	}
 
 	updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
@@ -588,12 +590,15 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(db *gorm.DB, operation base.Operation
 	updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
 	if updateErr != nil {
 		fmt.Println(fmt.Errorf("asyncDeleteDB: %w", err))
+		return
 	}
+
 	d.parameterGroupClient.CleanupCustomParameterGroups()
 
 	err = db.Unscoped().Delete(i).Error
 	if err != nil {
 		fmt.Println(fmt.Errorf("asyncDeleteDB, error deleting record: %w", err))
+		return
 	}
 
 	updateErr = taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
