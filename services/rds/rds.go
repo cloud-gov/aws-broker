@@ -179,9 +179,6 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 			&i.SecGroup,
 		},
 	}
-	// if i.ParameterGroupName != "" && i.DbType != "postgres" {
-	// 	createReadReplicaParams.DBParameterGroupName = aws.String(i.ParameterGroupName)
-	// }
 	_, err := d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
 	return err
 }
