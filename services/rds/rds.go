@@ -312,24 +312,24 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 }
 
 func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation, i *RDSInstance) {
-	params, err := d.prepareModifyDbInstanceInput(i)
+	modifyParams, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
 		updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		fmt.Printf("asyncModifyDb: %s", err)
+		fmt.Printf("asyncModifyDb, error preparing modify databse input: %s\n", err)
 		return
 	}
 
-	_, err = d.rds.ModifyDBInstance(params)
+	_, err = d.rds.ModifyDBInstance(modifyParams)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		fmt.Printf("asyncModifyDb: %s", err)
+		fmt.Printf("asyncModifyDb, error modifying database instance: %s\n", err)
 		return
 	}
 
@@ -339,29 +339,43 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		fmt.Printf("asyncModifyDb: %s", err)
+		fmt.Printf("asyncModifyDb, error waiting for database to be ready: %s\n", err)
 		return
 	}
 
 	if i.AddReadReplica {
+		// Add new read replica
 		err := d.waitAndCreateDBReadReplica(db, operation, i)
 		if err != nil {
 			updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
 			if updateErr != nil {
 				err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 			}
-			fmt.Printf("asyncModifyDb: %s", err)
+			fmt.Printf("asyncModifyDb, error creating read replica: %s\n", err)
+		}
+	} else if !i.AddReadReplica && i.ReplicaDatabase != "" {
+		// Modify existing read replica
+		replicaModifyParams := modifyParams
+		replicaModifyParams.DBInstanceIdentifier = &i.ReplicaDatabase
+		_, err = d.rds.ModifyDBInstance(replicaModifyParams)
+		if err != nil {
+			updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
+			if updateErr != nil {
+				err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
+			}
+			fmt.Printf("asyncModifyDb, error modifying read replica: %s\n", err)
+			return
 		}
 	}
 
 	err = db.Save(i).Error
 	if err != nil {
-		fmt.Printf("asyncModifyDb, error saving record: %s", err)
+		fmt.Printf("asyncModifyDb, error saving record: %s\n", err)
 	}
 
 	updateErr := taskqueue.UpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
 	if updateErr != nil {
-		fmt.Printf("asyncModifyDb: %s", updateErr)
+		fmt.Printf("asyncModifyDb, error updating async job message: %s\n", updateErr)
 	}
 }
 

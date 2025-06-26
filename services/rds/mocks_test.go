@@ -92,7 +92,8 @@ type mockRDSClient struct {
 	describeDBInstancesCallNum          int
 	describeDbInstancesResults          []*rds.DescribeDBInstancesOutput
 	describeDbInstancesErrs             []error
-	modifyDbErr                         error
+	modifyDbErrs                        []error
+	modifyDbCallNum                     int
 	modifyDbParamGroupErr               error
 }
 
@@ -178,9 +179,10 @@ func (m *mockRDSClient) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadRep
 }
 
 func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
-	if m.modifyDbErr != nil {
-		return nil, m.modifyDbErr
+	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[m.modifyDbCallNum] != nil {
+		return nil, m.modifyDbErrs[m.modifyDbCallNum]
 	}
+	m.modifyDbCallNum++
 	return nil, nil
 }
 

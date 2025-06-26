@@ -653,10 +653,10 @@ func TestAsyncModifyDb(t *testing.T) {
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
 	}{
-		"modify DB error": {
+		"modify primary DB error": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
-					modifyDbErr: modifyDbErr,
+					modifyDbErrs: []error{modifyDbErr},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
@@ -742,6 +742,39 @@ func TestAsyncModifyDb(t *testing.T) {
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+		},
+		"error modifying read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					modifyDbErrs: []error{nil, modifyDbErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceNotModified,
 		},
 	}
 
