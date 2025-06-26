@@ -104,6 +104,71 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				DBParameterGroupName: aws.String("parameter-group-1"),
 			},
 		},
+		"handles optional params": {
+			dbInstance: &RDSInstance{
+				AllocatedStorage: 10,
+				Database:         "db-1",
+				BinaryLogFormat:  "ROW",
+				DbType:           "mysql",
+				DbVersion:        "8.0",
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName: "formatted-name",
+				},
+				Username:    "fake-user",
+				StorageType: "storage-1",
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+				PubliclyAccessible:    true,
+				BackupRetentionPeriod: 14,
+				DbSubnetGroup:         "subnet-group-1",
+				SecGroup:              "sec-group-1",
+				LicenseModel:          "foo",
+			},
+			dbAdapter: &dedicatedDBAdapter{
+				parameterGroupClient: &mockParameterGroupClient{
+					rds:              &mockRDSClient{},
+					customPgroupName: "parameter-group-1",
+				},
+				Plan: catalog.RDSPlan{
+					InstanceClass: "class-1",
+					Redundant:     true,
+					Encrypted:     true,
+				},
+				settings: config.Settings{
+					PubliclyAccessibleFeature: true,
+				},
+			},
+			password: "fake-password",
+			expectedParams: &rds.CreateDBInstanceInput{
+				AllocatedStorage:        aws.Int64(10),
+				DBInstanceClass:         aws.String("class-1"),
+				DBInstanceIdentifier:    aws.String("db-1"),
+				DBName:                  aws.String("formatted-name"),
+				Engine:                  aws.String("mysql"),
+				MasterUserPassword:      aws.String("fake-password"),
+				MasterUsername:          aws.String("fake-user"),
+				AutoMinorVersionUpgrade: aws.Bool(true),
+				MultiAZ:                 aws.Bool(true),
+				StorageEncrypted:        aws.Bool(true),
+				StorageType:             aws.String("storage-1"),
+				Tags: []*rds.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
+				},
+				PubliclyAccessible:    aws.Bool(true),
+				BackupRetentionPeriod: aws.Int64(14),
+				DBSubnetGroupName:     aws.String("subnet-group-1"),
+				VpcSecurityGroupIds: []*string{
+					aws.String("sec-group-1"),
+				},
+				DBParameterGroupName: aws.String("parameter-group-1"),
+				EngineVersion:        aws.String("8.0"),
+				LicenseModel:         aws.String("foo"),
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -130,10 +195,52 @@ func TestAsyncCreateDb(t *testing.T) {
 		expectedState base.InstanceState
 		password      string
 	}{
+		"error creating input params": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					createDbErr: createDbErr,
+				},
+				parameterGroupClient: &mockParameterGroupClient{
+					returnErr: errors.New("failed"),
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			password:      helpers.RandStr(10),
+			expectedState: base.InstanceNotCreated,
+		},
 		"create DB error": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					createDbErr: createDbErr,
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			password:      helpers.RandStr(10),
+			expectedState: base.InstanceNotCreated,
+		},
+		"error waiting for database creation": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 			},
@@ -229,6 +336,41 @@ func TestAsyncCreateDb(t *testing.T) {
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+		},
+		"error creating replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					createDBInstanceReadReplicaErr: errors.New("fail"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+			},
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "replica",
+				AddReadReplica:  true,
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceNotCreated,
 		},
 	}
 

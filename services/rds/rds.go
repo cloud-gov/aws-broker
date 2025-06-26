@@ -255,7 +255,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(db *gorm.DB, operation base.Operation
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
-		fmt.Printf("asyncCreateDB: %s", err)
+		fmt.Printf("asyncCreateDB: %s\n", err)
 		return
 	}
 
@@ -263,14 +263,14 @@ func (d *dedicatedDBAdapter) asyncCreateDB(db *gorm.DB, operation base.Operation
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
-		fmt.Printf("asyncCreateDB: %s", err)
+		fmt.Printf("asyncCreateDB: %s\n", err)
 		return
 	}
 
 	err = d.waitForDbReady(db, operation, i, i.Database)
 	if err != nil {
 		taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		fmt.Printf("asyncCreateDB: %s", err)
+		fmt.Printf("asyncCreateDB: %s\n", err)
 		return
 	}
 
@@ -278,7 +278,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(db *gorm.DB, operation base.Operation
 		err := d.waitAndCreateDBReadReplica(db, operation, i)
 		if err != nil {
 			taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
-			fmt.Printf("asyncCreateDB: %s", err)
+			fmt.Printf("asyncCreateDB: %s\n", err)
 			return
 		}
 	}
