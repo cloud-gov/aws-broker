@@ -2,6 +2,7 @@ package taskqueue
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/jinzhu/gorm"
@@ -42,4 +43,11 @@ func GetLastAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, ope
 		return nil, errors.New("could not find async job status message")
 	}
 	return &asyncJobMsg, result.Error
+}
+
+func ShouldUpdateAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) {
+	err := UpdateAsyncJobMessage(db, brokerId, instanceId, operation, state, message)
+	if err != nil {
+		fmt.Println(fmt.Errorf("ShouldUpdateAsyncJobMessage: %w", err))
+	}
 }
