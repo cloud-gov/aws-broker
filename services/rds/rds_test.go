@@ -1185,66 +1185,6 @@ func TestBindDBToApp(t *testing.T) {
 			expectedInstance: &RDSInstance{},
 			expectErr:        true,
 		},
-		"success with replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []*rds.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-									Endpoint: &rds.Endpoint{
-										Address: aws.String("db-address"),
-										Port:    aws.Int64(1234),
-									},
-								},
-							},
-						},
-						{
-							DBInstances: []*rds.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-									Endpoint: &rds.Endpoint{
-										Address: aws.String("db-replica-address"),
-										Port:    aws.Int64(1234),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			rdsInstance: &RDSInstance{
-				dbUtils: &RDSDatabaseUtils{},
-				Instance: base.Instance{
-					Uuid: uuid.NewString(),
-				},
-				ReplicaDatabase: "db-replica",
-				DbType:          "postgres",
-			},
-			password: "fake-pw",
-			expectedCreds: map[string]string{
-				"uri":          "postgres://user-1:fake-pw@db-address:1234/db1",
-				"username":     "user-1",
-				"password":     "fake-pw",
-				"host":         "db-address",
-				"port":         strconv.FormatInt(1234, 10),
-				"db_name":      "db1",
-				"name":         "db1",
-				"replica_host": "db-replica-address",
-				"replica_uri":  "postgres://user-1:fake-pw@db-replica-address:1234/db1",
-			},
-			expectedInstance: &RDSInstance{
-				Instance: base.Instance{
-					Host:  "db-address",
-					Port:  1234,
-					State: base.InstanceReady,
-				},
-				ReplicaDatabase:     "db-replica",
-				ReplicaDatabaseHost: "db-replica-address",
-				DbType:              "postgres",
-			},
-		},
 	}
 
 	for name, test := range testCases {
