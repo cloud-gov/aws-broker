@@ -238,6 +238,7 @@ jobs:
           AUTH_PASS: ((development-auth-pass))
           SERVICES: >-
             aws-rds:micro-psql-replica
+            aws-rds:micro-mysql-replica
           SERVICE_ORGANIZATION: ((development-replica-enabled-orgs))
 
   - name: acceptance-tests-redis-development

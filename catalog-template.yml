@@ -686,8 +686,44 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         broker: "AWS broker"
+    - id: "a5605b0e-2536-41f8-8673-f8bd88a5f795"
+      name: "micro-mysql-replica"
+      description: "Multi-AZ RDS instance of MySQL with read replica, minimum 1 core, minimum 1 GiB memory"
+      metadata:
+        bullets:
+          - *read-replica
+          - *multi-az-rds
+          - *default-mysql-v8
+          - *minimum-1-core
+          - *minimum-1-gib-memory
+          - *default-10-gb-storage
+        costs:
+          - amount:
+              usd: 30
+            unit: "MONTHLY"
+        displayName: *micro-mysql-name
+      free: true
+      adapter: dedicated
+      instanceClass: db.t3.micro
+      allocatedStorage: 20
+      approvedMajorVersions:
+        - "8.0"
+      dbVersion: "8.0"
+      dbType: mysql
+      plan_updateable: true
+      redundant: true
+      read_replica: true
+      encrypted: true
+      storage_type: gp3
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        broker: "AWS broker"
     - id: "a1264e70-4b08-11ed-b878-0242ac120002"
-      name: &micro-mysql-name "micro-mysql-redundant"
+      name: &micro-mysql-name "micro-mysql-replica"
       description: "Multi-AZ RDS instance of MySQL, minimum 1 core, minimum 1 GiB memory"
       metadata:
         bullets:
