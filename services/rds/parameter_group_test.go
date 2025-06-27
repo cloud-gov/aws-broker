@@ -563,7 +563,12 @@ func TestAddLibraryToSharedPreloadLibraries(t *testing.T) {
 		"has default param value": {
 			currentParameterValue: "library1",
 			customLibrary:         "library2",
-			expectedParam:         "library2,library1",
+			expectedParam:         "library1,library2",
+		},
+		"param value already exists": {
+			currentParameterValue: "library1,library2",
+			customLibrary:         "library2",
+			expectedParam:         "library1,library2",
 		},
 	}
 	for name, test := range testCases {

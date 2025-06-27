@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -393,12 +394,13 @@ func addLibraryToSharedPreloadLibraries(
 	customLibrary string,
 ) string {
 	libraries := []string{}
-	if customLibrary != "" {
+	if customLibrary != "" && !strings.Contains(currentParameterValue, customLibrary) {
 		libraries = append(libraries, customLibrary)
 	}
 	if currentParameterValue != "" {
 		libraries = append(libraries, currentParameterValue)
 	}
+	slices.Sort(libraries)
 	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
 	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
 	return customSharePreloadLibrariesParam
