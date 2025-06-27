@@ -387,7 +387,7 @@ func TestAsyncCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.dbAdapter.asyncCreateDB(base.CreateOp, test.dbInstance, test.password)
+			test.dbAdapter.asyncCreateDB(test.dbInstance, test.password)
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
@@ -1029,7 +1029,7 @@ func TestAsyncModifyDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.dbAdapter.asyncModifyDb(base.ModifyOp, test.dbInstance)
+			test.dbAdapter.asyncModifyDb(test.dbInstance)
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
 			if err != nil {

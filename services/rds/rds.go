@@ -249,7 +249,9 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 	return nil
 }
 
-func (d *dedicatedDBAdapter) asyncCreateDB(operation base.Operation, i *RDSInstance, password string) {
+func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, password string) {
+	operation := base.CreateOp
+
 	createDbInputParams, err := d.prepareCreateDbInput(i, password)
 	if err != nil {
 		taskqueue.ShouldUpdateAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
@@ -290,12 +292,14 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.Ins
 		return base.InstanceNotCreated, err
 	}
 
-	go d.asyncCreateDB(base.CreateOp, i, password)
+	go d.asyncCreateDB(i, password)
 
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedDBAdapter) asyncModifyDb(operation base.Operation, i *RDSInstance) {
+func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
+	operation := base.ModifyOp
+
 	modifyParams, err := d.prepareModifyDbInstanceInput(i, i.Database)
 	if err != nil {
 		taskqueue.ShouldUpdateAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
@@ -360,7 +364,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance) (base.InstanceState, error
 		return base.InstanceNotModified, err
 	}
 
-	go d.asyncModifyDb(base.ModifyOp, i)
+	go d.asyncModifyDb(i)
 
 	return base.InstanceInProgress, nil
 }
