@@ -298,7 +298,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 	modifyParams, err := d.prepareModifyDbInstanceInput(i)
 	if err != nil {
 		taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
-		fmt.Printf("asyncModifyDb, error preparing modify databse input: %s\n", err)
+		fmt.Printf("asyncModifyDb, error preparing modify database input: %s\n", err)
 		return
 	}
 

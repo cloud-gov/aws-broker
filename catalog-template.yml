@@ -723,7 +723,7 @@ rds:
         client: "paas-cf"
         broker: "AWS broker"
     - id: "a1264e70-4b08-11ed-b878-0242ac120002"
-      name: &micro-mysql-name "micro-mysql-replica"
+      name: &micro-mysql-name "micro-mysql-redundant"
       description: "Multi-AZ RDS instance of MySQL, minimum 1 core, minimum 1 GiB memory"
       metadata:
         bullets:
