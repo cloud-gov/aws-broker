@@ -8,21 +8,7 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-func CreateAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) error {
-	asyncJobMsg := &AsyncJobMsg{
-		BrokerId:   brokerId,
-		InstanceId: instanceId,
-		JobType:    operation,
-		JobState: AsyncJobState{
-			Message: message,
-			State:   state,
-		},
-	}
-	err := db.Save(asyncJobMsg).Error
-	return err
-}
-
-func UpdateAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) error {
+func WriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) error {
 	asyncJobMsg := &AsyncJobMsg{
 		BrokerId:   brokerId,
 		InstanceId: instanceId,
@@ -45,9 +31,9 @@ func GetLastAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, ope
 	return &asyncJobMsg, result.Error
 }
 
-func ShouldUpdateAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) {
-	err := UpdateAsyncJobMessage(db, brokerId, instanceId, operation, state, message)
+func ShouldWriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) {
+	err := WriteAsyncJobMessage(db, brokerId, instanceId, operation, state, message)
 	if err != nil {
-		fmt.Println(fmt.Errorf("ShouldUpdateAsyncJobMessage: %w", err))
+		fmt.Println(fmt.Errorf("ShouldWriteAsyncJobMessage: %w", err))
 	}
 }
