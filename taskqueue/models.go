@@ -15,9 +15,9 @@ type AsyncJobState struct {
 
 // messages of job state delivered over chan that are persisted
 type AsyncJobMsg struct {
-	BrokerId        string         `gorm:"primary_key; not null"`
-	InstanceId      string         `gorm:"primary_key; not null"`
-	JobType         base.Operation `gorm:"primary_key; not null"`
+	BrokerId        string         `gorm:"primaryKey; not null"`
+	InstanceId      string         `gorm:"primaryKey; not null"`
+	JobType         base.Operation `gorm:"primaryKey; not null"`
 	JobState        AsyncJobState  `gorm:"embedded"`
 	ProcessedStatus chan bool      `gorm:"-"`
 }
