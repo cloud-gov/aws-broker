@@ -1234,7 +1234,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance)
+			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.dbInstance.Database)
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("unexpected error: %s", err)
 			}

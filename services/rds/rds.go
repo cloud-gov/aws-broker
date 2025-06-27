@@ -130,7 +130,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.ModifyDBInstanceInput, error) {
+func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, database string) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
@@ -138,7 +138,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance) (*rds.
 		ApplyImmediately:         aws.Bool(true),
 		DBInstanceClass:          &d.Plan.InstanceClass,
 		MultiAZ:                  &d.Plan.Redundant,
-		DBInstanceIdentifier:     &i.Database,
+		DBInstanceIdentifier:     &database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
 		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
 	}
@@ -295,7 +295,7 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string, db *gorm.
 }
 
 func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation, i *RDSInstance) {
-	modifyParams, err := d.prepareModifyDbInstanceInput(i)
+	modifyParams, err := d.prepareModifyDbInstanceInput(i, i.Database)
 	if err != nil {
 		taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		fmt.Printf("asyncModifyDb, error preparing modify database input: %s\n", err)
@@ -327,8 +327,13 @@ func (d *dedicatedDBAdapter) asyncModifyDb(db *gorm.DB, operation base.Operation
 		}
 	} else if !i.AddReadReplica && i.ReplicaDatabase != "" {
 		// Modify existing read replica
-		replicaModifyParams := modifyParams
-		replicaModifyParams.DBInstanceIdentifier = &i.ReplicaDatabase
+		replicaModifyParams, err := d.prepareModifyDbInstanceInput(i, i.ReplicaDatabase)
+		if err != nil {
+			taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
+			fmt.Printf("asyncModifyDb, error preparing modify database input: %s\n", err)
+			return
+		}
+
 		_, err = d.rds.ModifyDBInstance(replicaModifyParams)
 		if err != nil {
 			taskqueue.ShouldUpdateAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
