@@ -71,7 +71,7 @@ type rdsBroker struct {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings) (dbAdapter, response.Response) {
+func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, db *gorm.DB) (dbAdapter, response.Response) {
 
 	var dbAdapter dbAdapter
 	// For test environments, use a mock adapter.
@@ -89,6 +89,7 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings) (dbAdapter, res
 			settings:             *s,
 			rds:                  rdsClient,
 			parameterGroupClient: parameterGroupClient,
+			db:                   db,
 		}
 	default:
 		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
@@ -184,13 +185,13 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
 	// Create the database instance.
-	status, err := adapter.createDB(newInstance, newInstance.ClearPassword, broker.brokerDB)
+	status, err := adapter.createDB(newInstance, newInstance.ClearPassword)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
@@ -272,13 +273,13 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Connect to the existing instance.
-	adapter, adapterErr := initializeAdapter(newPlan, broker.settings)
+	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
 	// Modify the database instance.
-	status, err := adapter.modifyDB(modifiedInstance, broker.brokerDB)
+	status, err := adapter.modifyDB(modifiedInstance)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
@@ -320,7 +321,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -391,7 +392,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	}
 
 	// Get the correct database logic depending on the type of plan.
-	adapter, adapterErr := initializeAdapter(plan, broker.settings)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -399,7 +400,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
-	if credentials, err = adapter.bindDBToApp(existingInstance, password, broker.brokerDB); err != nil {
+	if credentials, err = adapter.bindDBToApp(existingInstance, password); err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application.Error: %s", err))
 	}
 
@@ -425,13 +426,13 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
 	// Delete the database instance.
-	status, err := adapter.deleteDB(existingInstance, broker.brokerDB)
+	status, err := adapter.deleteDB(existingInstance)
 	if err != nil && status != base.InstanceNotGone {
 		fmt.Printf("rds: DeleteInstance error: %s\n", err)
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())

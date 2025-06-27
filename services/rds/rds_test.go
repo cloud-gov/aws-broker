@@ -188,6 +188,11 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 }
 
 func TestAsyncCreateDb(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
@@ -203,6 +208,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -223,6 +229,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					createDbErr: createDbErr,
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				db:                   brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -243,6 +250,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				db:                   brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -282,6 +290,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -321,6 +330,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -356,6 +366,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -376,12 +387,7 @@ func TestAsyncCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			test.dbAdapter.asyncCreateDB(brokerDB, base.CreateOp, test.dbInstance, test.password)
+			test.dbAdapter.asyncCreateDB(base.CreateOp, test.dbInstance, test.password)
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
@@ -396,6 +402,11 @@ func TestAsyncCreateDb(t *testing.T) {
 }
 
 func TestCreateDb(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		dbAdapter              *dedicatedDBAdapter
@@ -429,6 +440,7 @@ func TestCreateDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -450,12 +462,7 @@ func TestCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password, brokerDB)
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password)
 
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -485,6 +492,11 @@ func TestCreateDb(t *testing.T) {
 }
 
 func TestWaitForDbReady(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		dbAdapter             *dedicatedDBAdapter
@@ -510,6 +522,7 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -553,6 +566,7 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        3,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -596,6 +610,7 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        3,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -620,6 +635,7 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -638,13 +654,8 @@ func TestWaitForDbReady(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err = test.dbAdapter.waitForDbReady(brokerDB, base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err = test.dbAdapter.waitForDbReady(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -664,6 +675,11 @@ func TestWaitForDbReady(t *testing.T) {
 }
 
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
@@ -695,6 +711,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -717,6 +734,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -749,6 +767,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -766,12 +785,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			err = test.dbAdapter.waitAndCreateDBReadReplica(brokerDB, base.CreateOp, test.dbInstance)
+			err = test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -789,6 +803,11 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 }
 
 func TestAsyncModifyDb(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	modifyDbErr := errors.New("modify DB error")
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
@@ -803,6 +822,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{
 					returnErr: errors.New("fail"),
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -822,6 +842,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					modifyDbErrs: []error{modifyDbErr},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				db:                   brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -841,6 +862,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
+				db:                   brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -872,6 +894,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -910,6 +933,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -944,6 +968,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -984,6 +1009,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1003,12 +1029,7 @@ func TestAsyncModifyDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			test.dbAdapter.asyncModifyDb(brokerDB, base.ModifyOp, test.dbInstance)
+			test.dbAdapter.asyncModifyDb(base.ModifyOp, test.dbInstance)
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
 			if err != nil {
@@ -1023,6 +1044,11 @@ func TestAsyncModifyDb(t *testing.T) {
 }
 
 func TestModifyDb(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		dbAdapter              dbAdapter
@@ -1055,6 +1081,7 @@ func TestModifyDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1075,12 +1102,8 @@ func TestModifyDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
 
-			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, brokerDB)
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1334,6 +1357,11 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 }
 
 func TestBindDBToApp(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		dbAdapter        dbAdapter
 		expectErr        bool
@@ -1359,6 +1387,7 @@ func TestBindDBToApp(t *testing.T) {
 						},
 					},
 				},
+				db: brokerDB,
 			},
 			rdsInstance: &RDSInstance{
 				dbUtils: &MockDbUtils{
@@ -1408,6 +1437,7 @@ func TestBindDBToApp(t *testing.T) {
 						},
 					},
 				},
+				db: brokerDB,
 			},
 			rdsInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1431,6 +1461,7 @@ func TestBindDBToApp(t *testing.T) {
 						},
 					},
 				},
+				db: brokerDB,
 			},
 			rdsInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1445,18 +1476,13 @@ func TestBindDBToApp(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			brokerDB.NewRecord(test.rdsInstance)
 			err = brokerDB.Create(test.rdsInstance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password, brokerDB)
+			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -1486,6 +1512,11 @@ func TestBindDBToApp(t *testing.T) {
 }
 
 func TestWaitForDbDeleted(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
 
 	testCases := map[string]struct {
@@ -1505,6 +1536,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1542,6 +1574,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        3,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1585,6 +1618,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        3,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1609,6 +1643,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1627,13 +1662,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err = test.dbAdapter.waitForDbDeleted(brokerDB, base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err = test.dbAdapter.waitForDbDeleted(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -1653,6 +1683,11 @@ func TestWaitForDbDeleted(t *testing.T) {
 }
 
 func TestAsyncDeleteDB(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
 
 	testCases := map[string]struct {
@@ -1671,6 +1706,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1693,6 +1729,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1716,6 +1753,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1726,7 +1764,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
+			expectedState:       base.InstanceInProgress,
 			expectedRecordCount: 1,
 		},
 		"error checking replica database status": {
@@ -1739,6 +1777,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1750,7 +1789,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
+			expectedState:       base.InstanceInProgress,
 			expectedRecordCount: 1,
 		},
 		"error deleting database": {
@@ -1763,6 +1802,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1773,7 +1813,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
+			expectedState:       base.InstanceInProgress,
 			expectedRecordCount: 1,
 		},
 		"error deleting replica database": {
@@ -1786,6 +1826,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1797,18 +1838,13 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
+			expectedState:       base.InstanceInProgress,
 			expectedRecordCount: 1,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			brokerDB.NewRecord(test.dbInstance)
 			err = brokerDB.Create(test.dbInstance).Error
 			if err != nil {
@@ -1822,7 +1858,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			}
 
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			test.dbAdapter.asyncDeleteDB(brokerDB, test.dbInstance)
+			test.dbAdapter.asyncDeleteDB(test.dbInstance)
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
 			if err != nil {
@@ -1842,6 +1878,11 @@ func TestAsyncDeleteDB(t *testing.T) {
 }
 
 func TestDeleteDb(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
 
 	testCases := map[string]struct {
@@ -1862,6 +1903,7 @@ func TestDeleteDb(t *testing.T) {
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
+				db: brokerDB,
 			},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -1881,12 +1923,7 @@ func TestDeleteDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			responseCode, err := test.dbAdapter.deleteDB(test.dbInstance, brokerDB)
+			responseCode, err := test.dbAdapter.deleteDB(test.dbInstance)
 
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
