@@ -12,7 +12,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/taskqueue"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 func testDBInit() (*gorm.DB, error) {

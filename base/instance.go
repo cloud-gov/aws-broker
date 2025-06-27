@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.
@@ -86,7 +86,7 @@ func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response
 	result := brokerDb.Where("uuid = ?", id).First(&instance)
 	if result.Error == nil {
 		return instance, nil
-	} else if result.RecordNotFound() {
+	} else if result.RowsAffected == 0 {
 		return instance, response.NewErrorResponse(http.StatusNotFound, result.Error.Error())
 	} else {
 		return instance, response.NewErrorResponse(http.StatusInternalServerError, result.Error.Error())

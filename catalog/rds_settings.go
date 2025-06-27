@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/cloud-gov/aws-broker/common"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // RDSSetting is the wrapper for

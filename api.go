@@ -5,8 +5,8 @@ import (
 	"github.com/cloud-gov/aws-broker/taskqueue"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-martini/martini"
-	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/render"
+	"gorm.io/gorm"
 
 	"net/http"
 

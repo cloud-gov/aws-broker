@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-martini/martini"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"encoding/json"
 	"io"

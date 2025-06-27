@@ -13,7 +13,8 @@ import (
 	"github.com/cloud-gov/aws-broker/services/redis"
 	"github.com/cloud-gov/aws-broker/taskqueue"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"github.com/jinzhu/gorm"
+
+	"gorm.io/gorm"
 )
 
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) (base.Broker, response.Response) {
@@ -54,8 +55,6 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 
 	if resp.GetResponseType() != response.ErrorResponseType {
 		instance := base.Instance{Uuid: id, Request: createRequest}
-		brokerDb.NewRecord(instance)
-
 		err := brokerDb.Create(&instance).Error
 
 		if err != nil {

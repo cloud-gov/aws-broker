@@ -6,9 +6,9 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-martini/martini"
-	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/auth"
 	"github.com/martini-contrib/render"
+	"gorm.io/gorm"
 
 	"log"
 	"os"

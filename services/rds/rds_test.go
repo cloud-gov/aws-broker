@@ -1476,7 +1476,6 @@ func TestBindDBToApp(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB.NewRecord(test.rdsInstance)
 			err = brokerDB.Create(test.rdsInstance).Error
 			if err != nil {
 				t.Fatal(err)
@@ -1845,7 +1844,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB.NewRecord(test.dbInstance)
 			err = brokerDB.Create(test.dbInstance).Error
 			if err != nil {
 				t.Fatal(err)

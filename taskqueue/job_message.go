@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloud-gov/aws-broker/base"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 func WriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) error {

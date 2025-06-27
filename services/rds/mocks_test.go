@@ -7,7 +7,7 @@ import (
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/taskqueue"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 func testDBInit() (*gorm.DB, error) {

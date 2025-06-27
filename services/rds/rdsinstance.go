@@ -14,22 +14,22 @@ import (
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils DatabaseUtils `sql:"-"`
+	dbUtils DatabaseUtils `gorm:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	ClearPassword string `sql:"-"`
+	ClearPassword string `gorm:"-"`
 
-	Tags                  map[string]string `sql:"-"`
+	Tags                  map[string]string `gorm:"-"`
 	BackupRetentionPeriod int64             `sql:"size(255)"`
-	DbSubnetGroup         string            `sql:"-"`
+	DbSubnetGroup         string            `gorm:"-"`
 	AllocatedStorage      int64             `sql:"size(255)"`
-	SecGroup              string            `sql:"-"`
-	EnableFunctions       bool              `sql:"-"`
-	PubliclyAccessible    bool              `sql:"-"`
+	SecGroup              string            `gorm:"-"`
+	EnableFunctions       bool              `gorm:"-"`
+	PubliclyAccessible    bool              `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
 
@@ -39,14 +39,14 @@ type RDSInstance struct {
 
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         *bool  `sql:"size(255)"`
-	ParameterGroupFamily string `sql:"-"`
+	ParameterGroupFamily string `gorm:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudwatchLogGroupExports pq.StringArray `sql:"type:text[]"`
+	EnabledCloudwatchLogGroupExports pq.StringArray `gorm:"type:text[]"`
 
 	StorageType string `sql:"size(255)"`
 
-	AddReadReplica      bool   `sql:"-"`
+	AddReadReplica      bool   `gorm:"-"`
 	ReplicaDatabase     string `sql:"size(255)"`
 	ReplicaDatabaseHost string `sql:"size(255)"`
 }

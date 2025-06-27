@@ -19,7 +19,7 @@ type AsyncJobMsg struct {
 	InstanceId      string         `gorm:"primary_key; not null"`
 	JobType         base.Operation `gorm:"primary_key; not null"`
 	JobState        AsyncJobState  `gorm:"embedded"`
-	ProcessedStatus chan bool      `sql:"-"`
+	ProcessedStatus chan bool      `gorm:"-"`
 }
 
 // Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)

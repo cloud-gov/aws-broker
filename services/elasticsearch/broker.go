@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -188,7 +188,6 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	}
 
 	newInstance.State = status
-	broker.brokerDB.NewRecord(newInstance)
 	err = broker.brokerDB.Create(&newInstance).Error
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
