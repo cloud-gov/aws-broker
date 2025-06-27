@@ -1822,7 +1822,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			}
 
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			test.dbAdapter.asyncDeleteDB(brokerDB, base.DeleteOp, test.dbInstance)
+			test.dbAdapter.asyncDeleteDB(brokerDB, test.dbInstance)
 
 			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
 			if err != nil {
