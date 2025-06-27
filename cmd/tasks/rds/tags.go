@@ -17,8 +17,8 @@ import (
 	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 
+	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
-	"gorm.io/gorm"
 )
 
 func getRDSResourceTags(rdsClient rdsiface.RDSAPI, dbInstanceArn string) ([]*awsRds.Tag, error) {

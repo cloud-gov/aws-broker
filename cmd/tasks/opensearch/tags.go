@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/opensearchservice/opensearchserviceiface"
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
-	"gorm.io/gorm"
 )
 
 func getOpensearchDomainArn(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, elasticsearchInstance elasticsearch.ElasticsearchInstance) (string, error) {

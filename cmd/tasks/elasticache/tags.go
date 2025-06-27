@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	"github.com/aws/aws-sdk-go/service/elasticache/elasticacheiface"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
-	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 )

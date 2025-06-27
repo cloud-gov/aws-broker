@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
-	"gorm.io/gorm"
+	"github.com/jinzhu/gorm"
 
 	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 )
