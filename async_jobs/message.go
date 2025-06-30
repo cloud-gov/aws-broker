@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// This function is writing a message to the database for tracking the state of an asychronous job. This is useful
+// when querying the status of asynchronous create/modify/delete operations from a LastOperation handler.
 func WriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) error {
 	asyncJobMsg := &AsyncJobMsg{
 		BrokerId:   brokerId,
