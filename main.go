@@ -31,8 +31,8 @@ func main() {
 		log.Fatal(fmt.Errorf("There was an error with the DB. Error: " + err.Error()))
 	}
 
-	Queue := async_jobs.NewAsyncJobManager()
-	Queue.Init()
+	asyncJobManager := async_jobs.NewAsyncJobManager()
+	asyncJobManager.Init()
 
 	tagManager, err := brokertags.NewCFTagManager(
 		"AWS broker",
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// Try to connect and create the app.
-	if m := App(&settings, DB, Queue, tagManager); m != nil {
+	if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {
 		log.Println("Starting app...")
 		m.Run()
 	} else {
