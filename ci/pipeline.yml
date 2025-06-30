@@ -221,8 +221,10 @@ jobs:
             aws-rds:large-gp-sqlserver-se
             aws-rds:2xlarge-gp-psql-redundant
             aws-rds:2xlarge-gp-psql
+            aws-rds:2xlarge-gp-psql-replica
             aws-rds:xlarge-gp-psql-m6
             aws-rds:xlarge-gp-psql-m6-redundant
+            aws-rds:xlarge-gp-psql-m6-replica
           SERVICE_ORGANIZATION: cloud-gov
 
       - task: update-broker-replicas
@@ -238,8 +240,17 @@ jobs:
           AUTH_PASS: ((development-auth-pass))
           SERVICES: >-
             aws-rds:micro-psql-replica
+            aws-rds:small-psql-replica
+            aws-rds:medium-psql-replica
+            aws-rds:medium-gp-psql-replica
+            aws-rds:large-gp-psql-replica
+            aws-rds:xlarge-gp-psql-replica
             aws-rds:micro-mysql-replica
-          SERVICE_ORGANIZATION: ((development-replica-enabled-orgs))
+            aws-rds:small-mysql-replica
+            aws-rds:medium-mysql-replica
+            aws-rds:medium-gp-mysql-replica
+            aws-rds:large-gp-mysql-replica
+            aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-redis-development
     plan:
@@ -742,8 +753,40 @@ jobs:
           BROKER_NAME: ((staging-broker-name))
           AUTH_USER: ((staging-auth-user))
           AUTH_PASS: ((staging-auth-pass))
-          SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+          SERVICES: >-
+            aws-rds:large-gp-sqlserver-se
+            aws-rds:2xlarge-gp-psql-redundant
+            aws-rds:2xlarge-gp-psql
+            aws-rds:2xlarge-gp-psql-replica
+            aws-rds:xlarge-gp-psql-m6
+            aws-rds:xlarge-gp-psql-m6-redundant
+            aws-rds:xlarge-gp-psql-m6-replica
           SERVICE_ORGANIZATION: cloud-gov
+
+      - task: update-broker-replicas
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          BROKER_NAME: ((staging-broker-name))
+          AUTH_USER: ((staging-auth-user))
+          AUTH_PASS: ((staging-auth-pass))
+          SERVICES: >-
+            aws-rds:micro-psql-replica
+            aws-rds:small-psql-replica
+            aws-rds:medium-psql-replica
+            aws-rds:medium-gp-psql-replica
+            aws-rds:large-gp-psql-replica
+            aws-rds:xlarge-gp-psql-replica
+            aws-rds:micro-mysql-replica
+            aws-rds:small-mysql-replica
+            aws-rds:medium-mysql-replica
+            aws-rds:medium-gp-mysql-replica
+            aws-rds:large-gp-mysql-replica
+            aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-db-staging
     plan:
@@ -1250,7 +1293,14 @@ jobs:
           BROKER_NAME: ((prod-broker-name))
           AUTH_USER: ((prod-auth-user))
           AUTH_PASS: ((prod-auth-pass))
-          SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+          SERVICES: >-
+            aws-rds:large-gp-sqlserver-se
+            aws-rds:2xlarge-gp-psql-redundant
+            aws-rds:2xlarge-gp-psql
+            aws-rds:2xlarge-gp-psql-replica
+            aws-rds:xlarge-gp-psql-m6
+            aws-rds:xlarge-gp-psql-m6-redundant
+            aws-rds:xlarge-gp-psql-m6-replica
           SERVICE_ORGANIZATION: cloud-gov
 
       - task: update-broker-datagov
@@ -1266,6 +1316,31 @@ jobs:
           AUTH_PASS: ((prod-auth-pass))
           SERVICES: aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
           SERVICE_ORGANIZATION: gsa-datagov
+
+      - task: update-broker-replicas
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          BROKER_NAME: ((prod-broker-name))
+          AUTH_USER: ((prod-auth-user))
+          AUTH_PASS: ((prod-auth-pass))
+          SERVICES: >-
+            aws-rds:micro-psql-replica
+            aws-rds:small-psql-replica
+            aws-rds:medium-psql-replica
+            aws-rds:medium-gp-psql-replica
+            aws-rds:large-gp-psql-replica
+            aws-rds:xlarge-gp-psql-replica
+            aws-rds:micro-mysql-replica
+            aws-rds:small-mysql-replica
+            aws-rds:medium-mysql-replica
+            aws-rds:medium-gp-mysql-replica
+            aws-rds:large-gp-mysql-replica
+            aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-prod
     plan:
