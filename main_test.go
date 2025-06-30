@@ -20,13 +20,13 @@ import (
 
 	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
-	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
+	"github.com/cloud-gov/aws-broker/testutil"
 )
 
 var brokerDB *gorm.DB
@@ -44,7 +44,7 @@ func setup() *martini.ClassicMartini {
 	s.CfApiClientSecret = "fake-client-secret"
 
 	var err error
-	brokerDB, err = common.TestDbInit()
+	brokerDB, err = testutil.TestDbInit()
 	if err != nil {
 		log.Fatal(err)
 	}

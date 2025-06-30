@@ -5,13 +5,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
-	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
 )
 
 func testDBInit() (*gorm.DB, error) {
-	db, err := common.TestDbInit()
+	db, err := testutil.TestDbInit()
 	// Automigrate!
 	db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
 	return db, err
