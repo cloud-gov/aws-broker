@@ -229,20 +229,14 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 	err := d.createDBReadReplica(i)
 	if err != nil {
 		fmt.Println(err)
-		updateErr := taskqueue.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
-		if updateErr != nil {
-			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
-		}
+		taskqueue.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
 	err = d.waitForDbReady(operation, i, i.ReplicaDatabase)
 	if err != nil {
 		fmt.Println(err)
-		updateErr := taskqueue.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
-		if updateErr != nil {
-			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
-		}
+		taskqueue.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
