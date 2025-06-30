@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -51,7 +50,6 @@ func TestNewSnapShotRepo(t *testing.T) {
 		if snaprepo.Settings.Bucket != bucket {
 			t.Errorf("Expected %s bucket but got %s", bucket, snaprepo.Settings.Bucket)
 		}
-		fmt.Printf("%+v", snaprepo)
 	} else {
 		t.Error("Snaprepo is nil")
 	}

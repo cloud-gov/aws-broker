@@ -10,13 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
 // Options is a struct containing all of the custom parameters supported by
@@ -70,7 +71,7 @@ type rdsBroker struct {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Catalog) (dbAdapter, response.Response) {
+func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, db *gorm.DB) (dbAdapter, response.Response) {
 
 	var dbAdapter dbAdapter
 	// For test environments, use a mock adapter.
@@ -88,6 +89,7 @@ func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, c *catalog.Cata
 			settings:             *s,
 			rds:                  rdsClient,
 			parameterGroupClient: parameterGroupClient,
+			db:                   db,
 		}
 	default:
 		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
@@ -105,7 +107,7 @@ func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brok
 func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
 	switch o {
 	case base.DeleteOp:
-		return false
+		return true
 	case base.CreateOp:
 		return true
 	case base.ModifyOp:
@@ -183,29 +185,30 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
 	// Create the database instance.
 	status, err := adapter.createDB(newInstance, newInstance.ClearPassword)
-	if status == base.InstanceNotCreated {
-		desc := "There was an error creating the instance."
-		if err != nil {
-			desc = desc + " Error: " + err.Error()
-		}
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
-	}
-
-	newInstance.State = status
-
-	broker.brokerDB.NewRecord(newInstance)
-	err = broker.brokerDB.Create(newInstance).Error
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
-	return response.SuccessAcceptedResponse
+
+	switch status {
+	case base.InstanceNotCreated:
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("Error creating the instance: %s", err))
+	case base.InstanceInProgress:
+		newInstance.State = status
+		err = broker.brokerDB.Create(newInstance).Error
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
+		return response.NewAsyncOperationResponse(base.CreateOp.String())
+	default:
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
+	}
 }
 
 func (broker *rdsBroker) parseModifyOptionsFromRequest(
@@ -246,7 +249,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return newPlanErr
 	}
 
-	err = existingInstance.modify(options, newPlan, broker.settings)
+	modifiedInstance, err := existingInstance.modify(options, newPlan, broker.settings)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Failed to modify instance. Error: "+err.Error())
 	}
@@ -269,13 +272,13 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Connect to the existing instance.
-	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
 	// Modify the database instance.
-	status, err := adapter.modifyDB(existingInstance, existingInstance.ClearPassword)
+	status, err := adapter.modifyDB(modifiedInstance)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
@@ -288,14 +291,12 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	// Update the existing instance in the broker.
 	existingInstance.State = status
-	existingInstance.PlanID = newPlan.ID
 	err = broker.brokerDB.Save(existingInstance).Error
-
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
 
-	return response.SuccessAcceptedResponse
+	return response.NewAsyncOperationResponse(base.ModifyOp.String())
 }
 
 func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
@@ -303,8 +304,14 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
-	if count == 0 {
+	if count == 0 && operation != base.DeleteOp.String() {
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	}
+
+	// When asynchronous deletion has finished, the instance record no longer exists, so
+	// return a last operation status indicating that the deletion was successful.
+	if count == 0 && operation == base.DeleteOp.String() {
+		return response.NewSuccessLastOperation(base.InstanceGone.ToLastOperationStatus(), "Successfully deleted instance")
 	}
 
 	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
@@ -312,28 +319,50 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
 
-	var state string
-	status, _ := adapter.checkDBStatus(existingInstance)
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceNotModified:
-		state = "failed"
-	case base.InstanceNotGone:
-		state = "failed"
+	var state base.InstanceState
+	var needAsyncJobState bool
+	var instanceOperation base.Operation
+	var statusMessage string
+
+	switch operation {
+	case base.CreateOp.String():
+		// creation always uses an async job
+		needAsyncJobState = true
+		instanceOperation = base.CreateOp
+	case base.ModifyOp.String():
+		// modify always uses an async job
+		needAsyncJobState = true
+		instanceOperation = base.ModifyOp
+	case base.DeleteOp.String():
+		// deletion always uses an async job
+		needAsyncJobState = true
+		instanceOperation = base.DeleteOp
 	default:
-		state = "in progress"
+		needAsyncJobState = false
 	}
-	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+
+	if needAsyncJobState {
+		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		state = asyncJobMsg.JobState.State
+		statusMessage = asyncJobMsg.JobState.Message
+	} else {
+		dbState, err := adapter.checkDBStatus(existingInstance.Database)
+		if err != nil {
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		state = dbState
+		statusMessage = fmt.Sprintf("The database status is %s", state)
+	}
+
+	return response.NewSuccessLastOperation(state.ToLastOperationStatus(), statusMessage)
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
@@ -360,7 +389,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	}
 
 	// Get the correct database logic depending on the type of plan.
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
@@ -369,11 +398,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
 	if credentials, err = adapter.bindDBToApp(existingInstance, password); err != nil {
-		desc := "There was an error binding the database instance to the application."
-		if err != nil {
-			desc = desc + " Error: " + err.Error()
-		}
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application. Error: %s", err))
 	}
 
 	// If the state of the instance has changed, update it.
@@ -397,18 +422,23 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return planErr
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c)
+	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
 	if adapterErr != nil {
 		return adapterErr
 	}
+
 	// Delete the database instance.
-	if status, err := adapter.deleteDB(existingInstance); status == base.InstanceNotGone {
+	status, err := adapter.deleteDB(existingInstance)
+	if err != nil && status != base.InstanceNotGone {
+		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+	}
+	if status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-	broker.brokerDB.Unscoped().Delete(existingInstance)
-	return response.SuccessDeleteResponse
+
+	return response.NewAsyncOperationResponse(base.DeleteOp.String())
 }

@@ -13,7 +13,7 @@ import (
 	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 )
 
-//abstract this method for mocking
+// abstract this method for mocking
 type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -114,8 +114,6 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	resp, err := es.client.Do(req)
 
 	if err != nil {
-		//fmt.Println("ESAPI -- Send -- Do Error:")
-		//fmt.Print(err)
 		return result, err
 	}
 	defer resp.Body.Close()
@@ -123,7 +121,6 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	if err != nil {
 		fmt.Print(err)
 	}
-	//fmt.Printf("ESAPI -- Send -- Result: %v", string(result))
 	return result, err
 }
 
@@ -143,7 +140,6 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 		fmt.Print(err)
 		return "", err
 	}
-	//fmt.Printf("CreateSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -154,7 +150,6 @@ func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (st
 	if err != nil {
 		fmt.Printf("es_api createsnapshot error:%v", err)
 	}
-	//fmt.Printf("CreateSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -164,7 +159,6 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 	if err != nil {
 		fmt.Print(err)
 	}
-	//fmt.Printf("GetSnapshotRepo: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return string(resp), err
 }
 
@@ -186,6 +180,5 @@ func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) 
 		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v", snapshots)
 		return "FAILED", errors.New("SnapshotStatus returned empty")
 	}
-	//fmt.Printf("GetSnapshotSnapshot: \n\tEndpoint: %s\n\tResponse %v", endpoint, string(resp))
 	return snapshots.Snapshots[0].State, nil
 }

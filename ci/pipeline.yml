@@ -56,7 +56,7 @@ jobs:
           TF_VAR_snapshot_expiration: 1
           TF_VAR_platform_access_role_arn: ((development-platform-role-arn))
 
-      - do:  
+      - do:
         - task: init-db
           image: general-task
           config:
@@ -118,10 +118,10 @@ jobs:
           params: &slack-failure-config
             channel: ((slack-failure-channel))
             username: ((slack-username))
-            icon_url: ((slack-icon-url))            
+            icon_url: ((slack-icon-url))
             text: |
               :x: FAILED to deploy aws-broker-tasks on development
-              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>                      
+              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
       - put: deploy-aws-broker-development
         params:
@@ -217,8 +217,40 @@ jobs:
           BROKER_NAME: ((development-broker-name))
           AUTH_USER: ((development-auth-user))
           AUTH_PASS: ((development-auth-pass))
-          SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+          SERVICES: >-
+            aws-rds:large-gp-sqlserver-se
+            aws-rds:2xlarge-gp-psql-redundant
+            aws-rds:2xlarge-gp-psql
+            aws-rds:2xlarge-gp-psql-replica
+            aws-rds:xlarge-gp-psql-m6
+            aws-rds:xlarge-gp-psql-m6-redundant
+            aws-rds:xlarge-gp-psql-m6-replica
           SERVICE_ORGANIZATION: cloud-gov
+
+      - task: update-broker-replicas
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          BROKER_NAME: ((development-broker-name))
+          AUTH_USER: ((development-auth-user))
+          AUTH_PASS: ((development-auth-pass))
+          SERVICES: >-
+            aws-rds:micro-psql-replica
+            aws-rds:small-psql-replica
+            aws-rds:medium-psql-replica
+            aws-rds:medium-gp-psql-replica
+            aws-rds:large-gp-psql-replica
+            aws-rds:xlarge-gp-psql-replica
+            aws-rds:micro-mysql-replica
+            aws-rds:small-mysql-replica
+            aws-rds:medium-mysql-replica
+            aws-rds:medium-gp-mysql-replica
+            aws-rds:large-gp-mysql-replica
+            aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-redis-development
     plan:
@@ -249,12 +281,11 @@ jobs:
                 REGION: ((development-aws-default-region))
     on_failure:
       put: slack
-      params: 
+      params:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      
 
   - name: acceptance-tests-search-development
     plan:
@@ -317,8 +348,7 @@ jobs:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on development FAILED
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>      
-      
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-db-development
     plan:
@@ -479,9 +509,22 @@ jobs:
                 CF_SPACE: ((development-cf-space))
                 SERVICE_PLAN: micro-mysql
                 DB_TYPE: mysql
+
+            - task: smoke-tests-postgres-replica
+              file: aws-broker-app/ci/run-smoke-tests.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-cf-organization))
+                CF_SPACE: ((development-cf-space))
+                SERVICE_PLAN: micro-psql-replica
+                DB_TYPE: postgres
     on_failure:
       put: slack
-      params: 
+      params:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on development FAILED
@@ -552,7 +595,7 @@ jobs:
           TF_VAR_snapshot_expiration: 7
           TF_VAR_platform_access_role_arn: ((staging-platform-role-arn))
 
-      - do:  
+      - do:
         - task: init-db
           image: general-task
           config:
@@ -615,7 +658,7 @@ jobs:
             <<: *slack-failure-config
             text: |
               :x: FAILED to deploy aws-broker-tasks on staging
-              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>          
+              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
       - put: deploy-aws-broker-staging
         params:
@@ -710,8 +753,40 @@ jobs:
           BROKER_NAME: ((staging-broker-name))
           AUTH_USER: ((staging-auth-user))
           AUTH_PASS: ((staging-auth-pass))
-          SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+          SERVICES: >-
+            aws-rds:large-gp-sqlserver-se
+            aws-rds:2xlarge-gp-psql-redundant
+            aws-rds:2xlarge-gp-psql
+            aws-rds:2xlarge-gp-psql-replica
+            aws-rds:xlarge-gp-psql-m6
+            aws-rds:xlarge-gp-psql-m6-redundant
+            aws-rds:xlarge-gp-psql-m6-replica
           SERVICE_ORGANIZATION: cloud-gov
+
+      - task: update-broker-replicas
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          BROKER_NAME: ((staging-broker-name))
+          AUTH_USER: ((staging-auth-user))
+          AUTH_PASS: ((staging-auth-pass))
+          SERVICES: >-
+            aws-rds:micro-psql-replica
+            aws-rds:small-psql-replica
+            aws-rds:medium-psql-replica
+            aws-rds:medium-gp-psql-replica
+            aws-rds:large-gp-psql-replica
+            aws-rds:xlarge-gp-psql-replica
+            aws-rds:micro-mysql-replica
+            aws-rds:small-mysql-replica
+            aws-rds:medium-mysql-replica
+            aws-rds:medium-gp-mysql-replica
+            aws-rds:large-gp-mysql-replica
+            aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-db-staging
     plan:
@@ -880,7 +955,7 @@ jobs:
         text: |
           :x: Acceptance Tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      
+
   - name: acceptance-tests-redis-staging
     plan:
       - in_parallel:
@@ -913,7 +988,7 @@ jobs:
         <<: *slack-failure-config
         text: |
           :x: Acceptance Tests for aws-broker on staging FAILED
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>      
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-staging
     plan:
@@ -976,7 +1051,7 @@ jobs:
         text: |
           :x: Acceptance Tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      
+
   - name: terraform-plan-aws-broker-prod
     plan:
       - in_parallel:
@@ -1060,7 +1135,7 @@ jobs:
           <<: *plan-params
           TERRAFORM_ACTION: apply
 
-      - do:  
+      - do:
         - task: init-db
           image: general-task
           config:
@@ -1123,7 +1198,7 @@ jobs:
             <<: *slack-failure-config
             text: |
               :x: FAILED to deploy aws-broker-tasks on production
-              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>  
+              <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
       - put: deploy-aws-broker-prod
         params:
@@ -1218,7 +1293,14 @@ jobs:
           BROKER_NAME: ((prod-broker-name))
           AUTH_USER: ((prod-auth-user))
           AUTH_PASS: ((prod-auth-pass))
-          SERVICES: aws-rds:large-gp-sqlserver-se aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
+          SERVICES: >-
+            aws-rds:large-gp-sqlserver-se
+            aws-rds:2xlarge-gp-psql-redundant
+            aws-rds:2xlarge-gp-psql
+            aws-rds:2xlarge-gp-psql-replica
+            aws-rds:xlarge-gp-psql-m6
+            aws-rds:xlarge-gp-psql-m6-redundant
+            aws-rds:xlarge-gp-psql-m6-replica
           SERVICE_ORGANIZATION: cloud-gov
 
       - task: update-broker-datagov
@@ -1234,6 +1316,31 @@ jobs:
           AUTH_PASS: ((prod-auth-pass))
           SERVICES: aws-rds:2xlarge-gp-psql-redundant aws-rds:2xlarge-gp-psql aws-rds:xlarge-gp-psql-m6 aws-rds:xlarge-gp-psql-m6-redundant
           SERVICE_ORGANIZATION: gsa-datagov
+
+      - task: update-broker-replicas
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          BROKER_NAME: ((prod-broker-name))
+          AUTH_USER: ((prod-auth-user))
+          AUTH_PASS: ((prod-auth-pass))
+          SERVICES: >-
+            aws-rds:micro-psql-replica
+            aws-rds:small-psql-replica
+            aws-rds:medium-psql-replica
+            aws-rds:medium-gp-psql-replica
+            aws-rds:large-gp-psql-replica
+            aws-rds:xlarge-gp-psql-replica
+            aws-rds:micro-mysql-replica
+            aws-rds:small-mysql-replica
+            aws-rds:medium-mysql-replica
+            aws-rds:medium-gp-mysql-replica
+            aws-rds:large-gp-mysql-replica
+            aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-prod
     plan:
@@ -1597,7 +1704,7 @@ resources:
       password: ((prod-cf-deploy-password))
       organization: ((prod-cf-organization))
       space: ((prod-cf-space))
-      skip_cert_check: false      
+      skip_cert_check: false
 
   - name: slack
     type: slack-notification

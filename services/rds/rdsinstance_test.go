@@ -1,7 +1,6 @@
 package rds
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -12,43 +11,6 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
 )
-
-type MockDbUtils struct {
-	mockFormattedDbName   string
-	mockDbName            string
-	mockUsername          string
-	mockSalt              string
-	mockEncryptedPassword string
-	mockClearPassword     string
-}
-
-func (m *MockDbUtils) FormatDBName(string, string) string {
-	return m.mockFormattedDbName
-}
-
-func (m *MockDbUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
-	return nil, nil
-}
-
-func (m *MockDbUtils) generateCredentials(settings *config.Settings) (string, string, string, error) {
-	return m.mockSalt, m.mockEncryptedPassword, m.mockClearPassword, nil
-}
-
-func (m *MockDbUtils) generatePassword(salt string, password string, key string) (string, string, error) {
-	return m.mockEncryptedPassword, m.mockClearPassword, nil
-}
-
-func (m *MockDbUtils) getPassword(salt string, password string, key string) (string, error) {
-	return m.mockClearPassword, nil
-}
-
-func (m *MockDbUtils) generateDatabaseName(settings *config.Settings) string {
-	return m.mockDbName
-}
-
-func (m *MockDbUtils) buildUsername() string {
-	return m.mockUsername
-}
 
 func TestFormatDBName(t *testing.T) {
 	i := &RDSInstance{
@@ -370,6 +332,73 @@ func TestInit(t *testing.T) {
 				ClearPassword:      "clear-pw",
 			},
 		},
+		"plan has read replica enabled": {
+			options: Options{
+				BackupRetentionPeriod: aws.Int64(21),
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-1",
+				},
+				Adapter:          "adapter-1",
+				DbType:           "postgres",
+				DbVersion:        "15",
+				SubnetGroup:      "subnet-1",
+				SecurityGroup:    "security-group-1",
+				LicenseModel:     "license-model",
+				StorageType:      "gp3",
+				AllocatedStorage: 20,
+				Tags:             map[string]string{},
+				ReadReplica:      true,
+			},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			rdsInstance: &RDSInstance{
+				dbUtils: &MockDbUtils{
+					mockFormattedDbName:   "test-db",
+					mockDbName:            "db",
+					mockUsername:          "fake-user",
+					mockSalt:              "salt",
+					mockEncryptedPassword: "encrypted-pw",
+					mockClearPassword:     "clear-pw",
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Database: "db",
+				Username: "fake-user",
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				Adapter:               "adapter-1",
+				DbType:                "postgres",
+				DbVersion:             "15",
+				BackupRetentionPeriod: 21,
+				Tags:                  map[string]string{},
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				EnableFunctions:       false,
+				PubliclyAccessible:    false,
+				LicenseModel:          "license-model",
+				DbSubnetGroup:         "subnet-1",
+				SecGroup:              "security-group-1",
+				Salt:                  "salt",
+				Password:              "encrypted-pw",
+				ClearPassword:         "clear-pw",
+				ReplicaDatabase:       "db-replica",
+				AddReadReplica:        true,
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -407,6 +436,33 @@ func TestModifyInstance(t *testing.T) {
 		settings         *config.Settings
 		expectedErr      error
 	}{
+		"sets plan properties": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						PlanID: "plan-1",
+					},
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						PlanID: "plan-2",
+					},
+				},
+				SecGroup: "sec-group1",
+			},
+			plan: catalog.RDSPlan{
+				Plan: catalog.Plan{
+					ID: "plan-2",
+				},
+				SecurityGroup: "sec-group1",
+			},
+			settings: &config.Settings{},
+		},
 		"update allocated storage": {
 			options: Options{
 				AllocatedStorage: 20,
@@ -425,9 +481,6 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 10,
 			},
 			existingInstance: &RDSInstance{
-				AllocatedStorage: 20,
-			},
-			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
 			expectErr: true,
@@ -518,9 +571,6 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 10,
 			},
-			expectedInstance: &RDSInstance{
-				AllocatedStorage: 10,
-			},
 			plan:      catalog.RDSPlan{},
 			settings:  &config.Settings{},
 			expectErr: true,
@@ -553,19 +603,63 @@ func TestModifyInstance(t *testing.T) {
 				MinBackupRetention: 14,
 			},
 		},
+		"update to plan with read replica enabled, instance has no replica": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database: "db",
+			},
+			expectedInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "db-replica",
+				AddReadReplica:  true,
+			},
+			plan: catalog.RDSPlan{
+				ReadReplica: true,
+				Redundant:   true,
+			},
+			settings: &config.Settings{},
+		},
+		"update to plan with read replica enabled, instance already has replica": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "db-replica",
+			},
+			expectedInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "db-replica",
+			},
+			plan: catalog.RDSPlan{
+				ReadReplica: true,
+				Redundant:   true,
+			},
+			settings: &config.Settings{},
+		},
+		"returns error if plan enables read replicas but is not multi-AZ": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database: "db",
+			},
+			plan: catalog.RDSPlan{
+				ReadReplica: true,
+				Redundant:   false,
+			},
+			settings:  &config.Settings{},
+			expectErr: true,
+		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.existingInstance.modify(test.options, test.plan, test.settings)
+			modifiedInstance, err := test.existingInstance.modify(test.options, test.plan, test.settings)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if test.expectErr && err == nil {
 				t.Errorf("expected error, got nil")
 			}
-			if !reflect.DeepEqual(test.existingInstance, test.expectedInstance) {
-				t.Fatalf("expected instance: %+v, got instance: %+v", test.expectedInstance, test.existingInstance)
+			if diff := deep.Equal(modifiedInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -628,14 +722,14 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 				Salt:          test.originalSalt,
 				dbUtils:       &RDSDatabaseUtils{},
 			}
-			err := existingInstance.modify(test.options, test.plan, test.settings)
+			modifiedInstance, err := existingInstance.modify(test.options, test.plan, test.settings)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
-			if test.shouldRotateCredentials && existingInstance.ClearPassword == test.originalPassword {
+			if test.shouldRotateCredentials && modifiedInstance.ClearPassword == test.originalPassword {
 				t.Fatal("instance password should have been updated")
 			}
-			if test.shouldRotateCredentials && existingInstance.Salt == test.originalSalt {
+			if test.shouldRotateCredentials && modifiedInstance.Salt == test.originalSalt {
 				t.Fatal("instance salt should have been updated")
 			}
 		})

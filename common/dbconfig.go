@@ -1,17 +1,14 @@
 package common
 
 import (
-	// This is to init the mysql driver
-	_ "github.com/go-sql-driver/mysql"
-	// This is to init the postgres driver
-	_ "github.com/lib/pq"
-	// This is to init the sqlite driver
-	_ "github.com/mattn/go-sqlite3"
-
 	"errors"
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"log"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 // DBConfig holds configuration information to connect to a database.
@@ -62,7 +59,7 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			dbConfig.URL,
 			dbConfig.Sslmode,
 			dbConfig.Port)
-		DB, err = gorm.Open(dbConfig.DbType, conn)
+		DB, err = gorm.Open(postgres.Open(conn), &gorm.Config{})
 	case "mysql":
 		conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
 		conn = fmt.Sprintf(conn,
@@ -72,9 +69,11 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			dbConfig.URL,
 			dbConfig.Port,
 			dbConfig.DbName)
-		DB, err = gorm.Open(dbConfig.DbType, conn)
+		DB, err = gorm.Open(mysql.New(mysql.Config{
+			DSN: conn,
+		}), &gorm.Config{})
 	case "sqlite3":
-		DB, err = gorm.Open("sqlite3", dbConfig.DbName)
+		DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	default:
 		errorString := "Cannot connect. Unsupported DB type: (" + dbConfig.DbType + ")"
 		log.Println(errorString)
@@ -85,9 +84,15 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err = DB.DB().Ping(); err != nil {
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = sqlDB.Ping(); err != nil {
 		log.Println("Unable to verify connection to database")
 		return nil, err
 	}
+
 	return DB, nil
 }

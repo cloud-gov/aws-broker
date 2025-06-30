@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-martini/martini"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"encoding/json"
 	"io"
@@ -18,279 +18,42 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/helpers"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
-	"github.com/cloud-gov/aws-broker/taskqueue"
+	"github.com/cloud-gov/aws-broker/testutil"
 )
-
-var (
-	originalRDSPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c6"
-	updateableRDSPlanID         = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
-	originalRedisPlanID         = "475e36bf-387f-44c1-9b81-575fec2ee443"
-	originalElasticsearchPlanID = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
-)
-
-// micro-psql plan
-var createRDSInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSInstanceWithEnabledLogGroupsReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"parameters": {
-	  "enable_cloudwatch_log_groups_exports": ["foo"]
-	}
-}`)
-
-var createRDSPGWithVersionInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"version": "15"
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSPGWithInvaildVersionInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"version": "8"
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSMySQLWithBinaryLogFormat = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"binary_log_format": "ROW"
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var createRDSPostgreSQLWithEnablePgCron = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"enable_pg_cron": true
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-// micro-psql plan but with parameters
-var modifyRDSInstanceReqStorage = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"storage": 25
-	  },
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var modifyRDSInstanceBinaryLogFormat = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"binary_log_format": "MIXED"
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var modifyRDSInstanceEnablePgCron = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"enable_pg_cron": true
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var modifyRDSInstanceEnableCloudwatchLogGroups = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
-	"parameters": {
-		"enable_cloudwatch_log_groups_exports": ["foo"]
-	},
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-// medium-psql plan
-var modifyRDSInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"1070028c-b5fb-4de8-989b-4e00d07ef5e8",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"previous_values": {
-		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
-	}
-}`)
-
-// medium-psql-redundant plan
-var modifyRDSInstanceNotAllowedReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"ee75aef3-7697-4906-9330-fb1f83d719be",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"previous_values": {
-		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
-	}
-}`)
-
-var createRedisInstanceReq = []byte(
-	`{
-	"service_id":"cda65825-e357-4a93-a24b-9ab138d97815",
-	"plan_id":"475e36bf-387f-44c1-9b81-575fec2ee443",
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var modifyRedisInstanceReq = []byte(
-	`{
-	"service_id":"cda65825-e357-4a93-a24b-9ab138d97815",
-	"plan_id":"5nd336bf-0k7f-44c1-9b81-575fp3k764r6",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"previous_values": {
-		"plan_id": "475e36bf-387f-44c1-9b81-575fec2ee443"
-	}
-}`)
-
-var createElasticsearchInstanceAdvancedOptionsReq = []byte(
-	`{
-	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
-	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"parameters": {
-		"advanced_options": {
-			"indices.query.bool.max_clause_count": "1024",
-			"indices.fielddata.cache.size": "80"
-		}
-	}
-}`)
-
-var createElasticsearchInstanceReq = []byte(
-	`{
-	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
-	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
-	"organization_guid":"an-org",
-	"space_guid":"a-space"
-}`)
-
-var modifyElasticsearchInstancePlanReq = []byte(
-	`{
-	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
-	"plan_id":"162ffae8-9cf8-4806-80e5-a7f92d514198",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"previous_values": {
-		"plan_id": "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
-	}
-}`)
-
-var modifyElasticsearchInstanceParamsReq = []byte(
-	`{
-	"service_id":"90413816-9c77-418b-9fc7-b9739e7c1254",
-	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
-	"organization_guid":"an-org",
-	"space_guid":"a-space",
-	"parameters": {
-		"advanced_options": {
-			"indices.query.bool.max_clause_count": "1024",
-			"indices.fielddata.cache.size": "80"
-		}
-	}
-}`)
 
 var brokerDB *gorm.DB
-
-func initTestDbConfig() (*common.DBConfig, error) {
-	var dbConfig common.DBConfig
-	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
-		dbConfig.DbType = "sqlite3"
-	}
-	switch dbConfig.DbType {
-	case "postgres":
-		dbConfig.DbType = "postgres"
-		dbConfig.DbName = os.Getenv("POSTGRES_USER")
-		dbConfig.Password = os.Getenv("POSTGRES_PASSWORD")
-		dbConfig.Sslmode = "disable"
-		dbConfig.Port = 5432
-		dbConfig.Username = os.Getenv("POSTGRES_USER")
-		dbConfig.URL = "localhost"
-	case "sqlite3":
-		dbConfig.DbType = "sqlite3"
-		dbConfig.DbName = ":memory:"
-	default:
-		return nil, fmt.Errorf("unsupported db type: %s", dbConfig.DbType)
-	}
-	return &dbConfig, nil
-}
-
-func initTestDb(dbConfig *common.DBConfig) (*gorm.DB, error) {
-	brokerDB, err := db.InternalDBInit(dbConfig)
-	if err != nil {
-		return nil, err
-	}
-	return brokerDB, nil
-}
 
 func setup() *martini.ClassicMartini {
 	os.Setenv("AUTH_USER", "default")
 	os.Setenv("AUTH_PASS", "default")
 	var s config.Settings
 
-	dbConfig, err := initTestDbConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s.EncryptionKey = "12345678901234567890123456789012"
+	s.EncryptionKey = helpers.RandStr(32)
 	s.Environment = "test"
 	s.MaxAllocatedStorage = 1024
 	s.CfApiUrl = "fake-api-url"
 	s.CfApiClientId = "fake-client-id"
 	s.CfApiClientSecret = "fake-client-secret"
 
-	brokerDB, err = initTestDb(dbConfig)
+	var err error
+	brokerDB, err = testutil.TestDbInit()
 	if err != nil {
 		log.Fatal(err)
 	}
-	tq := taskqueue.NewQueueManager()
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+
+	tq := jobs.NewAsyncJobManager()
 	tq.Init()
 
-	m := App(&s, brokerDB, tq)
+	m := App(&s, brokerDB, tq, &mocks.MockTagGenerator{})
 
 	return m
 }
@@ -323,6 +86,16 @@ func validJSON(response []byte, url string, t *testing.T) {
 	var aJSON map[string]interface{}
 	if json.Unmarshal(response, &aJSON) != nil {
 		t.Error(url, "should return a valid json")
+	}
+}
+
+func isAsyncOperationResponse(t *testing.T, response *httptest.ResponseRecorder, expectedOperation base.Operation) {
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(response.Body.Bytes(), &responseData); err != nil {
+		t.Fatal(err)
+	}
+	if responseData["operation"] != expectedOperation.String() {
+		t.Fatalf("expected async operation: %s, got: %s", expectedOperation, responseData["operation"])
 	}
 }
 
@@ -370,10 +143,8 @@ func TestCreateRDSInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, res, base.CreateOp)
+
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -411,10 +182,6 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -452,10 +219,6 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -497,10 +260,6 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -561,10 +320,6 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
 	// Is it in the database and has a username and password?
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -599,8 +354,9 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	// Check to make sure the instance was saved.
 	i := rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if i.Uuid == "0" {
+	var count int64
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i).Count(&count)
+	if count == 0 {
 		t.Error("The instance was not saved to the DB.")
 	}
 
@@ -614,7 +370,7 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
-		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+		t.Fatal(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
@@ -622,16 +378,13 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
-		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+		t.Fatal(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(resp.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
 
 	// Reload the instance and check to see that the plan has been modified.
 	i = rds.RDSInstance{}
@@ -718,8 +471,6 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 		t.Error("The instance was not saved to the DB.")
 	}
 
-	println(i.AllocatedStorage)
-
 	// Check to make sure the instance has the original plan set on it.
 	if i.PlanID != originalRDSPlanID {
 		t.Error("The instance should have the plan provided with the create request.")
@@ -746,10 +497,8 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -807,10 +556,8 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -867,10 +614,8 @@ func TestModifyEnablePgCron(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -919,10 +664,8 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
 	// Is it in the database and does it have correct storage?
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -1035,7 +778,7 @@ func TestRDSUnbind(t *testing.T) {
 
 func TestRDSDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	res, m := doRequest(nil, url, "DELETE", true, nil)
 
 	// With no instance
@@ -1053,17 +796,12 @@ func TestRDSDeleteInstance(t *testing.T) {
 
 	res, _ = doRequest(m, url, "DELETE", true, nil)
 
-	if res.Code != http.StatusOK {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to delete instance. Body is: " + res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
-	// Is it actually gone from the DB?
-	i = rds.RDSInstance{}
-	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if len(i.Uuid) > 0 {
-		t.Error("The instance shouldn't be in the DB")
-	}
+	isAsyncOperationResponse(t, res, base.DeleteOp)
 }
 
 /*

@@ -21,7 +21,7 @@ type Request struct {
 	PlanID           string          `json:"plan_id" sql:"size(255)"`
 	OrganizationGUID string          `json:"organization_guid" sql:"size(255)"`
 	SpaceGUID        string          `json:"space_guid" sql:"size(255)"`
-	RawParameters    json.RawMessage `json:"parameters,omitempty" sql:"-"`
+	RawParameters    json.RawMessage `json:"parameters,omitempty" gorm:"-"`
 }
 
 // ExtractRequest will look at the request body and parse it into a Request struct to be used programmatically.

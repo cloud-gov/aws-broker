@@ -8,46 +8,16 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"github.com/jinzhu/gorm"
+
+	"gorm.io/gorm"
 )
 
-type mockTagGenerator struct {
-	tags map[string]string
-}
-
-func (mt *mockTagGenerator) GenerateTags(
-	action brokertags.Action,
-	serviceName string,
-	servicePlanName string,
-	resourceGUIDs brokertags.ResourceGUIDs,
-	getMissingResources bool,
-) (map[string]string, error) {
-	return mt.tags, nil
-}
-
-func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.QueueManager) (base.Broker, response.Response) {
-	var tagManager brokertags.TagManager
-	if settings.Environment == "test" {
-		tagManager = &mockTagGenerator{}
-	} else {
-		var err error
-		tagManager, err = brokertags.NewCFTagManager(
-			"AWS broker",
-			settings.Environment,
-			settings.CfApiUrl,
-			settings.CfApiClientId,
-			settings.CfApiClientSecret,
-		)
-		if err != nil {
-			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
-		}
-	}
-
+func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) (base.Broker, response.Response) {
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
@@ -55,7 +25,7 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	case c.RedisService.ID:
 		return redis.InitRedisBroker(brokerDb, settings, tagManager), nil
 	case c.ElasticsearchService.ID:
-		broker, err := elasticsearch.InitElasticsearchBroker(brokerDb, settings, taskqueue, tagManager)
+		broker, err := elasticsearch.InitElasticsearchBroker(brokerDb, settings, jobs, tagManager)
 		if err != nil {
 			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
@@ -65,12 +35,12 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
-func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	createRequest, err := request.ExtractRequest(req)
 	if err != nil {
 		return err
 	}
-	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings, taskqueue)
+	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings, jobs, tagManager)
 	if err != nil {
 		return err
 	}
@@ -85,8 +55,6 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 
 	if resp.GetResponseType() != response.ErrorResponseType {
 		instance := base.Instance{Uuid: id, Request: createRequest}
-		brokerDb.NewRecord(instance)
-
 		err := brokerDb.Create(&instance).Error
 
 		if err != nil {
@@ -97,7 +65,7 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	// Extract the request information.
 	modifyRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -111,7 +79,7 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	}
 
 	// Retrieve the correct broker.
-	broker, err := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
+	broker, err := findBroker(instance.ServiceID, c, brokerDb, settings, jobs, tagManager)
 	if err != nil {
 		return err
 	}
@@ -136,12 +104,12 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, jobs, tagManager)
 	if resp != nil {
 		return resp
 	}
@@ -150,7 +118,7 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 	return broker.LastOperation(c, id, instance, operation)
 }
 
-func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	// Extract the request information.
 	bindRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -161,7 +129,7 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, jobs, tagManager)
 	if resp != nil {
 		return resp
 	}
@@ -169,12 +137,12 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	return broker.BindInstance(c, id, bindRequest, instance)
 }
 
-func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.QueueManager) response.Response {
+func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
 	}
-	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, taskqueue)
+	broker, resp := findBroker(instance.ServiceID, c, brokerDb, settings, jobs, tagManager)
 	if resp != nil {
 		return resp
 	}

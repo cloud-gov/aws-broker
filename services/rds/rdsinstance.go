@@ -4,51 +4,32 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/lib/pq"
 
-	"crypto/aes"
-	"encoding/base64"
 	"errors"
-	"fmt"
-	"regexp"
-	"strconv"
 
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/helpers"
 )
-
-type DatabaseUtils interface {
-	FormatDBName(dbType string, database string) string
-	generatePassword(salt string, password string, key string) (string, string, error)
-	getPassword(salt string, password string, key string) (string, error)
-	getCredentials(i *RDSInstance, password string) (map[string]string, error)
-	generateCredentials(settings *config.Settings) (string, string, string, error)
-	generateDatabaseName(settings *config.Settings) string
-	buildUsername() string
-}
-
-type RDSDatabaseUtils struct {
-}
 
 // RDSInstance represents the information of a RDS Service instance.
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils DatabaseUtils `sql:"-"`
+	dbUtils DatabaseUtils `gorm:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	ClearPassword string `sql:"-"`
+	ClearPassword string `gorm:"-"`
 
-	Tags                  map[string]string `sql:"-"`
+	Tags                  map[string]string `gorm:"-"`
 	BackupRetentionPeriod int64             `sql:"size(255)"`
-	DbSubnetGroup         string            `sql:"-"`
+	DbSubnetGroup         string            `gorm:"-"`
 	AllocatedStorage      int64             `sql:"size(255)"`
-	SecGroup              string            `sql:"-"`
-	EnableFunctions       bool              `sql:"-"`
-	PubliclyAccessible    bool              `sql:"-"`
+	SecGroup              string            `gorm:"-"`
+	EnableFunctions       bool              `gorm:"-"`
+	PubliclyAccessible    bool              `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
 
@@ -58,110 +39,16 @@ type RDSInstance struct {
 
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         *bool  `sql:"size(255)"`
-	ParameterGroupFamily string `sql:"-"`
+	ParameterGroupFamily string `gorm:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
-	EnabledCloudwatchLogGroupExports pq.StringArray `sql:"type:text[]"`
+	EnabledCloudwatchLogGroupExports pq.StringArray `gorm:"type:text[]"`
 
 	StorageType string `sql:"size(255)"`
-}
 
-func (u *RDSDatabaseUtils) FormatDBName(dbType string, database string) string {
-	switch dbType {
-	case "oracle-se1", "oracle-se2":
-		return "ORCL"
-	default:
-		re, _ := regexp.Compile("(i?)[^a-z0-9]")
-		return re.ReplaceAllString(database, "")
-	}
-}
-
-func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, string, error) {
-	if salt == "" {
-		return "", "", errors.New("salt has to be set before writing the password")
-	}
-
-	iv, _ := base64.StdEncoding.DecodeString(salt)
-
-	encrypted, err := helpers.Encrypt(password, key, iv)
-	if err != nil {
-		return "", "", err
-	}
-
-	return encrypted, password, nil
-}
-
-func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string) (string, error) {
-	if salt == "" || password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
-	}
-
-	iv, _ := base64.StdEncoding.DecodeString(salt)
-
-	decrypted, err := helpers.Decrypt(password, key, iv)
-	if err != nil {
-		return "", err
-	}
-
-	return decrypted, nil
-}
-
-func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
-	var dbScheme string
-	var credentials map[string]string
-
-	switch i.DbType {
-	case "postgres", "mysql":
-		dbScheme = i.DbType
-	case "oracle-se1", "oracle-se2", "oracle-ee":
-		dbScheme = "oracle"
-	default:
-		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
-	}
-
-	dbName := i.FormatDBName()
-	uri := fmt.Sprintf(
-		"%s://%s:%s@%s:%d/%s",
-		dbScheme,
-		i.Username,
-		password,
-		i.Host,
-		i.Port,
-		dbName,
-	)
-
-	credentials = map[string]string{
-		"uri":      uri,
-		"username": i.Username,
-		"password": password,
-		"host":     i.Host,
-		"port":     strconv.FormatInt(i.Port, 10),
-		"db_name":  dbName,
-		"name":     dbName,
-	}
-	return credentials, nil
-}
-
-func (u *RDSDatabaseUtils) generateCredentials(
-	settings *config.Settings,
-) (string, string, string, error) {
-	salt := helpers.GenerateSalt(aes.BlockSize)
-	password := helpers.RandStrNoCaps(25)
-	encrypted, password, err := u.generatePassword(salt, password, settings.EncryptionKey)
-	if err != nil {
-		return "", "", "", err
-	}
-	return salt, encrypted, password, err
-}
-
-func (u *RDSDatabaseUtils) generateDatabaseName(
-	settings *config.Settings,
-) string {
-	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
-}
-
-func (u *RDSDatabaseUtils) buildUsername() string {
-	return "u" + helpers.RandStrNoCaps(15)
+	AddReadReplica      bool   `gorm:"-"`
+	ReplicaDatabase     string `sql:"size(255)"`
+	ReplicaDatabaseHost string `sql:"size(255)"`
 }
 
 func NewRDSInstance() *RDSInstance {
@@ -171,7 +58,7 @@ func NewRDSInstance() *RDSInstance {
 }
 
 func (i *RDSInstance) FormatDBName() string {
-	return i.dbUtils.FormatDBName(i.DbType, i.Database)
+	return i.dbUtils.formatDBName(i.DbType, i.Database)
 }
 
 func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
@@ -189,62 +76,86 @@ func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
 	return nil
 }
 
-func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) error {
+func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) (*RDSInstance, error) {
+	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
+	modifiedInstance := i
+	modifiedInstance.PlanID = plan.ID
+
+	// needed to create an RDS read replica
+	modifiedInstance.SecGroup = plan.SecurityGroup
+
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
-		if options.AllocatedStorage < i.AllocatedStorage {
-			return errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
+		if options.AllocatedStorage < modifiedInstance.AllocatedStorage {
+			return nil, errors.New("cannot decrease the size of an existing instance. If you need to do this, you'll need to create a new instance with the smaller size amount, backup and restore the data into that instance, and delete this instance")
 		}
 
 		// Update the existing instance with the new allocated storage.
-		i.AllocatedStorage = options.AllocatedStorage
+		modifiedInstance.AllocatedStorage = options.AllocatedStorage
 	}
 
-	if options.StorageType == "gp3" && i.AllocatedStorage < 20 {
-		return errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+	if options.StorageType == "gp3" && modifiedInstance.AllocatedStorage < 20 {
+		return nil, errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
 	}
 
-	if options.StorageType != i.StorageType {
-		i.StorageType = options.StorageType
+	if options.StorageType != modifiedInstance.StorageType {
+		modifiedInstance.StorageType = options.StorageType
+	}
+
+	if modifiedInstance.StorageType == "" {
+		modifiedInstance.StorageType = plan.StorageType
 	}
 
 	// Check if there is a backup retention change
 	if options.BackupRetentionPeriod != nil && *options.BackupRetentionPeriod > 0 {
-		i.BackupRetentionPeriod = *options.BackupRetentionPeriod
+		modifiedInstance.BackupRetentionPeriod = *options.BackupRetentionPeriod
 	}
 
 	// There may be some instances which were previously updated to have
-	// i.BackupRetentionPeriod = 0. Make sure those instances get updated
+	// modifiedInstance.BackupRetentionPeriod = 0. Make sure those instances get updated
 	// to the minimum backup retention period, since 0 will disable backups
 	// on the database.
-	if i.BackupRetentionPeriod < settings.MinBackupRetention {
-		i.BackupRetentionPeriod = settings.MinBackupRetention
+	if modifiedInstance.BackupRetentionPeriod < settings.MinBackupRetention {
+		modifiedInstance.BackupRetentionPeriod = settings.MinBackupRetention
 	}
 
 	// Check if there is a binary log format change and if so, apply it
 	if options.BinaryLogFormat != "" {
-		i.BinaryLogFormat = options.BinaryLogFormat
+		modifiedInstance.BinaryLogFormat = options.BinaryLogFormat
 	}
 
-	if options.EnablePgCron != i.EnablePgCron {
-		i.EnablePgCron = options.EnablePgCron
+	if options.EnablePgCron != modifiedInstance.EnablePgCron {
+		modifiedInstance.EnablePgCron = options.EnablePgCron
 	}
 
-	if options.EnableFunctions != i.EnableFunctions {
-		i.EnableFunctions = options.EnableFunctions
+	if options.EnableFunctions != modifiedInstance.EnableFunctions {
+		modifiedInstance.EnableFunctions = options.EnableFunctions
 	}
 
 	if options.RotateCredentials != nil && *options.RotateCredentials {
-		err := i.generateCredentials(settings)
+		err := modifiedInstance.generateCredentials(settings)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
-	return nil
+	if plan.ReadReplica && !plan.Redundant {
+		return nil, errors.New("database plan must be multi-AZ in order to support read replicas")
+	}
+
+	if plan.Redundant && plan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
+		modifiedInstance.AddReadReplica = true
+		modifiedInstance.ReplicaDatabase = modifiedInstance.generateDatabaseReplicaName()
+	}
+
+	return modifiedInstance, nil
+}
+
+func (i *RDSInstance) generateDatabaseReplicaName() string {
+	return i.Database + "-replica"
 }
 
 func (i *RDSInstance) init(
@@ -312,6 +223,11 @@ func (i *RDSInstance) init(
 	i.EnablePgCron = options.EnablePgCron
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+
+	if plan.ReadReplica {
+		i.AddReadReplica = true
+		i.ReplicaDatabase = i.generateDatabaseReplicaName()
+	}
 
 	return nil
 }

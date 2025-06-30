@@ -12,14 +12,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
-	"github.com/cloud-gov/aws-broker/taskqueue"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -46,7 +46,7 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 type elasticsearchBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
-	taskqueue  *taskqueue.QueueManager
+	jobs       *jobs.AsyncJobManager
 	logger     lager.Logger
 	tagManager brokertags.TagManager
 }
@@ -55,7 +55,7 @@ type elasticsearchBroker struct {
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
-	taskqueue *taskqueue.QueueManager,
+	jobs *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
 ) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
@@ -64,7 +64,7 @@ func InitElasticsearchBroker(
 	return &elasticsearchBroker{
 		brokerDB,
 		settings,
-		taskqueue,
+		jobs,
 		logger,
 		tagManager,
 	}, nil
@@ -188,7 +188,6 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	}
 
 	newInstance.State = status
-	broker.brokerDB.NewRecord(newInstance)
 	err = broker.brokerDB.Create(&newInstance).Error
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
@@ -277,7 +276,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 
 	switch operation {
 	case base.DeleteOp.String(): // delete is true concurrent operation
-		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
+		jobstate, err := broker.jobs.GetJobState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
 		if err != nil {
 			jobstate.State = base.InstanceNotGone //indicate a failure
 		}
@@ -287,7 +286,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	default: //all other ops use synchronous checking of aws api
 		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
-			fmt.Printf("Error checking Elasticsearch status: %v", statusErr)
+			broker.logger.Error("Error checking Elasticsearch status", statusErr)
 			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
 		}
 		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
@@ -295,25 +294,13 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		}
 	}
 
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceGone:
-		state = "succeeded"
+	if status == base.InstanceGone {
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
 		broker.brokerDB.Unscoped().Delete(&baseInstance)
-	case base.InstanceNotGone:
-		state = "failed"
-	default:
-		state = "in progress"
 	}
 
 	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
-	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+	return response.NewSuccessLastOperation(status.ToLastOperationStatus(), fmt.Sprintf("The service instance status is %s", state))
 }
 
 func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
@@ -391,7 +378,7 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 	}
 
 	// send async deletion request.
-	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.taskqueue)
+	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.jobs)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)

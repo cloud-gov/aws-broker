@@ -29,11 +29,14 @@ type Settings struct {
 	CfApiClientSecret         string
 	MaxBackupRetention        int64
 	MinBackupRetention        int64
+	PollAwsMaxRetries         int64
+	PollAwsRetryDelaySeconds  int64
 }
 
 // LoadFromEnv loads settings from environment variables
 func (s *Settings) LoadFromEnv() error {
 	log.Println("Loading settings")
+	var err error
 
 	// Load DB Settings
 	dbConfig := common.DBConfig{}
@@ -54,7 +57,6 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	if os.Getenv("DB_PORT") != "" {
-		var err error
 		dbConfig.Port, err = strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
 		// Just return nothing if we can't interpret the number.
 		if err != nil {
@@ -67,8 +69,8 @@ func (s *Settings) LoadFromEnv() error {
 	s.DbConfig = &dbConfig
 
 	// Load Encryption Key
-	if _, ok := os.LookupEnv("ENC_KEY"); ok {
-		s.EncryptionKey = os.Getenv("ENC_KEY")
+	if val, ok := os.LookupEnv("ENC_KEY"); ok {
+		s.EncryptionKey = val
 	} else {
 		return errors.New("an encryption key is required. Must specify ENC_KEY environment variable")
 	}
@@ -89,10 +91,9 @@ func (s *Settings) LoadFromEnv() error {
 
 	storage := os.Getenv("MAX_ALLOCATED_STORAGE")
 	if storage != "" {
-		var err error
 		s.MaxAllocatedStorage, err = strconv.ParseInt(storage, 10, 64)
 		if err != nil {
-			return errors.New("Couldn't load max storage")
+			return errors.New("couldn't load max storage")
 		}
 	} else {
 		s.MaxAllocatedStorage = 1024
@@ -126,11 +127,25 @@ func (s *Settings) LoadFromEnv() error {
 	if s.LastSnapshotName == "" {
 		s.LastSnapshotName = "cg-last-snapshot"
 	}
-	s.MaxBackupRetention, _ = strconv.ParseInt(os.Getenv("MAX_BACKUP_RETENTION"), 10, 64)
+
+	if val, ok := os.LookupEnv("MAX_BACKUP_RETENTION"); ok {
+		s.MaxBackupRetention, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
 	if s.MaxBackupRetention == 0 {
 		s.MaxBackupRetention = 35
 	}
-	s.MinBackupRetention, _ = strconv.ParseInt(os.Getenv("MIN_BACKUP_RETENTION"), 10, 64)
+
+	if val, ok := os.LookupEnv("MIN_BACKUP_RETENTION"); ok {
+		s.MinBackupRetention, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
 	if s.MinBackupRetention == 0 {
 		s.MinBackupRetention = 14
 	}
@@ -151,6 +166,28 @@ func (s *Settings) LoadFromEnv() error {
 		s.CfApiClientSecret = cfApiClientSecret
 	} else {
 		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
+	}
+
+	if val, ok := os.LookupEnv("POLL_AWS_MAX_RETRIES"); ok {
+		s.PollAwsMaxRetries, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.PollAwsMaxRetries == 0 {
+		s.PollAwsMaxRetries = 60
+	}
+
+	if val, ok := os.LookupEnv("POLL_AWS_RETRY_DELAY_SECONDS"); ok {
+		s.PollAwsRetryDelaySeconds, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.PollAwsRetryDelaySeconds == 0 {
+		s.PollAwsRetryDelaySeconds = 60
 	}
 
 	return nil

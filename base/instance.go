@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // InstanceState is an enumeration to indicate what state the instance is in.
@@ -31,24 +31,42 @@ const (
 func (i InstanceState) String() string {
 	switch i {
 	case InstanceNotCreated:
-		return "InstanceNotCreated"
+		return "not created"
 	case InstanceInProgress:
-		return "InstanceInProgress"
+		return "in progress"
 	case InstanceReady:
-		return "InstanceReady"
+		return "ready"
 	case InstanceGone:
-		return "InstanceGone"
+		return "deleted"
 	case InstanceNotGone:
-		return "InstanceNotGone"
+		return "not deleted"
 	case InstanceNotModified:
-		return "InstanceNotModified"
+		return "not modified"
 	default:
-		return "Unknown"
+		return "unknown"
+	}
+}
+
+// Convert the instance state to a valid LastOperation status
+//
+// Valid values for a LastOperation response in the Open Service Broker API spec:
+//
+//	https://github.com/cloudfoundry/servicebroker/blob/master/spec.md#body-1
+func (i InstanceState) ToLastOperationStatus() string {
+	switch i {
+	case InstanceInProgress:
+		return "in progress"
+	case InstanceReady, InstanceGone:
+		return "succeeded"
+	case InstanceNotCreated, InstanceNotModified, InstanceNotGone:
+		return "failed"
+	default:
+		return "in progress"
 	}
 }
 
 type Instance struct {
-	Uuid string `gorm:"primary_key" sql:"type:varchar(255) PRIMARY KEY"`
+	Uuid string `gorm:"primaryKey" sql:"type:varchar(255) PRIMARY KEY"`
 
 	request.Request
 
@@ -68,7 +86,7 @@ func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response
 	result := brokerDb.Where("uuid = ?", id).First(&instance)
 	if result.Error == nil {
 		return instance, nil
-	} else if result.RecordNotFound() {
+	} else if result.RowsAffected == 0 {
 		return instance, response.NewErrorResponse(http.StatusNotFound, result.Error.Error())
 	} else {
 		return instance, response.NewErrorResponse(http.StatusInternalServerError, result.Error.Error())

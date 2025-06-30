@@ -23,7 +23,7 @@ type RedisInstance struct {
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	ClearPassword string `sql:"-"`
+	ClearPassword string `gorm:"-"`
 
 	EngineVersion              string `sql:"size(255)"`
 	ClusterID                  string `sql:"size(255)"`
@@ -35,11 +35,11 @@ type RedisInstance struct {
 	SnapshotRetentionLimit     int    `sql:"size(255)"`
 	AutomaticFailoverEnabled   bool   `sql:"size(255)"`
 
-	Tags          map[string]string `sql:"-"`
-	DbSubnetGroup string            `sql:"-"`
-	SecGroup      string            `sql:"-"`
+	Tags          map[string]string `gorm:"-"`
+	DbSubnetGroup string            `gorm:"-"`
+	SecGroup      string            `gorm:"-"`
 
-	ParameterGroupFamily string `sql:"-"`
+	ParameterGroupFamily string `gorm:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
 	EngineLogsGroupName string `sql:"size(512)"`

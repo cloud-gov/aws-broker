@@ -5,10 +5,11 @@ import (
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 const maxDbConnections = 10
@@ -20,11 +21,14 @@ func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.DB().SetMaxOpenConns(maxDbConnections)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(maxDbConnections)
 	log.Println("Migrating")
-	// db.LogMode(true)
 	// Automigrate!
-	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}) // Add all your models here to help setup the database tables
+	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{}) // Add all your models here to help setup the database tables
 	log.Println("Migrated")
 	return db, err
 }

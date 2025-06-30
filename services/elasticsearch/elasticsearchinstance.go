@@ -49,17 +49,17 @@ type ElasticsearchInstance struct {
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
 
-	ClearPassword string `sql:"-"`
+	ClearPassword string `gorm:"-"`
 
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
 
-	Tags         map[string]string `sql:"-"`
-	SubnetID1AZ1 string            `sql:"-"`
-	SubnetID2AZ2 string            `sql:"-"`
-	SubnetID3AZ1 string            `sql:"-"`
-	SubnetID4AZ2 string            `sql:"-"`
-	SecGroup     string            `sql:"-"`
+	Tags         map[string]string `gorm:"-"`
+	SubnetID1AZ1 string            `gorm:"-"`
+	SubnetID2AZ2 string            `gorm:"-"`
+	SubnetID3AZ1 string            `gorm:"-"`
+	SubnetID4AZ2 string            `gorm:"-"`
+	SecGroup     string            `gorm:"-"`
 
 	SearchSlowLogsGroupARN string `sql:"size(2048)"`
 	IndexSlowLogsGroupARN  string `sql:"size(2048)"`

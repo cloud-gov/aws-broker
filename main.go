@@ -1,18 +1,21 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/cloud-gov/aws-broker/config"
+	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-martini/martini"
-	"github.com/jinzhu/gorm"
 	"github.com/martini-contrib/auth"
 	"github.com/martini-contrib/render"
+	"gorm.io/gorm"
 
 	"log"
 	"os"
 
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/db"
-	"github.com/cloud-gov/aws-broker/taskqueue"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
 func main() {
@@ -20,22 +23,30 @@ func main() {
 
 	// Load settings from environment
 	if err := settings.LoadFromEnv(); err != nil {
-		log.Println("There was an error loading settings")
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 
 	DB, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
-		log.Println("There was an error with the DB. Error: " + err.Error())
-		return
+		log.Fatal(fmt.Errorf("There was an error with the DB. Error: " + err.Error()))
 	}
 
-	Queue := taskqueue.NewQueueManager()
-	Queue.Init()
+	asyncJobManager := jobs.NewAsyncJobManager()
+	asyncJobManager.Init()
+
+	tagManager, err := brokertags.NewCFTagManager(
+		"AWS broker",
+		settings.Environment,
+		settings.CfApiUrl,
+		settings.CfApiClientId,
+		settings.CfApiClientSecret,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Try to connect and create the app.
-	if m := App(&settings, DB, Queue); m != nil {
+	if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {
 		log.Println("Starting app...")
 		m.Run()
 	} else {
@@ -44,7 +55,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.QueueManager) *martini.ClassicMartini {
+func App(settings *config.Settings, DB *gorm.DB, asyncJobManager *jobs.AsyncJobManager, tagManager brokertags.TagManager) *martini.ClassicMartini {
 
 	m := martini.Classic()
 
@@ -56,7 +67,8 @@ func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.QueueManag
 
 	m.Map(DB)
 	m.Map(settings)
-	m.Map(TaskQueue)
+	m.Map(asyncJobManager)
+	m.Map(tagManager)
 
 	path, _ := os.Getwd()
 	m.Map(catalog.InitCatalog(path))

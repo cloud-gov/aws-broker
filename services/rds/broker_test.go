@@ -1,12 +1,21 @@
 package rds
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/mocks"
+
+	brokertags "github.com/cloud-gov/go-broker-tags"
 )
 
 func TestValidate(t *testing.T) {
@@ -224,6 +233,308 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			}
 			if !reflect.DeepEqual(test.expectedOptions, options) {
 				t.Errorf("expected: %+v, got %+v", test.expectedOptions, options)
+			}
+		})
+	}
+}
+
+func TestCreateInstanceSuccess(t *testing.T) {
+	testCases := map[string]struct {
+		planID               string
+		dbInstance           *RDSInstance
+		expectedResponseCode int
+		tagManager           brokertags.TagManager
+		settings             *config.Settings
+		catalog              *catalog.Catalog
+		createRequest        request.Request
+	}{
+		"success": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			createRequest: request.Request{
+				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				settings:   test.settings,
+				tagManager: test.tagManager,
+			}
+
+			response := broker.CreateInstance(test.catalog, test.dbInstance.Uuid, test.createRequest)
+
+			if response.GetStatusCode() != test.expectedResponseCode {
+				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			}
+		})
+	}
+}
+
+func TestModify(t *testing.T) {
+	testCases := map[string]struct {
+		planID               string
+		dbInstance           *RDSInstance
+		expectedResponseCode int
+		tagManager           brokertags.TagManager
+		settings             *config.Settings
+		catalog              *catalog.Catalog
+		modifyRequest        request.Request
+	}{
+		"success": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID:             "123",
+								PlanUpdateable: true,
+							},
+							Redundant:   true,
+							ReadReplica: true,
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+						PlanID:    "456",
+					},
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			modifyRequest: request.Request{
+				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				settings:   test.settings,
+				tagManager: test.tagManager,
+			}
+
+			err = brokerDB.Create(test.dbInstance).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			response := broker.ModifyInstance(test.catalog, test.dbInstance.Uuid, test.modifyRequest, base.Instance{})
+
+			if response.GetStatusCode() != test.expectedResponseCode {
+				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			}
+		})
+	}
+}
+
+func TestLastOperation(t *testing.T) {
+	testCases := map[string]struct {
+		planID        string
+		dbInstance    *RDSInstance
+		expectedState string
+		tagManager    brokertags.TagManager
+		settings      *config.Settings
+		catalog       *catalog.Catalog
+		operation     string
+		asyncJobMsg   *jobs.AsyncJobMsg
+	}{
+		"create": {
+			operation: base.CreateOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			asyncJobMsg: &jobs.AsyncJobMsg{
+				JobType: base.CreateOp,
+				JobState: jobs.AsyncJobState{
+					Message: "completed",
+					State:   base.InstanceReady,
+				},
+			},
+			expectedState: "succeeded",
+		},
+		"modify": {
+			operation: base.ModifyOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			asyncJobMsg: &jobs.AsyncJobMsg{
+				JobType: base.ModifyOp,
+				JobState: jobs.AsyncJobState{
+					Message: "completed",
+					State:   base.InstanceReady,
+				},
+			},
+			expectedState: "succeeded",
+		},
+		"delete": {
+			operation: base.DeleteOp.String(),
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID: "123",
+							},
+						},
+					},
+				},
+			},
+			planID: "123",
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			expectedState: "succeeded",
+			asyncJobMsg: &jobs.AsyncJobMsg{
+				JobType: base.DeleteOp,
+				JobState: jobs.AsyncJobState{
+					Message: "completed",
+					State:   base.InstanceReady,
+				},
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				settings:   test.settings,
+				tagManager: test.tagManager,
+			}
+
+			err = brokerDB.Create(test.dbInstance).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.asyncJobMsg != nil {
+				test.asyncJobMsg.BrokerId = test.dbInstance.ServiceID
+				test.asyncJobMsg.InstanceId = test.dbInstance.Uuid
+				err := brokerDB.Create(test.asyncJobMsg).Error
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			response := broker.LastOperation(test.catalog, test.dbInstance.Uuid, base.Instance{
+				Request: request.Request{
+					PlanID: test.planID,
+				},
+			}, test.operation)
+
+			lastOperationResponse, ok := response.(*responseHelpers.LastOperationResponse)
+			if !ok {
+				t.Fatal(lastOperationResponse)
+			}
+
+			if lastOperationResponse.State != test.expectedState {
+				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperationResponse.State)
 			}
 		})
 	}

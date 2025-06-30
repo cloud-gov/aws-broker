@@ -2,6 +2,7 @@ package redis
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -161,7 +162,6 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 	}
 
 	newInstance.State = status
-	broker.brokerDB.NewRecord(newInstance)
 	err = broker.brokerDB.Create(&newInstance).Error
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
@@ -193,22 +193,13 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 		return adapterErr
 	}
 
-	var state string
-
-	status, _ := adapter.checkRedisStatus(&existingInstance)
-	switch status {
-	case base.InstanceInProgress:
-		state = "in progress"
-	case base.InstanceReady:
-		state = "succeeded"
-	case base.InstanceNotCreated:
-		state = "failed"
-	case base.InstanceNotGone:
-		state = "failed"
-	default:
-		state = "in progress"
+	status, err := adapter.checkRedisStatus(&existingInstance)
+	if err != nil {
+		broker.logger.Error("Error checking Redis status", err)
+		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
-	return response.NewSuccessLastOperation(state, "The service instance status is "+state)
+
+	return response.NewSuccessLastOperation(status.ToLastOperationStatus(), fmt.Sprintf("The service instance status is %s", status))
 }
 
 func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
