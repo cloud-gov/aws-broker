@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
-	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
 	"gorm.io/gorm"
@@ -472,7 +471,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
 			awsErr, ok := err.(awserr.Error)
-			if !ok || awsErr.Code() != awsRds.ErrCodeDBInstanceNotFoundFault {
+			if !ok || awsErr.Code() != rds.ErrCodeDBInstanceNotFoundFault {
 				updateErr := async_jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Could not check database status: %s", err))
 				if updateErr != nil {
 					err = fmt.Errorf("waitForDbDeleted: while handling error %w, error updating async job message %w", err, updateErr)
