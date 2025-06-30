@@ -305,7 +305,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 && operation != base.DeleteOp.String() {
-		fmt.Println("rds: LastOperation instance not found")
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
@@ -363,7 +362,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		statusMessage = fmt.Sprintf("The database status is %s", state)
 	}
 
-	fmt.Printf("rds: LastOperation status %s, message %s\n", state.ToLastOperationStatus(), statusMessage)
 	return response.NewSuccessLastOperation(state.ToLastOperationStatus(), statusMessage)
 }
 
@@ -416,7 +414,6 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
-		fmt.Println("rds: DeleteInstance record not found")
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
@@ -433,7 +430,6 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 	// Delete the database instance.
 	status, err := adapter.deleteDB(existingInstance)
 	if err != nil && status != base.InstanceNotGone {
-		fmt.Printf("rds: DeleteInstance error: %s\n", err)
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
 	if status == base.InstanceNotGone {
@@ -441,11 +437,8 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
 		}
-		fmt.Printf("rds: DeleteInstance error: %s\n", desc)
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
-
-	fmt.Println("rds: DeleteInstance success")
 
 	return response.NewAsyncOperationResponse(base.DeleteOp.String())
 }
