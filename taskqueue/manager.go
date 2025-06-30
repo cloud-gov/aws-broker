@@ -117,7 +117,7 @@ func (q *TaskQueueManager) getTaskQueueJobKey(brokerid string, instanceid string
 // job state will be persisted and retained for a period of time before being cleaned up.
 func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
 	key := q.getTaskQueueJobKey(brokerid, instanceid, operation)
-	if _, present := q.brokerQueues[*key]; !present {
+	if !q.TaskQueueExists(brokerid, instanceid, operation) {
 		jobchan := make(chan AsyncJobMsg)
 		q.brokerQueues[*key] = jobchan
 		go q.msgProcessor(jobchan, key)
