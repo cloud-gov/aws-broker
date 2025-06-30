@@ -400,7 +400,7 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
 	if credentials, err = adapter.bindDBToApp(existingInstance, password); err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application.Error: %s", err))
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application. Error: %s", err))
 	}
 
 	// If the state of the instance has changed, update it.
