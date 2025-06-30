@@ -30,13 +30,13 @@ type AsyncJobQueueKey struct {
 	Operation  base.Operation
 }
 
-// TaskQueueManager maintains:
+// AsyncJobManager maintains:
 //
 //	 	A set of open channels for active jobs
 //		A list of jobstates for requested job
 //		A task scheduler for cleanup of jobstates
 //		A list of jobstates that need cleanup
-type TaskQueueManager struct {
+type AsyncJobManager struct {
 	jobStates    map[AsyncJobQueueKey]AsyncJobState
 	brokerQueues map[AsyncJobQueueKey]chan AsyncJobMsg
 	cleanup      map[AsyncJobQueueKey]time.Time

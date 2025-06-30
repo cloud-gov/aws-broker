@@ -3,12 +3,12 @@ package db
 import (
 	"log"
 
+	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 	"gorm.io/gorm"
 )
 

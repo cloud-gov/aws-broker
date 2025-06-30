@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -11,13 +12,12 @@ import (
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 
 	"gorm.io/gorm"
 )
 
-func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) (base.Broker, response.Response) {
+func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, taskqueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) (base.Broker, response.Response) {
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
@@ -35,7 +35,7 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
-func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) response.Response {
+func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	createRequest, err := request.ExtractRequest(req)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) response.Response {
+func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	// Extract the request information.
 	modifyRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -104,7 +104,7 @@ func modifyInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id
 	return resp
 }
 
-func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) response.Response {
+func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp
@@ -118,7 +118,7 @@ func lastOperation(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id 
 	return broker.LastOperation(c, id, instance, operation)
 }
 
-func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) response.Response {
+func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	// Extract the request information.
 	bindRequest, err := request.ExtractRequest(req)
 	if err != nil {
@@ -137,7 +137,7 @@ func bindInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id s
 	return broker.BindInstance(c, id, bindRequest, instance)
 }
 
-func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.TaskQueueManager, tagManager brokertags.TagManager) response.Response {
+func deleteInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, taskqueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
 	instance, resp := base.FindBaseInstance(brokerDb, id)
 	if resp != nil {
 		return resp

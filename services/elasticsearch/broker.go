@@ -14,12 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"gorm.io/gorm"
 
+	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -46,7 +46,7 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 type elasticsearchBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
-	taskqueue  *taskqueue.TaskQueueManager
+	taskqueue  *taskqueue.AsyncJobManager
 	logger     lager.Logger
 	tagManager brokertags.TagManager
 }
@@ -55,7 +55,7 @@ type elasticsearchBroker struct {
 func InitElasticsearchBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
-	taskqueue *taskqueue.TaskQueueManager,
+	taskqueue *taskqueue.AsyncJobManager,
 	tagManager brokertags.TagManager,
 ) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")

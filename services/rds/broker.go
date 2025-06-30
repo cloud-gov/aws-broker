@@ -12,12 +12,12 @@ import (
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
 
+	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 )
 
 // Options is a struct containing all of the custom parameters supported by

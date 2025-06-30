@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
@@ -11,7 +12,6 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/mocks"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 	"gorm.io/gorm"
 )
 

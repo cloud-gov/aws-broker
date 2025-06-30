@@ -11,10 +11,10 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"gorm.io/gorm"
 
+	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	brokerErrs "github.com/cloud-gov/aws-broker/errors"
-	"github.com/cloud-gov/aws-broker/taskqueue"
 
 	"errors"
 	"fmt"

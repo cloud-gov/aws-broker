@@ -8,19 +8,19 @@ import (
 	"github.com/go-co-op/gocron"
 )
 
-type QueueManager interface {
-	ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error)
-	UnScheduleTask(id string) error
-	IsTaskScheduled(id string) bool
-	RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error)
-	GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error)
+type JobManager interface {
+	scheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error)
+	unScheduleTask(id string) error
+	isTaskScheduled(id string) bool
+	RequestJobMessageQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error)
+	GetJobState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error)
 }
 
 // can be called to initialize the manager
 // defaults to do clean-up of jobstates after an hour.
 // runs clean up check every 15 minutes
-func NewTaskQueueManager() *TaskQueueManager {
-	mgr := &TaskQueueManager{
+func NewAsyncJobManager() *AsyncJobManager {
+	return &AsyncJobManager{
 		jobStates:    make(map[AsyncJobQueueKey]AsyncJobState),
 		brokerQueues: make(map[AsyncJobQueueKey]chan AsyncJobMsg),
 		cleanup:      make(map[AsyncJobQueueKey]time.Time),
@@ -28,29 +28,28 @@ func NewTaskQueueManager() *TaskQueueManager {
 		expiration:   5 * time.Minute, //platform issues last-operation calls every 2 minutes
 		check:        2 * time.Minute,
 	}
-	return mgr
 }
 
 // must be called to activate cleanup mechanism
 // separated from constructor to allow config and testing
-func (q *TaskQueueManager) Init() {
+func (q *AsyncJobManager) Init() {
 	q.scheduler.TagsUnique()
 	q.scheduler.Every(q.check).Tag("QueueCleaner").Do(q.cleanupJobStates)
 	q.scheduler.StartAsync()
 }
 
 // Allow Jobs to be scheduled by brokers
-func (q *TaskQueueManager) ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error) {
+func (q *AsyncJobManager) ScheduleTask(cronExpression string, id string, task interface{}) (*gocron.Job, error) {
 	return q.scheduler.Cron(cronExpression).Tag(id).Do(task)
 }
 
 // Stop jobs scheduled
-func (q *TaskQueueManager) UnScheduleTask(id string) error {
+func (q *AsyncJobManager) UnScheduleTask(id string) error {
 	return q.scheduler.RemoveByTag(id)
 }
 
 // Determine if job(id) is scheduled
-func (q *TaskQueueManager) IsTaskScheduled(id string) bool {
+func (q *AsyncJobManager) IsTaskScheduled(id string) bool {
 	for _, job := range q.scheduler.Jobs() {
 		for _, tag := range job.Tags() {
 			if id == tag {
@@ -62,7 +61,7 @@ func (q *TaskQueueManager) IsTaskScheduled(id string) bool {
 }
 
 // update the state list for the unique job
-func (q *TaskQueueManager) processMsg(msg AsyncJobMsg) {
+func (q *AsyncJobManager) processMsg(msg AsyncJobMsg) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   msg.BrokerId,
 		InstanceId: msg.InstanceId,
@@ -77,7 +76,7 @@ func (q *TaskQueueManager) processMsg(msg AsyncJobMsg) {
 
 // async job monitor will process any messages
 // coming in on the channel and then update the state for that job
-func (q *TaskQueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueueKey) {
+func (q *AsyncJobManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQueueKey) {
 	for job := range jobChan {
 		q.processMsg(job)
 	}
@@ -92,7 +91,7 @@ func (q *TaskQueueManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobQ
 // time to retrieve state afer a job completes
 // Create,Delete clean-up can be lazy,
 // TODO: Bind,Unbind,Modify operations should be cleaned quickly ?
-func (q *TaskQueueManager) cleanupJobStates() {
+func (q *AsyncJobManager) cleanupJobStates() {
 	now := time.Now()
 	for key, due := range q.cleanup {
 		if now.After(due) {
@@ -102,7 +101,7 @@ func (q *TaskQueueManager) cleanupJobStates() {
 	}
 }
 
-func (q *TaskQueueManager) getTaskQueueJobKey(brokerid string, instanceid string, operation base.Operation) *AsyncJobQueueKey {
+func (q *AsyncJobManager) getTaskQueueJobKey(brokerid string, instanceid string, operation base.Operation) *AsyncJobQueueKey {
 	return &AsyncJobQueueKey{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
@@ -114,7 +113,7 @@ func (q *TaskQueueManager) getTaskQueueJobKey(brokerid string, instanceid string
 // the queue manager will launch a channel monitor to recieve messages and update the state of that async operation.
 // will return an error if a channel has already been launched. Channels must be closed by the recipient after use.
 // job state will be persisted and retained for a period of time before being cleaned up.
-func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
+func (q *AsyncJobManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
 	key := q.getTaskQueueJobKey(brokerid, instanceid, operation)
 	if _, present := q.brokerQueues[*key]; !present {
 		jobchan := make(chan AsyncJobMsg)
@@ -128,7 +127,7 @@ func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, 
 // a broker or adapter can query the state of a job, will return an error if there is no known state.
 // jobstates get cleaned-up automatically after a period of time after the chan is closed
 // we cant do clean up here because state means different things to different brokers
-func (q *TaskQueueManager) GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error) {
+func (q *AsyncJobManager) GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error) {
 	key := &AsyncJobQueueKey{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
