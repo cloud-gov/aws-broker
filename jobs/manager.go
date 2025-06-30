@@ -1,4 +1,4 @@
-package async_jobs
+package jobs
 
 import (
 	"fmt"
@@ -121,7 +121,7 @@ func (q *AsyncJobManager) RequestJobMessageQueue(brokerid string, instanceid str
 		go q.msgProcessor(jobchan, key)
 		return jobchan, nil
 	}
-	return nil, fmt.Errorf("async_jobs: a job queue already exists for that key: %v", key)
+	return nil, fmt.Errorf("jobs: a job queue already exists for that key: %v", key)
 }
 
 // a broker or adapter can query the state of a job, will return an error if there is no known state.
@@ -136,5 +136,5 @@ func (q *AsyncJobManager) GetJobState(brokerid string, instanceid string, operat
 	if state, present := q.jobStates[*key]; present {
 		return &state, nil
 	}
-	return &AsyncJobState{}, fmt.Errorf("async_jobs: no state found for that key: %v", key)
+	return &AsyncJobState{}, fmt.Errorf("jobs: no state found for that key: %v", key)
 }

@@ -12,12 +12,12 @@ import (
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
 
-	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
 // Options is a struct containing all of the custom parameters supported by
@@ -347,7 +347,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	if needAsyncJobState {
-		asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}

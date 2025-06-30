@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"testing"
 
-	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
@@ -18,7 +18,7 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &async_jobs.AsyncJobMsg{})
+	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
 	return db, err
 }
 

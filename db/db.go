@@ -3,9 +3,9 @@ package db
 import (
 	"log"
 
-	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
@@ -28,7 +28,7 @@ func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(maxDbConnections)
 	log.Println("Migrating")
 	// Automigrate!
-	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &async_jobs.AsyncJobMsg{}) // Add all your models here to help setup the database tables
+	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{}) // Add all your models here to help setup the database tables
 	log.Println("Migrated")
 	return db, err
 }

@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -383,7 +383,7 @@ func TestLastOperation(t *testing.T) {
 		settings      *config.Settings
 		catalog       *catalog.Catalog
 		operation     string
-		asyncJobMsg   *async_jobs.AsyncJobMsg
+		asyncJobMsg   *jobs.AsyncJobMsg
 	}{
 		"create": {
 			operation: base.CreateOp.String(),
@@ -412,9 +412,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &async_jobs.AsyncJobMsg{
+			asyncJobMsg: &jobs.AsyncJobMsg{
 				JobType: base.CreateOp,
-				JobState: async_jobs.AsyncJobState{
+				JobState: jobs.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -448,9 +448,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &async_jobs.AsyncJobMsg{
+			asyncJobMsg: &jobs.AsyncJobMsg{
 				JobType: base.ModifyOp,
-				JobState: async_jobs.AsyncJobState{
+				JobState: jobs.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -485,9 +485,9 @@ func TestLastOperation(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: "succeeded",
-			asyncJobMsg: &async_jobs.AsyncJobMsg{
+			asyncJobMsg: &jobs.AsyncJobMsg{
 				JobType: base.DeleteOp,
-				JobState: async_jobs.AsyncJobState{
+				JobState: jobs.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},

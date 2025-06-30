@@ -1,4 +1,4 @@
-package async_jobs
+package jobs
 
 import (
 	"time"

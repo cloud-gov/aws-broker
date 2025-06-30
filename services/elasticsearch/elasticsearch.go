@@ -19,9 +19,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
-	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -35,7 +35,7 @@ type ElasticsearchAdapter interface {
 	modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *async_jobs.AsyncJobManager) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *jobs.AsyncJobManager) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -61,7 +61,7 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials(password)
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *async_jobs.AsyncJobManager) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
 }
@@ -240,7 +240,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *async_jobs.AsyncJobManager) (base.InstanceState, error) {
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
 	//check for backing resource and do async otherwise remove from db
 	params := &opensearchservice.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
@@ -391,15 +391,15 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 	return nil
 }
 
-// state is persisted in the async_jobs for LastOperations polling.
-func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan async_jobs.AsyncJobMsg) {
+// state is persisted in the jobs for LastOperations polling.
+func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan jobs.AsyncJobMsg) {
 	defer close(jobstate)
 
-	msg := async_jobs.AsyncJobMsg{
+	msg := jobs.AsyncJobMsg{
 		BrokerId:   i.ServiceID,
 		InstanceId: i.Uuid,
 		JobType:    base.DeleteOp,
-		JobState:   async_jobs.AsyncJobState{},
+		JobState:   jobs.AsyncJobState{},
 	}
 	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Started for Service Instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceInProgress
