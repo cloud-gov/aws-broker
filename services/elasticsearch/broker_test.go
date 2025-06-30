@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -53,7 +53,7 @@ func TestValidate(t *testing.T) {
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
+	db.AutoMigrate(&ElasticsearchInstance{}, &base.Instance{}, &async_jobs.AsyncJobMsg{})
 	return db, err
 }
 

@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
@@ -48,9 +48,9 @@ func setup() *martini.ClassicMartini {
 	if err != nil {
 		log.Fatal(err)
 	}
-	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &async_jobs.AsyncJobMsg{})
 
-	tq := taskqueue.NewAsyncJobManager()
+	tq := async_jobs.NewAsyncJobManager()
 	tq.Init()
 
 	m := App(&s, brokerDB, tq, &mocks.MockTagGenerator{})

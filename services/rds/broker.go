@@ -12,7 +12,7 @@ import (
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
 
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -347,7 +347,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	}
 
 	if needAsyncJobState {
-		asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}

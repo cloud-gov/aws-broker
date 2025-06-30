@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -389,7 +389,7 @@ func TestAsyncCreateDb(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			test.dbAdapter.asyncCreateDB(test.dbInstance, test.password)
 
-			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -472,7 +472,7 @@ func TestCreateDb(t *testing.T) {
 			}
 
 			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+				asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -661,7 +661,7 @@ func TestWaitForDbReady(t *testing.T) {
 			}
 
 			if test.expectAsyncJobMessage {
-				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+				asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -790,7 +790,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1031,7 +1031,7 @@ func TestAsyncModifyDb(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			test.dbAdapter.asyncModifyDb(test.dbInstance)
 
-			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
+			asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1112,7 +1112,7 @@ func TestModifyDb(t *testing.T) {
 			}
 
 			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
+				asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -1668,7 +1668,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 			}
 
 			if test.expectAsyncJobMessage {
-				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+				asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -1858,7 +1858,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
 			test.dbAdapter.asyncDeleteDB(test.dbInstance)
 
-			asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
+			asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1931,7 +1931,7 @@ func TestDeleteDb(t *testing.T) {
 			}
 
 			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := taskqueue.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
+				asyncJobMsg, err := async_jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
 				if err != nil {
 					t.Fatal(err)
 				}

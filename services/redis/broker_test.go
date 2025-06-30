@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -18,7 +18,7 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
+	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &async_jobs.AsyncJobMsg{})
 	return db, err
 }
 

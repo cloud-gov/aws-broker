@@ -3,7 +3,7 @@ package rds
 import (
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/testutil"
@@ -13,7 +13,7 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &taskqueue.AsyncJobMsg{})
+	db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &async_jobs.AsyncJobMsg{})
 	return db, err
 }
 

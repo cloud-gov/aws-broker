@@ -13,7 +13,7 @@ import (
 	"log"
 	"os"
 
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/db"
 )
@@ -31,7 +31,7 @@ func main() {
 		log.Fatal(fmt.Errorf("There was an error with the DB. Error: " + err.Error()))
 	}
 
-	Queue := taskqueue.NewAsyncJobManager()
+	Queue := async_jobs.NewAsyncJobManager()
 	Queue.Init()
 
 	tagManager, err := brokertags.NewCFTagManager(
@@ -55,7 +55,7 @@ func main() {
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.AsyncJobManager, tagManager brokertags.TagManager) *martini.ClassicMartini {
+func App(settings *config.Settings, DB *gorm.DB, asyncJobManager *async_jobs.AsyncJobManager, tagManager brokertags.TagManager) *martini.ClassicMartini {
 
 	m := martini.Classic()
 
@@ -67,7 +67,7 @@ func App(settings *config.Settings, DB *gorm.DB, TaskQueue *taskqueue.AsyncJobMa
 
 	m.Map(DB)
 	m.Map(settings)
-	m.Map(TaskQueue)
+	m.Map(asyncJobManager)
 	m.Map(tagManager)
 
 	path, _ := os.Getwd()

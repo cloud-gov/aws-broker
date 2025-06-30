@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	taskqueue "github.com/cloud-gov/aws-broker/async_jobs"
+	async_jobs "github.com/cloud-gov/aws-broker/async_jobs"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -383,7 +383,7 @@ func TestLastOperation(t *testing.T) {
 		settings      *config.Settings
 		catalog       *catalog.Catalog
 		operation     string
-		asyncJobMsg   *taskqueue.AsyncJobMsg
+		asyncJobMsg   *async_jobs.AsyncJobMsg
 	}{
 		"create": {
 			operation: base.CreateOp.String(),
@@ -412,9 +412,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &taskqueue.AsyncJobMsg{
+			asyncJobMsg: &async_jobs.AsyncJobMsg{
 				JobType: base.CreateOp,
-				JobState: taskqueue.AsyncJobState{
+				JobState: async_jobs.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -448,9 +448,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &taskqueue.AsyncJobMsg{
+			asyncJobMsg: &async_jobs.AsyncJobMsg{
 				JobType: base.ModifyOp,
-				JobState: taskqueue.AsyncJobState{
+				JobState: async_jobs.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -485,9 +485,9 @@ func TestLastOperation(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: "succeeded",
-			asyncJobMsg: &taskqueue.AsyncJobMsg{
+			asyncJobMsg: &async_jobs.AsyncJobMsg{
 				JobType: base.DeleteOp,
-				JobState: taskqueue.AsyncJobState{
+				JobState: async_jobs.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
