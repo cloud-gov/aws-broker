@@ -276,7 +276,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 
 	switch operation {
 	case base.DeleteOp.String(): // delete is true concurrent operation
-		jobstate, err := broker.taskqueue.GetTaskState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
+		jobstate, err := broker.taskqueue.GetJobState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
 		if err != nil {
 			jobstate.State = base.InstanceNotGone //indicate a failure
 		}

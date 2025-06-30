@@ -1,4 +1,4 @@
-package taskqueue
+package async_jobs
 
 import (
 	"time"
@@ -13,7 +13,8 @@ type AsyncJobState struct {
 	Message string
 }
 
-// messages of job state delivered over chan that are persisted
+// messages of asynchronous job state. This struct is used as a model for
+// storing job states which are persisted to the database.
 type AsyncJobMsg struct {
 	BrokerId        string         `gorm:"primaryKey; not null"`
 	InstanceId      string         `gorm:"primaryKey; not null"`
@@ -24,7 +25,7 @@ type AsyncJobMsg struct {
 
 // Jobs are unique for a broker,instance, and operation (CreateOp,DeleteOp,ModifyOp, BindOp, UnBindOp)
 // this identifier is used as the unique key to retrieve a chan and or job state
-type AsyncJobQueueKey struct {
+type AsyncJobKey struct {
 	BrokerId   string
 	InstanceId string
 	Operation  base.Operation
@@ -37,9 +38,9 @@ type AsyncJobQueueKey struct {
 //		A task scheduler for cleanup of jobstates
 //		A list of jobstates that need cleanup
 type AsyncJobManager struct {
-	jobStates    map[AsyncJobQueueKey]AsyncJobState
-	brokerQueues map[AsyncJobQueueKey]chan AsyncJobMsg
-	cleanup      map[AsyncJobQueueKey]time.Time
+	jobStates    map[AsyncJobKey]AsyncJobState
+	brokerQueues map[AsyncJobKey]chan AsyncJobMsg
+	cleanup      map[AsyncJobKey]time.Time
 	scheduler    *gocron.Scheduler
 	expiration   time.Duration
 	check        time.Duration

@@ -1,4 +1,4 @@
-package taskqueue
+package async_jobs
 
 import (
 	"errors"
