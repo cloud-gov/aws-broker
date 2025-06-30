@@ -508,10 +508,8 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	operation := base.DeleteOp
 
 	if i.ReplicaDatabase != "" {
-		fmt.Printf("asyncDeleteDB: deleting replica for %s\n", i.Uuid)
 		taskqueue.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 
-		fmt.Printf("asyncDeleteDB: preparing to delete DB input for replica %s\n", i.Uuid)
 		params := prepareDeleteDbInput(i.ReplicaDatabase)
 		_, err := d.rds.DeleteDBInstance(params)
 		if err != nil {
@@ -520,16 +518,12 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 			return
 		}
 
-		fmt.Printf("asyncDeleteDB: submitted deletion for replica for %s\n", i.Uuid)
-
 		err = d.waitForDbDeleted(operation, i, i.ReplicaDatabase)
 		if err != nil {
 			taskqueue.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
 			fmt.Printf("asyncDeleteDB: %s\n", err)
 			return
 		}
-
-		fmt.Printf("asyncDeleteDB: verified deletion of replica for %s\n", i.Uuid)
 	}
 
 	params := prepareDeleteDbInput(i.Database)
@@ -541,16 +535,12 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 		return
 	}
 
-	fmt.Printf("asyncDeleteDB: submitted deletion of primary for %s\n", i.Uuid)
-
 	err = d.waitForDbDeleted(operation, i, i.Database)
 	if err != nil {
 		taskqueue.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm database deletion: %s", err))
 		fmt.Printf("asyncDeleteDB: %s\n", err)
 		return
 	}
-
-	fmt.Printf("asyncDeleteDB: verified deletion of primary for %s\n", i.Uuid)
 
 	taskqueue.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
 	d.parameterGroupClient.CleanupCustomParameterGroups()
