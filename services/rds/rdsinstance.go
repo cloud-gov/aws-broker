@@ -58,7 +58,7 @@ func NewRDSInstance() *RDSInstance {
 }
 
 func (i *RDSInstance) FormatDBName() string {
-	return i.dbUtils.FormatDBName(i.DbType, i.Database)
+	return i.dbUtils.formatDBName(i.DbType, i.Database)
 }
 
 func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {

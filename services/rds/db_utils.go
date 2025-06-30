@@ -13,7 +13,7 @@ import (
 )
 
 type DatabaseUtils interface {
-	FormatDBName(dbType string, database string) string
+	formatDBName(dbType string, database string) string
 	generatePassword(salt string, password string, key string) (string, string, error)
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
@@ -25,7 +25,7 @@ type DatabaseUtils interface {
 type RDSDatabaseUtils struct {
 }
 
-func (u *RDSDatabaseUtils) FormatDBName(dbType string, database string) string {
+func (u *RDSDatabaseUtils) formatDBName(dbType string, database string) string {
 	switch dbType {
 	case "oracle-se1", "oracle-se2":
 		return "ORCL"
