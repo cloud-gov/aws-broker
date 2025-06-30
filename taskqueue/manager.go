@@ -14,7 +14,6 @@ type QueueManager interface {
 	IsTaskScheduled(id string) bool
 	RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error)
 	GetTaskState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error)
-	TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool
 }
 
 // can be called to initialize the manager
@@ -117,19 +116,13 @@ func (q *TaskQueueManager) getTaskQueueJobKey(brokerid string, instanceid string
 // job state will be persisted and retained for a period of time before being cleaned up.
 func (q *TaskQueueManager) RequestTaskQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
 	key := q.getTaskQueueJobKey(brokerid, instanceid, operation)
-	if !q.TaskQueueExists(brokerid, instanceid, operation) {
+	if _, present := q.brokerQueues[*key]; !present {
 		jobchan := make(chan AsyncJobMsg)
 		q.brokerQueues[*key] = jobchan
 		go q.msgProcessor(jobchan, key)
 		return jobchan, nil
 	}
 	return nil, fmt.Errorf("taskqueue: a job queue already exists for that key: %v", key)
-}
-
-func (q *TaskQueueManager) TaskQueueExists(brokerid string, instanceid string, operation base.Operation) bool {
-	key := q.getTaskQueueJobKey(brokerid, instanceid, operation)
-	_, present := q.brokerQueues[*key]
-	return present
 }
 
 // a broker or adapter can query the state of a job, will return an error if there is no known state.
