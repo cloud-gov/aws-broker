@@ -407,7 +407,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDelete - \n\t takeLastSnapshot returned error: %v\n", err)
+		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error: %v\n", err)
 		fmt.Println(desc)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = desc
@@ -417,7 +417,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 
 	err = d.writeManifestToS3(i, password)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDelete - \n\t writeManifestToS3 returned error: %v\n", err)
+		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error: %v\n", err)
 		fmt.Println(desc)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = desc
@@ -427,7 +427,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDelete - \n\t cleanupRolesAndPolicies returned error: %v\n", err)
+		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t cleanupRolesAndPolicies returned error: %v\n", err)
 		fmt.Println(desc)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = desc
@@ -437,7 +437,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDelete - \n\t cleanupElasticSearchDomain returned error: %v\n", err)
+		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error: %v\n", err)
 		fmt.Println(desc)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = desc
@@ -518,7 +518,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 			d.logger.Error("GetSnapShotStatus failed", err)
 			return err
 		}
-		if res != "IN_PROGRESS" {
+		if res == "SUCCESS" {
 			break
 		}
 		time.Sleep(sleep)
