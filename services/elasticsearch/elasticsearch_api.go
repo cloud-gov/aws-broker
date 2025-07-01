@@ -163,8 +163,7 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 }
 
 func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
-
-	endpoint := "/_snapshot/" + reponame + "/" + snapshotname + "/_status"
+	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
 	resp, err := es.Send(http.MethodGet, endpoint, "")
 	if err != nil {
 		fmt.Printf("es_api getsnapshot status error %v", err)
