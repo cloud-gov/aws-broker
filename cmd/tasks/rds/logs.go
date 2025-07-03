@@ -6,12 +6,12 @@ import (
 	"log"
 	"strings"
 
-	"github.com/18F/aws-broker/services/rds"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	awsRds "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
-	"github.com/jinzhu/gorm"
+	"github.com/cloud-gov/aws-broker/services/rds"
+	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/cmd/tasks/logs"
 )

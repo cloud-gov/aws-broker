@@ -20,9 +20,9 @@ import (
 	"github.com/cloud-gov/aws-broker/cmd/tasks/rds"
 	tasksRds "github.com/cloud-gov/aws-broker/cmd/tasks/rds"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/config"
-	"github.com/18F/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 
 	"golang.org/x/exp/slices"
 )
