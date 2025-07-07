@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/18F/aws-broker/catalog"
-	"github.com/18F/aws-broker/services/elasticsearch"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/opensearchservice"
 	"github.com/aws/aws-sdk-go/service/opensearchservice/opensearchserviceiface"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"github.com/jinzhu/gorm"
 	"golang.org/x/exp/slices"
+	"gorm.io/gorm"
 )
 
 func getOpensearchDomainArn(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, elasticsearchInstance elasticsearch.ElasticsearchInstance) (string, error) {
