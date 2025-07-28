@@ -944,7 +944,7 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -979,7 +979,7 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1014,7 +1014,7 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1048,7 +1048,7 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1082,7 +1082,7 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbType: mysql
       dbVersion: "8.4.4"
       plan_updateable: true
@@ -1117,7 +1117,7 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbType: mysql
       dbVersion: "8.4.4"
       plan_updateable: true
@@ -1152,7 +1152,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1186,7 +1186,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1221,7 +1221,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1256,7 +1256,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1290,7 +1290,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1325,7 +1325,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1360,7 +1360,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1394,7 +1394,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1429,7 +1429,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1464,7 +1464,7 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1498,7 +1498,7 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
@@ -1533,7 +1533,7 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions:
-        - "8.4.4"
+        - "8.4"
       dbVersion: "8.4.4"
       dbType: mysql
       plan_updateable: true
