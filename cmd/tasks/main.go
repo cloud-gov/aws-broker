@@ -17,7 +17,6 @@ import (
 
 	tasksElasticache "github.com/cloud-gov/aws-broker/cmd/tasks/elasticache"
 	tasksOpensearch "github.com/cloud-gov/aws-broker/cmd/tasks/opensearch"
-	"github.com/cloud-gov/aws-broker/cmd/tasks/rds"
 	tasksRds "github.com/cloud-gov/aws-broker/cmd/tasks/rds"
 
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -43,7 +42,7 @@ func (s *serviceNames) Set(value string) error {
 var servicesToTag serviceNames
 
 func run() error {
-	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups'")
+	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups', 'reconcile-parameter-groups'")
 	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
 	flag.Parse()
 
@@ -119,7 +118,17 @@ func run() error {
 
 		if slices.Contains(servicesToTag, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := rds.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
+			err := tasksRds.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if *actionPtr == "reconcile-parameter-groups" {
+		if slices.Contains(servicesToTag, "rds") {
+			rdsClient := awsRds.New(sess)
+			err := tasksRds.ReconcileRDSParameterGroups(rdsClient, db)
 			if err != nil {
 				return err
 			}

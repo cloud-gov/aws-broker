@@ -48,7 +48,7 @@ func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSIns
 	return nil
 }
 
-func ReconcileRDSParameterGroups(rdsClient rdsiface.RDSAPI, dbNamePrefix string, db *gorm.DB) error {
+func ReconcileRDSParameterGroups(rdsClient rdsiface.RDSAPI, db *gorm.DB) error {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
 		return err
