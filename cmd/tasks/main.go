@@ -39,18 +39,18 @@ func (s *serviceNames) Set(value string) error {
 	return nil
 }
 
-var servicesToTag serviceNames
+var services serviceNames
 
 func run() error {
 	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups', 'reconcile-parameter-groups'")
-	flag.Var(&servicesToTag, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
+	flag.Var(&services, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
 	flag.Parse()
 
 	if *actionPtr == "" {
 		log.Fatal("--action flag is required")
 	}
 
-	if len(servicesToTag) == 0 {
+	if len(services) == 0 {
 		return errors.New("--service argument is required. Specify --service multiple times to update tags for multiple services")
 	}
 
@@ -90,21 +90,21 @@ func run() error {
 
 		logsClient := cloudwatchlogs.New(sess)
 
-		if slices.Contains(servicesToTag, "rds") {
+		if slices.Contains(services, "rds") {
 			rdsClient := awsRds.New(sess)
 			err := tasksRds.ReconcileResourceTagsForAllRDSDatabases(c, db, rdsClient, logsClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
-		if slices.Contains(servicesToTag, "elasticache") {
+		if slices.Contains(services, "elasticache") {
 			elasticacheClient := elasticache.New(sess)
 			err := tasksElasticache.ReconcileElasticacheResourceTags(c, db, elasticacheClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
-		if slices.Contains(servicesToTag, "elasticsearch") || slices.Contains(servicesToTag, "opensearch") {
+		if slices.Contains(services, "elasticsearch") || slices.Contains(services, "opensearch") {
 			opensearchClient := opensearchservice.New(sess)
 			err := tasksOpensearch.ReconcileOpensearchResourceTags(c, db, opensearchClient, tagManager)
 			if err != nil {
@@ -116,7 +116,7 @@ func run() error {
 	if *actionPtr == "reconcile-log-groups" {
 		logsClient := cloudwatchlogs.New(sess)
 
-		if slices.Contains(servicesToTag, "rds") {
+		if slices.Contains(services, "rds") {
 			rdsClient := awsRds.New(sess)
 			err := tasksRds.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
 			if err != nil {
@@ -126,7 +126,7 @@ func run() error {
 	}
 
 	if *actionPtr == "reconcile-parameter-groups" {
-		if slices.Contains(servicesToTag, "rds") {
+		if slices.Contains(services, "rds") {
 			rdsClient := awsRds.New(sess)
 			err := tasksRds.ReconcileRDSParameterGroups(rdsClient, db)
 			if err != nil {
