@@ -42,7 +42,7 @@ func (s *serviceNames) Set(value string) error {
 var services serviceNames
 
 func run() error {
-	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups', 'reconcile-parameter-groups'")
+	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups', 'reconcile-parameter-groups', 'find-orphaned-instances'")
 	flag.Var(&services, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
 	flag.Parse()
 
@@ -129,6 +129,16 @@ func run() error {
 		if slices.Contains(services, "rds") {
 			rdsClient := awsRds.New(sess)
 			err := tasksRds.ReconcileRDSParameterGroups(rdsClient, db)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if *actionPtr == "find-orphaned-instances" {
+		if slices.Contains(services, "rds") {
+			rdsClient := awsRds.New(sess)
+			err := tasksRds.FindOrphanedInstances(rdsClient, db)
 			if err != nil {
 				return err
 			}
