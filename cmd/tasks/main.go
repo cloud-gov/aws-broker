@@ -138,7 +138,7 @@ func run() error {
 	if *actionPtr == "find-orphaned-instances" {
 		if slices.Contains(services, "rds") {
 			rdsClient := awsRds.New(sess)
-			err := tasksRds.FindOrphanedInstances(rdsClient, db)
+			err := tasksRds.FindOrphanedInstances(rdsClient, db, settings.DbNamePrefix)
 			if err != nil {
 				return err
 			}
