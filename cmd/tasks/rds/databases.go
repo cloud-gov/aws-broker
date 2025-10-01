@@ -24,7 +24,7 @@ func FindOrphanedInstances(rdsClient rdsiface.RDSAPI, db *gorm.DB, dbNamePrefix 
 				continue
 			}
 			var rdsDatabase rds.RDSInstance
-			err := db.Where(&rds.RDSInstance{Database: instanceName}).First(&rdsDatabase).Error
+			err := db.Where("LOWER(database) = ?", instanceName).First(&rdsDatabase).Error
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					log.Printf("database %s does not exist in the broker database", instanceName)
