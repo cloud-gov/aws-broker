@@ -14,7 +14,17 @@ import (
 	"gorm.io/gorm"
 )
 
-func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSInstance) error {
+func updateParameterGroupInBrokerDatabase(rdsInstance rds.RDSInstance, parameterGroupName string, db *gorm.DB) error {
+	log.Printf("Database %s has custom parameter group %s, but none is recorded in the broker database", rdsInstance.Database, parameterGroupName)
+	rdsInstance.ParameterGroupName = parameterGroupName
+	err := db.Save(rdsInstance).Error
+	if err == nil {
+		log.Printf("Updated database %s to have custom parameter group %s in broker database", rdsInstance.Database, parameterGroupName)
+	}
+	return err
+}
+
+func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSInstance, db *gorm.DB) error {
 	resp, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(rdsInstance.Database),
 	})
@@ -41,7 +51,11 @@ func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSIns
 	if rdsInstance.ParameterGroupName == "" && len(instanceInfo.DBParameterGroups) > 0 {
 		for _, parameterGroup := range instanceInfo.DBParameterGroups {
 			if strings.HasPrefix(*parameterGroup.DBParameterGroupName, "cg-aws-broker-") {
-				log.Printf("Database %s has custom parameter group %s, but none are recorded in the broker database", rdsInstance.Database, *parameterGroup.DBParameterGroupName)
+				err := updateParameterGroupInBrokerDatabase(rdsInstance, *parameterGroup.DBParameterGroupName, db)
+				if err != nil {
+					log.Printf("Error updating parameter group for %s, continuing", rdsInstance.Database)
+					continue
+				}
 			}
 		}
 	}
@@ -65,7 +79,7 @@ func ReconcileRDSParameterGroups(rdsClient rdsiface.RDSAPI, db *gorm.DB) error {
 		var rdsInstance rds.RDSInstance
 		db.ScanRows(rows, &rdsInstance)
 
-		err := reconcileDbParameterGroup(rdsClient, rdsInstance)
+		err := reconcileDbParameterGroup(rdsClient, rdsInstance, db)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue
