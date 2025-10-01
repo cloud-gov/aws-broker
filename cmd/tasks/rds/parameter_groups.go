@@ -88,3 +88,30 @@ func ReconcileRDSParameterGroups(rdsClient rdsiface.RDSAPI, db *gorm.DB) error {
 
 	return errs
 }
+
+func FindUnusedParameterGroups(rdsClient rdsiface.RDSAPI, dbNamePrefix string, dbConfigUrl string) error {
+	err := rdsClient.DescribeDBInstancesPages(&awsRds.DescribeDBInstancesInput{}, func(page *awsRds.DescribeDBInstancesOutput, lastPage bool) bool {
+		for _, dbInstance := range page.DBInstances {
+			instanceName := *dbInstance.DBInstanceIdentifier
+			if !strings.Contains(instanceName, dbNamePrefix) {
+				log.Printf("database %s is not a brokered database for this environment, continuing", instanceName)
+				continue
+			}
+			if strings.Contains(dbConfigUrl, instanceName) {
+				log.Printf("database %s is the database for the broker itself, continuing", instanceName)
+				continue
+			}
+
+			// collect all parameter groups for active brokered databases
+
+			continue
+		}
+		return !lastPage // Continue iterating until the last page is reached.
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
