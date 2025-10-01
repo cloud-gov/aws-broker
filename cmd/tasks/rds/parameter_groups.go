@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -38,7 +39,11 @@ func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSIns
 	instanceInfo := resp.DBInstances[0]
 
 	if rdsInstance.ParameterGroupName == "" && len(instanceInfo.DBParameterGroups) > 0 {
-		log.Printf("Database %s has parameter groups, but none are recorded in the broker database", rdsInstance.Database)
+		for _, parameterGroup := range instanceInfo.DBParameterGroups {
+			if strings.HasPrefix(*parameterGroup.DBParameterGroupName, "cg-aws-broker-") {
+				log.Printf("Database %s has custom parameter group %s, but none are recorded in the broker database", rdsInstance.Database, *parameterGroup.DBParameterGroupName)
+			}
+		}
 	}
 
 	if len(instanceInfo.DBParameterGroups) == 0 && rdsInstance.ParameterGroupName != "" {
