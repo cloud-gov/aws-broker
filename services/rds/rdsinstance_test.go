@@ -664,6 +664,21 @@ func TestModifyInstance(t *testing.T) {
 			settings:  &config.Settings{},
 			expectErr: true,
 		},
+		"update from plan with read replica enabled to non read-replica plan": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database: "db",
+			},
+			currentPlan: catalog.RDSPlan{
+				ReadReplica: true,
+			},
+			newPlan:  catalog.RDSPlan{},
+			settings: &config.Settings{},
+			expectedInstance: &RDSInstance{
+				Database:          "db",
+				DeleteReadReplica: true,
+			},
+		},
 	}
 
 	for name, test := range testCases {
