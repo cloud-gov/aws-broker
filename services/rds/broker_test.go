@@ -322,6 +322,12 @@ func TestModify(t *testing.T) {
 							Redundant:   true,
 							ReadReplica: true,
 						},
+						{
+							Plan: catalog.Plan{
+								ID:             "456",
+								PlanUpdateable: true,
+							},
+						},
 					},
 				},
 			},
