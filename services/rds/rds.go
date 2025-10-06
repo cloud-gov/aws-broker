@@ -340,6 +340,10 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
 		}
 	}
 
+	if i.DeleteReadReplica {
+		d.deleteDatabaseReadReplica(i, operation)
+	}
+
 	err = d.db.Save(i).Error
 	if err != nil {
 		fmt.Printf("asyncModifyDb, error saving record: %s\n", err)
@@ -503,26 +507,30 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	return nil
 }
 
+func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation base.Operation) {
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
+
+	params := prepareDeleteDbInput(i.ReplicaDatabase)
+	_, err := d.rds.DeleteDBInstance(params)
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
+		fmt.Printf("asyncDeleteDB: %s\n", err)
+		return
+	}
+
+	err = d.waitForDbDeleted(operation, i, i.ReplicaDatabase)
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
+		fmt.Printf("asyncDeleteDB: %s\n", err)
+		return
+	}
+}
+
 func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	operation := base.DeleteOp
 
 	if i.ReplicaDatabase != "" {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
-
-		params := prepareDeleteDbInput(i.ReplicaDatabase)
-		_, err := d.rds.DeleteDBInstance(params)
-		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
-			fmt.Printf("asyncDeleteDB: %s\n", err)
-			return
-		}
-
-		err = d.waitForDbDeleted(operation, i, i.ReplicaDatabase)
-		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
-			fmt.Printf("asyncDeleteDB: %s\n", err)
-			return
-		}
+		d.deleteDatabaseReadReplica(i, operation)
 	}
 
 	params := prepareDeleteDbInput(i.Database)
