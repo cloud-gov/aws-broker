@@ -324,8 +324,7 @@ func TestModify(t *testing.T) {
 						},
 						{
 							Plan: catalog.Plan{
-								ID:             "456",
-								PlanUpdateable: true,
+								ID: "456",
 							},
 						},
 					},
