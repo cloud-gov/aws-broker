@@ -165,7 +165,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, databa
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
+func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) (*rds.CreateDBInstanceReadReplicaOutput, error) {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
@@ -179,8 +179,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) error {
 			&i.SecGroup,
 		},
 	}
-	_, err := d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
-	return err
+	return d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
@@ -222,10 +221,18 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	return nil
 }
 
+func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) error {
+	_, err := d.rds.AddTagsToResource(&rds.AddTagsToResourceInput{
+		ResourceName: aws.String(dbInstanceARN),
+		Tags:         ConvertTagsToRDSTags(i.Tags),
+	})
+	return err
+}
+
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation, i *RDSInstance) error {
 	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
-	err := d.createDBReadReplica(i)
+	createReplicaOutput, err := d.createDBReadReplica(i)
 	if err != nil {
 		fmt.Println(err)
 		jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
@@ -236,6 +243,12 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 	if err != nil {
 		fmt.Println(err)
 		jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
+	}
+
+	err = d.updateDBTags(i, *createReplicaOutput.DBInstance.DBInstanceArn)
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
