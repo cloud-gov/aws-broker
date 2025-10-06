@@ -698,6 +698,34 @@ func TestModifyInstance(t *testing.T) {
 				Tags:              map[string]string{},
 			},
 		},
+		"updates tags": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				Database:        "db",
+				ReplicaDatabase: "replica",
+			},
+			currentPlan: catalog.RDSPlan{
+				ReadReplica: true,
+			},
+			newPlan: catalog.RDSPlan{
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+			},
+			tags: map[string]string{
+				"foo2": "baz",
+			},
+			settings: &config.Settings{},
+			expectedInstance: &RDSInstance{
+				Database:          "db",
+				DeleteReadReplica: true,
+				ReplicaDatabase:   "replica",
+				Tags: map[string]string{
+					"foo":  "bar",
+					"foo2": "baz",
+				},
+			},
+		},
 	}
 
 	for name, test := range testCases {
