@@ -255,7 +255,22 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return errResponse
 	}
 
-	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings)
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Update,
+		c.RdsService.Name,
+		newPlan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        modifyRequest.SpaceGUID,
+			OrganizationGUID: modifyRequest.OrganizationGUID,
+		},
+		false,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Failed to modify instance. Error: "+err.Error())
 	}

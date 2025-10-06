@@ -436,6 +436,7 @@ func TestModifyInstance(t *testing.T) {
 		newPlan          catalog.RDSPlan
 		settings         *config.Settings
 		expectedErr      error
+		tags             map[string]string
 	}{
 		"sets plan properties": {
 			options: Options{},
@@ -685,7 +686,7 @@ func TestModifyInstance(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			modifiedInstance, err := test.existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings)
+			modifiedInstance, err := test.existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -709,6 +710,7 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 		originalSalt            string
 		username                string
 		shouldRotateCredentials bool
+		tags                    map[string]string
 	}{
 		"rotate credentials": {
 			options: Options{
@@ -760,7 +762,7 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 				Salt:          test.originalSalt,
 				dbUtils:       &RDSDatabaseUtils{},
 			}
-			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings)
+			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
