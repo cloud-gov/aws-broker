@@ -82,7 +82,7 @@ func (i *RedisInstance) getPassword(key string) (string, error) {
 func (i *RedisInstance) getCredentials(password string) (map[string]string, error) {
 	var credentials map[string]string
 
-	uri := fmt.Sprintf("redis://:%s@%s:%d",
+	uri := fmt.Sprintf("rediss://:%s@%s:%d",
 		password,
 		i.Host,
 		i.Port)
