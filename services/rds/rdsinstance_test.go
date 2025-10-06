@@ -432,7 +432,8 @@ func TestModifyInstance(t *testing.T) {
 		existingInstance *RDSInstance
 		expectedInstance *RDSInstance
 		expectErr        bool
-		plan             catalog.RDSPlan
+		currentPlan      catalog.RDSPlan
+		newPlan          catalog.RDSPlan
 		settings         *config.Settings
 		expectedErr      error
 	}{
@@ -455,7 +456,8 @@ func TestModifyInstance(t *testing.T) {
 				},
 				SecGroup: "sec-group1",
 			},
-			plan: catalog.RDSPlan{
+			currentPlan: catalog.RDSPlan{},
+			newPlan: catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-2",
 				},
@@ -473,8 +475,9 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"allocated storage option less than existing, does not update": {
 			options: Options{
@@ -483,9 +486,10 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
-			expectErr: true,
-			plan:      catalog.RDSPlan{},
-			settings:  &config.Settings{},
+			expectErr:   true,
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"allocated storage empty, does not update": {
 			options: Options{
@@ -497,8 +501,9 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"update backup retention period": {
 			options: Options{
@@ -510,8 +515,9 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"does not update backup retention period": {
 			options: Options{
@@ -523,8 +529,9 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"update binary log format": {
 			options: Options{
@@ -534,8 +541,9 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"enable PG cron": {
 			options: Options{
@@ -545,14 +553,16 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"enable PG cron not specified": {
 			options:          Options{},
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{},
-			plan:             catalog.RDSPlan{},
+			currentPlan:      catalog.RDSPlan{},
+			newPlan:          catalog.RDSPlan{},
 			settings:         &config.Settings{},
 		},
 		"enable PG cron not specified on options, true on existing instance": {
@@ -561,7 +571,8 @@ func TestModifyInstance(t *testing.T) {
 				EnablePgCron: aws.Bool(true),
 			},
 			expectedInstance: &RDSInstance{},
-			plan:             catalog.RDSPlan{},
+			currentPlan:      catalog.RDSPlan{},
+			newPlan:          catalog.RDSPlan{},
 			settings:         &config.Settings{},
 		},
 		"gp3 fails for allocated storage < 20": {
@@ -571,9 +582,10 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 10,
 			},
-			plan:      catalog.RDSPlan{},
-			settings:  &config.Settings{},
-			expectErr: true,
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
+			expectErr:   true,
 		},
 		"gp3 upgrade succeeds": {
 			options: Options{
@@ -587,8 +599,9 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 20,
 				StorageType:      "gp3",
 			},
-			plan:     catalog.RDSPlan{},
-			settings: &config.Settings{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"does not allow backup retention less than minimum backup retention": {
 			options: Options{},
@@ -598,7 +611,8 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 14,
 			},
-			plan: catalog.RDSPlan{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
 			settings: &config.Settings{
 				MinBackupRetention: 14,
 			},
@@ -613,7 +627,8 @@ func TestModifyInstance(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				AddReadReplica:  true,
 			},
-			plan: catalog.RDSPlan{
+			currentPlan: catalog.RDSPlan{},
+			newPlan: catalog.RDSPlan{
 				ReadReplica: true,
 				Redundant:   true,
 			},
@@ -629,7 +644,8 @@ func TestModifyInstance(t *testing.T) {
 				Database:        "db",
 				ReplicaDatabase: "db-replica",
 			},
-			plan: catalog.RDSPlan{
+			currentPlan: catalog.RDSPlan{},
+			newPlan: catalog.RDSPlan{
 				ReadReplica: true,
 				Redundant:   true,
 			},
@@ -640,7 +656,8 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				Database: "db",
 			},
-			plan: catalog.RDSPlan{
+			currentPlan: catalog.RDSPlan{},
+			newPlan: catalog.RDSPlan{
 				ReadReplica: true,
 				Redundant:   false,
 			},
@@ -651,7 +668,7 @@ func TestModifyInstance(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			modifiedInstance, err := test.existingInstance.modify(test.options, test.plan, test.settings)
+			modifiedInstance, err := test.existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -668,7 +685,8 @@ func TestModifyInstance(t *testing.T) {
 func TestModifyInstanceRotateCredentials(t *testing.T) {
 	testCases := map[string]struct {
 		options                 Options
-		plan                    catalog.RDSPlan
+		currentPlan             catalog.RDSPlan
+		newPlan                 catalog.RDSPlan
 		settings                *config.Settings
 		originalPassword        string
 		originalSalt            string
@@ -679,7 +697,8 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			options: Options{
 				RotateCredentials: aws.Bool(true),
 			},
-			plan: catalog.RDSPlan{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
@@ -692,7 +711,8 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			options: Options{
 				RotateCredentials: aws.Bool(false),
 			},
-			plan: catalog.RDSPlan{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
@@ -702,8 +722,9 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			shouldRotateCredentials: false,
 		},
 		"rotate credentials not specified": {
-			options: Options{},
-			plan:    catalog.RDSPlan{},
+			options:     Options{},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
@@ -722,7 +743,7 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 				Salt:          test.originalSalt,
 				dbUtils:       &RDSDatabaseUtils{},
 			}
-			modifiedInstance, err := existingInstance.modify(test.options, test.plan, test.settings)
+			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
