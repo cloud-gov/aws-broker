@@ -152,7 +152,7 @@ func (i *RDSInstance) modify(options Options, currentPlan catalog.RDSPlan, newPl
 		modifiedInstance.ReplicaDatabase = modifiedInstance.generateDatabaseReplicaName()
 	}
 
-	if currentPlan.ReadReplica && !newPlan.ReadReplica {
+	if modifiedInstance.ReplicaDatabase != "" && currentPlan.ReadReplica && !newPlan.ReadReplica {
 		modifiedInstance.DeleteReadReplica = true
 	}
 

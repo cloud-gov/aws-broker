@@ -667,7 +667,8 @@ func TestModifyInstance(t *testing.T) {
 		"update from plan with read replica enabled to non read-replica plan": {
 			options: Options{},
 			existingInstance: &RDSInstance{
-				Database: "db",
+				Database:        "db",
+				ReplicaDatabase: "replica",
 			},
 			currentPlan: catalog.RDSPlan{
 				ReadReplica: true,
@@ -677,6 +678,7 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				Database:          "db",
 				DeleteReadReplica: true,
+				ReplicaDatabase:   "replica",
 			},
 		},
 	}
