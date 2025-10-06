@@ -809,6 +809,8 @@ func TestAsyncModifyDb(t *testing.T) {
 	}
 
 	modifyDbErr := errors.New("modify DB error")
+	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
@@ -1024,6 +1026,41 @@ func TestAsyncModifyDb(t *testing.T) {
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceNotModified,
+		},
+		"success with deleting read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					describeDbInstancesErrs: []error{nil, dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				db: brokerDB,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:          helpers.RandStr(10),
+				DeleteReadReplica: true,
+				ReplicaDatabase:   "db-replica",
+				dbUtils:           &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceReady,
 		},
 	}
 
