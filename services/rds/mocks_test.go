@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
@@ -95,6 +96,7 @@ type mockRDSClient struct {
 	modifyDbErrs                        []error
 	modifyDbCallNum                     int
 	modifyDbParamGroupErr               error
+	addTagsToResourceErr                error
 }
 
 func (m *mockRDSClient) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
@@ -175,7 +177,11 @@ func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput)
 }
 
 func (m *mockRDSClient) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
-	return nil, m.createDBInstanceReadReplicaErr
+	return &rds.CreateDBInstanceReadReplicaOutput{
+		DBInstance: &rds.DBInstance{
+			DBInstanceArn: aws.String("arn"),
+		},
+	}, m.createDBInstanceReadReplicaErr
 }
 
 func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
@@ -191,5 +197,12 @@ func (m *mockRDSClient) DeleteDBInstance(*rds.DeleteDBInstanceInput) (*rds.Delet
 		return nil, m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum]
 	}
 	m.deleteDBInstancesCallNum++
+	return nil, nil
+}
+
+func (m *mockRDSClient) AddTagsToResource(*rds.AddTagsToResourceInput) (*rds.AddTagsToResourceOutput, error) {
+	if m.addTagsToResourceErr != nil {
+		return nil, m.addTagsToResourceErr
+	}
 	return nil, nil
 }

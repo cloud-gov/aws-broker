@@ -781,6 +781,39 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
+		"error adding tags": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					addTagsToResourceErr: errors.New("error adding tags to read replica"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+				db: brokerDB,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
+		},
 	}
 
 	for name, test := range testCases {
