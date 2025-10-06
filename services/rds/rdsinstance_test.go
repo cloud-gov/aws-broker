@@ -456,6 +456,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 				},
 				SecGroup: "sec-group1",
+				Tags:     map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan: catalog.RDSPlan{
@@ -475,6 +476,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
+				Tags:             map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -501,6 +503,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
+				Tags:             map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -515,6 +518,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
+				Tags:                  map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -529,6 +533,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 20,
+				Tags:                  map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -541,6 +546,7 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
+				Tags:            map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -553,6 +559,7 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
+				Tags:         map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -561,20 +568,24 @@ func TestModifyInstance(t *testing.T) {
 		"enable PG cron not specified": {
 			options:          Options{},
 			existingInstance: &RDSInstance{},
-			expectedInstance: &RDSInstance{},
-			currentPlan:      catalog.RDSPlan{},
-			newPlan:          catalog.RDSPlan{},
-			settings:         &config.Settings{},
+			expectedInstance: &RDSInstance{
+				Tags: map[string]string{},
+			},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"enable PG cron not specified on options, true on existing instance": {
 			options: Options{},
 			existingInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 			},
-			expectedInstance: &RDSInstance{},
-			currentPlan:      catalog.RDSPlan{},
-			newPlan:          catalog.RDSPlan{},
-			settings:         &config.Settings{},
+			expectedInstance: &RDSInstance{
+				Tags: map[string]string{},
+			},
+			currentPlan: catalog.RDSPlan{},
+			newPlan:     catalog.RDSPlan{},
+			settings:    &config.Settings{},
 		},
 		"gp3 fails for allocated storage < 20": {
 			options: Options{
@@ -599,6 +610,7 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				AllocatedStorage: 20,
 				StorageType:      "gp3",
+				Tags:             map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -611,6 +623,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				BackupRetentionPeriod: 14,
+				Tags:                  map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan:     catalog.RDSPlan{},
@@ -627,6 +640,7 @@ func TestModifyInstance(t *testing.T) {
 				Database:        "db",
 				ReplicaDatabase: "db-replica",
 				AddReadReplica:  true,
+				Tags:            map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan: catalog.RDSPlan{
@@ -644,6 +658,7 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				Database:        "db",
 				ReplicaDatabase: "db-replica",
+				Tags:            map[string]string{},
 			},
 			currentPlan: catalog.RDSPlan{},
 			newPlan: catalog.RDSPlan{
@@ -680,6 +695,7 @@ func TestModifyInstance(t *testing.T) {
 				Database:          "db",
 				DeleteReadReplica: true,
 				ReplicaDatabase:   "replica",
+				Tags:              map[string]string{},
 			},
 		},
 	}
