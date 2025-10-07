@@ -32,15 +32,15 @@ func getRDSResourceTags(rdsClient rdsiface.RDSAPI, dbInstanceArn string) ([]*aws
 	return tagsResponse.TagList, nil
 }
 
-func getRDSInstanceArn(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSInstance) (string, error) {
+func getRDSInstanceArn(rdsClient rdsiface.RDSAPI, database string) (string, error) {
 	instanceInfo, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: aws.String(rdsInstance.Database),
+		DBInstanceIdentifier: &database,
 	})
 
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
-				log.Printf("Could not find database %s, continuing", rdsInstance.Database)
+				log.Printf("Could not find database %s, continuing", database)
 				return "", nil
 			} else {
 				return "", fmt.Errorf("could not describe database instance: %s", err)
@@ -119,15 +119,23 @@ func reconcileRDSParameterGroupTags(rdsInstance rds.RDSInstance, generatedRdsTag
 	return nil
 }
 
-func reconcileResourceTagsForRDSDatabase(rdsInstance rds.RDSInstance, catalog *catalog.Catalog, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
-	dbInstanceArn, err := getRDSInstanceArn(rdsClient, rdsInstance)
+func reconcileRDSInstanceTags(rdsClient rdsiface.RDSAPI, database string, generatedRdsTags []*awsRds.Tag) error {
+	dbInstanceArn, err := getRDSInstanceArn(rdsClient, database)
 	if err != nil {
-		return fmt.Errorf("could not get ARN for database %s: %s", rdsInstance.Database, err)
+		return fmt.Errorf("could not get ARN for database %s: %s", database, err)
 	}
 	if dbInstanceArn == "" {
 		return nil
 	}
+	err = reconcileRDSResourceTags(rdsClient, dbInstanceArn, generatedRdsTags)
+	if err != nil {
+		return fmt.Errorf("failed to process database %s: %s", database, err)
+	}
 
+	return nil
+}
+
+func reconcileResourceTagsForRDSDatabase(rdsInstance rds.RDSInstance, catalog *catalog.Catalog, rdsClient rdsiface.RDSAPI, logsClient cloudwatchlogsiface.CloudWatchLogsAPI, tagManager brokertags.TagManager) error {
 	plan, _ := catalog.RdsService.FetchPlan(rdsInstance.PlanID)
 	if plan.Name == "" {
 		return fmt.Errorf("error getting plan %s for database %s", rdsInstance.PlanID, rdsInstance.Database)
@@ -149,9 +157,16 @@ func reconcileResourceTagsForRDSDatabase(rdsInstance rds.RDSInstance, catalog *c
 
 	generatedRdsTags := rds.ConvertTagsToRDSTags(generatedTags)
 
-	err = reconcileRDSResourceTags(rdsClient, dbInstanceArn, generatedRdsTags)
+	err = reconcileRDSInstanceTags(rdsClient, rdsInstance.Database, generatedRdsTags)
 	if err != nil {
-		return fmt.Errorf("failed to process database %s: %s", rdsInstance.Database, err)
+		return fmt.Errorf("failed to reconcile tags for database %s: %s", rdsInstance.Database, err)
+	}
+
+	if rdsInstance.ReplicaDatabase != "" {
+		err = reconcileRDSInstanceTags(rdsClient, rdsInstance.ReplicaDatabase, generatedRdsTags)
+		if err != nil {
+			return fmt.Errorf("failed to reconcile tags for database %s: %s", rdsInstance.ReplicaDatabase, err)
+		}
 	}
 
 	if rdsInstance.ParameterGroupName != "" {
