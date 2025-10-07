@@ -360,11 +360,17 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
 	}
 
 	if i.DeleteReadReplica {
-		d.deleteDatabaseReadReplica(i, operation)
+		err = d.deleteDatabaseReadReplica(i, operation)
+		if err != nil {
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
+			fmt.Printf("asyncModifyDb, error deleting database replica: %s\n", err)
+			return
+		}
 	}
 
 	err = d.db.Save(i).Error
 	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error saving record: %s", err))
 		fmt.Printf("asyncModifyDb, error saving record: %s\n", err)
 		return
 	}
@@ -526,23 +532,23 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	return nil
 }
 
-func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation base.Operation) {
+func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation base.Operation) error {
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 
 	params := prepareDeleteDbInput(i.ReplicaDatabase)
 	_, err := d.rds.DeleteDBInstance(params)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
-		fmt.Printf("deleteDatabaseReadReplica: %s\n", err)
-		return
+		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
 	}
 
 	err = d.waitForDbDeleted(operation, i, i.ReplicaDatabase)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
-		fmt.Printf("deleteDatabaseReadReplica: %s\n", err)
-		return
+		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
 	}
+
+	return nil
 }
 
 func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
