@@ -345,10 +345,17 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
 			return
 		}
 
-		_, err = d.rds.ModifyDBInstance(replicaModifyParams)
+		modifyReplicaOutput, err := d.rds.ModifyDBInstance(replicaModifyParams)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
 			fmt.Printf("asyncModifyDb, error modifying read replica: %s\n", err)
+			return
+		}
+
+		err = d.updateDBTags(i, *modifyReplicaOutput.DBInstance.DBInstanceArn)
+		if err != nil {
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))
+			fmt.Printf("asyncModifyDb, error updating replica tags: %s\n", err)
 			return
 		}
 	}

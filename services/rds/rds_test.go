@@ -1095,6 +1095,47 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			expectedState: base.InstanceReady,
 		},
+		"error updating read replica tags": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					addTagsToResourceErr: errors.New("error updating tags"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				db: brokerDB,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceNotModified,
+		},
 	}
 
 	for name, test := range testCases {

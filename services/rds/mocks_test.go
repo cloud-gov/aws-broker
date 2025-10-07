@@ -189,7 +189,11 @@ func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.Modif
 		return nil, m.modifyDbErrs[m.modifyDbCallNum]
 	}
 	m.modifyDbCallNum++
-	return nil, nil
+	return &rds.ModifyDBInstanceOutput{
+		DBInstance: &rds.DBInstance{
+			DBInstanceArn: aws.String("arn"),
+		},
+	}, nil
 }
 
 func (m *mockRDSClient) DeleteDBInstance(*rds.DeleteDBInstanceInput) (*rds.DeleteDBInstanceOutput, error) {
