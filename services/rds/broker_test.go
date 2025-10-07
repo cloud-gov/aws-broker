@@ -311,6 +311,53 @@ func TestModify(t *testing.T) {
 		modifyRequest        request.Request
 		expectedDbInstance   *RDSInstance
 	}{
+		"success": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID:             "123",
+								PlanUpdateable: true,
+							},
+						},
+						{
+							Plan: catalog.Plan{
+								ID: "456",
+							},
+						},
+					},
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+			},
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceReady,
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			modifyRequest: request.Request{
+				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
 		"success with replica": {
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
