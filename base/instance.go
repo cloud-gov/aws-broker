@@ -75,8 +75,8 @@ type Instance struct {
 
 	State InstanceState
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `deep:"-"`
+	UpdatedAt time.Time `deep:"-"`
 }
 
 // FindBaseInstance is a helper function to find the base instance of the

@@ -310,6 +310,10 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusBadRequest, desc)
 	}
 
+	if existingInstance.DeleteReadReplica {
+		existingInstance.ReplicaDatabase = ""
+	}
+
 	// Update the existing instance in the broker.
 	existingInstance.State = status
 	err = broker.brokerDB.Save(existingInstance).Error

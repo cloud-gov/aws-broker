@@ -1605,8 +1605,6 @@ func TestBindDBToApp(t *testing.T) {
 			}
 
 			test.expectedInstance.Uuid = test.rdsInstance.Uuid
-			test.expectedInstance.CreatedAt = test.rdsInstance.CreatedAt
-			test.expectedInstance.UpdatedAt = test.rdsInstance.UpdatedAt
 
 			if diff := deep.Equal(test.rdsInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)

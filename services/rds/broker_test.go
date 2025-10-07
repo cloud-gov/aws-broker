@@ -14,6 +14,7 @@ import (
 	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
+	"github.com/go-test/deep"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -302,15 +303,15 @@ func TestCreateInstanceSuccess(t *testing.T) {
 
 func TestModify(t *testing.T) {
 	testCases := map[string]struct {
-		planID               string
 		dbInstance           *RDSInstance
 		expectedResponseCode int
 		tagManager           brokertags.TagManager
 		settings             *config.Settings
 		catalog              *catalog.Catalog
 		modifyRequest        request.Request
+		expectedDbInstance   *RDSInstance
 	}{
-		"success": {
+		"success with replica": {
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
 					Plans: []catalog.RDSPlan{
@@ -330,14 +331,74 @@ func TestModify(t *testing.T) {
 					},
 				},
 			},
-			planID: "123",
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: helpers.RandStr(10),
+					Uuid: "uuid-1",
 					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
+						ServiceID: "service-1",
 						PlanID:    "456",
 					},
+				},
+			},
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceReady,
+				},
+				ReplicaDatabase: "-replica",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			modifyRequest: request.Request{
+				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+		"success with deleting replica": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					Plans: []catalog.RDSPlan{
+						{
+							Plan: catalog.Plan{
+								ID:             "123",
+								PlanUpdateable: true,
+							},
+						},
+						{
+							Plan: catalog.Plan{
+								ID: "456",
+							},
+							Redundant:   true,
+							ReadReplica: true,
+						},
+					},
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-2",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				ReplicaDatabase: "replica",
+			},
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-2",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceReady,
 				},
 			},
 			tagManager: &mocks.MockTagGenerator{},
@@ -374,6 +435,16 @@ func TestModify(t *testing.T) {
 
 			if response.GetStatusCode() != test.expectedResponseCode {
 				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			}
+
+			updatedInstance := &RDSInstance{}
+			err = broker.brokerDB.First(updatedInstance, test.dbInstance.Uuid).Error
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := deep.Equal(updatedInstance, test.expectedDbInstance); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
