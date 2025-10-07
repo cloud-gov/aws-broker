@@ -845,9 +845,10 @@ func TestAsyncModifyDb(t *testing.T) {
 	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
 
 	testCases := map[string]struct {
-		dbInstance    *RDSInstance
-		dbAdapter     *dedicatedDBAdapter
-		expectedState base.InstanceState
+		dbInstance         *RDSInstance
+		dbAdapter          *dedicatedDBAdapter
+		expectedState      base.InstanceState
+		expectedDbInstance *RDSInstance
 	}{
 		"error preparing modify input": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -934,16 +935,26 @@ func TestAsyncModifyDb(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
+						ServiceID: "service-1",
 					},
-					Uuid: helpers.RandStr(10),
+					Uuid: "uuid-1",
 				},
-				Database: helpers.RandStr(10),
+				Database: "db-1",
 				dbUtils:  &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database: "db-1",
+				dbUtils:  &RDSDatabaseUtils{},
+			},
 		},
-		"success with read replica": {
+		"success with adding read replica": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -973,16 +984,27 @@ func TestAsyncModifyDb(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
+						ServiceID: "service-2",
 					},
-					Uuid: helpers.RandStr(10),
+					Uuid: "uuid-2",
 				},
-				Database:        helpers.RandStr(10),
+				Database:        "db-2",
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-2",
+					},
+					Uuid: "uuid-2",
+				},
+				Database:        "db-2",
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
 		},
 		"error modifying read replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1084,16 +1106,26 @@ func TestAsyncModifyDb(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
+						ServiceID: "service-3",
 					},
-					Uuid: helpers.RandStr(10),
+					Uuid: "uuid-3",
 				},
-				Database:          helpers.RandStr(10),
+				Database:          "db-3",
 				DeleteReadReplica: true,
 				ReplicaDatabase:   "db-replica",
 				dbUtils:           &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-3",
+					},
+					Uuid: "uuid-3",
+				},
+				Database: "db-3",
+				dbUtils:  &RDSDatabaseUtils{},
+			},
 		},
 		"error updating read replica tags": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1149,6 +1181,18 @@ func TestAsyncModifyDb(t *testing.T) {
 
 			if test.expectedState != asyncJobMsg.JobState.State {
 				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+
+			if test.expectedDbInstance != nil {
+				updatedInstance := RDSInstance{}
+				err = brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(&updatedInstance).Error
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if diff := deep.Equal(&updatedInstance, test.expectedDbInstance); diff != nil {
+					t.Error(diff)
+				}
 			}
 		})
 	}

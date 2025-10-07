@@ -548,6 +548,8 @@ func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation
 		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
 	}
 
+	i.ReplicaDatabase = ""
+
 	return nil
 }
 
