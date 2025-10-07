@@ -534,14 +534,14 @@ func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation
 	_, err := d.rds.DeleteDBInstance(params)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
-		fmt.Printf("asyncDeleteDB: %s\n", err)
+		fmt.Printf("deleteDatabaseReadReplica: %s\n", err)
 		return
 	}
 
 	err = d.waitForDbDeleted(operation, i, i.ReplicaDatabase)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
-		fmt.Printf("asyncDeleteDB: %s\n", err)
+		fmt.Printf("deleteDatabaseReadReplica: %s\n", err)
 		return
 	}
 }
