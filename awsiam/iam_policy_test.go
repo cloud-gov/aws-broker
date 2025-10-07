@@ -6,9 +6,16 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/aws/aws-sdk-go/aws"
+	// "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	// "github.com/aws/aws-sdk-go-v2/aws/awserr"
+
+	// "github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+
+	// "github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/go-test/deep"
 )
@@ -43,8 +50,8 @@ type mockIamClient struct {
 	createPolicyErr    error
 	createPolicyInputs []*iam.CreatePolicyInput
 
-	attachedUserPolicies []*iam.AttachedPolicy
-	attachedRolePolicies []*iam.AttachedPolicy
+	attachedUserPolicies []types.AttachedPolicy
+	attachedRolePolicies []types.AttachedPolicy
 
 	listPolicyVersionsOutput iam.ListPolicyVersionsOutput
 	listPolicyVersionsErr    error
@@ -63,7 +70,7 @@ func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleO
 	}
 	arn := "arn:aws:iam::123456789012:role/" + *(input.RoleName)
 	return &iam.CreateRoleOutput{
-		Role: &iam.Role{
+		Role: &types.Role{
 			Arn:                      aws.String(arn),
 			RoleName:                 input.RoleName,
 			AssumeRolePolicyDocument: input.AssumeRolePolicyDocument,
@@ -75,7 +82,7 @@ func (m *mockIamClient) CreateRole(input *iam.CreateRoleInput) (*iam.CreateRoleO
 func (m *mockIamClient) GetRole(input *iam.GetRoleInput) (*iam.GetRoleOutput, error) {
 	arn := "arn:aws:iam::123456789012:role/" + *(input.RoleName)
 	return &iam.GetRoleOutput{
-		Role: &iam.Role{
+		Role: &types.Role{
 			Arn:      aws.String(arn),
 			RoleName: input.RoleName,
 		},
@@ -89,7 +96,7 @@ func (m *mockIamClient) CreatePolicy(input *iam.CreatePolicyInput) (*iam.CreateP
 	m.createPolicyInputs = append(m.createPolicyInputs, input)
 	arn := "arn:aws:iam::123456789012:policy/" + *(input.PolicyName)
 	return &iam.CreatePolicyOutput{
-		Policy: &iam.Policy{
+		Policy: &types.Policy{
 			Arn:        aws.String(arn),
 			PolicyName: input.PolicyName,
 			Tags:       input.Tags,
@@ -119,7 +126,7 @@ func (m *mockIamClient) AttachRolePolicy(input *iam.AttachRolePolicyInput) (*iam
 
 func (m *mockIamClient) GetPolicy(input *iam.GetPolicyInput) (*iam.GetPolicyOutput, error) {
 	return &iam.GetPolicyOutput{
-		Policy: &iam.Policy{
+		Policy: &types.Policy{
 			Arn:              input.PolicyArn,
 			DefaultVersionId: aws.String("old"),
 		},
@@ -128,9 +135,9 @@ func (m *mockIamClient) GetPolicy(input *iam.GetPolicyInput) (*iam.GetPolicyOutp
 
 func (m *mockIamClient) GetPolicyVersion(input *iam.GetPolicyVersionInput) (*iam.GetPolicyVersionOutput, error) {
 	return &iam.GetPolicyVersionOutput{
-		PolicyVersion: &iam.PolicyVersion{
+		PolicyVersion: &types.PolicyVersion{
 			Document:         aws.String(mockPolDoc),
-			IsDefaultVersion: aws.Bool(true),
+			IsDefaultVersion: true,
 			VersionId:        input.VersionId,
 		},
 	}, nil
@@ -138,7 +145,7 @@ func (m *mockIamClient) GetPolicyVersion(input *iam.GetPolicyVersionInput) (*iam
 
 func (m *mockIamClient) CreatePolicyVersion(input *iam.CreatePolicyVersionInput) (*iam.CreatePolicyVersionOutput, error) {
 	return &iam.CreatePolicyVersionOutput{
-		PolicyVersion: &iam.PolicyVersion{
+		PolicyVersion: &types.PolicyVersion{
 			VersionId:        aws.String("new"),
 			Document:         input.PolicyDocument,
 			IsDefaultVersion: input.SetAsDefault,
@@ -171,7 +178,7 @@ func TestCreateAssumeRole(t *testing.T) {
 	ip := &IAMPolicyClient{
 		iam: &mockIamClient{},
 	}
-	iamTags := []*iam.Tag{
+	iamTags := []*types.Tag{
 		{
 			Key:   aws.String("foo"),
 			Value: aws.String("bar"),
@@ -329,7 +336,7 @@ func TestUpdateExistingPolicy(t *testing.T) {
 	ip := &IAMPolicyClient{
 		iam: &mockIamClient{
 			listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
-				Versions: []*iam.PolicyVersion{
+				Versions: []*types.PolicyVersion{
 					{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
 				},
 			},
@@ -370,7 +377,7 @@ func TestDeletePolicy(t *testing.T) {
 			iamPolicyClient: &IAMPolicyClient{
 				iam: &mockIamClient{
 					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
-						Versions: []*iam.PolicyVersion{
+						Versions: []*types.PolicyVersion{
 							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
 						},
 					},
@@ -383,7 +390,7 @@ func TestDeletePolicy(t *testing.T) {
 			iamPolicyClient: &IAMPolicyClient{
 				iam: &mockIamClient{
 					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
-						Versions: []*iam.PolicyVersion{
+						Versions: []*types.PolicyVersion{
 							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
 						},
 					},
@@ -398,7 +405,7 @@ func TestDeletePolicy(t *testing.T) {
 			iamPolicyClient: &IAMPolicyClient{
 				iam: &mockIamClient{
 					listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
-						Versions: []*iam.PolicyVersion{
+						Versions: []*types.PolicyVersion{
 							{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
 						},
 					},
@@ -435,7 +442,7 @@ func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
 			policyArn: policyArn,
 			fakeIAMClient: &mockIamClient{
 				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
-					Versions: []*iam.PolicyVersion{
+					Versions: []*types.PolicyVersion{
 						{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
 						{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
 					},
@@ -459,7 +466,7 @@ func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
 			policyArn: policyArn,
 			fakeIAMClient: &mockIamClient{
 				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
-					Versions: []*iam.PolicyVersion{
+					Versions: []*types.PolicyVersion{
 						{VersionId: aws.String("1"), IsDefaultVersion: aws.Bool(true)},
 						{VersionId: aws.String("2"), IsDefaultVersion: aws.Bool(false)},
 					},
@@ -511,7 +518,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 			resources:         []string{"resource"},
 			iamPath:           "/path/",
 			expectedPolicyArn: "arn:aws:iam::123456789012:policy/policy-name",
-			iamTags: []*iam.Tag{
+			iamTags: []*types.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
@@ -522,7 +529,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 					PolicyName:     aws.String("policy-name"),
 					PolicyDocument: aws.String(`{"Version": "2012-10-17","Id": "policy-name","Statement": [{"Action":"action","Effect":"effect","Resource": ["resource/*"]}]}`),
 					Path:           aws.String("/path/"),
-					Tags: []*iam.Tag{
+					Tags: []*types.Tag{
 						{
 							Key:   aws.String("foo"),
 							Value: aws.String("bar"),
