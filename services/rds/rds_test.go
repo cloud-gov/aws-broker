@@ -781,6 +781,39 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
+		"error adding tags": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					addTagsToResourceErr: errors.New("error adding tags to read replica"),
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+				db: brokerDB,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
+		},
 	}
 
 	for name, test := range testCases {
@@ -809,10 +842,13 @@ func TestAsyncModifyDb(t *testing.T) {
 	}
 
 	modifyDbErr := errors.New("modify DB error")
+	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+
 	testCases := map[string]struct {
-		dbInstance    *RDSInstance
-		dbAdapter     *dedicatedDBAdapter
-		expectedState base.InstanceState
+		dbInstance         *RDSInstance
+		dbAdapter          *dedicatedDBAdapter
+		expectedState      base.InstanceState
+		expectedDbInstance *RDSInstance
 	}{
 		"error preparing modify input": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -899,16 +935,26 @@ func TestAsyncModifyDb(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
+						ServiceID: "service-1",
 					},
-					Uuid: helpers.RandStr(10),
+					Uuid: "uuid-1",
 				},
-				Database: helpers.RandStr(10),
+				Database: "db-1",
 				dbUtils:  &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database: "db-1",
+				dbUtils:  &RDSDatabaseUtils{},
+			},
 		},
-		"success with read replica": {
+		"success with adding read replica": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -938,16 +984,27 @@ func TestAsyncModifyDb(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
+						ServiceID: "service-2",
 					},
-					Uuid: helpers.RandStr(10),
+					Uuid: "uuid-2",
 				},
-				Database:        helpers.RandStr(10),
+				Database:        "db-2",
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-2",
+					},
+					Uuid: "uuid-2",
+				},
+				Database:        "db-2",
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
 		},
 		"error modifying read replica": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1025,6 +1082,92 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			expectedState: base.InstanceNotModified,
 		},
+		"success with deleting read replica": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					describeDbInstancesErrs: []error{nil, dbInstanceNotFoundErr},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				db: brokerDB,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-3",
+					},
+					Uuid: "uuid-3",
+				},
+				Database:          "db-3",
+				DeleteReadReplica: true,
+				ReplicaDatabase:   "db-replica",
+				dbUtils:           &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-3",
+					},
+					Uuid: "uuid-3",
+				},
+				Database: "db-3",
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+		},
+		"error updating read replica tags": {
+			dbAdapter: &dedicatedDBAdapter{
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []*rds.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					addTagsToResourceErr: errors.New("error updating tags"),
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				settings: config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				db: brokerDB,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "db-replica",
+				dbUtils:         &RDSDatabaseUtils{},
+			},
+			expectedState: base.InstanceNotModified,
+		},
 	}
 
 	for name, test := range testCases {
@@ -1038,6 +1181,18 @@ func TestAsyncModifyDb(t *testing.T) {
 
 			if test.expectedState != asyncJobMsg.JobState.State {
 				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+
+			if test.expectedDbInstance != nil {
+				updatedInstance := RDSInstance{}
+				err = brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(&updatedInstance).Error
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if diff := deep.Equal(&updatedInstance, test.expectedDbInstance); diff != nil {
+					t.Error(diff)
+				}
 			}
 		})
 	}
@@ -1494,8 +1649,6 @@ func TestBindDBToApp(t *testing.T) {
 			}
 
 			test.expectedInstance.Uuid = test.rdsInstance.Uuid
-			test.expectedInstance.CreatedAt = test.rdsInstance.CreatedAt
-			test.expectedInstance.UpdatedAt = test.rdsInstance.UpdatedAt
 
 			if diff := deep.Equal(test.rdsInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)

@@ -243,13 +243,34 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 	}
 
-	// Fetch the new plan that has been requested.
-	newPlan, newPlanErr := c.RdsService.FetchPlan(modifyRequest.PlanID)
-	if newPlanErr != nil {
-		return newPlanErr
+	// Fetch the current plan.
+	currentPlan, errResponse := c.RdsService.FetchPlan(existingInstance.PlanID)
+	if errResponse != nil {
+		return errResponse
 	}
 
-	modifiedInstance, err := existingInstance.modify(options, newPlan, broker.settings)
+	// Fetch the new plan that has been requested.
+	newPlan, errResponse := c.RdsService.FetchPlan(modifyRequest.PlanID)
+	if errResponse != nil {
+		return errResponse
+	}
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Update,
+		c.RdsService.Name,
+		newPlan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID:     id,
+			SpaceGUID:        modifyRequest.SpaceGUID,
+			OrganizationGUID: modifyRequest.OrganizationGUID,
+		},
+		false,
+	)
+	if err != nil {
+		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+	}
+
+	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, "Failed to modify instance. Error: "+err.Error())
 	}

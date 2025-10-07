@@ -49,6 +49,7 @@ type RDSInstance struct {
 	AddReadReplica      bool   `gorm:"-"`
 	ReplicaDatabase     string `sql:"size(255)"`
 	ReplicaDatabaseHost string `sql:"size(255)"`
+	DeleteReadReplica   bool   `gorm:"-"`
 }
 
 func NewRDSInstance() *RDSInstance {
@@ -76,13 +77,13 @@ func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
 	return nil
 }
 
-func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *config.Settings) (*RDSInstance, error) {
+func (i *RDSInstance) modify(options Options, currentPlan catalog.RDSPlan, newPlan catalog.RDSPlan, settings *config.Settings, tags map[string]string) (*RDSInstance, error) {
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
-	modifiedInstance.PlanID = plan.ID
+	modifiedInstance.PlanID = newPlan.ID
 
 	// needed to create an RDS read replica
-	modifiedInstance.SecGroup = plan.SecurityGroup
+	modifiedInstance.SecGroup = newPlan.SecurityGroup
 
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
@@ -104,7 +105,7 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 	}
 
 	if modifiedInstance.StorageType == "" {
-		modifiedInstance.StorageType = plan.StorageType
+		modifiedInstance.StorageType = newPlan.StorageType
 	}
 
 	// Check if there is a backup retention change
@@ -142,14 +143,20 @@ func (i *RDSInstance) modify(options Options, plan catalog.RDSPlan, settings *co
 
 	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
-	if plan.ReadReplica && !plan.Redundant {
+	if newPlan.ReadReplica && !newPlan.Redundant {
 		return nil, errors.New("database plan must be multi-AZ in order to support read replicas")
 	}
 
-	if plan.Redundant && plan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
+	if newPlan.Redundant && newPlan.ReadReplica && modifiedInstance.ReplicaDatabase == "" {
 		modifiedInstance.AddReadReplica = true
 		modifiedInstance.ReplicaDatabase = modifiedInstance.generateDatabaseReplicaName()
 	}
+
+	if modifiedInstance.ReplicaDatabase != "" && currentPlan.ReadReplica && !newPlan.ReadReplica {
+		modifiedInstance.DeleteReadReplica = true
+	}
+
+	i.setTags(newPlan, tags)
 
 	return modifiedInstance, nil
 }
