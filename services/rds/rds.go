@@ -350,7 +350,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
 			fmt.Printf("asyncModifyDb, error creating read replica: %s\n", err)
 			return
 		}
-	} else if !i.AddReadReplica && i.ReplicaDatabase != "" {
+	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
 		err := d.asyncModifyDbInstance(operation, i, i.ReplicaDatabase)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
