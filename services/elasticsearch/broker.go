@@ -12,6 +12,7 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"gorm.io/gorm"
@@ -106,6 +107,7 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAd
 		iam:        iam.NewFromConfig(cfg),
 		sts:        sts.NewFromConfig(cfg),
 		ip:         *ip,
+		s3:         s3.NewFromConfig(cfg),
 	}
 
 	return elasticsearchAdapter, nil

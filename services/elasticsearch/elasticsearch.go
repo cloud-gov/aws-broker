@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
-	"github.com/aws/aws-sdk-go/aws/session"
 
 	// "github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -22,7 +21,9 @@ import (
 	// "github.com/aws/aws-sdk-go/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
-	"github.com/aws/aws-sdk-go/service/s3"
+
+	// "github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	// "github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -81,6 +82,7 @@ type dedicatedElasticsearchAdapter struct {
 	sts        STSClientInterface
 	opensearch OpensearchClientInterface
 	ip         awsiam.IAMPolicyClient
+	s3         S3ClientInterface
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -176,11 +178,14 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 }
 
 func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
-	params := prepareUpdateDomainConfigInput(i)
-
-	_, err := d.opensearch.UpdateDomainConfig(context.TODO(), params)
+	params, err := prepareUpdateDomainConfigInput(i)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
+		return base.InstanceNotModified, err
+	}
+
+	_, err = d.opensearch.UpdateDomainConfig(context.TODO(), params)
+	if err != nil {
+		d.logger.Error("modifyElasticsearch: UpdateDomainConfig err", err)
 		return base.InstanceNotModified, err
 	}
 
@@ -639,30 +644,25 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 	}
 	body := bytes.NewReader(data)
 
-	session, err := session.NewSession(&aws.Config{
-		Region: aws.String(d.settings.Region),
-	})
+	serverSideEncryption, err := getS3ServerSideEncryptionEnum("AES256")
 	if err != nil {
-		d.logger.Error("writeManifesttoS3.NewSession failed", err)
 		return err
 	}
 
 	// put json blob into object in s3
-	svc := s3.New(session)
 	input := s3.PutObjectInput{
 		Body:                 body,
 		Bucket:               aws.String(d.settings.SnapshotsBucketName),
 		Key:                  aws.String(i.SnapshotPath + "/instance_manifest.json"),
-		ServerSideEncryption: aws.String("AES256"),
+		ServerSideEncryption: *serverSideEncryption,
 	}
 
-	_, err = svc.PutObject(&input)
-	// Decide if AWS service call was successful
+	_, err = d.s3.PutObject(context.TODO(), &input)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
-		d.logger.Error("writeManifesttoS3.PutObject Failed", err)
+		d.logger.Error("writeManifesttoS3: PutObject err", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -674,33 +674,41 @@ func isInvalidTypeException(createErr error) bool {
 	return false
 }
 
-func getOpensearchVolumeTypeEnum(volumeTypeString string) (*opensearchTypes.VolumeType, error) {
-	if volumeType, ok := opensearchVolumeTypeMap[volumeTypeString]; ok {
-		return &volumeType, nil
-	}
-	return nil, fmt.Errorf("Invalid volume type: %s", volumeTypeString)
-}
-
 func prepareCreateDomainInput(
 	i *ElasticsearchInstance,
 	accessControlPolicy string,
-) *opensearch.CreateDomainInput {
+) (*opensearch.CreateDomainInput, error) {
 	elasticsearchTags := ConvertTagsToOpensearchTags(i.Tags)
+
+	volumeType, err := getOpensearchVolumeTypeEnum(i.VolumeType)
+	if err != nil {
+		return nil, err
+	}
+
+	instanceType, err := getOpensearchInstanceTypeEnum(i.InstanceType)
+	if err != nil {
+		return nil, err
+	}
+
+	masterInstanceType, err := getOpensearchInstanceTypeEnum(i.MasterInstanceType)
+	if err != nil {
+		return nil, err
+	}
 
 	ebsoptions := &opensearchTypes.EBSOptions{
 		EBSEnabled: aws.Bool(true),
 		VolumeSize: aws.Int32(int32(i.VolumeSize)),
-		VolumeType: aws.String(i.VolumeType),
+		VolumeType: *volumeType,
 	}
 
 	esclusterconfig := &opensearchTypes.ClusterConfig{
-		InstanceType:  aws.String(i.InstanceType),
+		InstanceType:  *instanceType,
 		InstanceCount: aws.Int32(int32(i.DataCount)),
 	}
 	if i.MasterEnabled {
 		esclusterconfig.DedicatedMasterEnabled = aws.Bool(i.MasterEnabled)
 		esclusterconfig.DedicatedMasterCount = aws.Int32(int32(i.MasterCount))
-		esclusterconfig.DedicatedMasterType = i.MasterInstanceType
+		esclusterconfig.DedicatedMasterType = *masterInstanceType
 	}
 
 	snapshotOptions := &opensearchTypes.SnapshotOptions{
@@ -754,6 +762,7 @@ func prepareCreateDomainInput(
 
 	// Standard Parameters
 	params := &opensearch.CreateDomainInput{
+		AccessPolicies:              &accessControlPolicy,
 		DomainName:                  aws.String(i.Domain),
 		EBSOptions:                  ebsoptions,
 		ClusterConfig:               esclusterconfig,
@@ -773,11 +782,10 @@ func prepareCreateDomainInput(
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
 	}
 
-	params.SetAccessPolicies(accessControlPolicy)
-	return params
+	return params, nil
 }
 
-func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) *opensearch.UpdateDomainConfigInput {
+func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.UpdateDomainConfigInput, error) {
 	AdvancedOptions := make(map[string]string)
 
 	if i.IndicesFieldDataCacheSize != "" {
@@ -794,12 +802,17 @@ func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) *opensearch.Update
 	}
 
 	if i.VolumeSize != 0 && i.VolumeType != "" {
+		volumeType, err := getOpensearchVolumeTypeEnum(i.VolumeType)
+		if err != nil {
+			return nil, err
+		}
+
 		params.EBSOptions = &opensearchTypes.EBSOptions{
 			EBSEnabled: aws.Bool(true),
 			VolumeSize: aws.Int32(int32(i.VolumeSize)),
-			VolumeType: i.VolumeType,
+			VolumeType: *volumeType,
 		}
 	}
 
-	return params
+	return params, nil
 }
