@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/go-test/deep"
 )
 
@@ -250,14 +249,16 @@ func TestDeletePolicy(t *testing.T) {
 		"returns an AWS error": {
 			policyArn: "arn2",
 			iamPolicyClient: NewIAMPolicyClient(&MockIAMClient{
-				deletePolicyErr: awserr.New("code", "message", errors.New("operation failed")),
+				deletePolicyErr: &types.NoSuchEntityException{
+					Message: aws.String("not found"),
+				},
 				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
 					Versions: []types.PolicyVersion{
 						{VersionId: aws.String("1"), IsDefaultVersion: true},
 					},
 				},
 			}, logger),
-			expectedErrMessage: "code: message",
+			expectedErrMessage: "not found",
 		},
 	}
 
@@ -401,7 +402,9 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 		},
 		"returns AWS error": {
 			fakeIAMClient: &MockIAMClient{
-				createPolicyErr: awserr.New("code", "message", errors.New("operation failed")),
+				createPolicyErr: &types.EntityAlreadyExistsException{
+					Message: aws.String("already exists"),
+				},
 			},
 			policyName: "policy-name",
 			policyTemplate: `{
@@ -417,7 +420,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 			}`,
 			resources:          []string{"resource"},
 			iamPath:            "/path/",
-			expectedErrMessage: "code: message",
+			expectedErrMessage: "already exists",
 		},
 	}
 
