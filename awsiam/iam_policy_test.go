@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 
-	// "github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/go-test/deep"
 )
@@ -111,19 +110,6 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 	policyname := Domain + "-to-S3-ESRolePolicy"
 	username := Domain
 
-	// createPolicyErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "policy already exists", errors.New("fail"))
-	// ip := &IAMPolicyClient{
-	// 	iam: &mockIamClient{
-	// 		createPolicyErr: createPolicyErr,
-	// 		attachedUserPolicies: []*iam.AttachedPolicy{
-	// 			{
-	// 				PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyname),
-	// 				PolicyName: aws.String(policyname),
-	// 			},
-	// 		},
-	// 	},
-	// }
-
 	ip := NewIAMPolicyClient(&MockIAMClient{
 
 		listAttachedUserPoliciesOutput: iam.ListAttachedUserPoliciesOutput{
@@ -173,13 +159,6 @@ func TestCreatePolicyAttachRole(t *testing.T) {
 func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
 	policyName := "test-pol"
 	roleName := "test-role"
-	// createPolicyErr := awserr.New(iam.ErrCodeEntityAlreadyExistsException, "policy already exists", errors.New("fail"))
-	// ip := &IAMPolicyClient{
-	// 	iam: &mockIamClient{
-	// 		createPolicyErr: createPolicyErr,
-
-	// 	},
-	// }
 
 	ip := NewIAMPolicyClient(&MockIAMClient{
 		attachedRolePolicies: []types.AttachedPolicy{
