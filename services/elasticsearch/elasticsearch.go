@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -672,15 +673,25 @@ func prepareCreateDomainInput(
 		return nil, err
 	}
 
+	volumeSize, err := convertToInt32Safely(i.VolumeSize)
+	if err != nil {
+		return nil, err
+	}
+
+	instanceCount, err := convertToInt32Safely(i.DataCount)
+	if err != nil {
+		return nil, err
+	}
+
 	ebsoptions := &opensearchTypes.EBSOptions{
 		EBSEnabled: aws.Bool(true),
-		VolumeSize: aws.Int32(int32(i.VolumeSize)),
+		VolumeSize: aws.Int32(*volumeSize),
 		VolumeType: *volumeType,
 	}
 
 	esclusterconfig := &opensearchTypes.ClusterConfig{
 		InstanceType:  *instanceType,
-		InstanceCount: aws.Int32(int32(i.DataCount)),
+		InstanceCount: aws.Int32(*instanceCount),
 	}
 
 	if i.MasterEnabled {
@@ -689,8 +700,13 @@ func prepareCreateDomainInput(
 			return nil, err
 		}
 
+		masterCount, err := convertToInt32Safely(i.MasterCount)
+		if err != nil {
+			return nil, err
+		}
+
 		esclusterconfig.DedicatedMasterEnabled = aws.Bool(i.MasterEnabled)
-		esclusterconfig.DedicatedMasterCount = aws.Int32(int32(i.MasterCount))
+		esclusterconfig.DedicatedMasterCount = aws.Int32(*masterCount)
 		esclusterconfig.DedicatedMasterType = *masterInstanceType
 	}
 
@@ -770,6 +786,14 @@ func prepareCreateDomainInput(
 	}
 
 	return params, nil
+}
+
+func convertToInt32Safely(value int) (*int32, error) {
+	if value >= math.MaxInt32 && value < 0 {
+		return nil, fmt.Errorf("invalid value %q, must be between 0 and %d", value, math.MaxInt32)
+	}
+	int32Value := int32(value)
+	return &int32Value, nil
 }
 
 func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.UpdateDomainConfigInput, error) {
