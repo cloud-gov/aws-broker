@@ -94,19 +94,19 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAd
 		context.TODO(),
 		awsConfig.WithRegion(s.Region),
 	)
-
-	ip, err := awsiam.NewIAMPolicyClient(s.Region, logger)
 	if err != nil {
 		return nil, err
 	}
+
+	iamSvc := iam.NewFromConfig(cfg)
 
 	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
 		settings:   *s,
 		logger:     logger,
 		opensearch: opensearch.NewFromConfig(cfg),
-		iam:        iam.NewFromConfig(cfg),
+		iam:        iamSvc,
 		sts:        sts.NewFromConfig(cfg),
-		ip:         *ip,
+		ip:         awsiam.NewIAMPolicyClient(iamSvc, logger),
 		s3:         s3.NewFromConfig(cfg),
 	}
 

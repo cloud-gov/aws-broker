@@ -80,7 +80,7 @@ type dedicatedElasticsearchAdapter struct {
 	iam        awsiam.IAMClientInterface
 	sts        STSClientInterface
 	opensearch OpensearchClientInterface
-	ip         awsiam.IAMPolicyClient
+	ip         *awsiam.IAMPolicyClient
 	s3         S3ClientInterface
 }
 
