@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"sort"
 	"text/template"
@@ -97,19 +96,19 @@ func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry)
 	return modified
 }
 
-func NewIAMPolicyClient(region string, logger lager.Logger) *IAMPolicyClient {
+func NewIAMPolicyClient(region string, logger lager.Logger) (*IAMPolicyClient, error) {
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithRegion(region),
 	)
 	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
+		return nil, err
 	}
 
 	return &IAMPolicyClient{
 		iam:    iam.NewFromConfig(cfg),
 		logger: logger.Session("iam-policy"),
-	}
+	}, nil
 }
 
 // create new assumable role with the trust policy

@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"gorm.io/gorm"
 
+	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -49,6 +50,7 @@ type elasticsearchBroker struct {
 	jobs       *jobs.AsyncJobManager
 	logger     lager.Logger
 	tagManager brokertags.TagManager
+	adapter    ElasticsearchAdapter
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
@@ -61,17 +63,23 @@ func InitElasticsearchBroker(
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
+	adapter, err := initializeAdapter(settings, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	return &elasticsearchBroker{
 		brokerDB,
 		settings,
 		jobs,
 		logger,
 		tagManager,
+		adapter,
 	}, nil
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, response.Response) {
+func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, error) {
 	var elasticsearchAdapter ElasticsearchAdapter
 
 	if s.Environment == "test" {
@@ -79,13 +87,18 @@ func initializeAdapter(plan catalog.ElasticsearchPlan, s *config.Settings, logge
 		return elasticsearchAdapter, nil
 	}
 
+	ip, err := awsiam.NewIAMPolicyClient(s.Region, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
-		Plan:       plan,
 		settings:   *s,
 		logger:     logger,
 		opensearch: opensearchservice.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
 		iam:        iam.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
 		sts:        sts.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
+		ip:         *ip,
 	}
 
 	return elasticsearchAdapter, nil
@@ -173,12 +186,8 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
 	// Create the elasticsearch instance.
-	status, err := adapter.createElasticsearch(&newInstance, newInstance.ClearPassword)
+	status, err := broker.adapter.createElasticsearch(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
 		desc := "There was an error creating the instance."
 		if err != nil {
@@ -209,15 +218,6 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		}
 	}
 
-	plan, planErr := c.ElasticsearchService.FetchPlan(updateRequest.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&esInstance).Count(&count)
 	if count != 1 {
@@ -233,7 +233,7 @@ func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
 	}
 
-	state, err := adapter.modifyElasticsearch(&esInstance)
+	state, err := broker.adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
 		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
@@ -260,16 +260,6 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.ElasticsearchService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	var state string
 	var status base.InstanceState
 	var statusErr error
@@ -284,7 +274,7 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		broker.logger.Debug(fmt.Sprintf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message))
 
 	default: //all other ops use synchronous checking of aws api
-		status, statusErr = adapter.checkElasticsearchStatus(&existingInstance)
+		status, statusErr = broker.adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
 			broker.logger.Error("Error checking Elasticsearch status", statusErr)
 			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
@@ -324,26 +314,16 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.ElasticsearchService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
 	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
 	// Get the correct database logic depending on the type of plan
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	existingInstance.setBucket(options.Bucket)
-	if credentials, err = adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
+	if credentials, err = broker.adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
@@ -363,22 +343,13 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.ElasticsearchService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
 	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	// send async deletion request.
-	status, err := adapter.deleteElasticsearch(&existingInstance, password, broker.jobs)
+	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password, broker.jobs)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)

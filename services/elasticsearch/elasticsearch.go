@@ -73,6 +73,7 @@ type dedicatedElasticsearchAdapter struct {
 	iam        iamiface.IAMAPI
 	sts        stsiface.STSAPI
 	opensearch opensearchserviceiface.OpenSearchServiceAPI
+	ip         awsiam.IAMPolicyClient
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -80,11 +81,15 @@ const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	user := awsiam.NewIAMUserClient(d.iam, d.logger)
-	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
+	ip, err := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
+	if err != nil {
+		d.logger.Error("createElasticsearch: NewIAMPolicyClient err", err)
+		return base.InstanceNotCreated, err
+	}
 
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
-	_, err := user.Create(i.Domain, "", iamTags)
+	_, err = user.Create(i.Domain, "", iamTags)
 	if err != nil {
 		fmt.Println(err.Error())
 		return base.InstanceNotCreated, err
@@ -147,7 +152,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	esARNs := make([]string, 0)
 	esARNs = append(esARNs, i.ARN)
 	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-	policyARN, err := ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs, iamTags)
+	policyARN, err := d.ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs, iamTags)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -308,14 +313,14 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 	path string,
 	iamTags []*iam.Tag,
 ) error {
-	ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
+	// ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 	var snapshotRole *iam.Role
 
 	// create snapshotrole if not done yet
 	if i.SnapshotARN == "" {
 		rolename := i.Domain + "-to-s3-SnapshotRole"
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		arole, err := ip.CreateAssumeRole(policy, rolename, iamTags)
+		arole, err := d.ip.CreateAssumeRole(policy, rolename, iamTags)
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
 			return err
@@ -331,7 +336,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
 		policyname := i.Domain + "-to-S3-ESRolePolicy"
 		username := i.Domain
-		policyarn, err := ip.CreateUserPolicy(policy, policyname, username, iamTags)
+		policyarn, err := d.ip.CreateUserPolicy(policy, policyname, username, iamTags)
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", err)
 			return err
@@ -371,7 +376,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", err)
 			return err
 		}
-		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
+		policyarn, err := d.ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", err)
 			return err
@@ -381,7 +386,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 	} else {
 		// snaphost policy has already been created so we need to add the new statements for this new bucket
 		// to the existing policy version.
-		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
+		_, err := d.ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
 			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
 			return err
