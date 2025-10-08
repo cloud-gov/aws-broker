@@ -2,7 +2,7 @@ package elasticsearch
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -28,7 +28,7 @@ type mockClient struct {
 
 func (c *mockClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
-		Body: ioutil.NopCloser(bytes.NewReader([]byte(c.response))),
+		Body: io.NopCloser(bytes.NewReader([]byte(c.response))),
 	}, nil
 }
 
