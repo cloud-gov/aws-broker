@@ -9,22 +9,16 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	// "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go/aws/awsutil"
 
-	// "github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
-	// "github.com/aws/aws-sdk-go/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 
-	// "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	// "github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
@@ -596,14 +590,11 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 	params := &opensearch.DeleteDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	resp, err := d.opensearch.DeleteDomain(context.TODO(), params)
-
-	// Pretty-print the response data.
-	d.logger.Info(fmt.Sprintf("aws.DeleteElasticSearchDomain: \n\t%s\n", awsutil.StringValue(resp)))
-
+	_, err := d.opensearch.DeleteDomain(context.TODO(), params)
 	if err != nil {
 		return err
 	}
+
 	// now we poll for completion
 	// TODO - don't allow polling forever
 	for {
