@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 )
 
 var (
@@ -80,15 +79,15 @@ func TestDescribeIAMUserAWSError(t *testing.T) {
 				UserId: aws.String("user-id"),
 			},
 		},
-		getUserErr: &types.AccessDeniedException{
-			Message: aws.String("access denied"),
+		getUserErr: &iamTypes.NoSuchEntityException{
+			Message: aws.String("not found"),
 		},
 	}, logger)
 
 	_, err := iamUserClient.Describe(userName)
 
-	var accessDeniedException *types.AccessDeniedException
-	if !errors.As(err, &accessDeniedException) {
+	var exception *iamTypes.NoSuchEntityException
+	if !errors.As(err, &exception) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 }
