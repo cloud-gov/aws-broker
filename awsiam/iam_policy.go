@@ -16,7 +16,6 @@ import (
 	// "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -129,20 +128,19 @@ func (ip *IAMPolicyClient) CreateAssumeRole(
 	if err != nil {
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			ip.logger.Error("create-assume-role-error CreateRole", err)
 			fmt.Printf("role %s already exists, continuing\n", rolename)
 
 			resp, innerErr := ip.iam.GetRole(context.TODO(), &iam.GetRoleInput{
 				RoleName: aws.String(rolename),
 			})
 			if innerErr != nil {
-				ip.logger.Error("create-assume-role-error GetRole", err)
+				ip.logger.Error("CreateAssumeRole: GetRole error", err)
 				return nil, innerErr
 			}
 			return resp.Role, nil
 		}
 
-		ip.logger.Error("create-assume-role-error CreateRole", err)
+		ip.logger.Error("CreateAssumeRole: CreateRole error", err)
 		return role, err
 	}
 
@@ -170,7 +168,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		},
 	}).Parse(policyTemplate)
 	if err != nil {
-		ip.logger.Error("aws-iam-error", err)
+		ip.logger.Error("CreatePolicyFromTemplate: template.Parse error", err)
 		return "", err
 	}
 	policy := bytes.Buffer{}
@@ -179,7 +177,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		"Resources": resources,
 	})
 	if err != nil {
-		ip.logger.Error("aws-iam-error", err)
+		ip.logger.Error("CreatePolicyFromTemplate: tmpl.Execute error", err)
 		return "", err
 	}
 
@@ -193,10 +191,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 
 	createPolicyOutput, err := ip.iam.CreatePolicy(context.TODO(), createPolicyInput)
 	if err != nil {
-		ip.logger.Error("aws-iam-error", err)
-		if awsErr, ok := err.(awserr.Error); ok {
-			return "", errors.New(awsErr.Code() + ": " + awsErr.Message())
-		}
+		ip.logger.Error("CreatePolicyFromTemplate: CreatePolicy error", err)
 		return "", err
 	}
 	ip.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
@@ -225,7 +220,6 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 	if err != nil {
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			ip.logger.Error("create-user-policy error", alreadyExistsException)
 			fmt.Printf("policy name %s already exists, attempting to get policy ARN\n", policyname)
 
 			resp, innerErr := ip.iam.ListAttachedUserPolicies(context.TODO(), &iam.ListAttachedUserPoliciesInput{
@@ -233,7 +227,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 			})
 
 			if innerErr != nil {
-				ip.logger.Error("create-user-policy, ListAttachedUserPolicies error", innerErr)
+				ip.logger.Error("CreateUserPolicy: ListAttachedUserPolicies error", innerErr)
 				return "", innerErr
 			}
 
@@ -246,7 +240,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 			return "", err
 		}
 
-		ip.logger.Error("create-user-policy, CreatePolicy error", err)
+		ip.logger.Error("CreateUserPolicy: CreatePolicy error", err)
 
 		// return if error
 		return IamRolePolicyARN, err
@@ -262,7 +256,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 		}
 		_, err := ip.iam.AttachUserPolicy(context.TODO(), userAttachPolicyInput)
 		if err != nil {
-			ip.logger.Error("create-user-policy, AttachUserPolicy error", err)
+			ip.logger.Error("CreateUserPolicy: AttachUserPolicy error", err)
 			return IamRolePolicyARN, err
 		}
 	}
