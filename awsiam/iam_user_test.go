@@ -248,253 +248,100 @@ func TestDeleteAccessKey(t *testing.T) {
 	}
 }
 
-// var _ = Describe("DeleteAccessKey", func() {
-// 	var (
-// 		accessKeyID string
+func TestDeleteAccessKeyError(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName:           userName,
+		deleteAccessKeyErr: &iamTypes.NoSuchEntityException{},
+	}, logger)
+	err := iamUserClient.DeleteAccessKey(userName, "access-key-id")
+	var exception *iamTypes.NoSuchEntityException
+	if !errors.As(err, &exception) {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
 
-// 		deleteAccessKeyInput *iam.DeleteAccessKeyInput
-// 		deleteAccessKeyError error
-// 	)
+func TestListAttachedUserPolicies(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName: userName,
+		iamPath:  iamPath,
+		listAttachedUserPoliciesOutput: iam.ListAttachedUserPoliciesOutput{
+			AttachedPolicies: []iamTypes.AttachedPolicy{
+				{
+					PolicyArn: aws.String("user-policy-1"),
+				},
+				{
+					PolicyArn: aws.String("user-policy-2"),
+				},
+			},
+		},
+	}, logger)
+	policies, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	BeforeEach(func() {
-// 		accessKeyID = "access-key-id"
+	if diff := deep.Equal(policies, []string{"user-policy-1", "user-policy-2"}); diff != nil {
+		t.Error(diff)
+	}
+}
 
-// 		deleteAccessKeyInput = &iam.DeleteAccessKeyInput{
-// 			UserName:    aws.String(userName),
-// 			AccessKeyId: aws.String(accessKeyID),
-// 		}
-// 		deleteAccessKeyError = nil
-// 	})
+func TestListAttachedUserPoliciesError(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName:                    userName,
+		iamPath:                     iamPath,
+		listAttachedUserPoliciesErr: &iamTypes.NoSuchEntityException{},
+	}, logger)
+	_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
+	var exception *iamTypes.NoSuchEntityException
+	if !errors.As(err, &exception) {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
 
-// 	JustBeforeEach(func() {
-// 		iamsvc.Handlers.Clear()
+func TestAttachUserPolicy(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName:  userName,
+		policyArn: "policy-arn",
+	}, logger)
+	err := iamUserClient.AttachUserPolicy(userName, "policy-arn")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
-// 		iamCall = func(r *request.Request) {
-// 			Expect(r.Operation.Name).To(Equal("DeleteAccessKey"))
-// 			Expect(r.Params).To(BeAssignableToTypeOf(&iam.DeleteAccessKeyInput{}))
-// 			Expect(r.Params).To(Equal(deleteAccessKeyInput))
-// 			r.Error = deleteAccessKeyError
-// 		}
-// 		iamsvc.Handlers.Send.PushBack(iamCall)
-// 	})
+func TestAttachUserPolicyError(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName:            userName,
+		policyArn:           "policy-arn",
+		attachUserPolicyErr: &iamTypes.NoSuchEntityException{},
+	}, logger)
+	err := iamUserClient.AttachUserPolicy(userName, "policy-arn")
+	var exception *iamTypes.NoSuchEntityException
+	if !errors.As(err, &exception) {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
 
-// 	It("deletes the Access Key", func() {
-// 		err := iamUserClient.DeleteAccessKey(userName, accessKeyID)
-// 		Expect(err).ToNot(HaveOccurred())
-// 	})
+func TestDetachUserPolicy(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName:  userName,
+		policyArn: "policy-arn",
+	}, logger)
+	err := iamUserClient.DetachUserPolicy(userName, "policy-arn")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
-// 	Context("when deleting the Access Key fails", func() {
-// 		BeforeEach(func() {
-// 			deleteAccessKeyError = errors.New("operation failed")
-// 		})
-
-// 		It("returns the proper error", func() {
-// 			err := iamUserClient.DeleteAccessKey(userName, accessKeyID)
-// 			Expect(err).To(HaveOccurred())
-// 			Expect(err.Error()).To(Equal("operation failed"))
-// 		})
-
-// 		Context("and it is an AWS error", func() {
-// 			BeforeEach(func() {
-// 				deleteAccessKeyError = awserr.New("code", "message", errors.New("operation failed"))
-// 			})
-
-// 			It("returns the proper error", func() {
-// 				err := iamUserClient.DeleteAccessKey(userName, accessKeyID)
-// 				Expect(err).To(HaveOccurred())
-// 				Expect(err.Error()).To(Equal("code: message"))
-// 			})
-// 		})
-// 	})
-// })
-
-// var _ = Describe("ListAttachedUserPolicies", func() {
-// 	var (
-// 		listAttachedUserPoliciesAttachedPolicies []*iam.AttachedPolicy
-
-// 		listAttachedUserPoliciesInput *iam.ListAttachedUserPoliciesInput
-// 		listAttachedUserPoliciesError error
-// 	)
-
-// 	BeforeEach(func() {
-// 		listAttachedUserPoliciesAttachedPolicies = []*iam.AttachedPolicy{
-// 			{
-// 				PolicyArn: aws.String("user-policy-1"),
-// 			},
-// 			{
-// 				PolicyArn: aws.String("user-policy-2"),
-// 			},
-// 		}
-
-// 		listAttachedUserPoliciesInput = &iam.ListAttachedUserPoliciesInput{
-// 			UserName:   aws.String(userName),
-// 			PathPrefix: aws.String(iamPath),
-// 		}
-// 		listAttachedUserPoliciesError = nil
-// 	})
-
-// 	JustBeforeEach(func() {
-// 		iamsvc.Handlers.Clear()
-
-// 		iamCall = func(r *request.Request) {
-// 			Expect(r.Operation.Name).To(Equal("ListAttachedUserPolicies"))
-// 			Expect(r.Params).To(BeAssignableToTypeOf(&iam.ListAttachedUserPoliciesInput{}))
-// 			Expect(r.Params).To(Equal(listAttachedUserPoliciesInput))
-// 			data := r.Data.(*iam.ListAttachedUserPoliciesOutput)
-// 			data.AttachedPolicies = listAttachedUserPoliciesAttachedPolicies
-// 			r.Error = listAttachedUserPoliciesError
-// 		}
-// 		iamsvc.Handlers.Send.PushBack(iamCall)
-// 	})
-
-// 	It("lists the Attached User Policies", func() {
-// 		attachedUserPolicies, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
-// 		Expect(err).ToNot(HaveOccurred())
-// 		Expect(attachedUserPolicies).To(Equal([]string{"user-policy-1", "user-policy-2"}))
-// 	})
-
-// 	Context("when listing the Attached User Policies fails", func() {
-// 		BeforeEach(func() {
-// 			listAttachedUserPoliciesError = errors.New("operation failed")
-// 		})
-
-// 		It("returns the proper error", func() {
-// 			_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
-// 			Expect(err).To(HaveOccurred())
-// 			Expect(err.Error()).To(Equal("operation failed"))
-// 		})
-
-// 		Context("and it is an AWS error", func() {
-// 			BeforeEach(func() {
-// 				listAttachedUserPoliciesError = awserr.New("code", "message", errors.New("operation failed"))
-// 			})
-
-// 			It("returns the proper error", func() {
-// 				_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
-// 				Expect(err).To(HaveOccurred())
-// 				Expect(err.Error()).To(Equal("code: message"))
-// 			})
-// 		})
-// 	})
-// })
-
-// var _ = Describe("AttachUserPolicy", func() {
-// 	var (
-// 		policyARN string
-
-// 		attachUserPolicyInput *iam.AttachUserPolicyInput
-// 		attachUserPolicyError error
-// 	)
-
-// 	BeforeEach(func() {
-// 		policyARN = "policy-arn"
-
-// 		attachUserPolicyInput = &iam.AttachUserPolicyInput{
-// 			PolicyArn: aws.String(policyARN),
-// 			UserName:  aws.String(userName),
-// 		}
-// 		attachUserPolicyError = nil
-// 	})
-
-// 	JustBeforeEach(func() {
-// 		iamsvc.Handlers.Clear()
-
-// 		iamCall = func(r *request.Request) {
-// 			Expect(r.Operation.Name).To(Equal("AttachUserPolicy"))
-// 			Expect(r.Params).To(BeAssignableToTypeOf(&iam.AttachUserPolicyInput{}))
-// 			Expect(r.Params).To(Equal(attachUserPolicyInput))
-// 			r.Error = attachUserPolicyError
-// 		}
-// 		iamsvc.Handlers.Send.PushBack(iamCall)
-// 	})
-
-// 	It("attaches the Policy to the User", func() {
-// 		err := iamUserClient.AttachUserPolicy(userName, policyARN)
-// 		Expect(err).ToNot(HaveOccurred())
-// 	})
-
-// 	Context("when attaching the Policy to the User fails", func() {
-// 		BeforeEach(func() {
-// 			attachUserPolicyError = errors.New("operation failed")
-// 		})
-
-// 		It("returns the proper error", func() {
-// 			err := iamUserClient.AttachUserPolicy(userName, policyARN)
-// 			Expect(err).To(HaveOccurred())
-// 			Expect(err.Error()).To(Equal("operation failed"))
-// 		})
-
-// 		Context("and it is an AWS error", func() {
-// 			BeforeEach(func() {
-// 				attachUserPolicyError = awserr.New("code", "message", errors.New("operation failed"))
-// 			})
-
-// 			It("returns the proper error", func() {
-// 				err := iamUserClient.AttachUserPolicy(userName, policyARN)
-// 				Expect(err).To(HaveOccurred())
-// 				Expect(err.Error()).To(Equal("code: message"))
-// 			})
-// 		})
-// 	})
-// })
-
-// var _ = Describe("DetachUserPolicy", func() {
-// 	var (
-// 		policyARN string
-
-// 		detachUserPolicyInput *iam.DetachUserPolicyInput
-// 		detachUserPolicyError error
-// 	)
-
-// 	BeforeEach(func() {
-// 		policyARN = "policy-arn"
-
-// 		detachUserPolicyInput = &iam.DetachUserPolicyInput{
-// 			PolicyArn: aws.String(policyARN),
-// 			UserName:  aws.String(userName),
-// 		}
-// 		detachUserPolicyError = nil
-// 	})
-
-// 	JustBeforeEach(func() {
-// 		iamsvc.Handlers.Clear()
-
-// 		iamCall = func(r *request.Request) {
-// 			Expect(r.Operation.Name).To(Equal("DetachUserPolicy"))
-// 			Expect(r.Params).To(BeAssignableToTypeOf(&iam.DetachUserPolicyInput{}))
-// 			Expect(r.Params).To(Equal(detachUserPolicyInput))
-// 			r.Error = detachUserPolicyError
-// 		}
-// 		iamsvc.Handlers.Send.PushBack(iamCall)
-// 	})
-
-// 	It("detaches the Policy from the User", func() {
-// 		err := iamUserClient.DetachUserPolicy(userName, policyARN)
-// 		Expect(err).ToNot(HaveOccurred())
-// 	})
-
-// 	Context("when detaching the Policy from the User fails", func() {
-// 		BeforeEach(func() {
-// 			detachUserPolicyError = errors.New("operation failed")
-// 		})
-
-// 		It("returns the proper error", func() {
-// 			err := iamUserClient.DetachUserPolicy(userName, policyARN)
-// 			Expect(err).To(HaveOccurred())
-// 			Expect(err.Error()).To(Equal("operation failed"))
-// 		})
-
-// 		Context("and it is an AWS error", func() {
-// 			BeforeEach(func() {
-// 				detachUserPolicyError = awserr.New("code", "message", errors.New("operation failed"))
-// 			})
-
-// 			It("returns the proper error", func() {
-// 				err := iamUserClient.DetachUserPolicy(userName, policyARN)
-// 				Expect(err).To(HaveOccurred())
-// 				Expect(err.Error()).To(Equal("code: message"))
-// 			})
-// 		})
-// 	})
-// })
-// })
+func TestDetachUserPolicyError(t *testing.T) {
+	iamUserClient := NewIAMUserClient(&MockIAMClient{
+		userName:            userName,
+		policyArn:           "policy-arn",
+		detachUserPolicyErr: &iamTypes.NoSuchEntityException{},
+	}, logger)
+	err := iamUserClient.DetachUserPolicy(userName, "policy-arn")
+	var exception *iamTypes.NoSuchEntityException
+	if !errors.As(err, &exception) {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}

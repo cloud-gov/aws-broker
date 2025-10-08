@@ -15,8 +15,9 @@ var logger lager.Logger = lager.NewLogger("awsiam-test")
 var mockPolDoc string = `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": ["some:action"],"Resource": ["some:resource"]}]}`
 
 type MockIAMClient struct {
-	attachedUserPolicies []types.AttachedPolicy
 	attachedRolePolicies []types.AttachedPolicy
+
+	attachUserPolicyErr error
 
 	createAccessKeyErr    error
 	createAccessKeyOutput iam.CreateAccessKeyOutput
@@ -31,8 +32,15 @@ type MockIAMClient struct {
 	getUserErr    error
 	getUserOutput *iam.GetUserOutput
 
+	iamPath string
+
+	listAttachedUserPoliciesErr    error
+	listAttachedUserPoliciesOutput iam.ListAttachedUserPoliciesOutput
+
 	listPolicyVersionsOutput iam.ListPolicyVersionsOutput
 	listPolicyVersionsErr    error
+
+	deleteAccessKeyErr error
 
 	deletePolicyOutput iam.DeletePolicyOutput
 	deletePolicyErr    error
@@ -43,8 +51,12 @@ type MockIAMClient struct {
 
 	deleteUserErr error
 
+	detachUserPolicyErr error
+
 	listAccessKeysErr    error
 	listAccessKeysOutput iam.ListAccessKeysOutput
+
+	policyArn string
 
 	userName string
 }
@@ -54,7 +66,13 @@ func (i *MockIAMClient) AttachRolePolicy(ctx context.Context, params *iam.Attach
 }
 
 func (i *MockIAMClient) AttachUserPolicy(ctx context.Context, params *iam.AttachUserPolicyInput, optFns ...func(*iam.Options)) (*iam.AttachUserPolicyOutput, error) {
-	return &iam.AttachUserPolicyOutput{}, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	if i.policyArn != "" && i.policyArn != *params.PolicyArn {
+		return nil, errors.New("unexpected policy ARN")
+	}
+	return &iam.AttachUserPolicyOutput{}, i.attachUserPolicyErr
 }
 
 func (i *MockIAMClient) CreateAccessKey(ctx context.Context, params *iam.CreateAccessKeyInput, optFns ...func(*iam.Options)) (*iam.CreateAccessKeyOutput, error) {
@@ -115,7 +133,7 @@ func (i *MockIAMClient) DeleteAccessKey(ctx context.Context, params *iam.DeleteA
 	if i.userName != "" && i.userName != *params.UserName {
 		return nil, errors.New("unexpected username")
 	}
-	return nil, nil
+	return nil, i.deleteAccessKeyErr
 }
 
 func (i *MockIAMClient) DeletePolicy(ctx context.Context, params *iam.DeletePolicyInput, optFns ...func(*iam.Options)) (*iam.DeletePolicyOutput, error) {
@@ -146,7 +164,13 @@ func (i *MockIAMClient) DetachRolePolicy(ctx context.Context, params *iam.Detach
 }
 
 func (i *MockIAMClient) DetachUserPolicy(ctx context.Context, params *iam.DetachUserPolicyInput, optFns ...func(*iam.Options)) (*iam.DetachUserPolicyOutput, error) {
-	return nil, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	if i.policyArn != "" && i.policyArn != *params.PolicyArn {
+		return nil, errors.New("unexpected policy ARN")
+	}
+	return nil, i.detachUserPolicyErr
 }
 
 func (i *MockIAMClient) GetPolicy(ctx context.Context, params *iam.GetPolicyInput, optFns ...func(*iam.Options)) (*iam.GetPolicyOutput, error) {
@@ -199,9 +223,13 @@ func (i *MockIAMClient) ListAttachedRolePolicies(ctx context.Context, params *ia
 }
 
 func (i *MockIAMClient) ListAttachedUserPolicies(ctx context.Context, params *iam.ListAttachedUserPoliciesInput, optFns ...func(*iam.Options)) (*iam.ListAttachedUserPoliciesOutput, error) {
-	return &iam.ListAttachedUserPoliciesOutput{
-		AttachedPolicies: i.attachedUserPolicies,
-	}, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	if i.iamPath != "" && i.iamPath != *params.PathPrefix {
+		return nil, errors.New("unexpected username")
+	}
+	return &i.listAttachedUserPoliciesOutput, i.listAttachedUserPoliciesErr
 }
 
 func (i *MockIAMClient) ListPolicyVersions(ctx context.Context, params *iam.ListPolicyVersionsInput, optFns ...func(*iam.Options)) (*iam.ListPolicyVersionsOutput, error) {

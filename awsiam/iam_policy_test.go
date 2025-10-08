@@ -125,10 +125,13 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 	// }
 
 	ip := NewIAMPolicyClient(&MockIAMClient{
-		attachedUserPolicies: []types.AttachedPolicy{
-			{
-				PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyname),
-				PolicyName: aws.String(policyname),
+
+		listAttachedUserPoliciesOutput: iam.ListAttachedUserPoliciesOutput{
+			AttachedPolicies: []types.AttachedPolicy{
+				{
+					PolicyArn:  aws.String("arn:aws:iam::123456789012:policy/" + policyname),
+					PolicyName: aws.String(policyname),
+				},
 			},
 		},
 		createPolicyErr: &types.EntityAlreadyExistsException{
