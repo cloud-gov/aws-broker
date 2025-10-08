@@ -2,11 +2,15 @@ package awsiam
 
 import (
 	"context"
+	"errors"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 )
+
+var logger lager.Logger = lager.NewLogger("awsiam-test")
 
 var mockPolDoc string = `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": ["some:action"],"Resource": ["some:resource"]}]}`
 
@@ -14,12 +18,18 @@ type MockIAMClient struct {
 	attachedUserPolicies []types.AttachedPolicy
 	attachedRolePolicies []types.AttachedPolicy
 
+	createAccessKeyErr    error
+	createAccessKeyOutput iam.CreateAccessKeyOutput
+
 	createRoleErr      error
 	createPolicyErr    error
 	createPolicyInputs []*iam.CreatePolicyInput
 
-	getUserInputName string
-	getUserOutput    *iam.GetUserOutput
+	createUserErr    error
+	createUserOutput *iam.CreateUserOutput
+
+	getUserErr    error
+	getUserOutput *iam.GetUserOutput
 
 	listPolicyVersionsOutput iam.ListPolicyVersionsOutput
 	listPolicyVersionsErr    error
@@ -30,6 +40,13 @@ type MockIAMClient struct {
 	deletePolicyVersionOutput  iam.DeletePolicyVersionOutput
 	deletePolicyVersionErr     error
 	deletedPolicyVersionInputs []*iam.DeletePolicyVersionInput
+
+	deleteUserErr error
+
+	listAccessKeysErr    error
+	listAccessKeysOutput iam.ListAccessKeysOutput
+
+	userName string
 }
 
 func (i *MockIAMClient) AttachRolePolicy(ctx context.Context, params *iam.AttachRolePolicyInput, optFns ...func(*iam.Options)) (*iam.AttachRolePolicyOutput, error) {
@@ -41,7 +58,10 @@ func (i *MockIAMClient) AttachUserPolicy(ctx context.Context, params *iam.Attach
 }
 
 func (i *MockIAMClient) CreateAccessKey(ctx context.Context, params *iam.CreateAccessKeyInput, optFns ...func(*iam.Options)) (*iam.CreateAccessKeyOutput, error) {
-	return nil, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	return &i.createAccessKeyOutput, i.createAccessKeyErr
 }
 
 func (i *MockIAMClient) CreatePolicy(ctx context.Context, params *iam.CreatePolicyInput, optFns ...func(*iam.Options)) (*iam.CreatePolicyOutput, error) {
@@ -85,10 +105,16 @@ func (i *MockIAMClient) CreateRole(ctx context.Context, params *iam.CreateRoleIn
 }
 
 func (i *MockIAMClient) CreateUser(ctx context.Context, params *iam.CreateUserInput, optFns ...func(*iam.Options)) (*iam.CreateUserOutput, error) {
-	return nil, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	return i.createUserOutput, i.createUserErr
 }
 
 func (i *MockIAMClient) DeleteAccessKey(ctx context.Context, params *iam.DeleteAccessKeyInput, optFns ...func(*iam.Options)) (*iam.DeleteAccessKeyOutput, error) {
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
 	return nil, nil
 }
 
@@ -109,7 +135,10 @@ func (i *MockIAMClient) DeletePolicyVersion(ctx context.Context, params *iam.Del
 }
 
 func (i *MockIAMClient) DeleteUser(ctx context.Context, params *iam.DeleteUserInput, optFns ...func(*iam.Options)) (*iam.DeleteUserOutput, error) {
-	return nil, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	return nil, i.deleteUserErr
 }
 
 func (i *MockIAMClient) DetachRolePolicy(ctx context.Context, params *iam.DetachRolePolicyInput, optFns ...func(*iam.Options)) (*iam.DetachRolePolicyOutput, error) {
@@ -150,14 +179,17 @@ func (i *MockIAMClient) GetRole(ctx context.Context, params *iam.GetRoleInput, o
 }
 
 func (i *MockIAMClient) GetUser(ctx context.Context, params *iam.GetUserInput, optFns ...func(*iam.Options)) (*iam.GetUserOutput, error) {
-	if i.getUserInputName != "" && i.getUserInputName == *params.UserName {
-		return i.getUserOutput, nil
+	if i.userName != "" && i.userName == *params.UserName {
+		return i.getUserOutput, i.getUserErr
 	}
-	return nil, nil
+	return nil, i.getUserErr
 }
 
 func (i *MockIAMClient) ListAccessKeys(ctx context.Context, params *iam.ListAccessKeysInput, optFns ...func(*iam.Options)) (*iam.ListAccessKeysOutput, error) {
-	return nil, nil
+	if i.userName != "" && i.userName != *params.UserName {
+		return nil, errors.New("unexpected username")
+	}
+	return &i.listAccessKeysOutput, i.listAccessKeysErr
 }
 
 func (i *MockIAMClient) ListAttachedRolePolicies(ctx context.Context, params *iam.ListAttachedRolePoliciesInput, optFns ...func(*iam.Options)) (*iam.ListAttachedRolePoliciesOutput, error) {

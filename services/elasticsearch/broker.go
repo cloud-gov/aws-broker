@@ -333,11 +333,7 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 	// Bind the database instance to the application.
 	existingInstance.setBucket(options.Bucket)
 	if credentials, err = broker.adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
-		desc := "There was an error binding the database instance to the application."
-		if err != nil {
-			desc = desc + " Error: " + err.Error()
-		}
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
+		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application. Error: %s", err))
 	}
 
 	broker.brokerDB.Save(&existingInstance)

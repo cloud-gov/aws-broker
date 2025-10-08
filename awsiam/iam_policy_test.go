@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -16,8 +15,6 @@ import (
 )
 
 var bucketArn string = "arn:aws-us-gov:s3:::test"
-
-var logger lager.Logger = lager.NewLogger("aws-broker")
 
 var existStatement PolicyStatementEntry = PolicyStatementEntry{
 	Action:   []string{"some:action"},
@@ -353,7 +350,7 @@ func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
 				test.fakeIAMClient.deletedPolicyVersionInputs,
 				test.expectedDeletePolicyVersionInputs,
 			) {
-				t.Errorf("expected: %s, got: %s", test.expectedDeletePolicyVersionInputs, test.fakeIAMClient.deletedPolicyVersionInputs)
+				t.Errorf("expected: %+v, got: %+v", test.expectedDeletePolicyVersionInputs, test.fakeIAMClient.deletedPolicyVersionInputs)
 			}
 		})
 	}

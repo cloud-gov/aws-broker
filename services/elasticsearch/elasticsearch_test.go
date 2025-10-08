@@ -126,10 +126,13 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := prepareCreateDomainInput(
+			params, err := prepareCreateDomainInput(
 				test.esInstance,
 				test.accessPolicy,
 			)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
 			}
@@ -194,7 +197,10 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := prepareUpdateDomainConfigInput(test.esInstance)
+			params, err := prepareUpdateDomainConfigInput(test.esInstance)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
 			}
