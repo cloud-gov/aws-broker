@@ -31,7 +31,7 @@ func getOpensearchVolumeTypeEnum(volumeTypeString string) (*opensearchTypes.Volu
 	if volumeType, ok := opensearchVolumeTypeMap[volumeTypeString]; ok {
 		return &volumeType, nil
 	}
-	return nil, fmt.Errorf("Invalid volume type: %s", volumeTypeString)
+	return nil, fmt.Errorf("invalid volume type: %s", volumeTypeString)
 }
 
 var opensearchInstanceTypeMap = map[string]opensearchTypes.OpenSearchPartitionInstanceType{
@@ -49,7 +49,7 @@ func getOpensearchInstanceTypeEnum(instanceTypeString string) (*opensearchTypes.
 	if instanceType, ok := opensearchInstanceTypeMap[instanceTypeString]; ok {
 		return &instanceType, nil
 	}
-	return nil, fmt.Errorf("Invalid instance type: %s", instanceTypeString)
+	return nil, fmt.Errorf("invalid instance type: %s", instanceTypeString)
 }
 
 type S3ClientInterface interface {
@@ -64,5 +64,5 @@ func getS3ServerSideEncryptionEnum(encryptionString string) (*s3Types.ServerSide
 	if serverSideEncryption, ok := s3ServerSideEncryptionMap[encryptionString]; ok {
 		return &serverSideEncryption, nil
 	}
-	return nil, fmt.Errorf("Invalid instance type: %s", encryptionString)
+	return nil, fmt.Errorf("invalid instance type: %s", encryptionString)
 }
