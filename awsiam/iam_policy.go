@@ -49,11 +49,13 @@ type IAMClientInterface interface {
 	CreatePolicyVersion(ctx context.Context, params *iam.CreatePolicyVersionInput, optFns ...func(*iam.Options)) (*iam.CreatePolicyVersionOutput, error)
 	CreateRole(ctx context.Context, params *iam.CreateRoleInput, optFns ...func(*iam.Options)) (*iam.CreateRoleOutput, error)
 	DeletePolicy(ctx context.Context, params *iam.DeletePolicyInput, optFns ...func(*iam.Options)) (*iam.DeletePolicyOutput, error)
+	DeletePolicyVersion(ctx context.Context, params *iam.DeletePolicyVersionInput, optFns ...func(*iam.Options)) (*iam.DeletePolicyVersionOutput, error)
 	GetPolicy(ctx context.Context, params *iam.GetPolicyInput, optFns ...func(*iam.Options)) (*iam.GetPolicyOutput, error)
 	GetPolicyVersion(ctx context.Context, params *iam.GetPolicyVersionInput, optFns ...func(*iam.Options)) (*iam.GetPolicyVersionOutput, error)
 	GetRole(ctx context.Context, params *iam.GetRoleInput, optFns ...func(*iam.Options)) (*iam.GetRoleOutput, error)
 	ListAttachedRolePolicies(ctx context.Context, params *iam.ListAttachedRolePoliciesInput, optFns ...func(*iam.Options)) (*iam.ListAttachedRolePoliciesOutput, error)
 	ListAttachedUserPolicies(ctx context.Context, params *iam.ListAttachedUserPoliciesInput, optFns ...func(*iam.Options)) (*iam.ListAttachedUserPoliciesOutput, error)
+	ListPolicyVersions(ctx context.Context, params *iam.ListPolicyVersionsInput, optFns ...func(*iam.Options)) (*iam.ListPolicyVersionsOutput, error)
 }
 
 type IAMPolicyClient struct {
@@ -405,7 +407,7 @@ func (ip *IAMPolicyClient) DeletePolicy(policyARN string) error {
 	ip.logger.Debug("delete-policy", lager.Data{"input": deletePolicyInput})
 	deletePolicyOutput, err := ip.iam.DeletePolicy(context.TODO(), deletePolicyInput)
 	if err != nil {
-		ip.logger.Error("delete-policy error", err)
+		ip.logger.Error("DeletePolicy: DeletePolicy error", err)
 		return err
 	}
 	ip.logger.Debug("delete-policy", lager.Data{"output": deletePolicyOutput})
@@ -418,25 +420,22 @@ func (ip IAMPolicyClient) deleteNonDefaultPolicyVersions(policyARN string) error
 		PolicyArn: &policyARN,
 	}
 
-	listPolicyVersionsOutput, err := ip.iam.ListPolicyVersions(input)
+	listPolicyVersionsOutput, err := ip.iam.ListPolicyVersions(context.TODO(), input)
 	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": listPolicyVersionsOutput})
 	if err != nil {
-		ip.logger.Error("list-policy-versions error", err)
+		ip.logger.Error("deleteNonDefaultPolicyVersions: ListPolicyVersions error", err)
 		return err
 	}
 
 	for _, version := range listPolicyVersionsOutput.Versions {
-		if !(*version.IsDefaultVersion) {
+		if !version.IsDefaultVersion {
 			ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
-			_, err := ip.iam.DeletePolicyVersion(&iam.DeletePolicyVersionInput{
+			_, err := ip.iam.DeletePolicyVersion(context.TODO(), &iam.DeletePolicyVersionInput{
 				VersionId: version.VersionId,
 				PolicyArn: aws.String(policyARN),
 			})
 			if err != nil {
-				ip.logger.Error("aws-iam-error", err)
-				if awsErr, ok := err.(awserr.Error); ok {
-					return errors.New(awsErr.Code() + ": " + awsErr.Message())
-				}
+				ip.logger.Error("deleteNonDefaultPolicyVersions: DeletePolicyVersion error", err)
 				return err
 			}
 		}
@@ -451,10 +450,10 @@ func (ip IAMPolicyClient) trimPolicyVersions(policyARN string, maxVersions int) 
 		PolicyArn: &policyARN,
 	}
 
-	resPolVers, err := ip.iam.ListPolicyVersions(input)
+	resPolVers, err := ip.iam.ListPolicyVersions(context.TODO(), input)
 	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": resPolVers})
 	if err != nil {
-		ip.logger.Error("list-policy-versions error", err)
+		ip.logger.Error("trimPolicyVersions: ListPolicyVersions error", err)
 		return err
 	}
 
@@ -465,15 +464,15 @@ func (ip IAMPolicyClient) trimPolicyVersions(policyARN string, maxVersions int) 
 		})
 		for i := 0; i <= len(resPolVers.Versions)-(maxVersions+1); i++ {
 			version := resPolVers.Versions[i]
-			if !*(version.IsDefaultVersion) {
+			if !version.IsDefaultVersion {
 				input := &iam.DeletePolicyVersionInput{
 					PolicyArn: &policyARN,
 					VersionId: version.VersionId,
 				}
 				ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
-				_, err := ip.iam.DeletePolicyVersion(input)
+				_, err := ip.iam.DeletePolicyVersion(context.TODO(), input)
 				if err != nil {
-					ip.logger.Error("delete-policy-version error", err)
+					ip.logger.Error("trimPolicyVersions: DeletePolicyVersion error", err)
 					return err
 				}
 			}
