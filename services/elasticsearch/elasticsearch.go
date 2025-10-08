@@ -11,7 +11,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	// "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 
 	// "github.com/aws/aws-sdk-go/service/iam"
@@ -95,7 +94,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 	_, err := user.Create(i.Domain, "", iamTags)
 	if err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("createElasticsearch: user.Create err", err)
 		return base.InstanceNotCreated, err
 	}
 
@@ -114,16 +113,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := d.sts.GetCallerIdentity(context.TODO(), stsInput)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
+		d.logger.Error("createElasticsearch: GetCallerIdentity err", err)
 		return base.InstanceNotCreated, nil
 	}
 
@@ -132,7 +122,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	time.Sleep(5 * time.Second)
 
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
-	params := prepareCreateDomainInput(i, accessControlPolicy)
+	params, err := prepareCreateDomainInput(i, accessControlPolicy)
+	if err != nil {
+		d.logger.Error("createElasticsearch: prepareCreateDomainInput err", err)
+		return base.InstanceNotCreated, err
+	}
 
 	resp, err := d.opensearch.CreateDomain(context.TODO(), params)
 	if isInvalidTypeException(err) {
@@ -149,7 +143,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	// Decide if AWS service call was successful
 	if err != nil {
-		brokerErrs.LogAWSError(err)
+		d.logger.Error("createElasticsearch: CreateDomain err", err)
 		return base.InstanceNotCreated, err
 	}
 
@@ -318,7 +312,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 	i *ElasticsearchInstance,
 	bucket string,
 	path string,
-	iamTags []*iamTypes.Tag,
+	iamTags []iamTypes.Tag,
 ) error {
 	// ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
 	var snapshotRole *iamTypes.Role
@@ -668,10 +662,8 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 
 // determine whether the error is an opensearch.InvalidTypeException
 func isInvalidTypeException(createErr error) bool {
-	if aerr, ok := createErr.(awserr.Error); ok {
-		return aerr.Code() == "InvalidTypeException"
-	}
-	return false
+	var InvalidTypeException *opensearchTypes.InvalidTypeException
+	return errors.As(createErr, &InvalidTypeException)
 }
 
 func prepareCreateDomainInput(
