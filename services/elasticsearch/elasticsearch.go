@@ -694,6 +694,10 @@ func prepareCreateDomainInput(
 		esclusterconfig.DedicatedMasterType = *masterInstanceType
 	}
 
+	// Check AutomatedSnapshotStartHour is in valid range before casting.
+	if i.AutomatedSnapshotStartHour < 0 || i.AutomatedSnapshotStartHour > 23 {
+		return nil, fmt.Errorf("AutomatedSnapshotStartHour must be between 0 and 23, got %d", i.AutomatedSnapshotStartHour)
+	}
 	snapshotOptions := &opensearchTypes.SnapshotOptions{
 		AutomatedSnapshotStartHour: aws.Int32(int32(i.AutomatedSnapshotStartHour)),
 	}
