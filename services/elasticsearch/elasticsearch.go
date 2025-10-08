@@ -65,7 +65,7 @@ func (d *mockElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInst
 
 func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
 	// TODO
-	return i.getCredentials(password)
+	return i.getCredentials()
 }
 
 func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
@@ -243,7 +243,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 		}
 	}
 	// If we get here that means the instance is up and we have the information for it.
-	return i.getCredentials(password)
+	return i.getCredentials()
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
@@ -421,7 +421,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 		return
 	}
 
-	err = d.writeManifestToS3(i, password)
+	err = d.writeManifestToS3(i)
 	if err != nil {
 		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error: %v\n", err)
 		fmt.Println(desc)
@@ -472,7 +472,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 			return err
 		}
 	} else {
-		creds, err = i.getCredentials(password)
+		creds, err = i.getCredentials()
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -630,7 +630,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 
 // in which we Marshall the instance into Json and dump to a manifest file in the snapshot bucket
 // so to provide machine readable information for restoration.
-func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstance, password string) error {
+func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstance) error {
 	//  marshall instance to bytes.
 	data, err := json.Marshal(i)
 	if err != nil {
