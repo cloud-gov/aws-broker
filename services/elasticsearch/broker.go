@@ -1,17 +1,19 @@
 package elasticsearch
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
-	"github.com/aws/aws-sdk-go/service/sts"
+
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/awsiam"
@@ -87,6 +89,11 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAd
 		return elasticsearchAdapter, nil
 	}
 
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+
 	ip, err := awsiam.NewIAMPolicyClient(s.Region, logger)
 	if err != nil {
 		return nil, err
@@ -95,9 +102,9 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAd
 	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
 		settings:   *s,
 		logger:     logger,
-		opensearch: opensearchservice.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
-		iam:        iam.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
-		sts:        sts.New(session.Must(session.NewSession()), aws.NewConfig().WithRegion(s.Region)),
+		opensearch: opensearch.NewFromConfig(cfg),
+		iam:        iam.NewFromConfig(cfg),
+		sts:        sts.NewFromConfig(cfg),
 		ip:         *ip,
 	}
 
