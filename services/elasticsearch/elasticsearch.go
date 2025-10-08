@@ -32,7 +32,6 @@ import (
 
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 
 	"fmt"
 )
@@ -196,7 +195,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 		resp, err := d.opensearch.DescribeDomain(context.TODO(), params)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
+			d.logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", err)
 			return nil, err
 		}
 
@@ -282,7 +281,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 
 		resp, err := d.opensearch.DescribeDomain(context.TODO(), params)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
+			d.logger.Error("checkElasticsearchStatus: UpdateDomainConfig err", err)
 			return base.InstanceNotCreated, err
 		}
 
