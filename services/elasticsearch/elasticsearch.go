@@ -789,7 +789,7 @@ func prepareCreateDomainInput(
 }
 
 func convertToInt32Safely(value int) (*int32, error) {
-	if value >= math.MaxInt32 && value < 0 {
+	if value < 0 || value > math.MaxInt32 {
 		return nil, fmt.Errorf("invalid value %q, must be between 0 and %d", value, math.MaxInt32)
 	}
 	int32Value := int32(value)
