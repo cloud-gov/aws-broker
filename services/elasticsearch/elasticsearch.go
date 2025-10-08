@@ -672,11 +672,6 @@ func prepareCreateDomainInput(
 		return nil, err
 	}
 
-	masterInstanceType, err := getOpensearchInstanceTypeEnum(i.MasterInstanceType)
-	if err != nil {
-		return nil, err
-	}
-
 	ebsoptions := &opensearchTypes.EBSOptions{
 		EBSEnabled: aws.Bool(true),
 		VolumeSize: aws.Int32(int32(i.VolumeSize)),
@@ -687,7 +682,13 @@ func prepareCreateDomainInput(
 		InstanceType:  *instanceType,
 		InstanceCount: aws.Int32(int32(i.DataCount)),
 	}
+
 	if i.MasterEnabled {
+		masterInstanceType, err := getOpensearchInstanceTypeEnum(i.MasterInstanceType)
+		if err != nil {
+			return nil, err
+		}
+
 		esclusterconfig.DedicatedMasterEnabled = aws.Bool(i.MasterEnabled)
 		esclusterconfig.DedicatedMasterCount = aws.Int32(int32(i.MasterCount))
 		esclusterconfig.DedicatedMasterType = *masterInstanceType
