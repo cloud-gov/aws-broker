@@ -116,7 +116,7 @@ jobs:
         on_failure:
           put: slack
           params: &slack-failure-config
-            channel: ((slack-failure-channel))
+            channel: ((slack-channel-customer-success))
             username: ((slack-username))
             icon_url: ((slack-icon-url))
             text: |
