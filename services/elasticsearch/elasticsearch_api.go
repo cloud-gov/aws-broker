@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 )
 
 // abstract this method for mocking
@@ -19,13 +22,12 @@ type HttpClient interface {
 }
 
 type EsApiHandler struct {
-	client HttpClient
-	//svcInfo map[string]string
-	credentials *credentials.Credentials
-	signer      *v4.Signer
-	domain_uri  string
-	region      string
-	service     string
+	client              HttpClient
+	credentialsProvider aws.CredentialsProvider
+	signer              *v4.Signer
+	domain_uri          string
+	region              string
+	service             string
 }
 
 type SnapshotRepo struct {
@@ -83,8 +85,8 @@ func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
 	id := svcInfo["access_key"]
 	secret := svcInfo["secret_key"]
 	es.domain_uri = "https://" + svcInfo["host"]
-	es.credentials = credentials.NewStaticCredentials(id, secret, "")
-	es.signer = v4.NewSigner(es.credentials)
+	es.credentialsProvider = credentials.NewStaticCredentialsProvider(id, secret, "")
+	es.signer = v4.NewSigner()
 	es.client = &http.Client{}
 	es.service = "es"
 	es.region = region
@@ -104,11 +106,14 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	}
 	req.Header.Add("Content-Type", "application/json")
 
-	// Sign the request, send it, and print the response
-	_, err = es.signer.Sign(req, body, es.service, es.region, time.Now())
+	credentials, err := es.credentialsProvider.Retrieve(context.TODO())
 	if err != nil {
-		//fmt.Println("ESAPI -- Send -- Signing Error:")
-		//fmt.Print(err)
+		return result, err
+	}
+
+	// Sign the request, send it, and print the response
+	err = es.signer.SignHTTP(context.TODO(), credentials, req, content, es.service, es.region, time.Now())
+	if err != nil {
 		return result, err
 	}
 	resp, err := es.client.Do(req)

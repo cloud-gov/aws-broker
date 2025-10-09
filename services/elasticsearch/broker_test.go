@@ -99,6 +99,7 @@ func TestCreateInstance(t *testing.T) {
 				},
 				tagManager: &mocks.MockTagGenerator{},
 				brokerDB:   brokerDB,
+				adapter:    &mockElasticsearchAdapter{},
 			},
 			expectedResponseCode: http.StatusAccepted,
 		},

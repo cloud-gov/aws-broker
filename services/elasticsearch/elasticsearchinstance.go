@@ -100,7 +100,7 @@ func (i *ElasticsearchInstance) getPassword(key string) (string, error) {
 	return decrypted, nil
 }
 
-func (i *ElasticsearchInstance) getCredentials(password string) (map[string]string, error) {
+func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 	var credentials map[string]string
 
 	uri := fmt.Sprintf("https://%s:443",

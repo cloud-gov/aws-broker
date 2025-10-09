@@ -2,7 +2,7 @@ package elasticsearch
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -28,7 +28,7 @@ type mockClient struct {
 
 func (c *mockClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
-		Body: ioutil.NopCloser(bytes.NewReader([]byte(c.response))),
+		Body: io.NopCloser(bytes.NewReader([]byte(c.response))),
 	}, nil
 }
 
@@ -66,35 +66,6 @@ func TestSnapshotRepoToString(t *testing.T) {
 		t.Errorf("Got %s but expected %s", result, expected)
 	}
 }
-
-/* func TestNewSnapShotPolicy(t *testing.T) {
-	snappol := NewSnapshotPolicy(reponame, policyname, "")
-	name := "<" + policyname + "{now/d}>"
-	if snappol != nil {
-		if snappol.Name != name {
-			t.Errorf("Expected %s path but got %s", name, snappol.Name)
-		}
-		if snappol.Repository != reponame {
-			t.Errorf("Expected %s reponame but got %s", reponame, snappol.Repository)
-		}
-		fmt.Printf("%+v", snappol)
-	} else {
-		t.Error("Snapreop is nil")
-	}
-} */
-/*
-func TestSnapshotPolicyToString(t *testing.T) {
-	expected := "{\"schedule\":\"0 0 3 * * *\",\"name\":\"\\u003c" + policyname + "{now/d}\\u003e\",\"repository\":\"" + reponame + "\",\"config\":{\"indices\":[\"*\"]}}"
-
-	snappol := NewSnapshotPolicy(reponame, policyname, "")
-	result, err := snappol.ToString()
-	if err != nil {
-		t.Error("Got non-nil error in ToString")
-	}
-	if result != expected {
-		t.Errorf("Got %s but expected %s", result, expected)
-	}
-} */
 
 func TestCreateSnapshotRepo(t *testing.T) {
 	es := createMockESHandler("")

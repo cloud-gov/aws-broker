@@ -3,13 +3,15 @@ package elasticsearch
 import (
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/go-test/deep"
 )
 
 func TestIsInvalidTypeException(t *testing.T) {
-	isInvalidType := isInvalidTypeException(&opensearchservice.InvalidTypeException{})
+	isInvalidType := isInvalidTypeException(&opensearchTypes.InvalidTypeException{})
 	if !isInvalidType {
 		t.Fatal("expected isInvalidTypeException() to return true")
 	}
@@ -19,7 +21,7 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 	testCases := map[string]struct {
 		esInstance     *ElasticsearchInstance
 		accessPolicy   string
-		expectedParams *opensearchservice.CreateDomainInput
+		expectedParams *opensearch.CreateDomainInput
 	}{
 		"data count of 1": {
 			esInstance: &ElasticsearchInstance{
@@ -30,7 +32,7 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				EncryptAtRest:              false,
 				VolumeSize:                 10,
 				VolumeType:                 "gp3",
-				InstanceType:               "db.m5.xlarge",
+				InstanceType:               "m5.2xlarge.search",
 				NodeToNodeEncryption:       true,
 				AutomatedSnapshotStartHour: 0,
 				Tags: map[string]string{
@@ -38,35 +40,35 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				},
 			},
 			accessPolicy: "fake-access-policy",
-			expectedParams: &opensearchservice.CreateDomainInput{
+			expectedParams: &opensearch.CreateDomainInput{
 				DomainName:     aws.String("test-domain"),
 				AccessPolicies: aws.String("fake-access-policy"),
-				VPCOptions: &opensearchservice.VPCOptions{
-					SubnetIds:        []*string{aws.String("az-2")},
-					SecurityGroupIds: []*string{aws.String("group-1")},
+				VPCOptions: &opensearchTypes.VPCOptions{
+					SubnetIds:        []string{"az-2"},
+					SecurityGroupIds: []string{"group-1"},
 				},
-				DomainEndpointOptions: &opensearchservice.DomainEndpointOptions{
+				DomainEndpointOptions: &opensearchTypes.DomainEndpointOptions{
 					EnforceHTTPS: aws.Bool(true),
 				},
-				EBSOptions: &opensearchservice.EBSOptions{
+				EBSOptions: &opensearchTypes.EBSOptions{
 					EBSEnabled: aws.Bool(true),
-					VolumeSize: aws.Int64(int64(10)),
-					VolumeType: aws.String("gp3"),
+					VolumeSize: aws.Int32(int32(10)),
+					VolumeType: opensearchTypes.VolumeTypeGp3,
 				},
-				ClusterConfig: &opensearchservice.ClusterConfig{
-					InstanceType:  aws.String("db.m5.xlarge"),
-					InstanceCount: aws.Int64(int64(1)),
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
+					InstanceCount: aws.Int32(int32(1)),
 				},
-				SnapshotOptions: &opensearchservice.SnapshotOptions{
-					AutomatedSnapshotStartHour: aws.Int64(int64(0)),
+				SnapshotOptions: &opensearchTypes.SnapshotOptions{
+					AutomatedSnapshotStartHour: aws.Int32(int32(0)),
 				},
-				NodeToNodeEncryptionOptions: &opensearchservice.NodeToNodeEncryptionOptions{
+				NodeToNodeEncryptionOptions: &opensearchTypes.NodeToNodeEncryptionOptions{
 					Enabled: aws.Bool(true),
 				},
-				EncryptionAtRestOptions: &opensearchservice.EncryptionAtRestOptions{
+				EncryptionAtRestOptions: &opensearchTypes.EncryptionAtRestOptions{
 					Enabled: aws.Bool(false),
 				},
-				TagList: []*opensearchservice.Tag{
+				TagList: []opensearchTypes.Tag{
 					{
 						Key:   aws.String("foo"),
 						Value: aws.String("bar"),
@@ -84,41 +86,41 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				EncryptAtRest:              false,
 				VolumeSize:                 10,
 				VolumeType:                 "gp3",
-				InstanceType:               "db.m5.xlarge",
+				InstanceType:               "m5.2xlarge.search",
 				NodeToNodeEncryption:       true,
 				AutomatedSnapshotStartHour: 0,
 			},
 			accessPolicy: "fake-access-policy",
-			expectedParams: &opensearchservice.CreateDomainInput{
+			expectedParams: &opensearch.CreateDomainInput{
 				DomainName:     aws.String("test-domain"),
 				AccessPolicies: aws.String("fake-access-policy"),
-				VPCOptions: &opensearchservice.VPCOptions{
-					SubnetIds:        []*string{aws.String("az-3"), aws.String("az-4")},
-					SecurityGroupIds: []*string{aws.String("group-1")},
+				VPCOptions: &opensearchTypes.VPCOptions{
+					SubnetIds:        []string{"az-3", "az-4"},
+					SecurityGroupIds: []string{"group-1"},
 				},
-				DomainEndpointOptions: &opensearchservice.DomainEndpointOptions{
+				DomainEndpointOptions: &opensearchTypes.DomainEndpointOptions{
 					EnforceHTTPS: aws.Bool(true),
 				},
-				EBSOptions: &opensearchservice.EBSOptions{
+				EBSOptions: &opensearchTypes.EBSOptions{
 					EBSEnabled: aws.Bool(true),
-					VolumeSize: aws.Int64(int64(10)),
-					VolumeType: aws.String("gp3"),
+					VolumeSize: aws.Int32(int32(10)),
+					VolumeType: opensearchTypes.VolumeTypeGp3,
 				},
-				ClusterConfig: &opensearchservice.ClusterConfig{
-					InstanceType:         aws.String("db.m5.xlarge"),
-					InstanceCount:        aws.Int64(int64(2)),
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:         opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
+					InstanceCount:        aws.Int32(int32(2)),
 					ZoneAwarenessEnabled: aws.Bool(true),
-					ZoneAwarenessConfig: &opensearchservice.ZoneAwarenessConfig{
-						AvailabilityZoneCount: aws.Int64(int64(2)),
+					ZoneAwarenessConfig: &opensearchTypes.ZoneAwarenessConfig{
+						AvailabilityZoneCount: aws.Int32(int32(2)),
 					},
 				},
-				SnapshotOptions: &opensearchservice.SnapshotOptions{
-					AutomatedSnapshotStartHour: aws.Int64(int64(0)),
+				SnapshotOptions: &opensearchTypes.SnapshotOptions{
+					AutomatedSnapshotStartHour: aws.Int32(int32(0)),
 				},
-				NodeToNodeEncryptionOptions: &opensearchservice.NodeToNodeEncryptionOptions{
+				NodeToNodeEncryptionOptions: &opensearchTypes.NodeToNodeEncryptionOptions{
 					Enabled: aws.Bool(true),
 				},
-				EncryptionAtRestOptions: &opensearchservice.EncryptionAtRestOptions{
+				EncryptionAtRestOptions: &opensearchTypes.EncryptionAtRestOptions{
 					Enabled: aws.Bool(false),
 				},
 			},
@@ -126,10 +128,13 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := prepareCreateDomainInput(
+			params, err := prepareCreateDomainInput(
 				test.esInstance,
 				test.accessPolicy,
 			)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
 			}
@@ -140,15 +145,15 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 	testCases := map[string]struct {
 		esInstance     *ElasticsearchInstance
-		expectedParams *opensearchservice.UpdateDomainConfigInput
+		expectedParams *opensearch.UpdateDomainConfigInput
 	}{
 		"no ebs options": {
 			esInstance: &ElasticsearchInstance{
 				Domain: "fake-domain",
 			},
-			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+			expectedParams: &opensearch.UpdateDomainConfigInput{
 				DomainName:      aws.String("fake-domain"),
-				AdvancedOptions: map[string]*string{},
+				AdvancedOptions: map[string]string{},
 			},
 		},
 		"update volume type": {
@@ -157,13 +162,13 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 				VolumeType: "gp3",
 				VolumeSize: 15,
 			},
-			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+			expectedParams: &opensearch.UpdateDomainConfigInput{
 				DomainName:      aws.String("fake-domain"),
-				AdvancedOptions: map[string]*string{},
-				EBSOptions: &opensearchservice.EBSOptions{
+				AdvancedOptions: map[string]string{},
+				EBSOptions: &opensearchTypes.EBSOptions{
 					EBSEnabled: aws.Bool(true),
-					VolumeType: aws.String("gp3"),
-					VolumeSize: aws.Int64(15),
+					VolumeType: opensearchTypes.VolumeTypeGp3,
+					VolumeSize: aws.Int32(15),
 				},
 			},
 		},
@@ -172,10 +177,10 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 				Domain:                    "fake-domain",
 				IndicesFieldDataCacheSize: "1000",
 			},
-			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+			expectedParams: &opensearch.UpdateDomainConfigInput{
 				DomainName: aws.String("fake-domain"),
-				AdvancedOptions: map[string]*string{
-					"indices.fielddata.cache.size": aws.String("1000"),
+				AdvancedOptions: map[string]string{
+					"indices.fielddata.cache.size": "1000",
 				},
 			},
 		},
@@ -184,17 +189,20 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 				Domain:                         "fake-domain",
 				IndicesQueryBoolMaxClauseCount: "5000",
 			},
-			expectedParams: &opensearchservice.UpdateDomainConfigInput{
+			expectedParams: &opensearch.UpdateDomainConfigInput{
 				DomainName: aws.String("fake-domain"),
-				AdvancedOptions: map[string]*string{
-					"indices.query.bool.max_clause_count": aws.String("5000"),
+				AdvancedOptions: map[string]string{
+					"indices.query.bool.max_clause_count": "5000",
 				},
 			},
 		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := prepareUpdateDomainConfigInput(test.esInstance)
+			params, err := prepareUpdateDomainConfigInput(test.esInstance)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
 			}
