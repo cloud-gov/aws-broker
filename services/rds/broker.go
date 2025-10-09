@@ -264,7 +264,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 			SpaceGUID:        modifyRequest.SpaceGUID,
 			OrganizationGUID: modifyRequest.OrganizationGUID,
 		},
-		false,
+		true,
 	)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
