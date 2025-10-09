@@ -2260,7 +2260,7 @@ elasticsearch:
 # New larger plans for 2024 - these are NOT scoped to all ORGs/Spaces and needs to be manually scoped when requested by the customer
   - id: "efa909ab-0053-4da7-b7a3-a294ef2e67a7"
     name: "es-12xlarge-gp"
-    description: "12X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
+    description: "12X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
     metadata:
       bullets:
       - "12X-Large"
@@ -2278,6 +2278,43 @@ elasticsearch:
     - "Elasticsearch_7.10"
     masterCount: 3
     dataCount: 2
+    instanceType: m5.12xlarge.search
+    masterInstanceType: m5.12xlarge.search
+    volumeSize: 50
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "5574be21-9d9b-46df-a9b5-9ac06af5da88"
+    name: "es-12xlarge-gp-ha"
+    description: "12X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "12X-Large"
+      - "4 data nodes"
+      costs:
+      - amount:
+          usd: 33600.00
+        unit: "MONTHLY"
+      displayName: "12X-Large, General-Purpose, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
     instanceType: m5.12xlarge.search
     masterInstanceType: m5.12xlarge.search
     volumeSize: 50
