@@ -1,11 +1,17 @@
 package rds
 
 import (
+	"context"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/rds"
+	// "github.com/aws/aws-sdk-go/aws"
+	// "github.com/aws/aws-sdk-go/aws/awserr"
+	// "github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+
 	"github.com/cloud-gov/aws-broker/base"
 	"gorm.io/gorm"
 
@@ -24,7 +30,7 @@ type dbAdapter interface {
 	checkDBStatus(database string) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
-	describeDatabaseInstance(database string) (*rds.DBInstance, error)
+	describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error)
 }
 
 // MockDBAdapter is a struct meant for testing.
@@ -62,7 +68,7 @@ func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	return base.InstanceGone, nil
 }
 
-func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstance, error) {
+func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
 	return nil, nil
 }
 
@@ -89,7 +95,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
-		AllocatedStorage: aws.Int64(i.AllocatedStorage),
+		AllocatedStorage: aws.Int32(i.AllocatedStorage),
 		// Instance class is defined by the plan
 		DBInstanceClass:         &d.Plan.InstanceClass,
 		DBInstanceIdentifier:    &i.Database,
@@ -103,10 +109,10 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		StorageType:             aws.String(i.StorageType),
 		Tags:                    rdsTags,
 		PubliclyAccessible:      aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
-		BackupRetentionPeriod:   aws.Int64(i.BackupRetentionPeriod),
+		BackupRetentionPeriod:   aws.Int32(i.BackupRetentionPeriod),
 		DBSubnetGroupName:       &i.DbSubnetGroup,
-		VpcSecurityGroupIds: []*string{
-			&i.SecGroup,
+		VpcSecurityGroupIds: []string{
+			i.SecGroup,
 		},
 	}
 	if i.DbVersion != "" {
@@ -133,13 +139,13 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, databa
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// These actions are applied immediately.
 	params := &rds.ModifyDBInstanceInput{
-		AllocatedStorage:         aws.Int64(i.AllocatedStorage),
+		AllocatedStorage:         aws.Int32(i.AllocatedStorage),
 		ApplyImmediately:         aws.Bool(true),
 		DBInstanceClass:          &d.Plan.InstanceClass,
 		MultiAZ:                  &d.Plan.Redundant,
 		DBInstanceIdentifier:     &database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
-		BackupRetentionPeriod:    aws.Int64(i.BackupRetentionPeriod),
+		BackupRetentionPeriod:    aws.Int32(i.BackupRetentionPeriod),
 	}
 
 	if i.StorageType != "" {
@@ -174,11 +180,11 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) (*rds.CreateDBI
 		PubliclyAccessible:         aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
 		StorageType:                aws.String(i.StorageType),
 		Tags:                       rdsTags,
-		VpcSecurityGroupIds: []*string{
-			&i.SecGroup,
+		VpcSecurityGroupIds: []string{
+			i.SecGroup,
 		},
 	}
-	return d.rds.CreateDBInstanceReadReplica(createReadReplicaParams)
+	return d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
@@ -221,7 +227,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 }
 
 func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) error {
-	_, err := d.rds.AddTagsToResource(&rds.AddTagsToResourceInput{
+	_, err := d.rds.AddTagsToResource(context.TODO(), &rds.AddTagsToResourceInput{
 		ResourceName: aws.String(dbInstanceARN),
 		Tags:         ConvertTagsToRDSTags(i.Tags),
 	})
@@ -264,7 +270,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, password string) {
 		return
 	}
 
-	_, err = d.rds.CreateDBInstance(createDbInputParams)
+	_, err = d.rds.CreateDBInstance(context.TODO(), createDbInputParams)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
@@ -309,7 +315,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
 	}
 
-	modifyReplicaOutput, err := d.rds.ModifyDBInstance(modifyParams)
+	modifyReplicaOutput, err := d.rds.ModifyDBInstance(context.TODO(), modifyParams)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
@@ -390,12 +396,12 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance) (base.InstanceState, error
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBInstance, error) {
+func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
 	params := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(database),
 	}
 
-	resp, err := d.rds.DescribeDBInstances(params)
+	resp, err := d.rds.DescribeDBInstances(context.TODO(), params)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		return nil, err
@@ -410,7 +416,7 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rds.DBI
 		return nil, fmt.Errorf("found more than one database for %s", database)
 	}
 
-	return resp.DBInstances[0], nil
+	return &resp.DBInstances[0], nil
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
@@ -450,7 +456,7 @@ func (d *dedicatedDBAdapter) getDatabaseEndpointProperties(database string) (*DB
 	}
 
 	return &DBEndpointDetails{
-		Port:  *(dbInstance.Endpoint.Port),
+		Port:  int64(*dbInstance.Endpoint.Port),
 		Host:  *(dbInstance.Endpoint.Address),
 		State: base.InstanceReady,
 	}, nil
@@ -498,13 +504,13 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	for !isDeleted && attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
-			awsErr, ok := err.(awserr.Error)
-			if !ok || awsErr.Code() != rds.ErrCodeDBInstanceNotFoundFault {
+			var exception *rdsTypes.DBInstanceNotFoundFault
+			if errors.As(err, &exception) {
 				updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Could not check database status: %s", err))
 				if updateErr != nil {
 					err = fmt.Errorf("waitForDbDeleted: while handling error %w, error updating async job message %w", err, updateErr)
 				}
-				return err
+				return fmt.Errorf("waitForDbDeleted: checkDBStatus err %w", err)
 			}
 
 			isDeleted = true
@@ -535,7 +541,7 @@ func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 
 	params := prepareDeleteDbInput(i.ReplicaDatabase)
-	_, err := d.rds.DeleteDBInstance(params)
+	_, err := d.rds.DeleteDBInstance(context.TODO(), params)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
 		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
@@ -560,7 +566,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	}
 
 	params := prepareDeleteDbInput(i.Database)
-	_, err := d.rds.DeleteDBInstance(params)
+	_, err := d.rds.DeleteDBInstance(context.TODO(), params)
 	if err != nil {
 		brokerErrs.LogAWSError(err)
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete database: %s", err))

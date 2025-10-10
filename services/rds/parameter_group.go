@@ -9,12 +9,10 @@ import (
 	"slices"
 	"strings"
 
-	// "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
 
-	// "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
-	"github.com/aws/aws-sdk-go-v2/service/rds/types"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/config"
 )
 
@@ -22,7 +20,7 @@ const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
-	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*types.Tag) error
+	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomParameterGroups() error
 }
 
@@ -50,7 +48,7 @@ func NewAwsParameterGroupClient(rds RDSClientInterface, settings config.Settings
 // there needs to be a custom parameter group for the instance. If so, the method will either
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
-func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []types.Tag) error {
+func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
 	if !p.needCustomParameters(i) {
 		return nil
 	}
@@ -94,7 +92,7 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
 				}
 				_, err := p.rds.DeleteDBParameterGroup(context.TODO(), deleteinput)
 				if err != nil {
-					var exception *types.InvalidDBParameterGroupStateFault
+					var exception *rdsTypes.InvalidDBParameterGroupStateFault
 					if errors.As(err, &exception) {
 						// If you can't delete it because it's in use, that is fine.
 						// The db takes a while to delete, so we will clean it up the
@@ -190,7 +188,7 @@ func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName
 // parameters have been requested.
 func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
-	rdsTags []types.Tag,
+	rdsTags []rdsTypes.Tag,
 	customparams map[string]map[string]paramDetails,
 ) error {
 	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
@@ -216,14 +214,14 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	}
 
 	// iterate through the options and plug them into the parameter list
-	parameters := []types.Parameter{}
+	parameters := []rdsTypes.Parameter{}
 	for paramName, paramDetails := range customparams[i.DbType] {
 		applyMethod, err := getRdsApplyMethodEnum(paramDetails.applyMethod)
 		if err != nil {
 			return fmt.Errorf("createOrModifyCustomParameterGroup: error getting apply method: %s", err)
 		}
 
-		parameters = append(parameters, types.Parameter{
+		parameters = append(parameters, rdsTypes.Parameter{
 			ApplyMethod:    *applyMethod,
 			ParameterName:  aws.String(paramName),
 			ParameterValue: aws.String(paramDetails.value),
@@ -387,7 +385,7 @@ func setParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) {
 
 // findParameterValueInResults finds the parameter value in a set of parameters, if any
 func findParameterValueInResults(
-	parameters []types.Parameter,
+	parameters []rdsTypes.Parameter,
 	parameterName string,
 ) string {
 	var parameterValue string
