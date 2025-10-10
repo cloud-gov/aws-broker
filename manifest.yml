@@ -2,7 +2,7 @@
 applications:
 - name: aws-broker
   buildpack: go_buildpack
-  memory: 2048M
+  memory: 3072M
   env:
 
 
