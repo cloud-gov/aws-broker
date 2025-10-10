@@ -6,9 +6,15 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/rds"
+	// "github.com/aws/aws-sdk-go/aws"
+	// "github.com/aws/aws-sdk-go/aws/awserr"
+	// "github.com/aws/aws-sdk-go/service/rds"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -78,7 +84,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			},
 			password: "fake-password",
 			expectedParams: &rds.CreateDBInstanceInput{
-				AllocatedStorage:        aws.Int64(10),
+				AllocatedStorage:        aws.Int32(10),
 				DBInstanceClass:         aws.String("class-1"),
 				DBInstanceIdentifier:    aws.String("db-1"),
 				DBName:                  aws.String("formatted-name"),
@@ -89,17 +95,17 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				MultiAZ:                 aws.Bool(true),
 				StorageEncrypted:        aws.Bool(true),
 				StorageType:             aws.String("storage-1"),
-				Tags: []*rds.Tag{
+				Tags: []rdsTypes.Tag{
 					{
 						Key:   aws.String("foo"),
 						Value: aws.String("bar"),
 					},
 				},
 				PubliclyAccessible:    aws.Bool(true),
-				BackupRetentionPeriod: aws.Int64(14),
+				BackupRetentionPeriod: aws.Int32(14),
 				DBSubnetGroupName:     aws.String("subnet-group-1"),
-				VpcSecurityGroupIds: []*string{
-					aws.String("sec-group-1"),
+				VpcSecurityGroupIds: []string{
+					"sec-group-1",
 				},
 				DBParameterGroupName: aws.String("parameter-group-1"),
 			},
@@ -141,7 +147,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			},
 			password: "fake-password",
 			expectedParams: &rds.CreateDBInstanceInput{
-				AllocatedStorage:        aws.Int64(10),
+				AllocatedStorage:        aws.Int32(10),
 				DBInstanceClass:         aws.String("class-1"),
 				DBInstanceIdentifier:    aws.String("db-1"),
 				DBName:                  aws.String("formatted-name"),
@@ -152,17 +158,17 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				MultiAZ:                 aws.Bool(true),
 				StorageEncrypted:        aws.Bool(true),
 				StorageType:             aws.String("storage-1"),
-				Tags: []*rds.Tag{
+				Tags: []rdsTypes.Tag{
 					{
 						Key:   aws.String("foo"),
 						Value: aws.String("bar"),
 					},
 				},
 				PubliclyAccessible:    aws.Bool(true),
-				BackupRetentionPeriod: aws.Int64(14),
+				BackupRetentionPeriod: aws.Int32(14),
 				DBSubnetGroupName:     aws.String("subnet-group-1"),
-				VpcSecurityGroupIds: []*string{
-					aws.String("sec-group-1"),
+				VpcSecurityGroupIds: []string{
+					"sec-group-1",
 				},
 				DBParameterGroupName: aws.String("parameter-group-1"),
 				EngineVersion:        aws.String("8.0"),
@@ -270,14 +276,14 @@ func TestAsyncCreateDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -310,14 +316,14 @@ func TestAsyncCreateDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -352,7 +358,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -420,14 +426,14 @@ func TestCreateDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -509,7 +515,7 @@ func TestWaitForDbReady(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -539,21 +545,21 @@ func TestWaitForDbReady(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("creating"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("creating"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -583,21 +589,21 @@ func TestWaitForDbReady(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("creating"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("creating"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("creating"),
 								},
@@ -691,14 +697,14 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -754,7 +760,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					createDBInstanceReadReplicaErr: errors.New("error creating database instance read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -787,7 +793,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					addTagsToResourceErr: errors.New("error adding tags to read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -842,7 +848,9 @@ func TestAsyncModifyDb(t *testing.T) {
 	}
 
 	modifyDbErr := errors.New("modify DB error")
-	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
+		Message: aws.String("operation failed"),
+	}
 
 	testCases := map[string]struct {
 		dbInstance         *RDSInstance
@@ -917,7 +925,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -959,14 +967,14 @@ func TestAsyncModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1011,7 +1019,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1045,14 +1053,14 @@ func TestAsyncModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1087,7 +1095,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1132,14 +1140,14 @@ func TestAsyncModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1216,14 +1224,14 @@ func TestModifyDb(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1316,13 +1324,13 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			expectedGroupName: "foobar",
 			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int64(20),
+				AllocatedStorage:         aws.Int32(20),
 				ApplyImmediately:         aws.Bool(true),
 				DBInstanceClass:          aws.String("class"),
 				MultiAZ:                  aws.Bool(true),
 				DBInstanceIdentifier:     aws.String("db-name"),
 				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int64(14),
+				BackupRetentionPeriod:    aws.Int32(14),
 				DBParameterGroupName:     aws.String("foobar"),
 			},
 		},
@@ -1368,13 +1376,13 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				},
 			},
 			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int64(20),
+				AllocatedStorage:         aws.Int32(20),
 				ApplyImmediately:         aws.Bool(true),
 				DBInstanceClass:          aws.String("class"),
 				MultiAZ:                  aws.Bool(true),
 				DBInstanceIdentifier:     aws.String("db-name"),
 				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int64(14),
+				BackupRetentionPeriod:    aws.Int32(14),
 				MasterUserPassword:       aws.String("fake-pw"),
 			},
 		},
@@ -1398,13 +1406,13 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				rds: &mockRDSClient{},
 			},
 			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int64(20),
+				AllocatedStorage:         aws.Int32(20),
 				ApplyImmediately:         aws.Bool(true),
 				DBInstanceClass:          aws.String("class"),
 				MultiAZ:                  aws.Bool(true),
 				DBInstanceIdentifier:     aws.String("db-name"),
 				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int64(14),
+				BackupRetentionPeriod:    aws.Int32(14),
 				StorageType:              aws.String("gp3"),
 			},
 		},
@@ -1430,14 +1438,14 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		dbAdapter        dbAdapter
 		expectErr        bool
 		database         string
-		expectedInstance *rds.DBInstance
+		expectedInstance rdsTypes.DBInstance
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1447,7 +1455,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 				},
 			},
 			database: "foo",
-			expectedInstance: &rds.DBInstance{
+			expectedInstance: rdsTypes.DBInstance{
 				DBInstanceStatus: aws.String("available"),
 			},
 		},
@@ -1465,7 +1473,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{},
+							DBInstances: []rdsTypes.DBInstance{},
 						},
 					},
 				},
@@ -1478,7 +1486,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceIdentifier: aws.String("db1"),
 								},
@@ -1530,12 +1538,12 @@ func TestBindDBToApp(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
-									Endpoint: &rds.Endpoint{
+									Endpoint: &rdsTypes.Endpoint{
 										Address: aws.String("db-address"),
-										Port:    aws.Int64(1234),
+										Port:    aws.Int32(1234),
 									},
 								},
 							},
@@ -1584,7 +1592,7 @@ func TestBindDBToApp(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("processing"),
 								},
@@ -1608,7 +1616,7 @@ func TestBindDBToApp(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("available"),
 								},
@@ -1669,7 +1677,9 @@ func TestWaitForDbDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
+		Message: aws.String("operation failed"),
+	}
 
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
@@ -1705,14 +1715,14 @@ func TestWaitForDbDeleted(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("deleting"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("deleting"),
 								},
@@ -1743,21 +1753,21 @@ func TestWaitForDbDeleted(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("deleting"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("deleting"),
 								},
 							},
 						},
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									DBInstanceStatus: aws.String("deleting"),
 								},
@@ -1840,7 +1850,9 @@ func TestAsyncDeleteDB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
+		Message: aws.String("operation failed"),
+	}
 
 	testCases := map[string]struct {
 		dbInstance          *RDSInstance
@@ -2034,7 +2046,9 @@ func TestDeleteDb(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dbInstanceNotFoundErr := awserr.New(rds.ErrCodeDBInstanceNotFoundFault, "message", errors.New("operation failed"))
+	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
+		Message: aws.String("operation failed"),
+	}
 
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
