@@ -1434,7 +1434,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		dbAdapter        dbAdapter
 		expectErr        bool
 		database         string
-		expectedInstance rdsTypes.DBInstance
+		expectedInstance *rdsTypes.DBInstance
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1451,7 +1451,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 				},
 			},
 			database: "foo",
-			expectedInstance: rdsTypes.DBInstance{
+			expectedInstance: &rdsTypes.DBInstance{
 				DBInstanceStatus: aws.String("available"),
 			},
 		},

@@ -421,7 +421,6 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rdsType
 
 	resp, err := d.rds.DescribeDBInstances(context.TODO(), params)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		return nil, err
 	}
 
@@ -523,7 +522,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
 			var exception *rdsTypes.DBInstanceNotFoundFault
-			if errors.As(err, &exception) {
+			if !errors.As(err, &exception) {
 				updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Could not check database status: %s", err))
 				if updateErr != nil {
 					err = fmt.Errorf("waitForDbDeleted: while handling error %w, error updating async job message %w", err, updateErr)
@@ -555,24 +554,27 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	return nil
 }
 
-func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation base.Operation) error {
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
-
-	params := prepareDeleteDbInput(i.ReplicaDatabase)
+func (d *dedicatedDBAdapter) deleteDatabaseInstance(i *RDSInstance, operation base.Operation, database string) error {
+	params := prepareDeleteDbInput(database)
 	_, err := d.rds.DeleteDBInstance(context.TODO(), params)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
-		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
+		return fmt.Errorf("deleteDatabaseInstance: %w", err)
 	}
 
-	err = d.waitForDbDeleted(operation, i, i.ReplicaDatabase)
+	err = d.waitForDbDeleted(operation, i, database)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm replica database deletion: %s", err))
-		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
+		return fmt.Errorf("deleteDatabaseInstance: %w", err)
 	}
 
-	i.ReplicaDatabase = ""
+	return nil
+}
 
+func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation base.Operation) error {
+	err := d.deleteDatabaseInstance(i, operation, i.ReplicaDatabase)
+	if err != nil {
+		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
+	}
+	i.ReplicaDatabase = ""
 	return nil
 }
 
@@ -580,21 +582,19 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	operation := base.DeleteOp
 
 	if i.ReplicaDatabase != "" {
-		d.deleteDatabaseReadReplica(i, operation)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
+		err := d.deleteDatabaseReadReplica(i, operation)
+		if err != nil {
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
+			fmt.Printf("asyncDeleteDB: %s\n", err)
+			return
+		}
 	}
 
-	params := prepareDeleteDbInput(i.Database)
-	_, err := d.rds.DeleteDBInstance(context.TODO(), params)
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database")
+	err := d.deleteDatabaseInstance(i, operation, i.Database)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete database: %s", err))
-		fmt.Printf("asyncDeleteDB: %s\n", err)
-		return
-	}
-
-	err = d.waitForDbDeleted(operation, i, i.Database)
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to confirm database deletion: %s", err))
 		fmt.Printf("asyncDeleteDB: %s\n", err)
 		return
 	}
