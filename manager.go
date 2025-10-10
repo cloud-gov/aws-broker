@@ -21,7 +21,11 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
-		return rds.InitRDSBroker(brokerDb, settings, tagManager), nil
+		broker, err := rds.InitRDSBroker(brokerDb, settings, tagManager)
+		if err != nil {
+			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		}
+		return broker, nil
 	case c.RedisService.ID:
 		return redis.InitRedisBroker(brokerDb, settings, tagManager), nil
 	case c.ElasticsearchService.ID:

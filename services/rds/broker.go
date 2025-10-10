@@ -1,14 +1,15 @@
 package rds
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/rds"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
 
@@ -42,15 +43,15 @@ func (o Options) Validate(settings *config.Settings) error {
 	// Check to make sure that the allocated storage is less than the maximum
 	// allowed.  If allocated storage is passed in, the value defaults to 0.
 	if o.AllocatedStorage > settings.MaxAllocatedStorage {
-		return fmt.Errorf("Invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
+		return fmt.Errorf("invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
 	}
 
 	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod > settings.MaxBackupRetention {
-		return fmt.Errorf("Invalid Retention Period %d; must be <= %d", o.BackupRetentionPeriod, settings.MaxBackupRetention)
+		return fmt.Errorf("invalid Retention Period %d; must be <= %d", o.BackupRetentionPeriod, settings.MaxBackupRetention)
 	}
 
 	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod < settings.MinBackupRetention {
-		return fmt.Errorf("Invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
+		return fmt.Errorf("invalid Retention Period %d; must be => %d", o.BackupRetentionPeriod, settings.MinBackupRetention)
 	}
 
 	if err := validateBinaryLogFormat(o.BinaryLogFormat); err != nil {
@@ -72,16 +73,25 @@ type rdsBroker struct {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, db *gorm.DB) dbAdapter {
+func initializeAdapter(s *config.Settings, db *gorm.DB) (dbAdapter, error) {
 	var dbAdapter dbAdapter
 	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
 		dbAdapter = &mockDBAdapter{}
-		return dbAdapter
+		return dbAdapter, nil
 	}
 
-	rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	rdsClient := rds.NewFromConfig(cfg)
 	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
+
 	dbAdapter = &dedicatedDBAdapter{
 		settings:             *s,
 		rds:                  rdsClient,
@@ -89,13 +99,16 @@ func initializeAdapter(s *config.Settings, db *gorm.DB) dbAdapter {
 		db:                   db,
 	}
 
-	return dbAdapter
+	return dbAdapter, nil
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) base.Broker {
-	dbAdapter := initializeAdapter(settings, brokerDB)
-	return &rdsBroker{brokerDB, settings, tagManager, dbAdapter}
+func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
+	dbAdapter, err := initializeAdapter(settings, brokerDB)
+	if err != nil {
+		return nil, err
+	}
+	return &rdsBroker{brokerDB, settings, tagManager, dbAdapter}, nil
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async

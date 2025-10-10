@@ -5,8 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/config"
 )
 
@@ -207,8 +209,9 @@ func TestNeedCustomParameters(t *testing.T) {
 }
 
 func TestGetDefaultEngineParameterValue(t *testing.T) {
-	describeEngineDefaultParamsErr := errors.New("describe db engine default params err")
-	describeEngVersionsErr := errors.New("describe eng versions err")
+	describeEngineDefaultParamsErr := &rdsTypes.DBParameterGroupNotFoundFault{}
+	describeEngVersionsErr := &rdsTypes.DBParameterGroupNotFoundFault{}
+
 	testCases := map[string]struct {
 		dbInstance                          *RDSInstance
 		paramName                           string
@@ -229,12 +232,12 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{},
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{},
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -256,8 +259,8 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{
 									{
 										ParameterName:  aws.String("shared_preload_libraries"),
 										ParameterValue: aws.String("random-library"),
@@ -266,7 +269,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -287,8 +290,8 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{
 									{
 										ParameterName:  aws.String("random-param"),
 										ParameterValue: aws.String("random-value"),
@@ -298,8 +301,8 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{
 									{
 										ParameterName:  aws.String("shared_preload_libraries"),
 										ParameterValue: aws.String("a-library,b-library"),
@@ -308,7 +311,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -331,7 +334,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineDefaultParamsErr,
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -346,20 +349,20 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbVersion:    "12",
 			},
 			paramName:          "shared_preload_libraries",
-			expectedErr:        describeEngVersionsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeEngVersionsErr: describeEngVersionsErr,
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{},
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{},
 							},
 						},
 					},
 				},
 			},
+			expectedErr: describeEngVersionsErr,
 		},
 	}
 	for name, test := range testCases {
@@ -368,11 +371,8 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				createTestRdsInstance(test.dbInstance),
 				test.paramName,
 			)
-			if test.expectedErr == nil && err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
 			if !errors.Is(err, test.expectedErr) {
-				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+				t.Errorf("expected error type: %s, got: %s", test.expectedErr, err)
 			}
 			if parameterValue != test.expectedParamValue {
 				t.Errorf("expected: %s, got: %s", test.expectedParamValue, parameterValue)
@@ -389,12 +389,12 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 
 func TestFindParameterValueInResults(t *testing.T) {
 	testCases := map[string]struct {
-		parameters             []*rds.Parameter
+		parameters             []rdsTypes.Parameter
 		parameterName          string
 		expectedParameterValue string
 	}{
 		"finds value": {
-			parameters: []*rds.Parameter{
+			parameters: []rdsTypes.Parameter{
 				{
 					ParameterName:  aws.String("foo"),
 					ParameterValue: aws.String("bar"),
@@ -404,7 +404,7 @@ func TestFindParameterValueInResults(t *testing.T) {
 			expectedParameterValue: "bar",
 		},
 		"does not find value": {
-			parameters: []*rds.Parameter{
+			parameters: []rdsTypes.Parameter{
 				{
 					ParameterName:  aws.String("moo"),
 					ParameterValue: aws.String("cow"),
@@ -439,7 +439,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
-							Parameters: []*rds.Parameter{},
+							Parameters: []rdsTypes.Parameter{},
 						},
 					},
 					describeDbParamsNumPages: 1,
@@ -458,7 +458,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
-							Parameters: []*rds.Parameter{
+							Parameters: []rdsTypes.Parameter{
 								{
 									ParameterName:  aws.String("foo"),
 									ParameterValue: aws.String("bar"),
@@ -482,15 +482,16 @@ func TestGetCustomParameterValue(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
-							Parameters: []*rds.Parameter{
+							Parameters: []rdsTypes.Parameter{
 								{
 									ParameterName:  aws.String("moo"),
 									ParameterValue: aws.String("cow"),
 								},
 							},
+							Marker: aws.String("another page"),
 						},
 						{
-							Parameters: []*rds.Parameter{
+							Parameters: []rdsTypes.Parameter{
 								{
 									ParameterName:  aws.String("foo"),
 									ParameterValue: aws.String("bar"),
@@ -529,9 +530,6 @@ func TestGetCustomParameterValue(t *testing.T) {
 				createTestRdsInstance(test.dbInstance),
 				test.parameterName,
 			)
-			if test.expectedErr == nil && err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
@@ -718,12 +716,12 @@ func TestGetCustomParameters(t *testing.T) {
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{},
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{},
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -752,7 +750,7 @@ func TestGetCustomParameters(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
-							Parameters: []*rds.Parameter{},
+							Parameters: []rdsTypes.Parameter{},
 						},
 					},
 					describeDbParamsNumPages: 1,
@@ -778,18 +776,19 @@ func TestGetCustomParameters(t *testing.T) {
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{
 									{
 										ParameterName:  aws.String("test"),
 										ParameterValue: aws.String("moo"),
 									},
 								},
+								Marker: aws.String("next page"),
 							},
 						},
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{
 									{
 										ParameterName:  aws.String("shared_preload_libraries"),
 										ParameterValue: aws.String("foo,bar"),
@@ -798,7 +797,7 @@ func TestGetCustomParameters(t *testing.T) {
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -827,7 +826,7 @@ func TestGetCustomParameters(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
-							Parameters: []*rds.Parameter{
+							Parameters: []rdsTypes.Parameter{
 								{
 									ParameterName:  aws.String("shared_preload_libraries"),
 									ParameterValue: aws.String("pg_cron,foo,bar"),
@@ -851,7 +850,7 @@ func TestGetCustomParameters(t *testing.T) {
 				settings: config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -887,7 +886,7 @@ func TestGetCustomParameters(t *testing.T) {
 				settings: config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -945,7 +944,7 @@ func TestGetDatabaseEngineVersion(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									EngineVersion: aws.String("version1"),
 								},
@@ -1010,14 +1009,14 @@ func TestGetParameterGroupFamily(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
-							DBInstances: []*rds.DBInstance{
+							DBInstances: []rdsTypes.DBInstance{
 								{
 									EngineVersion: aws.String("version1"),
 								},
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres1"),
 						},
@@ -1033,7 +1032,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 			expectedPGroupFamily: "postgres13",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres13"),
 						},
@@ -1081,12 +1080,14 @@ func TestGetParameterGroupFamily(t *testing.T) {
 
 func TestCheckIfParameterGroupExists(t *testing.T) {
 	dbParamsErr := errors.New("fail")
+
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		expectedExists        bool
 		parameterGroupAdapter *awsParameterGroupClient
+		expectedErr           error
 	}{
-		"error, return false": {
+		"unexpected error, return false": {
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "group1",
 			},
@@ -1094,6 +1095,18 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeDbParamsErr: dbParamsErr,
+				},
+			},
+			expectedErr: dbParamsErr,
+		},
+		"not found error, return false": {
+			dbInstance: &RDSInstance{
+				ParameterGroupName: "group1",
+			},
+			expectedExists: false,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
 				},
 			},
 		},
@@ -1109,7 +1122,10 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			exists := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance.ParameterGroupName)
+			exists, err := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance.ParameterGroupName)
+			if !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
 			if exists != test.expectedExists {
 				t.Fatalf("expected: %t, got: %t", test.expectedExists, exists)
 			}
@@ -1137,7 +1153,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			expectedErr: describeEngVersionsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbParamsErr:    errors.New("describe DB params err"),
+					describeDbParamsErr:    &rdsTypes.DBParameterGroupNotFoundFault{},
 					describeEngVersionsErr: describeEngVersionsErr,
 				},
 			},
@@ -1152,9 +1168,9 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			expectedErr: createDbParamGroupErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbParamsErr:   errors.New("describe DB params err"),
+					describeDbParamsErr:   &rdsTypes.DBParameterGroupNotFoundFault{},
 					createDbParamGroupErr: createDbParamGroupErr,
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -1173,7 +1189,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -1190,7 +1206,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -1255,8 +1271,8 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
-							EngineDefaults: &rds.EngineDefaults{
-								Parameters: []*rds.Parameter{
+							EngineDefaults: &rdsTypes.EngineDefaults{
+								Parameters: []rdsTypes.Parameter{
 									{
 										ParameterName:  aws.String("random-param"),
 										ParameterValue: aws.String("random-value"),
@@ -1265,7 +1281,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 							},
 						},
 					},
-					dbEngineVersions: []*rds.DBEngineVersion{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
 							DBParameterGroupFamily: aws.String("postgres12"),
 						},
@@ -1289,7 +1305,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
-							Parameters: []*rds.Parameter{
+							Parameters: []rdsTypes.Parameter{
 								{
 									ParameterName:  aws.String("random-param"),
 									ParameterValue: aws.String("random-value"),

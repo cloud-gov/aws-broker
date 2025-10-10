@@ -1,9 +1,12 @@
 package rds
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"context"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
@@ -19,12 +22,12 @@ func testDBInit() (*gorm.DB, error) {
 }
 
 type mockParameterGroupClient struct {
-	rds              rdsiface.RDSAPI
+	rds              RDSClientInterface
 	customPgroupName string
 	returnErr        error
 }
 
-func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error {
+func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
 	if m.returnErr != nil {
 		return m.returnErr
 	}
@@ -32,7 +35,9 @@ func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *R
 	return nil
 }
 
-func (m *mockParameterGroupClient) CleanupCustomParameterGroups() {}
+func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
+	return nil
+}
 
 type MockDbUtils struct {
 	mockFormattedDbName   string
@@ -73,11 +78,9 @@ func (m *MockDbUtils) buildUsername() string {
 }
 
 type mockRDSClient struct {
-	rdsiface.RDSAPI
-
 	createDbErr                         error
 	createDBInstanceReadReplicaErr      error
-	dbEngineVersions                    []*rds.DBEngineVersion
+	dbEngineVersions                    []rdsTypes.DBEngineVersion
 	describeEngVersionsErr              error
 	describeDbParamsErr                 error
 	createDbParamGroupErr               error
@@ -99,21 +102,48 @@ type mockRDSClient struct {
 	addTagsToResourceErr                error
 }
 
-func (m *mockRDSClient) CreateDBInstance(*rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
+func (m *mockRDSClient) AddTagsToResource(ctx context.Context, params *rds.AddTagsToResourceInput, optFns ...func(*rds.Options)) (*rds.AddTagsToResourceOutput, error) {
+	if m.addTagsToResourceErr != nil {
+		return nil, m.addTagsToResourceErr
+	}
+	return nil, nil
+}
+
+func (m *mockRDSClient) CreateDBInstance(ctx context.Context, params *rds.CreateDBInstanceInput, optFns ...func(*rds.Options)) (*rds.CreateDBInstanceOutput, error) {
 	if m.createDbErr != nil {
 		return nil, m.createDbErr
 	}
 	return nil, nil
 }
 
-func (m *mockRDSClient) DescribeDBParameters(*rds.DescribeDBParametersInput) (*rds.DescribeDBParametersOutput, error) {
-	if m.describeDbParamsErr != nil {
-		return nil, m.describeDbParamsErr
+func (m *mockRDSClient) CreateDBInstanceReadReplica(ctx context.Context, params *rds.CreateDBInstanceReadReplicaInput, optFns ...func(*rds.Options)) (*rds.CreateDBInstanceReadReplicaOutput, error) {
+	return &rds.CreateDBInstanceReadReplicaOutput{
+		DBInstance: &rdsTypes.DBInstance{
+			DBInstanceArn: aws.String("arn"),
+		},
+	}, m.createDBInstanceReadReplicaErr
+}
+
+func (m *mockRDSClient) CreateDBParameterGroup(ctx context.Context, params *rds.CreateDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.CreateDBParameterGroupOutput, error) {
+	if m.createDbParamGroupErr != nil {
+		return nil, m.createDbParamGroupErr
 	}
 	return nil, nil
 }
 
-func (m *mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsInput) (*rds.DescribeDBEngineVersionsOutput, error) {
+func (m *mockRDSClient) DeleteDBInstance(ctx context.Context, params *rds.DeleteDBInstanceInput, optFns ...func(*rds.Options)) (*rds.DeleteDBInstanceOutput, error) {
+	if len(m.deleteDbInstancesErrs) > 0 && m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum] != nil {
+		return nil, m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum]
+	}
+	m.deleteDBInstancesCallNum++
+	return nil, nil
+}
+
+func (m *mockRDSClient) DeleteDBParameterGroup(ctx context.Context, params *rds.DeleteDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.DeleteDBParameterGroupOutput, error) {
+	return nil, nil
+}
+
+func (m *mockRDSClient) DescribeDBEngineVersions(ctx context.Context, params *rds.DescribeDBEngineVersionsInput, optFns ...func(*rds.Options)) (*rds.DescribeDBEngineVersionsOutput, error) {
 	if m.describeEngVersionsErr != nil {
 		return nil, m.describeEngVersionsErr
 	}
@@ -125,49 +155,7 @@ func (m *mockRDSClient) DescribeDBEngineVersions(*rds.DescribeDBEngineVersionsIn
 	return nil, nil
 }
 
-func (m *mockRDSClient) CreateDBParameterGroup(*rds.CreateDBParameterGroupInput) (*rds.CreateDBParameterGroupOutput, error) {
-	if m.createDbParamGroupErr != nil {
-		return nil, m.createDbParamGroupErr
-	}
-	return nil, nil
-}
-
-func (m *mockRDSClient) ModifyDBParameterGroup(*rds.ModifyDBParameterGroupInput) (*rds.DBParameterGroupNameMessage, error) {
-	if m.modifyDbParamGroupErr != nil {
-		return nil, m.modifyDbParamGroupErr
-	}
-	return nil, nil
-}
-
-func (m *mockRDSClient) DescribeEngineDefaultParametersPages(input *rds.DescribeEngineDefaultParametersInput, fn func(*rds.DescribeEngineDefaultParametersOutput, bool) bool) error {
-	if m.describeEngineDefaultParamsErr != nil {
-		return m.describeEngineDefaultParamsErr
-	}
-	shouldContinue := true
-	for shouldContinue {
-		output := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsPageNum]
-		m.describeEngineDefaultParamsPageNum++
-		lastPage := m.describeEngineDefaultParamsPageNum == m.describeEngineDefaultParamsNumPages
-		shouldContinue = fn(output, lastPage)
-	}
-	return nil
-}
-
-func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParametersInput, fn func(*rds.DescribeDBParametersOutput, bool) bool) error {
-	if m.describeDbParamsErr != nil {
-		return m.describeDbParamsErr
-	}
-	shouldContinue := true
-	for shouldContinue {
-		output := m.describeDbParamsResults[m.describeDbParamsPageNum]
-		m.describeDbParamsPageNum++
-		lastPage := m.describeDbParamsPageNum == m.describeDbParamsNumPages
-		shouldContinue = fn(output, lastPage)
-	}
-	return nil
-}
-
-func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
+func (m *mockRDSClient) DescribeDBInstances(ctx context.Context, params *rds.DescribeDBInstancesInput, optFns ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error) {
 	if len(m.describeDbInstancesErrs) > 0 && m.describeDbInstancesErrs[m.describeDBInstancesCallNum] != nil {
 		return nil, m.describeDbInstancesErrs[m.describeDBInstancesCallNum]
 	}
@@ -176,37 +164,46 @@ func (m *mockRDSClient) DescribeDBInstances(input *rds.DescribeDBInstancesInput)
 	return output, nil
 }
 
-func (m *mockRDSClient) CreateDBInstanceReadReplica(*rds.CreateDBInstanceReadReplicaInput) (*rds.CreateDBInstanceReadReplicaOutput, error) {
-	return &rds.CreateDBInstanceReadReplicaOutput{
-		DBInstance: &rds.DBInstance{
-			DBInstanceArn: aws.String("arn"),
-		},
-	}, m.createDBInstanceReadReplicaErr
+func (m *mockRDSClient) DescribeDBParameterGroups(ctx context.Context, params *rds.DescribeDBParameterGroupsInput, optFns ...func(*rds.Options)) (*rds.DescribeDBParameterGroupsOutput, error) {
+	return nil, nil
 }
 
-func (m *mockRDSClient) ModifyDBInstance(*rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
+func (m *mockRDSClient) DescribeEngineDefaultParameters(ctx context.Context, params *rds.DescribeEngineDefaultParametersInput, optFns ...func(*rds.Options)) (*rds.DescribeEngineDefaultParametersOutput, error) {
+	if m.describeEngineDefaultParamsErr != nil {
+		return nil, m.describeEngineDefaultParamsErr
+	}
+	result := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsPageNum]
+	m.describeEngineDefaultParamsPageNum++
+	return result, nil
+}
+
+func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.DescribeDBParametersInput, optFns ...func(*rds.Options)) (*rds.DescribeDBParametersOutput, error) {
+	if m.describeDbParamsErr != nil {
+		return nil, m.describeDbParamsErr
+	}
+	if m.describeDbParamsResults != nil {
+		result := m.describeDbParamsResults[m.describeDbParamsPageNum]
+		m.describeDbParamsPageNum++
+		return result, nil
+	}
+	return nil, nil
+}
+
+func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {
+	if m.modifyDbParamGroupErr != nil {
+		return nil, m.modifyDbParamGroupErr
+	}
+	return nil, nil
+}
+
+func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.ModifyDBInstanceInput, optFns ...func(*rds.Options)) (*rds.ModifyDBInstanceOutput, error) {
 	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[m.modifyDbCallNum] != nil {
 		return nil, m.modifyDbErrs[m.modifyDbCallNum]
 	}
 	m.modifyDbCallNum++
 	return &rds.ModifyDBInstanceOutput{
-		DBInstance: &rds.DBInstance{
+		DBInstance: &rdsTypes.DBInstance{
 			DBInstanceArn: aws.String("arn"),
 		},
 	}, nil
-}
-
-func (m *mockRDSClient) DeleteDBInstance(*rds.DeleteDBInstanceInput) (*rds.DeleteDBInstanceOutput, error) {
-	if len(m.deleteDbInstancesErrs) > 0 && m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum] != nil {
-		return nil, m.deleteDbInstancesErrs[m.deleteDBInstancesCallNum]
-	}
-	m.deleteDBInstancesCallNum++
-	return nil, nil
-}
-
-func (m *mockRDSClient) AddTagsToResource(*rds.AddTagsToResourceInput) (*rds.AddTagsToResourceOutput, error) {
-	if m.addTagsToResourceErr != nil {
-		return nil, m.addTagsToResourceErr
-	}
-	return nil, nil
 }
