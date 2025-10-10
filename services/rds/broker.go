@@ -68,39 +68,34 @@ type rdsBroker struct {
 	brokerDB   *gorm.DB
 	settings   *config.Settings
 	tagManager brokertags.TagManager
+	dbAdapter  dbAdapter
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RDSPlan, s *config.Settings, db *gorm.DB) (dbAdapter, response.Response) {
-
+func initializeAdapter(s *config.Settings, db *gorm.DB) dbAdapter {
 	var dbAdapter dbAdapter
-	// For test environments, use a mock adapter.
+	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
 		dbAdapter = &mockDBAdapter{}
-		return dbAdapter, nil
+		return dbAdapter
 	}
 
-	switch plan.Adapter {
-	case "dedicated":
-		rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
-		parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
-		dbAdapter = &dedicatedDBAdapter{
-			Plan:                 plan,
-			settings:             *s,
-			rds:                  rdsClient,
-			parameterGroupClient: parameterGroupClient,
-			db:                   db,
-		}
-	default:
-		return nil, response.NewErrorResponse(http.StatusInternalServerError, "Adapter not found")
+	rdsClient := rds.New(session.New(), aws.NewConfig().WithRegion(s.Region))
+	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
+	dbAdapter = &dedicatedDBAdapter{
+		settings:             *s,
+		rds:                  rdsClient,
+		parameterGroupClient: parameterGroupClient,
+		db:                   db,
 	}
 
-	return dbAdapter, nil
+	return dbAdapter
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) base.Broker {
-	return &rdsBroker{brokerDB, settings, tagManager}
+	dbAdapter := initializeAdapter(settings, brokerDB)
+	return &rdsBroker{brokerDB, settings, tagManager, dbAdapter}
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -185,13 +180,8 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	// Create the database instance.
-	status, err := adapter.createDB(newInstance, newInstance.ClearPassword)
+	status, err := broker.dbAdapter.createDB(newInstance, newInstance.ClearPassword)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
@@ -292,14 +282,8 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		)
 	}
 
-	// Connect to the existing instance.
-	adapter, adapterErr := initializeAdapter(newPlan, broker.settings, broker.brokerDB)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	// Modify the database instance.
-	status, err := adapter.modifyDB(modifiedInstance)
+	status, err := broker.dbAdapter.modifyDB(modifiedInstance)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
@@ -335,16 +319,6 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		return response.NewSuccessLastOperation(base.InstanceGone.ToLastOperationStatus(), "Successfully deleted instance")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	var state base.InstanceState
 	var needAsyncJobState bool
 	var instanceOperation base.Operation
@@ -375,7 +349,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 		state = asyncJobMsg.JobState.State
 		statusMessage = asyncJobMsg.JobState.Message
 	} else {
-		dbState, err := adapter.checkDBStatus(existingInstance.Database)
+		dbState, err := broker.dbAdapter.checkDBStatus(existingInstance.Database)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
@@ -395,11 +369,6 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
 	password, err := existingInstance.dbUtils.getPassword(
 		existingInstance.Salt,
 		existingInstance.Password,
@@ -409,16 +378,10 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	// Get the correct database logic depending on the type of plan.
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
-	if credentials, err = adapter.bindDBToApp(existingInstance, password); err != nil {
+	if credentials, err = broker.dbAdapter.bindDBToApp(existingInstance, password); err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application. Error: %s", err))
 	}
 
@@ -438,18 +401,8 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, broker.brokerDB)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	// Delete the database instance.
-	status, err := adapter.deleteDB(existingInstance)
+	status, err := broker.dbAdapter.deleteDB(existingInstance)
 	if err != nil && status != base.InstanceNotGone {
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
