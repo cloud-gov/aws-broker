@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.16
 	github.com/aws/aws-sdk-go-v2/service/iam v1.47.7
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.52.5
+	github.com/aws/aws-sdk-go-v2/service/rds v1.108.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.6
 	github.com/cloud-gov/go-broker-tags v0.0.0-20241218215556-c78c3f147c5a
@@ -42,7 +43,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/rds v1.108.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.29.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.1 // indirect
 	github.com/aws/smithy-go v1.23.0 // indirect
