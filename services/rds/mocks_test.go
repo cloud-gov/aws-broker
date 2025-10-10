@@ -169,7 +169,12 @@ func (m *mockRDSClient) DescribeDBParameterGroups(ctx context.Context, params *r
 }
 
 func (m *mockRDSClient) DescribeEngineDefaultParameters(ctx context.Context, params *rds.DescribeEngineDefaultParametersInput, optFns ...func(*rds.Options)) (*rds.DescribeEngineDefaultParametersOutput, error) {
-	return nil, nil
+	if m.describeEngineDefaultParamsErr != nil {
+		return nil, m.describeEngineDefaultParamsErr
+	}
+	result := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsPageNum]
+	m.describeEngineDefaultParamsPageNum++
+	return result, nil
 }
 
 func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.DescribeDBParametersInput, optFns ...func(*rds.Options)) (*rds.DescribeDBParametersOutput, error) {
