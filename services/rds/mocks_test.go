@@ -181,7 +181,9 @@ func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.De
 	if m.describeDbParamsErr != nil {
 		return nil, m.describeDbParamsErr
 	}
-	return nil, nil
+	result := m.describeDbParamsResults[m.describeDbParamsPageNum]
+	m.describeDbParamsPageNum++
+	return result, nil
 }
 
 func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {
@@ -190,34 +192,6 @@ func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.
 	}
 	return nil, nil
 }
-
-// func (m *mockRDSClient) DescribeEngineDefaultParametersPages(input *rds.DescribeEngineDefaultParametersInput, fn func(*rds.DescribeEngineDefaultParametersOutput, bool) bool) error {
-// 	if m.describeEngineDefaultParamsErr != nil {
-// 		return m.describeEngineDefaultParamsErr
-// 	}
-// 	shouldContinue := true
-// 	for shouldContinue {
-// 		output := m.describeEngineDefaultParamsResults[m.describeEngineDefaultParamsPageNum]
-// 		m.describeEngineDefaultParamsPageNum++
-// 		lastPage := m.describeEngineDefaultParamsPageNum == m.describeEngineDefaultParamsNumPages
-// 		shouldContinue = fn(output, lastPage)
-// 	}
-// 	return nil
-// }
-
-// func (m *mockRDSClient) DescribeDBParametersPages(input *rds.DescribeDBParametersInput, fn func(*rds.DescribeDBParametersOutput, bool) bool) error {
-// 	if m.describeDbParamsErr != nil {
-// 		return m.describeDbParamsErr
-// 	}
-// 	shouldContinue := true
-// 	for shouldContinue {
-// 		output := m.describeDbParamsResults[m.describeDbParamsPageNum]
-// 		m.describeDbParamsPageNum++
-// 		lastPage := m.describeDbParamsPageNum == m.describeDbParamsNumPages
-// 		shouldContinue = fn(output, lastPage)
-// 	}
-// 	return nil
-// }
 
 func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.ModifyDBInstanceInput, optFns ...func(*rds.Options)) (*rds.ModifyDBInstanceOutput, error) {
 	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[m.modifyDbCallNum] != nil {

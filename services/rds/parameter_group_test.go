@@ -209,12 +209,14 @@ func TestNeedCustomParameters(t *testing.T) {
 }
 
 func TestGetDefaultEngineParameterValue(t *testing.T) {
-	describeEngineDefaultParamsErr := errors.New("describe db engine default params err")
-	describeEngVersionsErr := errors.New("describe eng versions err")
+	describeEngineDefaultParamsErr := &rdsTypes.DBParameterGroupNotFoundFault{}
+	describeEngVersionsErr := &rdsTypes.DBParameterGroupNotFoundFault{}
+
 	testCases := map[string]struct {
 		dbInstance                          *RDSInstance
 		paramName                           string
 		expectedParamValue                  string
+		expectErr                           bool
 		expectedErr                         error
 		parameterGroupAdapter               *awsParameterGroupClient
 		expectedGetDefaultEngineParamsCalls int
@@ -245,6 +247,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				},
 			},
 			expectedGetDefaultEngineParamsCalls: 1,
+			expectErr:                           true,
 		},
 		"default param value": {
 			dbInstance: &RDSInstance{
@@ -328,6 +331,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbVersion:    "12",
 			},
 			paramName:          "shared_preload_libraries",
+			expectErr:          true,
 			expectedErr:        describeEngineDefaultParamsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -348,7 +352,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbVersion:    "12",
 			},
 			paramName:          "shared_preload_libraries",
-			expectedErr:        describeEngVersionsErr,
+			expectErr:          true,
 			expectedParamValue: "",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
@@ -362,6 +366,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 					},
 				},
 			},
+			expectedErr: describeEngVersionsErr,
 		},
 	}
 	for name, test := range testCases {
@@ -370,11 +375,11 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				createTestRdsInstance(test.dbInstance),
 				test.paramName,
 			)
-			if test.expectedErr == nil && err != nil {
+			if !test.expectErr && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if !errors.Is(err, test.expectedErr) {
-				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error type: %s, got: %s", test.expectedErr, err)
 			}
 			if parameterValue != test.expectedParamValue {
 				t.Errorf("expected: %s, got: %s", test.expectedParamValue, parameterValue)
@@ -433,6 +438,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 		parameterGroupAdapter  *awsParameterGroupClient
 		parameterName          string
 		expectedParameterValue string
+		expectErr              bool
 		expectedErr            error
 		expectedNumPages       int
 	}{
@@ -454,6 +460,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 			parameterName:          "foo",
 			expectedParameterValue: "",
 			expectedNumPages:       1,
+			expectErr:              true,
 		},
 		"gets value": {
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -490,6 +497,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 									ParameterValue: aws.String("cow"),
 								},
 							},
+							Marker: aws.String("another page"),
 						},
 						{
 							Parameters: []rdsTypes.Parameter{
@@ -522,6 +530,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 				DbVersion: "12",
 			},
 			parameterName: "foo",
+			expectErr:     true,
 			expectedErr:   describeDbParamsError,
 		},
 	}
@@ -531,10 +540,10 @@ func TestGetCustomParameterValue(t *testing.T) {
 				createTestRdsInstance(test.dbInstance),
 				test.parameterName,
 			)
-			if test.expectedErr == nil && err != nil {
+			if !test.expectErr && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if !errors.Is(err, test.expectedErr) {
+			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 			if parameterValue != test.expectedParameterValue {
