@@ -168,7 +168,7 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	return nil
 }
 
-func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName string) bool {
+func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName string) (bool, error) {
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(parameterGroupName),
 		MaxRecords:           aws.Int32(20),
@@ -177,11 +177,17 @@ func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName
 
 	// If the db parameter group has already been created, we can return.
 	_, err := p.rds.DescribeDBParameters(context.TODO(), dbParametersInput)
-	parameterGroupExists := (err == nil)
-	if parameterGroupExists {
+	if err == nil {
 		log.Printf("%s parameter group already exists", parameterGroupName)
+		return true, nil
 	}
-	return parameterGroupExists
+
+	var notFoundException *rdsTypes.DBParameterGroupNotFoundFault
+	if errors.As(err, &notFoundException) {
+		return false, nil
+	}
+
+	return false, err
 }
 
 // This function will either modify or create a custom parameter group with whatever custom
@@ -191,7 +197,10 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	rdsTags []rdsTypes.Tag,
 	customparams map[string]map[string]paramDetails,
 ) error {
-	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
+	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
+	if err != nil {
+		return fmt.Errorf("createOrModifyCustomParameterGroup: checkIfParameterGroupExists err %w", err)
+	}
 	if !parameterGroupExists {
 		// Otherwise, create a new parameter group in the proper family.
 		err := p.getParameterGroupFamily(i)
@@ -234,7 +243,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		Parameters:           parameters,
 	}
 
-	_, err := p.rds.ModifyDBParameterGroup(context.TODO(), modifyinput)
+	_, err = p.rds.ModifyDBParameterGroup(context.TODO(), modifyinput)
 	if err != nil {
 		return err
 	}
@@ -281,7 +290,7 @@ func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance,
 		}
 	}
 
-	return "", fmt.Errorf("getDefaultEngineParameterValue: could not find value for parameter %s", parameterName)
+	return "", nil
 }
 
 func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parameterName string) (string, error) {
@@ -303,7 +312,7 @@ func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parame
 		}
 	}
 
-	return "", fmt.Errorf("getCustomParameterValue: could not find value for parameter %s", parameterName)
+	return "", nil
 }
 
 // getParameterValue will get the value of a parameter from the instance's custom parameter group if one exists

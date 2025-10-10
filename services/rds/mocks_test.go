@@ -181,9 +181,12 @@ func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.De
 	if m.describeDbParamsErr != nil {
 		return nil, m.describeDbParamsErr
 	}
-	result := m.describeDbParamsResults[m.describeDbParamsPageNum]
-	m.describeDbParamsPageNum++
-	return result, nil
+	if m.describeDbParamsResults != nil {
+		result := m.describeDbParamsResults[m.describeDbParamsPageNum]
+		m.describeDbParamsPageNum++
+		return result, nil
+	}
+	return nil, nil
 }
 
 func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {

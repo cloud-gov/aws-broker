@@ -216,7 +216,6 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 		dbInstance                          *RDSInstance
 		paramName                           string
 		expectedParamValue                  string
-		expectErr                           bool
 		expectedErr                         error
 		parameterGroupAdapter               *awsParameterGroupClient
 		expectedGetDefaultEngineParamsCalls int
@@ -247,7 +246,6 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				},
 			},
 			expectedGetDefaultEngineParamsCalls: 1,
-			expectErr:                           true,
 		},
 		"default param value": {
 			dbInstance: &RDSInstance{
@@ -331,7 +329,6 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbVersion:    "12",
 			},
 			paramName:          "shared_preload_libraries",
-			expectErr:          true,
 			expectedErr:        describeEngineDefaultParamsErr,
 			expectedParamValue: "",
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -352,7 +349,6 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				DbVersion:    "12",
 			},
 			paramName:          "shared_preload_libraries",
-			expectErr:          true,
 			expectedParamValue: "",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
@@ -375,10 +371,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 				createTestRdsInstance(test.dbInstance),
 				test.paramName,
 			)
-			if !test.expectErr && err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
+			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error type: %s, got: %s", test.expectedErr, err)
 			}
 			if parameterValue != test.expectedParamValue {
@@ -438,7 +431,6 @@ func TestGetCustomParameterValue(t *testing.T) {
 		parameterGroupAdapter  *awsParameterGroupClient
 		parameterName          string
 		expectedParameterValue string
-		expectErr              bool
 		expectedErr            error
 		expectedNumPages       int
 	}{
@@ -460,7 +452,6 @@ func TestGetCustomParameterValue(t *testing.T) {
 			parameterName:          "foo",
 			expectedParameterValue: "",
 			expectedNumPages:       1,
-			expectErr:              true,
 		},
 		"gets value": {
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -530,7 +521,6 @@ func TestGetCustomParameterValue(t *testing.T) {
 				DbVersion: "12",
 			},
 			parameterName: "foo",
-			expectErr:     true,
 			expectedErr:   describeDbParamsError,
 		},
 	}
@@ -540,10 +530,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 				createTestRdsInstance(test.dbInstance),
 				test.parameterName,
 			)
-			if !test.expectErr && err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if test.expectedErr != nil && !errors.Is(err, test.expectedErr) {
+			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 			if parameterValue != test.expectedParameterValue {
@@ -796,6 +783,7 @@ func TestGetCustomParameters(t *testing.T) {
 										ParameterValue: aws.String("moo"),
 									},
 								},
+								Marker: aws.String("next page"),
 							},
 						},
 						{
@@ -1092,12 +1080,14 @@ func TestGetParameterGroupFamily(t *testing.T) {
 
 func TestCheckIfParameterGroupExists(t *testing.T) {
 	dbParamsErr := errors.New("fail")
+
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		expectedExists        bool
 		parameterGroupAdapter *awsParameterGroupClient
+		expectedErr           error
 	}{
-		"error, return false": {
+		"unexpected error, return false": {
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "group1",
 			},
@@ -1105,6 +1095,18 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeDbParamsErr: dbParamsErr,
+				},
+			},
+			expectedErr: dbParamsErr,
+		},
+		"not found error, return false": {
+			dbInstance: &RDSInstance{
+				ParameterGroupName: "group1",
+			},
+			expectedExists: false,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
 				},
 			},
 		},
@@ -1120,7 +1122,10 @@ func TestCheckIfParameterGroupExists(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			exists := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance.ParameterGroupName)
+			exists, err := test.parameterGroupAdapter.checkIfParameterGroupExists(test.dbInstance.ParameterGroupName)
+			if !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
 			if exists != test.expectedExists {
 				t.Fatalf("expected: %t, got: %t", test.expectedExists, exists)
 			}
@@ -1148,7 +1153,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			expectedErr: describeEngVersionsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbParamsErr:    errors.New("describe DB params err"),
+					describeDbParamsErr:    &rdsTypes.DBParameterGroupNotFoundFault{},
 					describeEngVersionsErr: describeEngVersionsErr,
 				},
 			},
@@ -1163,7 +1168,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			expectedErr: createDbParamGroupErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
-					describeDbParamsErr:   errors.New("describe DB params err"),
+					describeDbParamsErr:   &rdsTypes.DBParameterGroupNotFoundFault{},
 					createDbParamGroupErr: createDbParamGroupErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
