@@ -4,9 +4,6 @@ import (
 	"context"
 	"time"
 
-	// "github.com/aws/aws-sdk-go/aws"
-	// "github.com/aws/aws-sdk-go/aws/awserr"
-	// "github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -16,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
@@ -93,9 +91,19 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 ) (*rds.CreateDBInstanceInput, error) {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
 
+	allocatedStorage, err := common.ConvertInt64ToInt32Safely(i.AllocatedStorage)
+	if err != nil {
+		return nil, err
+	}
+
+	backupRetentionPeriod, err := common.ConvertInt64ToInt32Safely(i.BackupRetentionPeriod)
+	if err != nil {
+		return nil, err
+	}
+
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
-		AllocatedStorage: aws.Int32(i.AllocatedStorage),
+		AllocatedStorage: allocatedStorage,
 		// Instance class is defined by the plan
 		DBInstanceClass:         &d.Plan.InstanceClass,
 		DBInstanceIdentifier:    &i.Database,
@@ -109,7 +117,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		StorageType:             aws.String(i.StorageType),
 		Tags:                    rdsTags,
 		PubliclyAccessible:      aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
-		BackupRetentionPeriod:   aws.Int32(i.BackupRetentionPeriod),
+		BackupRetentionPeriod:   backupRetentionPeriod,
 		DBSubnetGroupName:       &i.DbSubnetGroup,
 		VpcSecurityGroupIds: []string{
 			i.SecGroup,
@@ -124,7 +132,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
+	err = d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
 	if err != nil {
 		return nil, err
 	}
@@ -138,14 +146,24 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, database string) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// These actions are applied immediately.
+	allocatedStorage, err := common.ConvertInt64ToInt32Safely(i.AllocatedStorage)
+	if err != nil {
+		return nil, err
+	}
+
+	backupRetentionPeriod, err := common.ConvertInt64ToInt32Safely(i.BackupRetentionPeriod)
+	if err != nil {
+		return nil, err
+	}
+
 	params := &rds.ModifyDBInstanceInput{
-		AllocatedStorage:         aws.Int32(i.AllocatedStorage),
+		AllocatedStorage:         allocatedStorage,
 		ApplyImmediately:         aws.Bool(true),
 		DBInstanceClass:          &d.Plan.InstanceClass,
 		MultiAZ:                  &d.Plan.Redundant,
 		DBInstanceIdentifier:     &database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
-		BackupRetentionPeriod:    aws.Int32(i.BackupRetentionPeriod),
+		BackupRetentionPeriod:    backupRetentionPeriod,
 	}
 
 	if i.StorageType != "" {
@@ -160,7 +178,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, databa
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
+	err = d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
 	if err != nil {
 		return nil, err
 	}

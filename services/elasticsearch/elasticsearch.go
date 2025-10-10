@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"math"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -26,6 +25,7 @@ import (
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 
 	"fmt"
@@ -673,12 +673,12 @@ func prepareCreateDomainInput(
 		return nil, err
 	}
 
-	volumeSize, err := convertToInt32Safely(i.VolumeSize)
+	volumeSize, err := common.ConvertIntToInt32Safely(i.VolumeSize)
 	if err != nil {
 		return nil, err
 	}
 
-	instanceCount, err := convertToInt32Safely(i.DataCount)
+	instanceCount, err := common.ConvertIntToInt32Safely(i.DataCount)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +700,7 @@ func prepareCreateDomainInput(
 			return nil, err
 		}
 
-		masterCount, err := convertToInt32Safely(i.MasterCount)
+		masterCount, err := common.ConvertIntToInt32Safely(i.MasterCount)
 		if err != nil {
 			return nil, err
 		}
@@ -786,14 +786,6 @@ func prepareCreateDomainInput(
 	}
 
 	return params, nil
-}
-
-func convertToInt32Safely(value int) (*int32, error) {
-	if value < 0 || value > math.MaxInt32 {
-		return nil, fmt.Errorf("invalid value %q, must be between 0 and %d", value, math.MaxInt32)
-	}
-	int32Value := int32(value)
-	return &int32Value, nil
 }
 
 func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.UpdateDomainConfigInput, error) {
