@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/cloud-gov/aws-broker/base"
 	"gorm.io/gorm"
 
@@ -77,7 +76,7 @@ type DBEndpointDetails struct {
 type dedicatedDBAdapter struct {
 	Plan                 catalog.RDSPlan
 	settings             config.Settings
-	rds                  rdsiface.RDSAPI
+	rds                  RDSClientInterface
 	parameterGroupClient parameterGroupClient
 	db                   *gorm.DB
 }
@@ -577,7 +576,12 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	}
 
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
-	d.parameterGroupClient.CleanupCustomParameterGroups()
+	err = d.parameterGroupClient.CleanupCustomParameterGroups()
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
+		fmt.Printf("asyncDeleteDB: %s\n", err)
+		return
+	}
 
 	err = d.db.Unscoped().Delete(i).Error
 	if err != nil {

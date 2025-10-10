@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -8,10 +9,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	// "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	// "github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/config"
 )
 
@@ -19,13 +22,13 @@ const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
-	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error
-	CleanupCustomParameterGroups()
+	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*types.Tag) error
+	CleanupCustomParameterGroups() error
 }
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
 type awsParameterGroupClient struct {
-	rds                  rdsiface.RDSAPI
+	rds                  RDSClientInterface
 	settings             config.Settings
 	parameterGroupPrefix string
 }
@@ -35,7 +38,7 @@ type paramDetails struct {
 	applyMethod string
 }
 
-func NewAwsParameterGroupClient(rds rdsiface.RDSAPI, settings config.Settings) *awsParameterGroupClient {
+func NewAwsParameterGroupClient(rds RDSClientInterface, settings config.Settings) *awsParameterGroupClient {
 	return &awsParameterGroupClient{
 		rds:                  rds,
 		settings:             settings,
@@ -47,7 +50,7 @@ func NewAwsParameterGroupClient(rds rdsiface.RDSAPI, settings config.Settings) *
 // there needs to be a custom parameter group for the instance. If so, the method will either
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
-func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []*rds.Tag) error {
+func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []types.Tag) error {
 	if !p.needCustomParameters(i) {
 		return nil
 	}
@@ -69,12 +72,18 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 }
 
 // CleanupCustomParameterGroups searches out all the parameter groups that we created and tries to clean them up
-func (p *awsParameterGroupClient) CleanupCustomParameterGroups() {
+func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
 	input := &rds.DescribeDBParameterGroupsInput{}
-	err := p.rds.DescribeDBParameterGroupsPages(input, func(pgroups *rds.DescribeDBParameterGroupsOutput, lastPage bool) bool {
+	paginator := rds.NewDescribeDBParameterGroupsPaginator(p.rds, input)
+	for paginator.HasMorePages() {
+		output, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return fmt.Errorf("CleanupCustomParameterGroups: error handling next page: %w", err)
+		}
+
 		// If the pgroup matches the prefix, then try to delete it.
 		// If it's in use, it will fail, so ignore that.
-		for _, pgroup := range pgroups.DBParameterGroups {
+		for _, pgroup := range output.DBParameterGroups {
 			matched, err := regexp.Match("^"+p.parameterGroupPrefix, []byte(*pgroup.DBParameterGroupName))
 			if err != nil {
 				log.Printf("error trying to match %s in %s: %s", p.parameterGroupPrefix, *pgroup.DBParameterGroupName, err.Error())
@@ -83,23 +92,27 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() {
 				deleteinput := &rds.DeleteDBParameterGroupInput{
 					DBParameterGroupName: aws.String(*pgroup.DBParameterGroupName),
 				}
-				_, err := p.rds.DeleteDBParameterGroup(deleteinput)
-				if err == nil {
-					log.Printf("cleaned up %s parameter group", *pgroup.DBParameterGroupName)
-				} else if err.(awserr.Error).Code() != "InvalidDBParameterGroupState" {
-					// If you can't delete it because it's in use, that is fine.
-					// The db takes a while to delete, so we will clean it up the
-					// next time this is called.  Otherwise there is some sort of AWS error
-					// and we should log that.
-					log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
+				_, err := p.rds.DeleteDBParameterGroup(context.TODO(), deleteinput)
+				if err != nil {
+					var exception *types.InvalidDBParameterGroupStateFault
+					if errors.As(err, &exception) {
+						// If you can't delete it because it's in use, that is fine.
+						// The db takes a while to delete, so we will clean it up the
+						// next time this is called.  Otherwise there is some sort of AWS error
+						// and we should log that.
+						log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
+						continue
+					}
+
+					return fmt.Errorf("CleanupCustomParameterGroups: DeleteDBParameterGroup err %w", err)
 				}
+
+				log.Printf("cleaned up %s parameter group", *pgroup.DBParameterGroupName)
 			}
 		}
-		return true
-	})
-	if err != nil {
-		log.Printf("Could not retrieve list of parameter groups while cleaning up: %s", err.Error())
 	}
+
+	return nil
 }
 
 func (p *awsParameterGroupClient) getDatabaseEngineVersion(i *RDSInstance) (string, error) {
@@ -107,7 +120,7 @@ func (p *awsParameterGroupClient) getDatabaseEngineVersion(i *RDSInstance) (stri
 		return "", errors.New("database name is required to get database engine version")
 	}
 
-	dbInstanceInfo, err := p.rds.DescribeDBInstances(&rds.DescribeDBInstancesInput{
+	dbInstanceInfo, err := p.rds.DescribeDBInstances(context.TODO(), &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(i.Database),
 	})
 	if err != nil {
@@ -143,7 +156,7 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	}
 
 	// This call requires that the broker have permissions to make it.
-	defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(dbEngineVersionsInput)
+	defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(context.TODO(), dbEngineVersionsInput)
 	if err != nil {
 		return err
 	}
@@ -160,12 +173,12 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName string) bool {
 	dbParametersInput := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: aws.String(parameterGroupName),
-		MaxRecords:           aws.Int64(20),
+		MaxRecords:           aws.Int32(20),
 		Source:               aws.String("system"),
 	}
 
 	// If the db parameter group has already been created, we can return.
-	_, err := p.rds.DescribeDBParameters(dbParametersInput)
+	_, err := p.rds.DescribeDBParameters(context.TODO(), dbParametersInput)
 	parameterGroupExists := (err == nil)
 	if parameterGroupExists {
 		log.Printf("%s parameter group already exists", parameterGroupName)
@@ -177,7 +190,7 @@ func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName
 // parameters have been requested.
 func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 	i *RDSInstance,
-	rdsTags []*rds.Tag,
+	rdsTags []types.Tag,
 	customparams map[string]map[string]paramDetails,
 ) error {
 	parameterGroupExists := p.checkIfParameterGroupExists(i.ParameterGroupName)
@@ -185,7 +198,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		// Otherwise, create a new parameter group in the proper family.
 		err := p.getParameterGroupFamily(i)
 		if err != nil {
-			return fmt.Errorf("encountered error getting parameter group family: %w", err)
+			return fmt.Errorf("createOrModifyCustomParameterGroup: encountered error getting parameter group family: %w", err)
 		}
 
 		log.Printf("creating a parameter group named %s in the family of %s", i.ParameterGroupName, i.ParameterGroupFamily)
@@ -196,17 +209,22 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 			Tags:                   rdsTags,
 		}
 
-		_, err = p.rds.CreateDBParameterGroup(createInput)
+		_, err = p.rds.CreateDBParameterGroup(context.TODO(), createInput)
 		if err != nil {
-			return fmt.Errorf("encountered error when creating parameter group: %w", err)
+			return fmt.Errorf("createOrModifyCustomParameterGroup: encountered error when creating parameter group: %w", err)
 		}
 	}
 
 	// iterate through the options and plug them into the parameter list
-	parameters := []*rds.Parameter{}
+	parameters := []types.Parameter{}
 	for paramName, paramDetails := range customparams[i.DbType] {
-		parameters = append(parameters, &rds.Parameter{
-			ApplyMethod:    aws.String(paramDetails.applyMethod),
+		applyMethod, err := getRdsApplyMethodEnum(paramDetails.applyMethod)
+		if err != nil {
+			return fmt.Errorf("createOrModifyCustomParameterGroup: error getting apply method: %s", err)
+		}
+
+		parameters = append(parameters, types.Parameter{
+			ApplyMethod:    *applyMethod,
 			ParameterName:  aws.String(paramName),
 			ParameterValue: aws.String(paramDetails.value),
 		})
@@ -217,7 +235,8 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		Parameters:           parameters,
 	}
-	_, err := p.rds.ModifyDBParameterGroup(modifyinput)
+
+	_, err := p.rds.ModifyDBParameterGroup(context.TODO(), modifyinput)
 	if err != nil {
 		return err
 	}
@@ -246,22 +265,25 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance, parameterName string) (string, error) {
 	err := p.getParameterGroupFamily(i)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("getDefaultEngineParameterValue: getParameterGroupFamily err: %w", err)
 	}
 	describeEngDefaultParamsInput := &rds.DescribeEngineDefaultParametersInput{
 		DBParameterGroupFamily: &i.ParameterGroupFamily,
 	}
-	// We have to use a channel to get the parameter value from the anonymous function to DescribeEngineDefaultParametersPages
-	// because the code is executed asychronously
-	var parameterValueChannel = make(chan string, 1)
-	err = p.rds.DescribeEngineDefaultParametersPages(describeEngDefaultParamsInput, func(result *rds.DescribeEngineDefaultParametersOutput, lastPage bool) bool {
-		return handleParameterPage(parameterValueChannel, lastPage, result.EngineDefaults.Parameters, parameterName)
-	})
-	if err != nil {
-		return "", err
+
+	paginator := rds.NewDescribeEngineDefaultParametersPaginator(p.rds, describeEngDefaultParamsInput)
+	for paginator.HasMorePages() {
+		result, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return "", fmt.Errorf("getDefaultEngineParameterValue: error handling next page: %w", err)
+		}
+		foundValue := findParameterValueInResults(result.EngineDefaults.Parameters, parameterName)
+		if foundValue != "" {
+			return foundValue, nil
+		}
 	}
-	parameterValue := <-parameterValueChannel
-	return parameterValue, err
+
+	return "", fmt.Errorf("getDefaultEngineParameterValue: could not find value for parameter %s", parameterName)
 }
 
 func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parameterName string) (string, error) {
@@ -271,15 +293,19 @@ func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parame
 	}
 	// We have to use a channel to get the parameter value from the anonymous function to DescribeDBParametersPages
 	// because the code is executed asychronously
-	var parameterValueChannel = make(chan string, 1)
-	err := p.rds.DescribeDBParametersPages(dbParametersInput, func(result *rds.DescribeDBParametersOutput, lastPage bool) bool {
-		return handleParameterPage(parameterValueChannel, lastPage, result.Parameters, parameterName)
-	})
-	if err != nil {
-		return "", err
+	paginator := rds.NewDescribeDBParametersPaginator(p.rds, dbParametersInput)
+	for paginator.HasMorePages() {
+		result, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return "", fmt.Errorf("getCustomParameterValue: error handling next page: %w", err)
+		}
+		foundValue := findParameterValueInResults(result.Parameters, parameterName)
+		if foundValue != "" {
+			return foundValue, nil
+		}
 	}
-	parameterValue := <-parameterValueChannel
-	return parameterValue, err
+
+	return "", fmt.Errorf("getCustomParameterValue: could not find value for parameter %s", parameterName)
 }
 
 // getParameterValue will get the value of a parameter from the instance's custom parameter group if one exists
@@ -361,7 +387,7 @@ func setParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) {
 
 // findParameterValueInResults finds the parameter value in a set of parameters, if any
 func findParameterValueInResults(
-	parameters []*rds.Parameter,
+	parameters []types.Parameter,
 	parameterName string,
 ) string {
 	var parameterValue string
@@ -372,20 +398,6 @@ func findParameterValueInResults(
 		}
 	}
 	return parameterValue
-}
-
-// handleParameterPage handles a page of parameter results from RDS SDK functions like DescribeEngineDefaultParametersPages.
-//
-// If a parameter value is found, it is sent to a result channel. A result channel is used to allow the caller context to wait on the result.
-//
-// If no result is found, a boolean is returned indicating whether to continue to the next page of results or not.
-func handleParameterPage(parameterValueChannel chan<- string, lastPage bool, parameters []*rds.Parameter, parameterName string) bool {
-	foundValue := findParameterValueInResults(parameters, parameterName)
-	shouldContinue := !lastPage && foundValue == ""
-	if !shouldContinue {
-		parameterValueChannel <- foundValue
-	}
-	return shouldContinue
 }
 
 // addLibraryToSharedPreloadLibraries adds the specified custom library name to the current value of the shared_preload_libraries parameter.
