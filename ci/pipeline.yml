@@ -123,6 +123,30 @@ jobs:
               :x: FAILED to deploy aws-broker-tasks on development
               <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
+      - name: precompile
+        serial: true
+        plan:
+          - in_parallel:
+            - get: aws-broker-app
+            - get: general-task
+          - task: compile
+            image: general-task
+            config:
+              platform: linux
+              inputs:
+                - name: aws-broker-app
+                - name: built
+              outputs:
+                - name: built
+              run:
+                path: /bin/sh
+                args:
+                  - -cx
+                  - |
+                    cd aws-broker-app
+                    go build
+                    cp aws-broker built
+
       - put: deploy-aws-broker-development
         params:
           manifest: built/manifest.yml
