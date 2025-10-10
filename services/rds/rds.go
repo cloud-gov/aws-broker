@@ -15,7 +15,6 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
-	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	"errors"
@@ -290,7 +289,6 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, password string) {
 
 	_, err = d.rds.CreateDBInstance(context.TODO(), createDbInputParams)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
 		fmt.Printf("asyncCreateDB: %s\n", err)
 		return
@@ -335,7 +333,6 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 
 	modifyReplicaOutput, err := d.rds.ModifyDBInstance(context.TODO(), modifyParams)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
