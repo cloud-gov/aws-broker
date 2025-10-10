@@ -1,8 +1,9 @@
 ---
 applications:
 - name: aws-broker
-  buildpack: go_buildpack
-  memory: 3072M
+  buildpack: binary_buildpack
+  memory: 1024M
+  command: ./aws-broker
   env:
 
 
