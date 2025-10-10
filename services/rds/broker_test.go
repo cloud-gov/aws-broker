@@ -290,6 +290,7 @@ func TestCreateInstanceSuccess(t *testing.T) {
 				brokerDB:   brokerDB,
 				settings:   test.settings,
 				tagManager: test.tagManager,
+				dbAdapter:  &mockDBAdapter{},
 			}
 
 			response := broker.CreateInstance(test.catalog, test.dbInstance.Uuid, test.createRequest)
@@ -421,6 +422,7 @@ func TestModify(t *testing.T) {
 				brokerDB:   brokerDB,
 				settings:   test.settings,
 				tagManager: test.tagManager,
+				dbAdapter:  &mockDBAdapter{},
 			}
 
 			err = brokerDB.Create(test.dbInstance).Error
@@ -579,6 +581,7 @@ func TestLastOperation(t *testing.T) {
 				brokerDB:   brokerDB,
 				settings:   test.settings,
 				tagManager: test.tagManager,
+				dbAdapter:  &mockDBAdapter{},
 			}
 
 			err = brokerDB.Create(test.dbInstance).Error
