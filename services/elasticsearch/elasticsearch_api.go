@@ -9,7 +9,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/config"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 
 	"github.com/opensearch-project/opensearch-go/v2"
 	opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
@@ -74,7 +76,7 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, error) {
 	cfg, err := awsConfig.LoadDefaultConfig(
 		context.TODO(),
-		awsConfig.WithRegion(region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),
 	)
 	if err != nil {
 		return nil, err
