@@ -12,7 +12,6 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
-	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
@@ -100,7 +99,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 
 		resp, err := d.elasticache.DescribeReplicationGroups(context.TODO(), params)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
+			d.logger.Error("checkRedisStatus: DescribeReplicationGroups failed", err)
 			return base.InstanceNotCreated, err
 		}
 
@@ -140,7 +139,7 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 
 		resp, err := d.elasticache.DescribeReplicationGroups(context.TODO(), params)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
+			d.logger.Error("bindRedisToApp: DescribeReplicationGroups failed", err)
 			return nil, err
 		}
 
@@ -181,7 +180,7 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 	_, err := d.elasticache.DeleteReplicationGroup(context.TODO(), params)
 
 	if err != nil {
-		brokerErrs.LogAWSError(err)
+		d.logger.Error("deleteRedis: DeleteReplicationGroup failed", err)
 		return base.InstanceNotGone, err
 	}
 
@@ -204,7 +203,6 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	for {
 		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
 		}
@@ -266,7 +264,6 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	for {
 		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
-			brokerErrs.LogAWSError(err)
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
 			return
 		}
@@ -284,7 +281,6 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	}
 	_, err = d.elasticache.DeleteSnapshot(context.TODO(), delete_input)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		d.logger.Error("Redis.DeleteSnapshot: Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
