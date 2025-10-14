@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 
 	"github.com/opensearch-project/opensearch-go/v2"
@@ -74,7 +73,7 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
 func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, error) {
-	cfg, err := awsConfig.LoadDefaultConfig(
+	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),
 	)
