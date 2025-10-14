@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -106,7 +105,7 @@ func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
 	signer, _ := requestsigner.NewSigner(cfg)
 
 	client, _ := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{svcInfo["host"]},
+		Addresses: []string{fmt.Sprintf("https://%s", svcInfo["host"])},
 		Signer:    signer,
 	})
 	es.opensearchClient = client
@@ -150,11 +149,11 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	return result, err
 }
 
-func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketname string, path string, region string, rolearn string) (string, error) {
+func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketname string, path string, region string, roleArn string) (string, error) {
 	// the repo request cannot have a leading slash in the path
 	path = strings.TrimPrefix(path, "/")
 
-	// snaprepo, err := NewSnapshotRepo(bucketname, path, region, rolearn).ToString()
+	// snaprepo, err := NewSnapshotRepo(bucketname, path, region, roleArn).ToString()
 	// if err != nil {
 	// 	fmt.Print(err)
 	// 	return "", err
@@ -166,14 +165,14 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketname str
 			"bucket":    bucketname,
 			"region":    region,
 			"base_path": path,
+			"role_arn":  roleArn,
 		},
 	}
 
 	// Marshal the map to JSON
 	jsonData, err := json.Marshal(repositorySettings)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
-		return "", err
+		return "", fmt.Errorf("error marshaling JSON: %s", err)
 	}
 
 	// Create the repository using the OpenSearch API client
@@ -184,12 +183,12 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketname str
 
 	res, err := req.Do(context.Background(), es.opensearchClient)
 	if err != nil {
-		log.Fatalf("Error creating snapshot repository: %s", err)
+		return "", fmt.Errorf("error creating snapshot repository: %s", err)
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
-		log.Fatalf("Failed to create snapshot repository %s: %s", repositoryName, res.String())
+		return "", fmt.Errorf("failed to create snapshot repository %s: %s", repositoryName, res.String())
 	}
 
 	fmt.Printf("Snapshot repository '%s' created successfully.\n", repositoryName)
