@@ -48,7 +48,7 @@ type RedisInstance struct {
 
 func (i *RedisInstance) setPassword(password, key string) error {
 	if i.Salt == "" {
-		return errors.New("Salt has to be set before writing the password")
+		return errors.New("salt has to be set before writing the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
@@ -66,7 +66,7 @@ func (i *RedisInstance) setPassword(password, key string) error {
 
 func (i *RedisInstance) getPassword(key string) (string, error) {
 	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("Salt and password has to be set before writing the password")
+		return "", errors.New("salt and password has to be set before writing the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)

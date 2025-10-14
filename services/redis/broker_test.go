@@ -63,6 +63,7 @@ func TestCreateInstance(t *testing.T) {
 					Environment:   "test", // use the mock adapter
 				},
 				tagManager: &mocks.MockTagGenerator{},
+				adapter:    &mockRedisAdapter{},
 				brokerDB:   brokerDB,
 			},
 			expectedResponseCode: http.StatusAccepted,
