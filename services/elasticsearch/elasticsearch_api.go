@@ -13,7 +13,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 
 	"github.com/opensearch-project/opensearch-go/v2"
 	opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
@@ -89,12 +88,12 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
 func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
-	id := svcInfo["access_key"]
-	secret := svcInfo["secret_key"]
-	es.domain_uri = "https://" + svcInfo["host"]
-	es.credentialsProvider = credentials.NewStaticCredentialsProvider(id, secret, "")
-	es.signer = v4.NewSigner()
-	es.client = &http.Client{}
+	// id := svcInfo["access_key"]
+	// secret := svcInfo["secret_key"]
+	// es.domain_uri = "https://" + svcInfo["host"]
+	// es.credentialsProvider = credentials.NewStaticCredentialsProvider(id, secret, "")
+	// es.signer = v4.NewSigner()
+	// es.client = &http.Client{}
 	es.service = "es"
 	es.region = region
 
@@ -149,25 +148,27 @@ func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]
 	return result, err
 }
 
-func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketname string, path string, region string, roleArn string) (string, error) {
+func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error) {
 	// the repo request cannot have a leading slash in the path
 	path = strings.TrimPrefix(path, "/")
 
-	// snaprepo, err := NewSnapshotRepo(bucketname, path, region, roleArn).ToString()
+	// snaprepo, err := NewSnapshotRepo(bucketName, path, region, roleArn).ToString()
 	// if err != nil {
 	// 	fmt.Print(err)
 	// 	return "", err
 	// }
 
-	repositorySettings := map[string]interface{}{
-		"type": "s3",
-		"settings": map[string]string{
-			"bucket":    bucketname,
-			"region":    region,
-			"base_path": path,
-			"role_arn":  roleArn,
-		},
-	}
+	// repositorySettings := map[string]interface{}{
+	// 	"type": "s3",
+	// 	"settings": map[string]string{
+	// 		"bucket":    bucketName,
+	// 		"region":    region,
+	// 		"base_path": path,
+	// 		"role_arn":  roleArn,
+	// 	},
+	// }
+
+	repositorySettings := NewSnapshotRepo(bucketName, path, region, roleArn)
 
 	// Marshal the map to JSON
 	jsonData, err := json.Marshal(repositorySettings)
