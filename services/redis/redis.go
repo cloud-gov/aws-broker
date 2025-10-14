@@ -123,7 +123,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 
 			}
 		} else {
-			return base.InstanceNotCreated, errors.New("Couldn't find any instances.")
+			return base.InstanceNotCreated, errors.New("couldn't find any instances")
 		}
 	}
 
@@ -160,11 +160,11 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 						break
 					} else {
 						// Something went horribly wrong. Should never get here.
-						return nil, errors.New("Invalid memory for endpoint and/or endpoint members.")
+						return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 					}
 				} else {
 					// Instance not up yet.
-					return nil, errors.New("Instance not available yet. Please wait and try again..")
+					return nil, errors.New("instance not available yet. Please wait and try again")
 				}
 			}
 		}
