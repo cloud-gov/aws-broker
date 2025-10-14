@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cloud-gov/aws-broker/base"
@@ -18,6 +19,8 @@ import (
 )
 
 func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) (base.Broker, response.Response) {
+	fmt.Printf("findBroker service ID: %s\n", serviceID)
+	fmt.Printf("finder: RDS service ID: %s\n", c.RdsService.ID)
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
