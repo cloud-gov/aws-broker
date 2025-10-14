@@ -100,6 +100,8 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		return nil, err
 	}
 
+	fmt.Printf("database instance class: %s\n", d.Plan.InstanceClass)
+
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
 		AllocatedStorage: allocatedStorage,
