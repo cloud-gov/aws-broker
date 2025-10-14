@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -65,6 +66,38 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
+}
+
+// initializeAdapter is the main function to create database instances
+func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, error) {
+	var elasticsearchAdapter ElasticsearchAdapter
+
+	if s.Environment == "test" {
+		elasticsearchAdapter = &mockElasticsearchAdapter{}
+		return elasticsearchAdapter, nil
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	iamSvc := iam.NewFromConfig(cfg)
+
+	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
+		settings:   *s,
+		logger:     logger,
+		opensearch: opensearch.NewFromConfig(cfg),
+		iam:        iamSvc,
+		sts:        sts.NewFromConfig(cfg),
+		ip:         awsiam.NewIAMPolicyClient(iamSvc, logger),
+		s3:         s3.NewFromConfig(cfg),
+	}
+
+	return elasticsearchAdapter, nil
 }
 
 type dedicatedElasticsearchAdapter struct {
