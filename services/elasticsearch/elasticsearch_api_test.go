@@ -83,14 +83,6 @@ func TestCreateSnapshot(t *testing.T) {
 	}
 }
 
-func TestGetSnapshotRepo(t *testing.T) {
-	es := createMockESHandler("")
-	_, err := es.GetSnapshotRepo(reponame)
-	if err != nil {
-		t.Errorf("Err is not nil: %v", err)
-	}
-}
-
 func TestGetSnapshotStatus(t *testing.T) {
 	es := createMockESHandler(snapshotstatus)
 	resp, err := es.GetSnapshotStatus(reponame, snapshotname)

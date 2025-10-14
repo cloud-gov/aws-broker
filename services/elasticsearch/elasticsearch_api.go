@@ -141,6 +141,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 	}
 	endpoint := "/_snapshot/" + reponame
 	resp, err := es.Send(http.MethodPut, endpoint, snaprepo)
+	fmt.Printf("es_api: CreateSnapshotRepo response  %+v\n", resp)
 	if err != nil {
 		fmt.Print(err)
 		return "", err
@@ -149,20 +150,11 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 }
 
 func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (string, error) {
-
 	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
 	resp, err := es.Send(http.MethodPut, endpoint, "")
+	fmt.Printf("es_api: CreateSnapshot response  %+v\n", resp)
 	if err != nil {
-		fmt.Printf("es_api createsnapshot error:%v", err)
-	}
-	return string(resp), err
-}
-
-func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
-	endpoint := "/_snapshot/" + reponame
-	resp, err := es.Send(http.MethodGet, endpoint, "")
-	if err != nil {
-		fmt.Print(err)
+		fmt.Printf("es_api createsnapshot error: %v\n", err)
 	}
 	return string(resp), err
 }
@@ -170,18 +162,19 @@ func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
 func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
 	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
 	resp, err := es.Send(http.MethodGet, endpoint, "")
+	fmt.Printf("es_api: GetSnapshotStatus response  %+v\n", resp)
 	if err != nil {
-		fmt.Printf("es_api getsnapshot status error %v", err)
+		fmt.Printf("es_api getsnapshot status error %v\n", err)
 		return "", err
 	}
 	snapshots := Snapshots{}
 	err = json.Unmarshal(resp, &snapshots)
 	if err != nil {
-		fmt.Printf("es_api unmarshall reply error: %v", err)
+		fmt.Printf("es_api unmarshall reply error: %v\n", err)
 		return "", err
 	}
 	if len(snapshots.Snapshots) == 0 {
-		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v", snapshots)
+		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v\n", snapshots)
 		return "FAILED", errors.New("SnapshotStatus returned empty")
 	}
 	return snapshots.Snapshots[0].State, nil
