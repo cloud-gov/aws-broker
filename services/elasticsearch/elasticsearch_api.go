@@ -54,7 +54,7 @@ type Snapshot struct {
 	Snapshot  string   `json:"snapshot"`
 	Version   string   `json:"version"`
 	State     string   `json:"state"`
-	Indicies  []string `json:"indicies"`
+	Indices   []string `json:"indices"`
 	StartTime string   `json:"start_time"`
 	EndTime   string   `json:"end_time"`
 }
@@ -251,17 +251,23 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 
 	fmt.Printf("GetSnapshotStatus response: %s.\n", res.String())
 
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("GetSnapshotStatus: failed to read response %s", res.String())
+	}
+
 	snapshots := Snapshots{}
-	err = json.Unmarshal([]byte(res.String()), &snapshots)
+	err = json.Unmarshal(bodyBytes, &snapshots)
 	if err != nil {
 		fmt.Printf("GetSnapshotStatus JSON unmarshal error: %v\n", err)
 		return "", err
 	}
 
 	if len(snapshots.Snapshots) == 0 {
-		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v\n", snapshots)
-		return "FAILED", errors.New("SnapshotStatus returned empty")
+		fmt.Printf("GetSnapshotStatus response: %s.\n", res.String())
+		return "", errors.New("SnapshotStatus returned empty")
 	}
+
 	return snapshots.Snapshots[0].State, nil
 
 	// endpoint := "/_snapshot/" + reponame + "/" + snapshotname
