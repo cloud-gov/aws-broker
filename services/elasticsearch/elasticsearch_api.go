@@ -72,10 +72,14 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
 func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
-	cfg, _ := awsConfig.LoadDefaultConfig(
+	cfg, err := awsConfig.LoadDefaultConfig(
 		context.TODO(),
 		awsConfig.WithRegion(region),
 	)
+	if err != nil {
+		return err
+	}
+
 	signer, err := requestsigner.NewSigner(cfg)
 	if err != nil {
 		return err
