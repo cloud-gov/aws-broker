@@ -204,33 +204,82 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketname str
 	return res.String(), err
 }
 
-func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (string, error) {
-	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
-	resp, err := es.Send(http.MethodPut, endpoint, "")
-	fmt.Printf("es_api: CreateSnapshot response  %s\n", string(resp))
-	if err != nil {
-		fmt.Printf("es_api createsnapshot error: %v\n", err)
+func (es *EsApiHandler) CreateSnapshot(repositoryName string, snapshotName string) (string, error) {
+	req := opensearchapi.SnapshotCreateRequest{
+		Repository: repositoryName,
+		Snapshot:   snapshotName,
 	}
-	return string(resp), err
+
+	res, err := req.Do(context.Background(), es.opensearchClient)
+	if err != nil {
+		return "", fmt.Errorf("error creating snapshot: %s", err)
+	}
+
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return "", fmt.Errorf("failed to create snapshot %s: %s", repositoryName, res.String())
+	}
+
+	return res.String(), err
+
+	// endpoint := "/_snapshot/" + reponame + "/" + snapshotname
+	// resp, err := es.Send(http.MethodPut, endpoint, "")
+	// fmt.Printf("es_api: CreateSnapshot response  %s\n", string(resp))
+	// if err != nil {
+	// 	fmt.Printf("es_api createsnapshot error: %v\n", err)
+	// }
+	// return string(resp), err
 }
 
-func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
-	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
-	resp, err := es.Send(http.MethodGet, endpoint, "")
-	fmt.Printf("es_api: GetSnapshotStatus response  %s\n", string(resp))
-	if err != nil {
-		fmt.Printf("es_api getsnapshot status error %v\n", err)
-		return "", err
+func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName string) (string, error) {
+	req := opensearchapi.SnapshotGetRequest{
+		Repository: repositoryName,
+		Snapshot:   []string{snapshotName},
 	}
+
+	res, err := req.Do(context.Background(), es.opensearchClient)
+	if err != nil {
+		return "", fmt.Errorf("error getting snapshot: %s", err)
+	}
+
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return "", fmt.Errorf("failed to get snapshot %s: %s", repositoryName, res.String())
+	}
+
+	fmt.Printf("GetSnapshotStatus response: %s.\n", res.String())
+
 	snapshots := Snapshots{}
-	err = json.Unmarshal(resp, &snapshots)
+	err = json.Unmarshal([]byte(res.String()), &snapshots)
 	if err != nil {
-		fmt.Printf("es_api unmarshall reply error: %v\n", err)
+		fmt.Printf("GetSnapshotStatus JSON unmarshal error: %v\n", err)
 		return "", err
 	}
+
 	if len(snapshots.Snapshots) == 0 {
 		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v\n", snapshots)
 		return "FAILED", errors.New("SnapshotStatus returned empty")
 	}
 	return snapshots.Snapshots[0].State, nil
+
+	// endpoint := "/_snapshot/" + reponame + "/" + snapshotname
+	// resp, err := es.Send(http.MethodGet, endpoint, "")
+	// fmt.Printf("es_api: GetSnapshotStatus response  %s\n", string(resp))
+	// if err != nil {
+	// 	fmt.Printf("es_api getsnapshot status error %v\n", err)
+	// 	return "", err
+	// }
+	// snapshots := Snapshots{}
+	// err = json.Unmarshal(resp, &snapshots)
+	// if err != nil {
+	// 	fmt.Printf("es_api unmarshall reply error: %v\n", err)
+	// 	return "", err
+	// }
+	// if len(snapshots.Snapshots) == 0 {
+	// 	fmt.Printf("GetSnapshotStatus - Snapshot Response: %v\n", snapshots)
+	// 	return "FAILED", errors.New("SnapshotStatus returned empty")
+	// }
+	// return snapshots.Snapshots[0].State, nil
 }
