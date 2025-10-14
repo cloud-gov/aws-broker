@@ -6,7 +6,6 @@ toolchain go1.23.4
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
-	github.com/aws/aws-sdk-go v1.44.263
 	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/config v1.31.12
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.16
