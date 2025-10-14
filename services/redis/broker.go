@@ -1,17 +1,20 @@
 package redis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/session"
-	"github.com/aws/aws-sdk-go/service/elasticache"
+
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
+
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -33,6 +36,7 @@ type redisBroker struct {
 	settings   *config.Settings
 	logger     lager.Logger
 	tagManager brokertags.TagManager
+	adapter    redisAdapter
 }
 
 // InitRedisBroker is the constructor for the redisBroker.
@@ -40,10 +44,16 @@ func InitRedisBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
 	tagManager brokertags.TagManager,
-) base.Broker {
+) (base.Broker, error) {
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return &redisBroker{brokerDB, settings, logger, tagManager}
+
+	adapter, err := initializeAdapter(settings, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &redisBroker{brokerDB, settings, logger, tagManager, adapter}, nil
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -63,8 +73,7 @@ func (broker *redisBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Ins
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Catalog, logger lager.Logger) (redisAdapter, response.Response) {
-
+func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, error) {
 	var redisAdapter redisAdapter
 
 	if s.Environment == "test" {
@@ -72,12 +81,22 @@ func initializeAdapter(plan catalog.RedisPlan, s *config.Settings, c *catalog.Ca
 		return redisAdapter, nil
 	}
 
-	elasticacheClient := elasticache.New(session.New(), aws.NewConfig().WithRegion(s.Region))
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	elasticacheClient := elasticache.NewFromConfig(cfg)
+	s3 := s3.NewFromConfig(cfg)
+
 	redisAdapter = &dedicatedRedisAdapter{
-		Plan:        plan,
 		settings:    *s,
 		logger:      logger,
 		elasticache: elasticacheClient,
+		s3:          s3,
 	}
 	return redisAdapter, nil
 }
@@ -147,12 +166,8 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
 	}
 
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
 	// Create the redis instance.
-	status, err := adapter.createRedis(&newInstance, newInstance.ClearPassword)
+	status, err := broker.adapter.createRedis(&newInstance, newInstance.ClearPassword)
 	if status == base.InstanceNotCreated {
 		desc := "There was an error creating the instance."
 		if err != nil {
@@ -183,17 +198,7 @@ func (broker *redisBroker) LastOperation(c *catalog.Catalog, id string, baseInst
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RedisService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
-	status, err := adapter.checkRedisStatus(&existingInstance)
+	status, err := broker.adapter.checkRedisStatus(&existingInstance)
 	if err != nil {
 		broker.logger.Error("Error checking Redis status", err)
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
@@ -211,26 +216,15 @@ func (broker *redisBroker) BindInstance(c *catalog.Catalog, id string, bindReque
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RedisService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
 	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
 	}
 
-	// Get the correct database logic depending on the type of plan. (shared vs dedicated)
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
-
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
-	if credentials, err = adapter.bindRedisToApp(&existingInstance, password); err != nil {
+	if credentials, err = broker.adapter.bindRedisToApp(&existingInstance, password); err != nil {
 		desc := "There was an error binding the database instance to the application."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()
@@ -254,17 +248,8 @@ func (broker *redisBroker) DeleteInstance(c *catalog.Catalog, id string, baseIns
 		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
 	}
 
-	plan, planErr := c.RedisService.FetchPlan(baseInstance.PlanID)
-	if planErr != nil {
-		return planErr
-	}
-
-	adapter, adapterErr := initializeAdapter(plan, broker.settings, c, broker.logger)
-	if adapterErr != nil {
-		return adapterErr
-	}
 	// Delete the database instance.
-	if status, err := adapter.deleteRedis(&existingInstance); status == base.InstanceNotGone {
+	if status, err := broker.adapter.deleteRedis(&existingInstance); status == base.InstanceNotGone {
 		desc := "There was an error deleting the instance."
 		if err != nil {
 			desc = desc + " Error: " + err.Error()

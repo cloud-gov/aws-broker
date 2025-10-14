@@ -10,21 +10,17 @@ import (
 
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
-	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	brokerErrs "github.com/cloud-gov/aws-broker/errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/awsutil"
-	"github.com/aws/aws-sdk-go-v2/aws/session"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"bytes"
 	"fmt"
-	"log"
 )
 
 type redisAdapter interface {
@@ -64,10 +60,10 @@ func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, er
 }
 
 type dedicatedRedisAdapter struct {
-	Plan        catalog.RedisPlan
 	settings    config.Settings
 	logger      lager.Logger
 	elasticache ElasticacheClientInterface
+	s3          brokerAws.S3ClientInterface
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -81,7 +77,7 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 		return base.InstanceNotCreated, err
 	}
 
-	resp, err := d.elasticache.CreateReplicationGroup(context.TODO(), params)
+	_, err = d.elasticache.CreateReplicationGroup(context.TODO(), params)
 	if err != nil {
 		d.logger.Error("CreateReplicationGroup err", err)
 		return base.InstanceNotCreated, err
@@ -194,16 +190,9 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 }
 
 func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
-	aws_session, err := session.NewSession(aws.NewConfig().WithRegion(d.settings.Region))
-	if err != nil {
-		brokerErrs.LogAWSError(err)
-		d.logger.Error("exportRedisSnapshot: aws.NewSession Failed", err)
-		return
-	}
-
 	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	bucket := d.settings.SnapshotsBucketName
-	s3_svc := s3.New(aws_session)
+
 	snapshot_name := i.ClusterID + "-final"
 	sleep := 30 * time.Second
 	d.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot to Complete", lager.Data{"uuid": i.Uuid})
@@ -233,9 +222,8 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		TargetSnapshotName: aws.String(path + "/" + snapshot_name),
 		SourceSnapshotName: aws.String(snapshot_name),
 	}
-	_, err = d.elasticache.CopySnapshot(context.TODO(), copy_input)
+	_, err := d.elasticache.CopySnapshot(context.TODO(), copy_input)
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		d.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
@@ -251,7 +239,8 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 
 	serverSideEncryption, err := brokerAws.GetS3ServerSideEncryptionEnum("AES256")
 	if err != nil {
-		return err
+		d.logger.Error("exportRedisSnapshot: GetS3ServerSideEncryptionEnum failed", err)
+		return
 	}
 
 	input := s3.PutObjectInput{
@@ -260,11 +249,11 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		Key:                  aws.String(path + "/instance_manifest.json"),
 		ServerSideEncryption: *serverSideEncryption,
 	}
+
 	// drop info to s3
-	_, err = s3_svc.PutObject(context.TODO(), &input)
+	_, err = d.s3.PutObject(context.TODO(), &input)
 	// Decide if AWS service call was successful
 	if err != nil {
-		brokerErrs.LogAWSError(err)
 		d.logger.Error("exportRedisSnapshot: S3.PutObject Failed", err, lager.Data{"uuid": i.Uuid})
 		return
 	}
@@ -275,7 +264,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		SnapshotName: &snapshot_name,
 	}
 	for {
-		resp, err := d.elasticache.DescribeSnapshots(check_input)
+		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
 			brokerErrs.LogAWSError(err)
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
@@ -303,7 +292,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
 }
 
-f, errunc prepareCreateReplicationGroupInput(
+func prepareCreateReplicationGroupInput(
 	i *RedisInstance,
 	password string,
 ) (*elasticache.CreateReplicationGroupInput, error) {

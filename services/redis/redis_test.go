@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 	"github.com/go-test/deep"
 )
 
@@ -42,14 +43,14 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				ReplicationGroupId:          aws.String("cluster-1"),
 				CacheNodeType:               aws.String("node-type"),
 				CacheSubnetGroupName:        aws.String("db-group-1"),
-				SecurityGroupIds:            []*string{aws.String("sec-group-1")},
+				SecurityGroupIds:            []string{"sec-group-1"},
 				Engine:                      aws.String("redis"),
-				NumCacheClusters:            aws.Int64(int64(3)),
-				Port:                        aws.Int64(6379),
+				NumCacheClusters:            aws.Int32(int32(3)),
+				Port:                        aws.Int32(6379),
 				PreferredMaintenanceWindow:  aws.String("1AM"),
 				SnapshotWindow:              aws.String("4AM"),
-				SnapshotRetentionLimit:      aws.Int64(int64(14)),
-				Tags: []*elasticache.Tag{
+				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+				Tags: []elasticacheTypes.Tag{
 					{
 						Key:   aws.String("foo"),
 						Value: aws.String("bar"),
@@ -85,14 +86,14 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				ReplicationGroupId:          aws.String("cluster-1"),
 				CacheNodeType:               aws.String("node-type"),
 				CacheSubnetGroupName:        aws.String("db-group-1"),
-				SecurityGroupIds:            []*string{aws.String("sec-group-1")},
+				SecurityGroupIds:            []string{"sec-group-1"},
 				Engine:                      aws.String("redis"),
-				NumCacheClusters:            aws.Int64(int64(3)),
-				Port:                        aws.Int64(6379),
+				NumCacheClusters:            aws.Int32(int32(3)),
+				Port:                        aws.Int32(6379),
 				PreferredMaintenanceWindow:  aws.String("1AM"),
 				SnapshotWindow:              aws.String("4AM"),
-				SnapshotRetentionLimit:      aws.Int64(int64(14)),
-				Tags: []*elasticache.Tag{
+				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+				Tags: []elasticacheTypes.Tag{
 					{
 						Key:   aws.String("foo"),
 						Value: aws.String("bar"),
@@ -104,10 +105,13 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params := prepareCreateReplicationGroupInput(
+			params, err := prepareCreateReplicationGroupInput(
 				test.redisInstance,
 				test.password,
 			)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
 			}
