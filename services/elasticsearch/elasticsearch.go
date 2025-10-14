@@ -504,8 +504,10 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		return err
 	}
 
+	snapshotName := fmt.Sprintf("%s-%d", d.settings.LastSnapshotName, time.Now().Unix())
+
 	// create snapshot
-	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
+	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, snapshotName)
 	if err != nil {
 		d.logger.Error("CreateSnapshot returns error", err)
 		return err
@@ -513,7 +515,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
 	for {
-		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
+		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
 			d.logger.Error("GetSnapShotStatus failed", err)
 			return err
