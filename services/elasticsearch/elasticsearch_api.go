@@ -1,33 +1,25 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
-	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/opensearch-project/opensearch-go/v2"
+	opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
+	requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
 )
 
-// abstract this method for mocking
-type HttpClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 type EsApiHandler struct {
-	client              HttpClient
-	credentialsProvider aws.CredentialsProvider
-	signer              *v4.Signer
-	domain_uri          string
-	region              string
-	service             string
+	opensearchClient *opensearch.Client
 }
 
 type SnapshotRepo struct {
@@ -47,7 +39,7 @@ type Snapshot struct {
 	Snapshot  string   `json:"snapshot"`
 	Version   string   `json:"version"`
 	State     string   `json:"state"`
-	Indicies  []string `json:"indicies"`
+	Indices   []string `json:"indices"`
 	StartTime string   `json:"start_time"`
 	EndTime   string   `json:"end_time"`
 }
@@ -81,108 +73,117 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
-func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
-	id := svcInfo["access_key"]
-	secret := svcInfo["secret_key"]
-	es.domain_uri = "https://" + svcInfo["host"]
-	es.credentialsProvider = credentials.NewStaticCredentialsProvider(id, secret, "")
-	es.signer = v4.NewSigner()
-	es.client = &http.Client{}
-	es.service = "es"
-	es.region = region
-	return nil
+func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, error) {
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	signer, err := requestsigner.NewSigner(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := opensearch.NewClient(opensearch.Config{
+		Addresses: []string{fmt.Sprintf("https://%s", svcInfo["host"])},
+		Signer:    signer,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &EsApiHandler{
+		opensearchClient: client,
+	}, nil
 }
 
-// makes the api request with v4 signing and then returns the body of the response as string
-func (es *EsApiHandler) Send(method string, endpoint string, content string) ([]byte, error) {
-	endpoint = es.domain_uri + endpoint
-	body := strings.NewReader(content)
-	result := []byte{}
-	// form new request
-	req, err := http.NewRequest(method, endpoint, body)
-	if err != nil {
-		fmt.Print(err)
-		return result, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-
-	credentials, err := es.credentialsProvider.Retrieve(context.TODO())
-	if err != nil {
-		return result, err
-	}
-
-	// Sign the request, send it, and print the response
-	err = es.signer.SignHTTP(context.TODO(), credentials, req, content, es.service, es.region, time.Now())
-	if err != nil {
-		return result, err
-	}
-	resp, err := es.client.Do(req)
-
-	if err != nil {
-		return result, err
-	}
-	defer resp.Body.Close()
-	result, err = io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Print(err)
-	}
-	return result, err
-}
-
-func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, path string, region string, rolearn string) (string, error) {
+func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error) {
 	// the repo request cannot have a leading slash in the path
 	path = strings.TrimPrefix(path, "/")
 
-	snaprepo, err := NewSnapshotRepo(bucketname, path, region, rolearn).ToString()
-	if err != nil {
-		fmt.Print(err)
-		return "", err
+	repositorySettings := NewSnapshotRepo(bucketName, path, region, roleArn)
 
-	}
-	endpoint := "/_snapshot/" + reponame
-	resp, err := es.Send(http.MethodPut, endpoint, snaprepo)
+	// Marshal the map to JSON
+	jsonData, err := json.Marshal(repositorySettings)
 	if err != nil {
-		fmt.Print(err)
-		return "", err
+		return "", fmt.Errorf("error marshaling JSON: %s", err)
 	}
-	return string(resp), err
+
+	// Create the repository using the OpenSearch API client
+	req := opensearchapi.SnapshotCreateRepositoryRequest{
+		Repository: repositoryName,
+		Body:       bytes.NewReader(jsonData),
+	}
+
+	res, err := req.Do(context.Background(), es.opensearchClient)
+	if err != nil {
+		return "", fmt.Errorf("CreateSnapshotRepo: error creating snapshot repository: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return "", fmt.Errorf("CreateSnapshotRepo: failed to create snapshot repository %s: %s", repositoryName, res.String())
+	}
+
+	return res.String(), err
 }
 
-func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (string, error) {
-
-	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
-	resp, err := es.Send(http.MethodPut, endpoint, "")
-	if err != nil {
-		fmt.Printf("es_api createsnapshot error:%v", err)
+func (es *EsApiHandler) CreateSnapshot(repositoryName string, snapshotName string) (string, error) {
+	req := opensearchapi.SnapshotCreateRequest{
+		Repository: repositoryName,
+		Snapshot:   snapshotName,
 	}
-	return string(resp), err
+
+	res, err := req.Do(context.Background(), es.opensearchClient)
+	if err != nil {
+		return "", fmt.Errorf("error creating snapshot: %s", err)
+	}
+
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return "", fmt.Errorf("failed to create snapshot %s: %s", repositoryName, res.String())
+	}
+
+	return res.String(), err
 }
 
-func (es *EsApiHandler) GetSnapshotRepo(reponame string) (string, error) {
-	endpoint := "/_snapshot/" + reponame
-	resp, err := es.Send(http.MethodGet, endpoint, "")
-	if err != nil {
-		fmt.Print(err)
+func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName string) (string, error) {
+	req := opensearchapi.SnapshotGetRequest{
+		Repository: repositoryName,
+		Snapshot:   []string{snapshotName},
 	}
-	return string(resp), err
-}
 
-func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
-	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
-	resp, err := es.Send(http.MethodGet, endpoint, "")
+	res, err := req.Do(context.Background(), es.opensearchClient)
 	if err != nil {
-		fmt.Printf("es_api getsnapshot status error %v", err)
-		return "", err
+		return "", fmt.Errorf("error getting snapshot: %s", err)
 	}
+
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return "", fmt.Errorf("failed to get snapshot %s: %s", repositoryName, res.String())
+	}
+
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("GetSnapshotStatus: failed to read response %s", res.String())
+	}
+
 	snapshots := Snapshots{}
-	err = json.Unmarshal(resp, &snapshots)
+	err = json.Unmarshal(bodyBytes, &snapshots)
 	if err != nil {
-		fmt.Printf("es_api unmarshall reply error: %v", err)
+		fmt.Printf("GetSnapshotStatus JSON unmarshal error: %v\n", err)
 		return "", err
 	}
+
 	if len(snapshots.Snapshots) == 0 {
-		fmt.Printf("GetSnapshotStatus - Snapshot Response: %v", snapshots)
-		return "FAILED", errors.New("SnapshotStatus returned empty")
+		fmt.Printf("GetSnapshotStatus response: %s.\n", res.String())
+		return "", errors.New("SnapshotStatus returned empty")
 	}
+
 	return snapshots.Snapshots[0].State, nil
 }

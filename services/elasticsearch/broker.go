@@ -1,7 +1,6 @@
 package elasticsearch
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,15 +8,8 @@ import (
 
 	"code.cloudfoundry.org/lager"
 
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"github.com/aws/aws-sdk-go-v2/service/opensearch"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
-
 	"gorm.io/gorm"
 
-	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -79,38 +71,6 @@ func InitElasticsearchBroker(
 		tagManager,
 		adapter,
 	}, nil
-}
-
-// initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, error) {
-	var elasticsearchAdapter ElasticsearchAdapter
-
-	if s.Environment == "test" {
-		elasticsearchAdapter = &mockElasticsearchAdapter{}
-		return elasticsearchAdapter, nil
-	}
-
-	cfg, err := awsConfig.LoadDefaultConfig(
-		context.TODO(),
-		awsConfig.WithRegion(s.Region),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	iamSvc := iam.NewFromConfig(cfg)
-
-	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
-		settings:   *s,
-		logger:     logger,
-		opensearch: opensearch.NewFromConfig(cfg),
-		iam:        iamSvc,
-		sts:        sts.NewFromConfig(cfg),
-		ip:         awsiam.NewIAMPolicyClient(iamSvc, logger),
-		s3:         s3.NewFromConfig(cfg),
-	}
-
-	return elasticsearchAdapter, nil
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async

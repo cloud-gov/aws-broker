@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -65,6 +66,38 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
 	// TODO
 	return base.InstanceGone, nil
+}
+
+// initializeAdapter is the main function to create database instances
+func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, error) {
+	var elasticsearchAdapter ElasticsearchAdapter
+
+	if s.Environment == "test" {
+		elasticsearchAdapter = &mockElasticsearchAdapter{}
+		return elasticsearchAdapter, nil
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	iamSvc := iam.NewFromConfig(cfg)
+
+	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
+		settings:   *s,
+		logger:     logger,
+		opensearch: opensearch.NewFromConfig(cfg),
+		iam:        iamSvc,
+		sts:        sts.NewFromConfig(cfg),
+		ip:         awsiam.NewIAMPolicyClient(iamSvc, logger),
+		s3:         s3.NewFromConfig(cfg),
+	}
+
+	return elasticsearchAdapter, nil
 }
 
 type dedicatedElasticsearchAdapter struct {
@@ -488,8 +521,11 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	}
 
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
-	esApi := &EsApiHandler{}
-	esApi.Init(creds, d.settings.Region)
+	esApi, err := NewEsApiHandler(creds, d.settings.Region)
+	if err != nil {
+		d.logger.Error("NewEsApiHandler: %s", err)
+		return err
+	}
 
 	// create snapshot repo
 	_, err = esApi.CreateSnapshotRepo(
@@ -504,8 +540,10 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		return err
 	}
 
+	snapshotName := fmt.Sprintf("%s-%d", d.settings.LastSnapshotName, time.Now().Unix())
+
 	// create snapshot
-	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
+	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, snapshotName)
 	if err != nil {
 		d.logger.Error("CreateSnapshot returns error", err)
 		return err
@@ -513,12 +551,12 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
 	for {
-		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, d.settings.LastSnapshotName)
+		snapshotState, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
 			d.logger.Error("GetSnapShotStatus failed", err)
 			return err
 		}
-		if res == "SUCCESS" {
+		if snapshotState == "SUCCESS" {
 			break
 		}
 		time.Sleep(sleep)
