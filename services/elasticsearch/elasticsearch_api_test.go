@@ -65,7 +65,7 @@ func TestCreateSnapshotRepoSuccess(t *testing.T) {
 	mockResponse.Header.Set("Content-Type", "application/json")
 
 	client, err := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{"https://localhost:9200"},
+		Addresses: []string{"fake://url"},
 		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
 	})
 	if err != nil {
@@ -91,7 +91,7 @@ func TestCreateSnapshot(t *testing.T) {
 	mockResponse.Header.Set("Content-Type", "application/json")
 
 	client, err := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{"https://localhost:9200"},
+		Addresses: []string{"fake://url"},
 		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
 	})
 	if err != nil {
@@ -116,7 +116,7 @@ func TestGetSnapshotStatus(t *testing.T) {
 	mockResponse.Header.Set("Content-Type", "application/json")
 
 	client, err := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{"https://localhost:9200"},
+		Addresses: []string{"fake://url"},
 		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func TestGetSnapshotStatusNoSnapshots(t *testing.T) {
 	mockResponse.Header.Set("Content-Type", "application/json")
 
 	client, err := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{"https://localhost:9200"},
+		Addresses: []string{"fake://url"},
 		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
 	})
 	if err != nil {
