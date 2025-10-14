@@ -141,7 +141,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 	}
 	endpoint := "/_snapshot/" + reponame
 	resp, err := es.Send(http.MethodPut, endpoint, snaprepo)
-	fmt.Printf("es_api: CreateSnapshotRepo response  %+v\n", resp)
+	fmt.Printf("es_api: CreateSnapshotRepo response  %s\n", string(resp))
 	if err != nil {
 		fmt.Print(err)
 		return "", err
@@ -152,7 +152,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(reponame string, bucketname string, p
 func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (string, error) {
 	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
 	resp, err := es.Send(http.MethodPut, endpoint, "")
-	fmt.Printf("es_api: CreateSnapshot response  %+v\n", resp)
+	fmt.Printf("es_api: CreateSnapshot response  %s\n", string(resp))
 	if err != nil {
 		fmt.Printf("es_api createsnapshot error: %v\n", err)
 	}
@@ -162,7 +162,7 @@ func (es *EsApiHandler) CreateSnapshot(reponame string, snapshotname string) (st
 func (es *EsApiHandler) GetSnapshotStatus(reponame string, snapshotname string) (string, error) {
 	endpoint := "/_snapshot/" + reponame + "/" + snapshotname
 	resp, err := es.Send(http.MethodGet, endpoint, "")
-	fmt.Printf("es_api: GetSnapshotStatus response  %+v\n", resp)
+	fmt.Printf("es_api: GetSnapshotStatus response  %s\n", string(resp))
 	if err != nil {
 		fmt.Printf("es_api getsnapshot status error %v\n", err)
 		return "", err
