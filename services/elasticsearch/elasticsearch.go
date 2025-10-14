@@ -515,12 +515,12 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 
 	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
 	for {
-		res, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
+		snapshotState, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
 			d.logger.Error("GetSnapShotStatus failed", err)
 			return err
 		}
-		if res == "SUCCESS" {
+		if snapshotState == "SUCCESS" {
 			break
 		}
 		time.Sleep(sleep)
