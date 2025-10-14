@@ -77,7 +77,6 @@ type DBEndpointDetails struct {
 }
 
 type dedicatedDBAdapter struct {
-	Plan                 catalog.RDSPlan
 	settings             config.Settings
 	rds                  RDSClientInterface
 	parameterGroupClient parameterGroupClient
