@@ -208,7 +208,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName str
 func (es *EsApiHandler) CreateSnapshot(repositoryName string, snapshotName string) (string, error) {
 	req := opensearchapi.SnapshotCreateRequest{
 		Repository: repositoryName,
-		Snapshot:   snapshotName,
+		Snapshot:   fmt.Sprintf("%s-%d", snapshotName, time.Now().Unix()),
 	}
 
 	res, err := req.Do(context.Background(), es.opensearchClient)
