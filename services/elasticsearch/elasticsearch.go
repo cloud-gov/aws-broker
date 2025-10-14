@@ -26,7 +26,6 @@ import (
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
-	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 
@@ -102,7 +101,6 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAd
 }
 
 type dedicatedElasticsearchAdapter struct {
-	Plan       catalog.ElasticsearchPlan
 	settings   config.Settings
 	logger     lager.Logger
 	iam        awsiam.IAMClientInterface
