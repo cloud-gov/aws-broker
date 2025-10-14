@@ -71,18 +71,18 @@ func (sr *SnapshotRepo) ToString() (string, error) {
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
-func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
+func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, error) {
 	cfg, err := awsConfig.LoadDefaultConfig(
 		context.TODO(),
 		awsConfig.WithRegion(region),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	signer, err := requestsigner.NewSigner(cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	client, err := opensearch.NewClient(opensearch.Config{
@@ -90,12 +90,12 @@ func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
 		Signer:    signer,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	es.opensearchClient = client
-
-	return nil
+	return &EsApiHandler{
+		opensearchClient: client,
+	}, nil
 }
 
 func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error) {

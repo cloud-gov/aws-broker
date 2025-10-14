@@ -521,8 +521,11 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	}
 
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
-	esApi := &EsApiHandler{}
-	esApi.Init(creds, d.settings.Region)
+	esApi, err := NewEsApiHandler(creds, d.settings.Region)
+	if err != nil {
+		d.logger.Error("NewEsApiHandler: %s", err)
+		return err
+	}
 
 	// create snapshot repo
 	_, err = esApi.CreateSnapshotRepo(
