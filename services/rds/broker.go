@@ -194,7 +194,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	}
 
 	// Create the database instance.
-	status, err := broker.dbAdapter.createDB(newInstance, newInstance.ClearPassword)
+	status, err := broker.dbAdapter.createDB(newInstance, plan, newInstance.ClearPassword)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
@@ -296,7 +296,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Modify the database instance.
-	status, err := broker.dbAdapter.modifyDB(modifiedInstance)
+	status, err := broker.dbAdapter.modifyDB(modifiedInstance, newPlan)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 

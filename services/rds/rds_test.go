@@ -30,6 +30,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 		expectedErr       error
 		password          string
 		expectedParams    *rds.CreateDBInstanceInput
+		plan              catalog.RDSPlan
 	}{
 		"expect error": {
 			dbInstance: &RDSInstance{
@@ -69,14 +70,14 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 					rds:              &mockRDSClient{},
 					customPgroupName: "parameter-group-1",
 				},
-				Plan: catalog.RDSPlan{
-					InstanceClass: "class-1",
-					Redundant:     true,
-					Encrypted:     true,
-				},
 				settings: config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
+			},
+			plan: catalog.RDSPlan{
+				InstanceClass: "class-1",
+				Redundant:     true,
+				Encrypted:     true,
 			},
 			password: "fake-password",
 			expectedParams: &rds.CreateDBInstanceInput{
@@ -132,14 +133,14 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 					rds:              &mockRDSClient{},
 					customPgroupName: "parameter-group-1",
 				},
-				Plan: catalog.RDSPlan{
-					InstanceClass: "class-1",
-					Redundant:     true,
-					Encrypted:     true,
-				},
 				settings: config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
+			},
+			plan: catalog.RDSPlan{
+				InstanceClass: "class-1",
+				Redundant:     true,
+				Encrypted:     true,
 			},
 			password: "fake-password",
 			expectedParams: &rds.CreateDBInstanceInput{
@@ -175,7 +176,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.password)
+			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.plan, test.password)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
@@ -201,6 +202,7 @@ func TestAsyncCreateDb(t *testing.T) {
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
 		password      string
+		plan          catalog.RDSPlan
 	}{
 		"error creating input params": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -389,7 +391,7 @@ func TestAsyncCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.dbAdapter.asyncCreateDB(test.dbInstance, test.password)
+			test.dbAdapter.asyncCreateDB(test.dbInstance, test.plan, test.password)
 
 			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
@@ -416,6 +418,7 @@ func TestCreateDb(t *testing.T) {
 		expectedState          base.InstanceState
 		password               string
 		expectedAsyncJobStates []base.InstanceState
+		plan                   catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -464,7 +467,7 @@ func TestCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.password)
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.plan, test.password)
 
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -687,6 +690,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
 		expectErr     bool
+		plan          catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -820,7 +824,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance)
+			err = test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -853,6 +857,7 @@ func TestAsyncModifyDb(t *testing.T) {
 		dbAdapter          *dedicatedDBAdapter
 		expectedState      base.InstanceState
 		expectedDbInstance *RDSInstance
+		plan               catalog.RDSPlan
 	}{
 		"error preparing modify input": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1176,7 +1181,7 @@ func TestAsyncModifyDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.dbAdapter.asyncModifyDb(test.dbInstance)
+			test.dbAdapter.asyncModifyDb(test.dbInstance, test.plan)
 
 			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
 			if err != nil {
@@ -1214,6 +1219,7 @@ func TestModifyDb(t *testing.T) {
 		expectedErr            error
 		expectedState          base.InstanceState
 		expectedAsyncJobStates []base.InstanceState
+		plan                   catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: &dedicatedDBAdapter{
@@ -1262,7 +1268,7 @@ func TestModifyDb(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 
-			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance)
+			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.plan)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1298,6 +1304,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		expectedGroupName string
 		expectedErr       error
 		expectedParams    *rds.ModifyDBInstanceInput
+		plan              catalog.RDSPlan
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
@@ -1313,10 +1320,10 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					customPgroupName: "foobar",
 					rds:              &mockRDSClient{},
 				},
-				Plan: catalog.RDSPlan{
-					InstanceClass: "class",
-					Redundant:     true,
-				},
+			},
+			plan: catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
 			},
 			expectedGroupName: "foobar",
 			expectedParams: &rds.ModifyDBInstanceInput{
@@ -1344,10 +1351,10 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					rds:       &mockRDSClient{},
 					returnErr: testErr,
 				},
-				Plan: catalog.RDSPlan{
-					InstanceClass: "class",
-					Redundant:     true,
-				},
+			},
+			plan: catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
 			},
 			expectedErr: testErr,
 		},
@@ -1366,10 +1373,10 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					rds: &mockRDSClient{},
 				},
 				rds: &mockRDSClient{},
-				Plan: catalog.RDSPlan{
-					InstanceClass: "class",
-					Redundant:     true,
-				},
+			},
+			plan: catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
 			},
 			expectedParams: &rds.ModifyDBInstanceInput{
 				AllocatedStorage:         aws.Int32(20),
@@ -1392,14 +1399,14 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BackupRetentionPeriod: 14,
 			},
 			dbAdapter: &dedicatedDBAdapter{
-				Plan: catalog.RDSPlan{
-					InstanceClass: "class",
-					Redundant:     true,
-				},
 				parameterGroupClient: &mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
 				rds: &mockRDSClient{},
+			},
+			plan: catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
 			},
 			expectedParams: &rds.ModifyDBInstanceInput{
 				AllocatedStorage:         aws.Int32(20),
@@ -1416,7 +1423,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.dbInstance.Database)
+			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.plan, test.dbInstance.Database)
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("unexpected error: %s", err)
 			}

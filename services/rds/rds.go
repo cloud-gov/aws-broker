@@ -22,8 +22,8 @@ import (
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, password string) (base.InstanceState, error)
-	modifyDB(i *RDSInstance) (base.InstanceState, error)
+	createDB(i *RDSInstance, plan catalog.RDSPlan, password string) (base.InstanceState, error)
+	modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error)
 	checkDBStatus(database string) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
@@ -38,7 +38,7 @@ type mockDBAdapter struct {
 	createDBState *base.InstanceState
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *mockDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password string) (base.InstanceState, error) {
 	// TODO
 	if d.createDBState != nil {
 		return *d.createDBState, nil
@@ -46,7 +46,7 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, password string) (base.Instance
 	return base.InstanceInProgress, nil
 }
 
-func (d *mockDBAdapter) modifyDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *mockDBAdapter) modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error) {
 	return base.InstanceReady, nil
 }
 
@@ -86,6 +86,7 @@ type dedicatedDBAdapter struct {
 
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	i *RDSInstance,
+	plan catalog.RDSPlan,
 	password string,
 ) (*rds.CreateDBInstanceInput, error) {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
@@ -100,21 +101,21 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		return nil, err
 	}
 
-	fmt.Printf("database instance class: %s\n", d.Plan.InstanceClass)
+	fmt.Printf("database instance class: %s\n", plan.InstanceClass)
 
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
 		AllocatedStorage: allocatedStorage,
 		// Instance class is defined by the plan
-		DBInstanceClass:         &d.Plan.InstanceClass,
+		DBInstanceClass:         &plan.InstanceClass,
 		DBInstanceIdentifier:    &i.Database,
 		DBName:                  aws.String(i.FormatDBName()),
 		Engine:                  aws.String(i.DbType),
 		MasterUserPassword:      &password,
 		MasterUsername:          &i.Username,
 		AutoMinorVersionUpgrade: aws.Bool(true),
-		MultiAZ:                 aws.Bool(d.Plan.Redundant),
-		StorageEncrypted:        aws.Bool(d.Plan.Encrypted),
+		MultiAZ:                 aws.Bool(plan.Redundant),
+		StorageEncrypted:        aws.Bool(plan.Encrypted),
 		StorageType:             aws.String(i.StorageType),
 		Tags:                    rdsTags,
 		PubliclyAccessible:      aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
@@ -144,7 +145,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, database string) (*rds.ModifyDBInstanceInput, error) {
+func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan catalog.RDSPlan, database string) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// These actions are applied immediately.
 	allocatedStorage, err := common.ConvertInt64ToInt32Safely(i.AllocatedStorage)
@@ -160,8 +161,8 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, databa
 	params := &rds.ModifyDBInstanceInput{
 		AllocatedStorage:         allocatedStorage,
 		ApplyImmediately:         aws.Bool(true),
-		DBInstanceClass:          &d.Plan.InstanceClass,
-		MultiAZ:                  &d.Plan.Redundant,
+		DBInstanceClass:          &plan.InstanceClass,
+		MultiAZ:                  &plan.Redundant,
 		DBInstanceIdentifier:     &database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
 		BackupRetentionPeriod:    backupRetentionPeriod,
@@ -189,13 +190,13 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, databa
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance) (*rds.CreateDBInstanceReadReplicaOutput, error) {
+func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan catalog.RDSPlan) (*rds.CreateDBInstanceReadReplicaOutput, error) {
 	rdsTags := ConvertTagsToRDSTags(i.Tags)
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
 		DBInstanceIdentifier:       &i.ReplicaDatabase,
 		SourceDBInstanceIdentifier: &i.Database,
-		MultiAZ:                    &d.Plan.Redundant,
+		MultiAZ:                    &plan.Redundant,
 		PubliclyAccessible:         aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
 		StorageType:                aws.String(i.StorageType),
 		Tags:                       rdsTags,
@@ -253,10 +254,10 @@ func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) 
 	return err
 }
 
-func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation, i *RDSInstance) error {
+func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation, i *RDSInstance, plan catalog.RDSPlan) error {
 	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
-	createReplicaOutput, err := d.createDBReadReplica(i)
+	createReplicaOutput, err := d.createDBReadReplica(i, plan)
 	if err != nil {
 		fmt.Println(err)
 		jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
@@ -279,10 +280,10 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 	return nil
 }
 
-func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, password string) {
+func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan, password string) {
 	operation := base.CreateOp
 
-	createDbInputParams, err := d.prepareCreateDbInput(i, password)
+	createDbInputParams, err := d.prepareCreateDbInput(i, plan, password)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
 		fmt.Printf("asyncCreateDB: %s\n", err)
@@ -304,7 +305,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, password string) {
 	}
 
 	if i.AddReadReplica {
-		err := d.waitAndCreateDBReadReplica(operation, i)
+		err := d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
 			fmt.Printf("asyncCreateDB: %s\n", err)
@@ -315,19 +316,19 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, password string) {
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password string) (base.InstanceState, error) {
 	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
 
-	go d.asyncCreateDB(i, password)
+	go d.asyncCreateDB(i, plan, password)
 
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *RDSInstance, database string) error {
-	modifyParams, err := d.prepareModifyDbInstanceInput(i, database)
+func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *RDSInstance, plan catalog.RDSPlan, database string) error {
+	modifyParams, err := d.prepareModifyDbInstanceInput(i, plan, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
@@ -354,10 +355,10 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 	return nil
 }
 
-func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
+func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan) {
 	operation := base.ModifyOp
 
-	err := d.asyncModifyDbInstance(operation, i, i.Database)
+	err := d.asyncModifyDbInstance(operation, i, plan, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		fmt.Printf("asyncModifyDb: %s\n", err)
@@ -366,14 +367,14 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
 
 	if i.AddReadReplica {
 		// Add new read replica
-		err := d.waitAndCreateDBReadReplica(operation, i)
+		err := d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
 			fmt.Printf("asyncModifyDb, error creating read replica: %s\n", err)
 			return
 		}
 	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
-		err := d.asyncModifyDbInstance(operation, i, i.ReplicaDatabase)
+		err := d.asyncModifyDbInstance(operation, i, plan, i.ReplicaDatabase)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
 			fmt.Printf("asyncModifyDb, error modifying read replica: %s\n", err)
@@ -402,13 +403,13 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance) {
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
 // cf update-service SERVICE_INSTANCE [-p NEW_PLAN] [-c PARAMETERS_AS_JSON] [-t TAGS] [--upgrade]
-func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error) {
 	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Database modification in progress")
 	if err != nil {
 		return base.InstanceNotModified, err
 	}
 
-	go d.asyncModifyDb(i)
+	go d.asyncModifyDb(i, plan)
 
 	return base.InstanceInProgress, nil
 }
