@@ -6,15 +6,17 @@ import (
 
 var bucket = "mys3bucket"
 var path = "foo/bar/baz"
-var reponame = "my-snapshots"
-var snapshotname = "backup"
+
+// var reponame = "my-snapshots"
+// var snapshotname = "backup"
 var region = "us-east-1"
 var rolearn = "arn:aws:iam::123456789012:role/snapshot-role"
-var svcInfo = map[string]string{
-	"host": "myesdomain.amazonws.com",
-}
 
-var snapshotstatus = "{\"snapshots\":[{\"snapshot\":\"backup3\",\"uuid\":\"kKUia17LT2iJ1nKdhrVgsw\",\"version_id\":7070099,\"version\":\"7.7.0\",\"indices\":[\".kibana_2\",\"test\",\".kibana_1\",\".opendistro-job-scheduler-lock\",\"movies\"],\"include_global_state\":true,\"state\":\"SUCCESS\",\"start_time\":\"2021-12-06T22:16:03.090Z\",\"start_time_in_millis\":1638828963090,\"end_time\":\"2021-12-06T22:16:04.891Z\",\"end_time_in_millis\":1638828964891,\"duration_in_millis\":1801,\"failures\":[],\"shards\":{\"total\":17,\"failed\":0,\"successful\":17}}]}"
+// var svcInfo = map[string]string{
+// 	"host": "myesdomain.amazonws.com",
+// }
+
+// var snapshotstatus = "{\"snapshots\":[{\"snapshot\":\"backup3\",\"uuid\":\"kKUia17LT2iJ1nKdhrVgsw\",\"version_id\":7070099,\"version\":\"7.7.0\",\"indices\":[\".kibana_2\",\"test\",\".kibana_1\",\".opendistro-job-scheduler-lock\",\"movies\"],\"include_global_state\":true,\"state\":\"SUCCESS\",\"start_time\":\"2021-12-06T22:16:03.090Z\",\"start_time_in_millis\":1638828963090,\"end_time\":\"2021-12-06T22:16:04.891Z\",\"end_time_in_millis\":1638828964891,\"duration_in_millis\":1801,\"failures\":[],\"shards\":{\"total\":17,\"failed\":0,\"successful\":17}}]}"
 
 func TestNewSnapShotRepo(t *testing.T) {
 

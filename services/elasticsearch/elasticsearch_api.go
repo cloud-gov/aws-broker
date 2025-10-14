@@ -76,12 +76,19 @@ func (es *EsApiHandler) Init(svcInfo map[string]string, region string) error {
 		context.TODO(),
 		awsConfig.WithRegion(region),
 	)
-	signer, _ := requestsigner.NewSigner(cfg)
+	signer, err := requestsigner.NewSigner(cfg)
+	if err != nil {
+		return err
+	}
 
-	client, _ := opensearch.NewClient(opensearch.Config{
+	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{fmt.Sprintf("https://%s", svcInfo["host"])},
 		Signer:    signer,
 	})
+	if err != nil {
+		return err
+	}
+
 	es.opensearchClient = client
 
 	return nil
