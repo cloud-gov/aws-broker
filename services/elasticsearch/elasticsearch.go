@@ -25,6 +25,7 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 
+	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
@@ -108,7 +109,7 @@ type dedicatedElasticsearchAdapter struct {
 	sts        STSClientInterface
 	opensearch OpensearchClientInterface
 	ip         *awsiam.IAMPolicyClient
-	s3         S3ClientInterface
+	s3         brokerAws.S3ClientInterface
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -667,7 +668,7 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 	}
 	body := bytes.NewReader(data)
 
-	serverSideEncryption, err := getS3ServerSideEncryptionEnum("AES256")
+	serverSideEncryption, err := brokerAws.GetS3ServerSideEncryptionEnum("AES256")
 	if err != nil {
 		return err
 	}

@@ -6,9 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
@@ -35,13 +33,12 @@ func getOpensearchVolumeTypeEnum(volumeTypeString string) (*opensearchTypes.Volu
 }
 
 var opensearchInstanceTypeMap = map[string]opensearchTypes.OpenSearchPartitionInstanceType{
-	"t3.small.search":   opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch,
-	"c5.large.search":   opensearchTypes.OpenSearchPartitionInstanceTypeC5LargeSearch,
-	"c5.xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceTypeC5XlargeSearch,
-	"c5.2xlarge.search": opensearchTypes.OpenSearchPartitionInstanceTypeC52xlargeSearch,
-	"m5.2xlarge.search": opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
-	"m5.4xlarge.search": opensearchTypes.OpenSearchPartitionInstanceTypeM54xlargeSearch,
-	// "m5.8xlarge.search" is no longer supported? see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/supported-instance-types.html
+	"t3.small.search":    opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch,
+	"c5.large.search":    opensearchTypes.OpenSearchPartitionInstanceTypeC5LargeSearch,
+	"c5.xlarge.search":   opensearchTypes.OpenSearchPartitionInstanceTypeC5XlargeSearch,
+	"c5.2xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceTypeC52xlargeSearch,
+	"m5.2xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
+	"m5.4xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceTypeM54xlargeSearch,
 	"m5.12xlarge.search": opensearchTypes.OpenSearchPartitionInstanceTypeM512xlargeSearch,
 }
 
@@ -50,19 +47,4 @@ func getOpensearchInstanceTypeEnum(instanceTypeString string) (*opensearchTypes.
 		return &instanceType, nil
 	}
 	return nil, fmt.Errorf("invalid instance type: %s", instanceTypeString)
-}
-
-type S3ClientInterface interface {
-	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
-}
-
-var s3ServerSideEncryptionMap = map[string]s3Types.ServerSideEncryption{
-	"AES256": s3Types.ServerSideEncryptionAes256,
-}
-
-func getS3ServerSideEncryptionEnum(encryptionString string) (*s3Types.ServerSideEncryption, error) {
-	if serverSideEncryption, ok := s3ServerSideEncryptionMap[encryptionString]; ok {
-		return &serverSideEncryption, nil
-	}
-	return nil, fmt.Errorf("invalid instance type: %s", encryptionString)
 }

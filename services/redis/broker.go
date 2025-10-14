@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/session"
 	"github.com/aws/aws-sdk-go/service/elasticache"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
