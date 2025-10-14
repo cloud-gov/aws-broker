@@ -236,11 +236,11 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 				// Should only be one regardless. Just return now.
 			} else {
 				// Something went horribly wrong. Should never get here.
-				return nil, errors.New("Invalid memory for endpoint and/or endpoint members.")
+				return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 			}
 		} else {
 			// Instance not up yet.
-			return nil, errors.New("Instance not available yet. Please wait and try again..")
+			return nil, errors.New("instance not available yet. Please wait and try again")
 		}
 
 	}
@@ -325,7 +325,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			}
 		} else {
 			// Instance not up yet.
-			return base.InstanceNotCreated, errors.New("Instance not available yet. Please wait and try again..")
+			return base.InstanceNotCreated, errors.New("instance not available yet. Please wait and try again")
 		}
 	}
 	return base.InstanceNotCreated, nil
