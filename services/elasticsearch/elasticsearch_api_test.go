@@ -44,18 +44,6 @@ func TestNewSnapShotRepo(t *testing.T) {
 	}
 }
 
-func TestSnapshotRepoToString(t *testing.T) {
-	expected := "{\"type\":\"s3\",\"settings\":{\"bucket\":\"" + bucket + "\",\"base_path\":\"" + path + "\",\"server_side_encryption\":true,\"region\":\"" + region + "\",\"role_arn\":\"" + rolearn + "\"}}"
-	snaprepo := NewSnapshotRepo(bucket, path, region, rolearn)
-	result, err := snaprepo.ToString()
-	if err != nil {
-		t.Error("Got non-nil error in ToString")
-	}
-	if result != expected {
-		t.Errorf("Got %s but expected %s", result, expected)
-	}
-}
-
 func TestCreateSnapshotRepoSuccess(t *testing.T) {
 	mockResponse := &http.Response{
 		StatusCode: http.StatusOK,

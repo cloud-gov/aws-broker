@@ -60,16 +60,6 @@ func NewSnapshotRepo(bucketname string, path string, region string, rolearn stri
 	return sr
 }
 
-func (sr *SnapshotRepo) ToString() (string, error) {
-	bytestr, err := json.Marshal(sr)
-	if err != nil {
-		fmt.Print(err)
-		return "", err
-	}
-	repo := string(bytestr)
-	return repo, nil
-}
-
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
 func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, error) {
