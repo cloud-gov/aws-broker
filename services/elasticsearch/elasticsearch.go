@@ -228,7 +228,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
-				fmt.Printf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN))
+				d.logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
 				i.Host = resp.DomainStatus.Endpoints["vpc"]
 				i.ARN = *(resp.DomainStatus.ARN)
 				i.State = base.InstanceReady
@@ -312,7 +312,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			return base.InstanceNotCreated, err
 		}
 
-		fmt.Printf("domain status: %+v\n", resp.DomainStatus)
+		d.logger.Debug(fmt.Sprintf("domain status: %+v\n", resp.DomainStatus))
 
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {

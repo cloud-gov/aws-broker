@@ -123,7 +123,7 @@ func (ip *IAMPolicyClient) CreateAssumeRole(
 	if err != nil {
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			fmt.Printf("role %s already exists, continuing\n", rolename)
+			ip.logger.Debug(fmt.Sprintf("role %s already exists, continuing\n", rolename))
 
 			resp, innerErr := ip.iam.GetRole(context.TODO(), &iam.GetRoleInput{
 				RoleName: aws.String(rolename),
@@ -215,7 +215,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 	if err != nil {
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			fmt.Printf("policy name %s already exists, attempting to get policy ARN\n", policyname)
+			ip.logger.Debug(fmt.Sprintf("policy name %s already exists, attempting to get policy ARN\n", policyname))
 
 			resp, innerErr := ip.iam.ListAttachedUserPolicies(context.TODO(), &iam.ListAttachedUserPoliciesInput{
 				UserName: aws.String(username),
@@ -228,7 +228,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 
 			for _, policy := range resp.AttachedPolicies {
 				if *policy.PolicyName == policyname {
-					fmt.Printf("found policy ARN %s for policy %s\n", *policy.PolicyArn, policyname)
+					ip.logger.Debug(fmt.Sprintf("found policy ARN %s for policy %s\n", *policy.PolicyArn, policyname))
 					return *policy.PolicyArn, nil
 				}
 			}
@@ -276,7 +276,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			fmt.Printf("policy name %s already exists, attempting to get policy ARN\n", policyname)
+			ip.logger.Debug(fmt.Sprintf("policy name %s already exists, attempting to get policy ARN\n", policyname))
 			resp, innerErr := ip.iam.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
 				RoleName: role.RoleName,
 			})
@@ -286,7 +286,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 			}
 			for _, policy := range resp.AttachedPolicies {
 				if *policy.PolicyName == policyname {
-					fmt.Printf("found policy ARN %s for role %s\n", *policy.PolicyArn, *role.RoleName)
+					ip.logger.Debug(fmt.Sprintf("found policy ARN %s for role %s\n", *policy.PolicyArn, *role.RoleName))
 					return *policy.PolicyArn, nil
 				}
 			}
@@ -322,7 +322,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 	})
 	if err != nil {
 		ip.logger.Error("UpdateExistingPolicy: GetPolicy error", err)
-		fmt.Printf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN)
+		ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN))
 		return respPolVer, err
 	}
 	// get existing policy's current version number
@@ -334,7 +334,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		resPolicyVersion, err := ip.iam.GetPolicyVersion(context.TODO(), policyVersionInput)
 		if err != nil {
 			ip.logger.Error("UpdateExistingPolicy: GetPolicyVersion error", err)
-			fmt.Printf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId))
+			ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId)))
 			return respPolVer, err
 		}
 
@@ -342,7 +342,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		if resPolicyVersion.PolicyVersion.Document != nil {
 			err = policyDoc.FromString(*resPolicyVersion.PolicyVersion.Document)
 			if err != nil {
-				fmt.Printf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed\n", (*resPolicyVersion.PolicyVersion.Document))
+				ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed\n", (*resPolicyVersion.PolicyVersion.Document)))
 				return respPolVer, err
 			}
 		}
@@ -371,13 +371,13 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		resp, err := ip.iam.CreatePolicyVersion(context.TODO(), policyUpdatedVersion)
 		if err != nil {
 			ip.logger.Error("UpdateExistingPolicy: CreatePolicyVersion error", err)
-			fmt.Printf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion)
+			ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion))
 			return respPolVer, err
 		}
 		if resp.PolicyVersion != nil {
 			respPolVer = resp.PolicyVersion
 		}
-		fmt.Printf("UpdateExistingPolicy Success with: %v\n", respPolVer)
+		ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy Success with: %v\n", respPolVer))
 	}
 
 	return respPolVer, nil

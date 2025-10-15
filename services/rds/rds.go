@@ -318,21 +318,21 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan,
 	createDbInputParams, err := d.prepareCreateDbInput(i, plan, password)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
-		fmt.Printf("asyncCreateDB: %s\n", err)
+		d.logger.Error("asyncCreateDB: prepareCreateDbInput error", err)
 		return
 	}
 
 	_, err = d.rds.CreateDBInstance(context.TODO(), createDbInputParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
-		fmt.Printf("asyncCreateDB: %s\n", err)
+		d.logger.Error("asyncCreateDB: CreateDBInstance error", err)
 		return
 	}
 
 	err = d.waitForDbReady(operation, i, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		fmt.Printf("asyncCreateDB: %s\n", err)
+		d.logger.Error("asyncCreateDB: waitForDbReady error", err)
 		return
 	}
 
@@ -340,7 +340,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan,
 		err := d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
-			fmt.Printf("asyncCreateDB: %s\n", err)
+			d.logger.Error("asyncCreateDB: waitAndCreateDBReadReplica error", err)
 			return
 		}
 	}
@@ -393,7 +393,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 	err := d.asyncModifyDbInstance(operation, i, plan, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
-		fmt.Printf("asyncModifyDb: %s\n", err)
+		d.logger.Error("asyncModifyDb: asyncModifyDbInstance error", err)
 		return
 	}
 
@@ -402,14 +402,14 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 		err := d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
-			fmt.Printf("asyncModifyDb, error creating read replica: %s\n", err)
+			d.logger.Error("asyncModifyDb: waitAndCreateDBReadReplica error", err)
 			return
 		}
 	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
 		err := d.asyncModifyDbInstance(operation, i, plan, i.ReplicaDatabase)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
-			fmt.Printf("asyncModifyDb, error modifying read replica: %s\n", err)
+			d.logger.Error("asyncModifyDb: asyncModifyDbInstance read replica error", err)
 			return
 		}
 	}
@@ -418,7 +418,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 		err = d.deleteDatabaseReadReplica(i, operation)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
-			fmt.Printf("asyncModifyDb, error deleting database replica: %s\n", err)
+			d.logger.Error("asyncModifyDb: deleteDatabaseReadReplica error", err)
 			return
 		}
 	}
@@ -426,7 +426,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 	err = d.db.Save(i).Error
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error saving record: %s", err))
-		fmt.Printf("asyncModifyDb, error saving record: %s\n", err)
+		d.logger.Error("asyncModifyDb: error saving record", err)
 		return
 	}
 
@@ -618,7 +618,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 		err := d.deleteDatabaseReadReplica(i, operation)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
-			fmt.Printf("asyncDeleteDB: %s\n", err)
+			d.logger.Error("asyncDeleteDB: deleteDatabaseReadReplica error", err)
 			return
 		}
 	}
@@ -627,7 +627,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	err := d.deleteDatabaseInstance(i, operation, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete database: %s", err))
-		fmt.Printf("asyncDeleteDB: %s\n", err)
+		d.logger.Error("asyncDeleteDB: deleteDatabaseInstance error", err)
 		return
 	}
 
@@ -635,7 +635,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	err = d.parameterGroupClient.CleanupCustomParameterGroups()
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
-		fmt.Printf("asyncDeleteDB: %s\n", err)
+		d.logger.Error("asyncDeleteDB: CleanupCustomParameterGroups error", err)
 		return
 	}
 

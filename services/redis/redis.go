@@ -180,7 +180,7 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 				if value.Status != nil && *(value.Status) == "available" {
 					if value.NodeGroups[0].PrimaryEndpoint != nil && value.NodeGroups[0].PrimaryEndpoint.Address != nil && value.NodeGroups[0].PrimaryEndpoint.Port != nil {
 						port := *(value.NodeGroups[0].PrimaryEndpoint.Port)
-						fmt.Printf("host: %s port: %d \n", *(value.NodeGroups[0].PrimaryEndpoint.Address), port)
+						d.logger.Debug(fmt.Sprintf("host: %s port: %d \n", *(value.NodeGroups[0].PrimaryEndpoint.Address), port))
 
 						i.Port = int64(port)
 						i.Host = *(value.NodeGroups[0].PrimaryEndpoint.Address)
