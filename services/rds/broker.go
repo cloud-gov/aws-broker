@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
+	"code.cloudfoundry.org/lager"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -73,7 +75,7 @@ type rdsBroker struct {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, db *gorm.DB) (dbAdapter, error) {
+func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (dbAdapter, error) {
 	var dbAdapter dbAdapter
 	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
@@ -97,6 +99,7 @@ func initializeAdapter(s *config.Settings, db *gorm.DB) (dbAdapter, error) {
 		rds:                  rdsClient,
 		parameterGroupClient: parameterGroupClient,
 		db:                   db,
+		logger:               logger,
 	}
 
 	return dbAdapter, nil
@@ -104,7 +107,9 @@ func initializeAdapter(s *config.Settings, db *gorm.DB) (dbAdapter, error) {
 
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
-	dbAdapter, err := initializeAdapter(settings, brokerDB)
+	logger := lager.NewLogger("aws-rds-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
 	if err != nil {
 		return nil, err
 	}

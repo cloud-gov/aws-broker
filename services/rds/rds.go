@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -81,6 +82,7 @@ type dedicatedDBAdapter struct {
 	rds                  RDSClientInterface
 	parameterGroupClient parameterGroupClient
 	db                   *gorm.DB
+	logger               lager.Logger
 }
 
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
@@ -256,14 +258,14 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 
 	createReplicaOutput, err := d.createDBReadReplica(i, plan)
 	if err != nil {
-		fmt.Println(err)
+		d.logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", err)
 		jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
 	err = d.waitForDbReady(operation, i, i.ReplicaDatabase)
 	if err != nil {
-		fmt.Println(err)
+		d.logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", err)
 		jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
@@ -606,7 +608,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 
 	err = d.db.Unscoped().Delete(i).Error
 	if err != nil {
-		fmt.Println(fmt.Errorf("asyncDeleteDB, error deleting record: %w", err))
+		d.logger.Error("asyncDeleteDB: error deleting record", err)
 		return
 	}
 
