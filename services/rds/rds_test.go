@@ -49,12 +49,15 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				DbType:          "mysql",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					returnErr: testErr,
 					rds:       &mockRDSClient{},
 				},
-			},
+			),
 			expectedErr: testErr,
 		},
 		"creates correct params": {
@@ -76,15 +79,17 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				DbSubnetGroup:         "subnet-group-1",
 				SecGroup:              "sec-group-1",
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PubliclyAccessibleFeature: true,
+				},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					rds:              &mockRDSClient{},
 					customPgroupName: "parameter-group-1",
 				},
-				settings: config.Settings{
-					PubliclyAccessibleFeature: true,
-				},
-			},
+			),
 			plan: catalog.RDSPlan{
 				InstanceClass: "class-1",
 				Redundant:     true,
@@ -139,15 +144,17 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				SecGroup:              "sec-group-1",
 				LicenseModel:          "foo",
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PubliclyAccessibleFeature: true,
+				},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					rds:              &mockRDSClient{},
 					customPgroupName: "parameter-group-1",
 				},
-				settings: config.Settings{
-					PubliclyAccessibleFeature: true,
-				},
-			},
+			),
 			plan: catalog.RDSPlan{
 				InstanceClass: "class-1",
 				Redundant:     true,
@@ -432,8 +439,13 @@ func TestCreateDb(t *testing.T) {
 		plan                   catalog.RDSPlan
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -451,13 +463,8 @@ func TestCreateDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -521,8 +528,13 @@ func TestWaitForDbReady(t *testing.T) {
 		expectAsyncJobMessage bool
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -533,13 +545,8 @@ func TestWaitForDbReady(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -551,8 +558,13 @@ func TestWaitForDbReady(t *testing.T) {
 			},
 		},
 		"waits with retries for database creation": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        3,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -577,13 +589,8 @@ func TestWaitForDbReady(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        3,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -595,8 +602,13 @@ func TestWaitForDbReady(t *testing.T) {
 			},
 		},
 		"gives up after maximum retries for database creation": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        3,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -621,13 +633,8 @@ func TestWaitForDbReady(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        3,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -642,17 +649,17 @@ func TestWaitForDbReady(t *testing.T) {
 			expectAsyncJobMessage: true,
 		},
 		"error checking database creation status": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1234,8 +1241,13 @@ func TestModifyDb(t *testing.T) {
 		plan                   catalog.RDSPlan
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1253,13 +1265,8 @@ func TestModifyDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1327,12 +1334,15 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					customPgroupName: "foobar",
 					rds:              &mockRDSClient{},
 				},
-			},
+			),
 			plan: catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -1358,12 +1368,15 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					rds:       &mockRDSClient{},
 					returnErr: testErr,
 				},
-			},
+			),
 			plan: catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -1380,12 +1393,14 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-				rds: &mockRDSClient{},
-			},
+			),
 			plan: catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -1410,12 +1425,14 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			dbAdapter: &dedicatedDBAdapter{
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-				rds: &mockRDSClient{},
-			},
+			),
 			plan: catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -1456,8 +1473,10 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		expectedInstance *rdsTypes.DBInstance
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1468,37 +1487,46 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 						},
 					},
 				},
-			},
+				&mockParameterGroupClient{},
+			),
 			database: "foo",
 			expectedInstance: &rdsTypes.DBInstance{
 				DBInstanceStatus: aws.String("available"),
 			},
 		},
 		"error describing database": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database")},
 				},
-			},
+				&mockParameterGroupClient{},
+			),
 			database:  "foo",
 			expectErr: true,
 		},
 		"no databases found": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{},
 						},
 					},
 				},
-			},
+				&mockParameterGroupClient{},
+			),
 			database:  "foo",
 			expectErr: true,
 		},
 		"multiple databases found": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1512,7 +1540,8 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 						},
 					},
 				},
-			},
+				&mockParameterGroupClient{},
+			),
 			database:  "foo",
 			expectErr: true,
 		},
@@ -1549,8 +1578,10 @@ func TestBindDBToApp(t *testing.T) {
 		expectedInstance *RDSInstance
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1565,8 +1596,8 @@ func TestBindDBToApp(t *testing.T) {
 						},
 					},
 				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			rdsInstance: &RDSInstance{
 				dbUtils: &MockDbUtils{
 					mockFormattedDbName: "db1",
@@ -1603,8 +1634,10 @@ func TestBindDBToApp(t *testing.T) {
 			},
 		},
 		"database not available": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1615,8 +1648,8 @@ func TestBindDBToApp(t *testing.T) {
 						},
 					},
 				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			rdsInstance: &RDSInstance{
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
@@ -1627,8 +1660,10 @@ func TestBindDBToApp(t *testing.T) {
 			expectErr:        true,
 		},
 		"database has no endpoint": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1639,8 +1674,8 @@ func TestBindDBToApp(t *testing.T) {
 						},
 					},
 				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			rdsInstance: &RDSInstance{
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
@@ -1704,17 +1739,17 @@ func TestWaitForDbDeleted(t *testing.T) {
 		expectAsyncJobMessage bool
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1726,8 +1761,13 @@ func TestWaitForDbDeleted(t *testing.T) {
 			},
 		},
 		"waits with retries for database creation": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        3,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1746,13 +1786,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 					},
 					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        3,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1764,8 +1799,13 @@ func TestWaitForDbDeleted(t *testing.T) {
 			},
 		},
 		"gives up after maximum retries for database creation": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        3,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1790,13 +1830,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        3,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1811,17 +1846,17 @@ func TestWaitForDbDeleted(t *testing.T) {
 			expectAsyncJobMessage: true,
 		},
 		"error checking database creation status": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1876,17 +1911,17 @@ func TestAsyncDeleteDB(t *testing.T) {
 		expectedRecordCount int64
 	}{
 		"success without replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1899,17 +1934,17 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedState: base.InstanceGone,
 		},
 		"success with replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1923,17 +1958,17 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedState: base.InstanceGone,
 		},
 		"error checking database status": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1947,17 +1982,17 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"error checking replica database status": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1972,17 +2007,17 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"error deleting database": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1996,17 +2031,17 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"error deleting replica database": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -2074,17 +2109,17 @@ func TestDeleteDb(t *testing.T) {
 		expectedAsyncJobStates []base.InstanceState
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        1,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				&mockParameterGroupClient{},
+			),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
