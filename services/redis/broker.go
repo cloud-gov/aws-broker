@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,10 +10,6 @@ import (
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
-
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/elasticache"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -70,35 +65,6 @@ func (broker *redisBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Ins
 	default:
 		return false
 	}
-}
-
-// initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, error) {
-	var redisAdapter redisAdapter
-
-	if s.Environment == "test" {
-		redisAdapter = &mockRedisAdapter{}
-		return redisAdapter, nil
-	}
-
-	cfg, err := awsConfig.LoadDefaultConfig(
-		context.TODO(),
-		awsConfig.WithRegion(s.Region),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	elasticacheClient := elasticache.NewFromConfig(cfg)
-	s3 := s3.NewFromConfig(cfg)
-
-	redisAdapter = &dedicatedRedisAdapter{
-		settings:    *s,
-		logger:      logger,
-		elasticache: elasticacheClient,
-		s3:          s3,
-	}
-	return redisAdapter, nil
 }
 
 func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {

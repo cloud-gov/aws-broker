@@ -14,6 +14,7 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -28,6 +29,35 @@ type redisAdapter interface {
 	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
+}
+
+// initializeAdapter is the main function to create database instances
+func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, error) {
+	var redisAdapter redisAdapter
+
+	if s.Environment == "test" {
+		redisAdapter = &mockRedisAdapter{}
+		return redisAdapter, nil
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	elasticacheClient := elasticache.NewFromConfig(cfg)
+	s3 := s3.NewFromConfig(cfg)
+
+	redisAdapter = &dedicatedRedisAdapter{
+		settings:    *s,
+		logger:      logger,
+		elasticache: elasticacheClient,
+		s3:          s3,
+	}
+	return redisAdapter, nil
 }
 
 type mockRedisAdapter struct {
