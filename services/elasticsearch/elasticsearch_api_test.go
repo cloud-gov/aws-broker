@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/opensearch-project/opensearch-go/v2"
 )
 
@@ -29,6 +31,15 @@ func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return m.Response, m.Err
 }
 
+func NewTestEsAPIHandler(client *opensearch.Client) *EsApiHandler {
+	logger := lager.NewLogger("aws-rds-test")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	return &EsApiHandler{
+		opensearchClient: client,
+		logger:           logger,
+	}
+}
+
 func TestNewSnapShotRepo(t *testing.T) {
 	snaprepo := NewSnapshotRepo(bucket, path, region, rolearn)
 
@@ -41,18 +52,6 @@ func TestNewSnapShotRepo(t *testing.T) {
 		}
 	} else {
 		t.Error("Snaprepo is nil")
-	}
-}
-
-func TestSnapshotRepoToString(t *testing.T) {
-	expected := "{\"type\":\"s3\",\"settings\":{\"bucket\":\"" + bucket + "\",\"base_path\":\"" + path + "\",\"server_side_encryption\":true,\"region\":\"" + region + "\",\"role_arn\":\"" + rolearn + "\"}}"
-	snaprepo := NewSnapshotRepo(bucket, path, region, rolearn)
-	result, err := snaprepo.ToString()
-	if err != nil {
-		t.Error("Got non-nil error in ToString")
-	}
-	if result != expected {
-		t.Errorf("Got %s but expected %s", result, expected)
 	}
 }
 
@@ -72,9 +71,7 @@ func TestCreateSnapshotRepoSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 
 	_, err = es.CreateSnapshotRepo(repoName, bucket, path, region, rolearn)
 	if err != nil {
@@ -98,9 +95,7 @@ func TestCreateSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 	_, err = es.CreateSnapshot(repoName, snapshotName)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
@@ -123,9 +118,7 @@ func TestGetSnapshotStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 
 	resp, err := es.GetSnapshotStatus(repoName, snapshotName)
 	if err != nil {
@@ -153,9 +146,7 @@ func TestGetSnapshotStatusNoSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 
 	_, err = es.GetSnapshotStatus(repoName, snapshotName)
 	if err == nil {

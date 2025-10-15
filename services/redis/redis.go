@@ -14,6 +14,7 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -28,6 +29,35 @@ type redisAdapter interface {
 	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
+}
+
+// initializeAdapter is the main function to create database instances
+func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, error) {
+	var redisAdapter redisAdapter
+
+	if s.Environment == "test" {
+		redisAdapter = &mockRedisAdapter{}
+		return redisAdapter, nil
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	elasticacheClient := elasticache.NewFromConfig(cfg)
+	s3 := s3.NewFromConfig(cfg)
+
+	redisAdapter = &dedicatedRedisAdapter{
+		settings:    *s,
+		logger:      logger,
+		elasticache: elasticacheClient,
+		s3:          s3,
+	}
+	return redisAdapter, nil
 }
 
 type mockRedisAdapter struct {
@@ -106,7 +136,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
 			for _, value := range resp.ReplicationGroups {
-				fmt.Println("Redis Instance:" + i.ClusterID + " is " + *(value.Status))
+				d.logger.Debug(fmt.Sprintf("Redis Instance:" + i.ClusterID + " is " + *(value.Status)))
 				switch *(value.Status) {
 				case "available":
 					return base.InstanceReady, nil
@@ -150,7 +180,7 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 				if value.Status != nil && *(value.Status) == "available" {
 					if value.NodeGroups[0].PrimaryEndpoint != nil && value.NodeGroups[0].PrimaryEndpoint.Address != nil && value.NodeGroups[0].PrimaryEndpoint.Port != nil {
 						port := *(value.NodeGroups[0].PrimaryEndpoint.Port)
-						fmt.Printf("host: %s port: %d \n", *(value.NodeGroups[0].PrimaryEndpoint.Address), port)
+						d.logger.Debug(fmt.Sprintf("host: %s port: %d \n", *(value.NodeGroups[0].PrimaryEndpoint.Address), port))
 
 						i.Port = int64(port)
 						i.Host = *(value.NodeGroups[0].PrimaryEndpoint.Address)

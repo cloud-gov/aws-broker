@@ -1,15 +1,14 @@
 package rds
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"code.cloudfoundry.org/lager"
 
-	"github.com/aws/aws-sdk-go-v2/service/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
 
@@ -72,39 +71,11 @@ type rdsBroker struct {
 	dbAdapter  dbAdapter
 }
 
-// initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, db *gorm.DB) (dbAdapter, error) {
-	var dbAdapter dbAdapter
-	// For test environments, use a mock broker.dbAdapter.
-	if s.Environment == "test" {
-		dbAdapter = &mockDBAdapter{}
-		return dbAdapter, nil
-	}
-
-	cfg, err := awsConfig.LoadDefaultConfig(
-		context.TODO(),
-		awsConfig.WithRegion(s.Region),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	rdsClient := rds.NewFromConfig(cfg)
-	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
-
-	dbAdapter = &dedicatedDBAdapter{
-		settings:             *s,
-		rds:                  rdsClient,
-		parameterGroupClient: parameterGroupClient,
-		db:                   db,
-	}
-
-	return dbAdapter, nil
-}
-
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
-	dbAdapter, err := initializeAdapter(settings, brokerDB)
+	logger := lager.NewLogger("aws-rds-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +165,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	}
 
 	// Create the database instance.
-	status, err := broker.dbAdapter.createDB(newInstance, newInstance.ClearPassword)
+	status, err := broker.dbAdapter.createDB(newInstance, plan, newInstance.ClearPassword)
 	if err != nil {
 		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
 	}
@@ -296,7 +267,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 	}
 
 	// Modify the database instance.
-	status, err := broker.dbAdapter.modifyDB(modifiedInstance)
+	status, err := broker.dbAdapter.modifyDB(modifiedInstance, newPlan)
 	if status == base.InstanceNotModified {
 		desc := "There was an error modifying the instance."
 
