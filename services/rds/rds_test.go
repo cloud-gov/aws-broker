@@ -2,11 +2,14 @@ package rds
 
 import (
 	"errors"
+	"os"
 	"slices"
 	"strconv"
 	"testing"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -20,6 +23,14 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 )
+
+var logger lager.Logger
+
+func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
+	logger := lager.NewLogger("aws-rds-test")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger)
+}
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
 	testErr := errors.New("fail")
@@ -205,13 +216,14 @@ func TestAsyncCreateDb(t *testing.T) {
 		plan          catalog.RDSPlan
 	}{
 		"error provisioning custom parameter group": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
-				db: brokerDB,
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -226,13 +238,14 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceNotCreated,
 		},
 		"create DB error": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{
 					createDbErr: createDbErr,
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				db:                   brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -247,13 +260,13 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceNotCreated,
 		},
 		"error waiting for database creation": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB, &mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				db:                   brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -268,8 +281,13 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceNotCreated,
 		},
 		"success without replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -287,13 +305,8 @@ func TestAsyncCreateDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -308,8 +321,13 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -327,13 +345,8 @@ func TestAsyncCreateDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -350,8 +363,13 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"error creating replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -363,13 +381,8 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					createDBInstanceReadReplicaErr: errors.New("fail"),
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -691,8 +704,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		plan          catalog.RDSPlan
 	}{
 		"success": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -710,13 +728,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -729,17 +742,17 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectedState: base.InstanceInProgress,
 		},
 		"error checking database creation status": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
 					PollAwsRetryDelaySeconds: 0,
 					PollAwsMaxRetries:        5,
 				},
-				db: brokerDB,
-			},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -753,8 +766,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectErr:     true,
 		},
 		"error creating database replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+				brokerDB,
+				&mockRDSClient{
 					createDBInstanceReadReplicaErr: errors.New("error creating database instance read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -766,13 +784,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -786,8 +799,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectErr:     true,
 		},
 		"error adding tags": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        5,
+				},
+				brokerDB,
+				&mockRDSClient{
 					addTagsToResourceErr: errors.New("error adding tags to read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -799,13 +817,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        5,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -858,13 +871,14 @@ func TestAsyncModifyDb(t *testing.T) {
 		plan               catalog.RDSPlan
 	}{
 		"error preparing modify input": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
 					returnErr: errors.New("fail"),
 				},
-				db: brokerDB,
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -878,13 +892,14 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"modify primary DB error": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{
 					modifyDbErrs: []error{modifyDbErr},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				db:                   brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -898,13 +913,14 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"error waiting for database to be ready": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				db:                   brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -918,8 +934,13 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"success without read replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -930,13 +951,8 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -960,8 +976,13 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 		},
 		"success with adding read replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -979,13 +1000,8 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1012,8 +1028,13 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 		},
 		"error modifying read replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1025,13 +1046,8 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					modifyDbErrs: []error{nil, modifyDbErr},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1046,8 +1062,13 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"error creating read replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1066,13 +1087,8 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					createDBInstanceReadReplicaErr: errors.New("error creating read replica"),
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1088,8 +1104,13 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"success with deleting read replica": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1101,13 +1122,8 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					describeDbInstancesErrs: []error{nil, dbInstanceNotFoundErr},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1133,8 +1149,13 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 		},
 		"error updating read replica tags": {
-			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1153,13 +1174,8 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					addTagsToResourceErr: errors.New("error updating tags"),
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				settings: config.Settings{
-					PollAwsRetryDelaySeconds: 0,
-					PollAwsMaxRetries:        1,
-				},
-				db: brokerDB,
-			},
+				&mockParameterGroupClient{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{

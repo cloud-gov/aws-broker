@@ -34,11 +34,9 @@ type dbAdapter interface {
 
 // initializeAdapter is the main function to create database instances
 func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (dbAdapter, error) {
-	var dbAdapter dbAdapter
 	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
-		dbAdapter = &mockDBAdapter{}
-		return dbAdapter, nil
+		return &mockDBAdapter{}, nil
 	}
 
 	cfg, err := awsConfig.LoadDefaultConfig(
@@ -52,15 +50,18 @@ func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (db
 	rdsClient := rds.NewFromConfig(cfg)
 	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
 
-	dbAdapter = &dedicatedDBAdapter{
+	dbAdapter := NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger)
+	return dbAdapter, nil
+}
+
+func NewRdsDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient, logger lager.Logger) *dedicatedDBAdapter {
+	return &dedicatedDBAdapter{
 		settings:             *s,
 		rds:                  rdsClient,
 		parameterGroupClient: parameterGroupClient,
 		db:                   db,
 		logger:               logger,
 	}
-
-	return dbAdapter, nil
 }
 
 // MockDBAdapter is a struct meant for testing.
