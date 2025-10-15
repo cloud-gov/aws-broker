@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 
@@ -19,6 +20,7 @@ import (
 
 type EsApiHandler struct {
 	opensearchClient *opensearch.Client
+	logger           lager.Logger
 }
 
 type SnapshotRepo struct {
@@ -62,7 +64,7 @@ func NewSnapshotRepo(bucketname string, path string, region string, rolearn stri
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
-func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, error) {
+func NewEsApiHandler(svcInfo map[string]string, region string, logger lager.Logger) (*EsApiHandler, error) {
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),
@@ -86,6 +88,7 @@ func NewEsApiHandler(svcInfo map[string]string, region string) (*EsApiHandler, e
 
 	return &EsApiHandler{
 		opensearchClient: client,
+		logger:           logger,
 	}, nil
 }
 
@@ -165,12 +168,12 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 	snapshots := Snapshots{}
 	err = json.Unmarshal(bodyBytes, &snapshots)
 	if err != nil {
-		fmt.Printf("GetSnapshotStatus JSON unmarshal error: %v\n", err)
+		es.logger.Error("GetSnapshotStatus JSON unmarshal error", err)
 		return "", err
 	}
 
 	if len(snapshots.Snapshots) == 0 {
-		fmt.Printf("GetSnapshotStatus response: %s.\n", res.String())
+		es.logger.Debug(fmt.Sprintf("GetSnapshotStatus response: %s", res.String()))
 		return "", errors.New("SnapshotStatus returned empty")
 	}
 
