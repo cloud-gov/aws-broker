@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/opensearch-project/opensearch-go/v2"
 )
 
@@ -27,6 +29,15 @@ type MockRoundTripper struct {
 // RoundTrip implements the http.RoundTripper interface
 func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m.Response, m.Err
+}
+
+func NewTestEsAPIHandler(client *opensearch.Client) *EsApiHandler {
+	logger := lager.NewLogger("aws-rds-test")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	return &EsApiHandler{
+		opensearchClient: client,
+		logger:           logger,
+	}
 }
 
 func TestNewSnapShotRepo(t *testing.T) {
@@ -60,9 +71,7 @@ func TestCreateSnapshotRepoSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 
 	_, err = es.CreateSnapshotRepo(repoName, bucket, path, region, rolearn)
 	if err != nil {
@@ -86,9 +95,7 @@ func TestCreateSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 	_, err = es.CreateSnapshot(repoName, snapshotName)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
@@ -111,9 +118,7 @@ func TestGetSnapshotStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 
 	resp, err := es.GetSnapshotStatus(repoName, snapshotName)
 	if err != nil {
@@ -141,9 +146,7 @@ func TestGetSnapshotStatusNoSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := &EsApiHandler{
-		opensearchClient: client,
-	}
+	es := NewTestEsAPIHandler(client)
 
 	_, err = es.GetSnapshotStatus(repoName, snapshotName)
 	if err == nil {
