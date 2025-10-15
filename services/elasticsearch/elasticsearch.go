@@ -439,40 +439,40 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error: %v\n", err)
-		fmt.Println(desc)
+		errorMsg := "asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error"
+		d.logger.Error(errorMsg, err)
 		msg.JobState.State = base.InstanceNotGone
-		msg.JobState.Message = desc
+		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
 		return
 	}
 
 	err = d.writeManifestToS3(i)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error: %v\n", err)
-		fmt.Println(desc)
+		errorMsg := "asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error"
+		d.logger.Error(errorMsg, err)
 		msg.JobState.State = base.InstanceNotGone
-		msg.JobState.Message = desc
+		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
 		return
 	}
 
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t cleanupRolesAndPolicies returned error: %v\n", err)
-		fmt.Println(desc)
+		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupRolesAndPolicies returned error"
+		d.logger.Error(errorMsg, err)
 		msg.JobState.State = base.InstanceNotGone
-		msg.JobState.Message = desc
+		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
 		return
 	}
 
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
-		desc := fmt.Sprintf("asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error: %v\n", err)
-		fmt.Println(desc)
+		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error"
+		d.logger.Error(errorMsg, err)
 		msg.JobState.State = base.InstanceNotGone
-		msg.JobState.Message = desc
+		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
 		return
 	}
@@ -494,13 +494,13 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	if i.Host == "" {
 		creds, err = d.bindElasticsearchToApp(i, password)
 		if err != nil {
-			fmt.Println(err)
+			d.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", err)
 			return err
 		}
 	} else {
 		creds, err = i.getCredentials()
 		if err != nil {
-			fmt.Println(err)
+			d.logger.Error("takeLastSnapshot: getCredentials failed", err)
 			return err
 		}
 	}
@@ -568,17 +568,17 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	user := awsiam.NewIAMUserClient(d.iam, d.logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", err)
 		return err
 	}
 
 	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", err)
 		return err
 	}
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", err)
 		return err
 	}
 
@@ -588,12 +588,12 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	}
 
 	if _, err := d.iam.DetachRolePolicy(context.TODO(), roleDetachPolicyInput); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", err)
 		return err
 	}
 
 	if err := d.ip.DeletePolicy(i.SnapshotPolicyARN); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", err)
 		return err
 	}
 
@@ -602,22 +602,22 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	}
 
 	if _, err := d.iam.DeleteRole(context.TODO(), rolePolicyDeleteInput); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", err)
 		return err
 	}
 
 	if err := d.ip.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", err)
 		return err
 	}
 
 	if err := user.Delete(i.Domain); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: user.Delete failed", err)
 		return err
 	}
 
 	if err := d.ip.DeletePolicy(i.IamPolicyARN); err != nil {
-		fmt.Println(err.Error())
+		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", err)
 		return err
 	}
 	return nil
