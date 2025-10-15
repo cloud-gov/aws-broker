@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -29,6 +30,37 @@ type dbAdapter interface {
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 	describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error)
+}
+
+// initializeAdapter is the main function to create database instances
+func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (dbAdapter, error) {
+	var dbAdapter dbAdapter
+	// For test environments, use a mock broker.dbAdapter.
+	if s.Environment == "test" {
+		dbAdapter = &mockDBAdapter{}
+		return dbAdapter, nil
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(s.Region),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	rdsClient := rds.NewFromConfig(cfg)
+	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
+
+	dbAdapter = &dedicatedDBAdapter{
+		settings:             *s,
+		rds:                  rdsClient,
+		parameterGroupClient: parameterGroupClient,
+		db:                   db,
+		logger:               logger,
+	}
+
+	return dbAdapter, nil
 }
 
 // MockDBAdapter is a struct meant for testing.
