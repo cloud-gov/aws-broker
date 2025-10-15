@@ -553,8 +553,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	for !isDeleted && attempt <= int(d.settings.PollAwsMaxRetries) {
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
-			var exception *rdsTypes.DBInstanceNotFoundFault
-			if !errors.As(err, &exception) {
+			if !isDatabaseInstanceNotFoundError(err) {
 				updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Could not check database status: %s", err))
 				if updateErr != nil {
 					err = fmt.Errorf("waitForDbDeleted: while handling error %w, error updating async job message %w", err, updateErr)
@@ -590,7 +589,12 @@ func (d *dedicatedDBAdapter) deleteDatabaseInstance(i *RDSInstance, operation ba
 	params := prepareDeleteDbInput(database)
 	_, err := d.rds.DeleteDBInstance(context.TODO(), params)
 	if err != nil {
-		return fmt.Errorf("deleteDatabaseInstance: %w", err)
+		if isDatabaseInstanceNotFoundError(err) {
+			d.logger.Debug(fmt.Sprintf("database %s was already deleted, continuing", database))
+			return nil
+		} else {
+			return fmt.Errorf("deleteDatabaseInstance: %w", err)
+		}
 	}
 
 	err = d.waitForDbDeleted(operation, i, database)
@@ -665,4 +669,9 @@ func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
 		DeleteAutomatedBackups: aws.Bool(false),
 		SkipFinalSnapshot:      aws.Bool(true),
 	}
+}
+
+func isDatabaseInstanceNotFoundError(err error) bool {
+	var notFoundException *rdsTypes.DBInstanceNotFoundFault
+	return errors.As(err, &notFoundException)
 }

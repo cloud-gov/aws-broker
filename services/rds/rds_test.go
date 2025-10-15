@@ -24,8 +24,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var logger lager.Logger
-
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
 	logger := lager.NewLogger("aws-rds-test")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
@@ -1901,7 +1899,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 	}
 
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
-		Message: aws.String("operation failed"),
+		Message: aws.String("not found"),
 	}
 
 	testCases := map[string]struct {
@@ -2054,6 +2052,53 @@ func TestAsyncDeleteDB(t *testing.T) {
 			},
 			expectedState:       base.InstanceInProgress,
 			expectedRecordCount: 1,
+		},
+		"database already deleted": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
+					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceGone,
+		},
+		"replica and database already deleted": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsRetryDelaySeconds: 0,
+					PollAwsMaxRetries:        1,
+				},
+				brokerDB,
+				&mockRDSClient{
+					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceGone,
 		},
 	}
 
