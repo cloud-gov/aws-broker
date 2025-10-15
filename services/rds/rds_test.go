@@ -204,11 +204,9 @@ func TestAsyncCreateDb(t *testing.T) {
 		password      string
 		plan          catalog.RDSPlan
 	}{
-		"error creating input params": {
+		"error provisioning custom parameter group": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					createDbErr: createDbErr,
-				},
+				rds: &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
@@ -861,9 +859,7 @@ func TestAsyncModifyDb(t *testing.T) {
 	}{
 		"error preparing modify input": {
 			dbAdapter: &dedicatedDBAdapter{
-				rds: &mockRDSClient{
-					modifyDbErrs: []error{modifyDbErr},
-				},
+				rds: &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{
 					returnErr: errors.New("fail"),
 				},
