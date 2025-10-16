@@ -1,14 +1,17 @@
 package rds
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
-	awsRds "github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cloudwatchTypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+
+	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/helpers/request"
@@ -18,14 +21,12 @@ import (
 )
 
 type mockRdsClient struct {
-	rdsiface.RDSAPI
-
-	tags []*awsRds.Tag
+	tags []rdsTypes.Tag
 }
 
-func (m mockRdsClient) DescribeDBInstances(*awsRds.DescribeDBInstancesInput) (*awsRds.DescribeDBInstancesOutput, error) {
+func (m mockRdsClient) DescribeDBInstances(ctx context.Context, params *awsRds.DescribeDBInstancesInput, optFns ...func(*awsRds.Options)) (*awsRds.DescribeDBInstancesOutput, error) {
 	return &awsRds.DescribeDBInstancesOutput{
-		DBInstances: []*awsRds.DBInstance{
+		DBInstances: []rdsTypes.DBInstance{
 			{
 				DBInstanceArn: aws.String("fake-db-arn"),
 			},
@@ -33,17 +34,17 @@ func (m mockRdsClient) DescribeDBInstances(*awsRds.DescribeDBInstancesInput) (*a
 	}, nil
 }
 
-func (m mockRdsClient) ListTagsForResource(*awsRds.ListTagsForResourceInput) (*awsRds.ListTagsForResourceOutput, error) {
+func (m mockRdsClient) ListTagsForResource(ctx context.Context, params *awsRds.ListTagsForResourceInput, optFns ...func(*awsRds.Options)) (*awsRds.ListTagsForResourceOutput, error) {
 	return &awsRds.ListTagsForResourceOutput{
 		TagList: m.tags,
 	}, nil
 }
 
-func (m mockRdsClient) AddTagsToResource(*awsRds.AddTagsToResourceInput) (*awsRds.AddTagsToResourceOutput, error) {
+func (m mockRdsClient) AddTagsToResource(ctx context.Context, params *awsRds.AddTagsToResourceInput, optFns ...func(*awsRds.Options)) (*awsRds.AddTagsToResourceOutput, error) {
 	return nil, nil
 }
 
-func (m mockRdsClient) DescribeDBParameterGroups(*awsRds.DescribeDBParameterGroupsInput) (*awsRds.DescribeDBParameterGroupsOutput, error) {
+func (m mockRdsClient) DescribeDBParameterGroups(ctx context.Context, params *awsRds.DescribeDBParameterGroupsInput, optFns ...func(*awsRds.Options)) (*awsRds.DescribeDBParameterGroupsOutput, error) {
 	return nil, nil
 }
 
@@ -64,14 +65,12 @@ func (t mockTagManager) GenerateTags(
 }
 
 type mockLogsClient struct {
-	cloudwatchlogsiface.CloudWatchLogsAPI
-
-	logGroups            []*cloudwatchlogs.LogGroup
+	logGroups            []cloudwatchTypes.LogGroup
 	describeLogGroupsErr error
 	tagResourceErr       error
 }
 
-func (l mockLogsClient) DescribeLogGroups(*cloudwatchlogs.DescribeLogGroupsInput) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+func (l mockLogsClient) DescribeLogGroups(ctx context.Context, params *cloudwatchlogs.DescribeLogGroupsInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
 	if l.describeLogGroupsErr != nil {
 		return nil, l.describeLogGroupsErr
 	}
@@ -80,13 +79,13 @@ func (l mockLogsClient) DescribeLogGroups(*cloudwatchlogs.DescribeLogGroupsInput
 	}, nil
 }
 
-func (l mockLogsClient) TagResource(*cloudwatchlogs.TagResourceInput) (*cloudwatchlogs.TagResourceOutput, error) {
+func (l mockLogsClient) TagResource(ctx context.Context, params *cloudwatchlogs.TagResourceInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.TagResourceOutput, error) {
 	return nil, l.tagResourceErr
 }
 
 func TestGetRdsInstanceTags(t *testing.T) {
 	mockClient := mockRdsClient{
-		tags: []*awsRds.Tag{
+		tags: []rdsTypes.Tag{
 			{
 				Key:   aws.String("foo"),
 				Value: aws.String("bar"),
@@ -97,7 +96,7 @@ func TestGetRdsInstanceTags(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expectedTags := []*awsRds.Tag{
+	expectedTags := []rdsTypes.Tag{
 		{
 			Key:   aws.String("foo"),
 			Value: aws.String("bar"),
@@ -110,12 +109,12 @@ func TestGetRdsInstanceTags(t *testing.T) {
 
 func TestDoExistingTagsMatchNewTags(t *testing.T) {
 	testCases := map[string]struct {
-		existingRdsTags  []*awsRds.Tag
-		generatedRdsTags []*awsRds.Tag
+		existingRdsTags  []rdsTypes.Tag
+		generatedRdsTags []rdsTypes.Tag
 		shouldTagsMatch  bool
 	}{
 		"different key order": {
-			existingRdsTags: []*awsRds.Tag{
+			existingRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
@@ -125,7 +124,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 					Value: aws.String("cow"),
 				},
 			},
-			generatedRdsTags: []*awsRds.Tag{
+			generatedRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("moo"),
 					Value: aws.String("cow"),
@@ -138,7 +137,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 			shouldTagsMatch: true,
 		},
 		"different Created at times": {
-			existingRdsTags: []*awsRds.Tag{
+			existingRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
@@ -148,7 +147,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 					Value: aws.String(time.Now().String()),
 				},
 			},
-			generatedRdsTags: []*awsRds.Tag{
+			generatedRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
@@ -161,7 +160,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 			shouldTagsMatch: true,
 		},
 		"different Updated at times": {
-			existingRdsTags: []*awsRds.Tag{
+			existingRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
@@ -171,7 +170,7 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 					Value: aws.String(time.Now().String()),
 				},
 			},
-			generatedRdsTags: []*awsRds.Tag{
+			generatedRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
@@ -184,13 +183,13 @@ func TestDoExistingTagsMatchNewTags(t *testing.T) {
 			shouldTagsMatch: true,
 		},
 		"should not match": {
-			existingRdsTags: []*awsRds.Tag{
+			existingRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("bar"),
 				},
 			},
-			generatedRdsTags: []*awsRds.Tag{
+			generatedRdsTags: []rdsTypes.Tag{
 				{
 					Key:   aws.String("foo"),
 					Value: aws.String("cow"),

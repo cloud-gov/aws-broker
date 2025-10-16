@@ -1,15 +1,14 @@
 package rds
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
-	awsRds "github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"gorm.io/gorm"
 
@@ -20,7 +19,7 @@ func getLogGroupPrefix(prefixParts ...string) string {
 	return fmt.Sprintf("/aws/rds/instance/%s", strings.Join(prefixParts, "/"))
 }
 
-func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLogsAPI, rdsClient rdsiface.RDSAPI, dbNamePrefix string, db *gorm.DB) error {
+func ReconcileRDSCloudwatchLogGroups(logsClient logs.CloudwatchLogClientsInterface, rdsClient RDSClientInterface, dbNamePrefix string, db *gorm.DB) error {
 	resp, err := logs.DescribeLogGroups(logsClient, getLogGroupPrefix(dbNamePrefix))
 	if err != nil {
 		return err
@@ -50,7 +49,7 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 			}
 		}
 
-		resp, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
+		resp, err := rdsClient.DescribeDBInstances(context.TODO(), &awsRds.DescribeDBInstancesInput{
 			DBInstanceIdentifier: aws.String(dbName),
 		})
 		if err != nil {
@@ -61,7 +60,7 @@ func ReconcileRDSCloudwatchLogGroups(logsClient cloudwatchlogsiface.CloudWatchLo
 
 		var enabledGroups []string
 		for _, enabledGroup := range instanceInfo.EnabledCloudwatchLogsExports {
-			enabledGroups = append(enabledGroups, *enabledGroup)
+			enabledGroups = append(enabledGroups, enabledGroup)
 		}
 
 		log.Printf("database name %s has log groups enabled %v", dbName, enabledGroups)

@@ -1,13 +1,14 @@
 package logs
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
+	"context"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 )
 
-func DescribeLogGroups(logsClient cloudwatchlogsiface.CloudWatchLogsAPI, logGroupNamePrefix string) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
-	return logsClient.DescribeLogGroups(&cloudwatchlogs.DescribeLogGroupsInput{
+func DescribeLogGroups(logsClient CloudwatchLogClientsInterface, logGroupNamePrefix string) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+	return logsClient.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
 		LogGroupNamePrefix: aws.String(logGroupNamePrefix),
 	})
 }

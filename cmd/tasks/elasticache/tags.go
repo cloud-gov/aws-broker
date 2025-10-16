@@ -1,13 +1,15 @@
 package elasticache
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/elasticache"
-	"github.com/aws/aws-sdk-go/service/elasticache/elasticacheiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
+
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/services/redis"
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -17,19 +19,16 @@ import (
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 )
 
-func getElasticacheInstanceArn(elasticacheClient elasticacheiface.ElastiCacheAPI, redisInstance redis.RedisInstance) (string, error) {
-	instanceInfo, err := elasticacheClient.DescribeReplicationGroups(&elasticache.DescribeReplicationGroupsInput{
+func getElasticacheInstanceArn(elasticacheClient ElasticacheClientInterface, redisInstance redis.RedisInstance) (string, error) {
+	instanceInfo, err := elasticacheClient.DescribeReplicationGroups(context.TODO(), &elasticache.DescribeReplicationGroupsInput{
 		ReplicationGroupId: aws.String(redisInstance.ClusterID),
 	})
 
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == elasticache.ErrCodeReplicationGroupNotFoundFault {
-				log.Printf("Could not find cluster %s, continuing", redisInstance.ClusterID)
-				return "", nil
-			} else {
-				return "", fmt.Errorf("could not describe cluster: %s", err)
-			}
+		var notFoundException *elasticacheTypes.ReplicationGroupNotFoundFault
+		if errors.As(err, &notFoundException) {
+			log.Printf("Could not find cluster %s, continuing", redisInstance.ClusterID)
+			return "", nil
 		} else {
 			return "", fmt.Errorf("could not describe cluster: %s", err)
 		}
@@ -38,23 +37,23 @@ func getElasticacheInstanceArn(elasticacheClient elasticacheiface.ElastiCacheAPI
 	return *instanceInfo.ReplicationGroups[0].ARN, nil
 }
 
-func getElasticacheResourceTags(elasticacheClient elasticacheiface.ElastiCacheAPI, instanceArn string) ([]*elasticache.Tag, error) {
-	response, err := elasticacheClient.ListTagsForResource(&elasticache.ListTagsForResourceInput{
+func getElasticacheResourceTags(elasticacheClient ElasticacheClientInterface, instanceArn string) ([]elasticacheTypes.Tag, error) {
+	response, err := elasticacheClient.ListTagsForResource(context.TODO(), &elasticache.ListTagsForResourceInput{
 		ResourceName: aws.String(instanceArn),
 	})
 	if err != nil {
-		return []*elasticache.Tag{}, fmt.Errorf("error getting tags for cluster %s: %s", instanceArn, err)
+		return []elasticacheTypes.Tag{}, fmt.Errorf("error getting tags for cluster %s: %s", instanceArn, err)
 	}
 	return response.TagList, nil
 }
 
-func doElasticacheResourceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, generatedTags []*elasticache.Tag) bool {
+func doElasticacheResourceTagsContainGeneratedTags(tags []elasticacheTypes.Tag, generatedTags []elasticacheTypes.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
 		}
 
-		if !slices.ContainsFunc(rdsTags, func(tag *elasticache.Tag) bool {
+		if !slices.ContainsFunc(tags, func(tag elasticacheTypes.Tag) bool {
 			return *tag.Key == *v.Key && *tag.Value == *v.Value
 		}) {
 			return false
@@ -63,7 +62,7 @@ func doElasticacheResourceTagsContainGeneratedTags(rdsTags []*elasticache.Tag, g
 	return true
 }
 
-func processElasticacheResource(elasticacheClient elasticacheiface.ElastiCacheAPI, resourceArn string, generatedTags []*elasticache.Tag) error {
+func processElasticacheResource(elasticacheClient ElasticacheClientInterface, resourceArn string, generatedTags []elasticacheTypes.Tag) error {
 	existingTags, err := getElasticacheResourceTags(elasticacheClient, resourceArn)
 	if err != nil {
 		return fmt.Errorf("could not get tags for resource %s: %s", resourceArn, err)
@@ -75,7 +74,7 @@ func processElasticacheResource(elasticacheClient elasticacheiface.ElastiCacheAP
 	}
 
 	log.Printf("updating tags for resource %s", resourceArn)
-	_, err = elasticacheClient.AddTagsToResource(&elasticache.AddTagsToResourceInput{
+	_, err = elasticacheClient.AddTagsToResource(context.TODO(), &elasticache.AddTagsToResourceInput{
 		ResourceName: aws.String(resourceArn),
 		Tags:         generatedTags,
 	})
@@ -87,7 +86,7 @@ func processElasticacheResource(elasticacheClient elasticacheiface.ElastiCacheAP
 	return nil
 }
 
-func ReconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient elasticacheiface.ElastiCacheAPI, tagManager brokertags.TagManager) error {
+func ReconcileElasticacheResourceTags(catalog *catalog.Catalog, db *gorm.DB, elasticacheClient ElasticacheClientInterface, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&redis.RedisInstance{}).Rows()
 	if err != nil {
 		return err

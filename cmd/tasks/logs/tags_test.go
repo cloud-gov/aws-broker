@@ -1,23 +1,22 @@
 package logs
 
 import (
+	"context"
 	"errors"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cloudwatchTypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 )
 
 type mockLogsClient struct {
-	cloudwatchlogsiface.CloudWatchLogsAPI
-
-	logGroups            []*cloudwatchlogs.LogGroup
+	logGroups            []cloudwatchTypes.LogGroup
 	describeLogGroupsErr error
 	tagResourceErr       error
 }
 
-func (m mockLogsClient) DescribeLogGroups(*cloudwatchlogs.DescribeLogGroupsInput) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+func (m mockLogsClient) DescribeLogGroups(ctx context.Context, params *cloudwatchlogs.DescribeLogGroupsInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
 	if m.describeLogGroupsErr != nil {
 		return nil, m.describeLogGroupsErr
 	}
@@ -26,7 +25,7 @@ func (m mockLogsClient) DescribeLogGroups(*cloudwatchlogs.DescribeLogGroupsInput
 	}, nil
 }
 
-func (m mockLogsClient) TagResource(*cloudwatchlogs.TagResourceInput) (*cloudwatchlogs.TagResourceOutput, error) {
+func (m mockLogsClient) TagResource(ctx context.Context, params *cloudwatchlogs.TagResourceInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.TagResourceOutput, error) {
 	return nil, m.tagResourceErr
 }
 
@@ -42,7 +41,7 @@ func TestTagCloudwatchLogGroup(t *testing.T) {
 				"foo": "bar",
 			},
 			mockLogsClient: &mockLogsClient{
-				logGroups: []*cloudwatchlogs.LogGroup{
+				logGroups: []cloudwatchTypes.LogGroup{
 					{
 						Arn: aws.String("group1-arn"),
 					},
@@ -57,7 +56,7 @@ func TestTagCloudwatchLogGroup(t *testing.T) {
 		},
 		"no error, but log group not found": {
 			mockLogsClient: &mockLogsClient{
-				logGroups: []*cloudwatchlogs.LogGroup{},
+				logGroups: []cloudwatchTypes.LogGroup{},
 			},
 		},
 		"error tagging log group": {
@@ -65,7 +64,7 @@ func TestTagCloudwatchLogGroup(t *testing.T) {
 				"foo": "bar",
 			},
 			mockLogsClient: &mockLogsClient{
-				logGroups: []*cloudwatchlogs.LogGroup{
+				logGroups: []cloudwatchTypes.LogGroup{
 					{
 						Arn: aws.String("group1-arn"),
 					},

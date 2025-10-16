@@ -1,15 +1,15 @@
 package logs
 
 import (
+	"context"
 	"log"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 )
 
-func TagCloudwatchLogGroup(logGroupName string, generatedTags map[string]string, logsClient cloudwatchlogsiface.CloudWatchLogsAPI) error {
+func TagCloudwatchLogGroup(logGroupName string, generatedTags map[string]string, logsClient CloudwatchLogClientsInterface) error {
 	log.Printf("adding tags to log group %s", logGroupName)
 
 	resp, err := DescribeLogGroups(logsClient, logGroupName)
@@ -25,12 +25,12 @@ func TagCloudwatchLogGroup(logGroupName string, generatedTags map[string]string,
 	logGroupArn := *resp.LogGroups[0].Arn
 	logGroupArn, _ = strings.CutSuffix(logGroupArn, ":*")
 
-	cloudwatchTags := make(map[string]*string)
+	cloudwatchTags := make(map[string]string)
 	for key, value := range generatedTags {
-		cloudwatchTags[key] = aws.String(value)
+		cloudwatchTags[key] = value
 	}
 
-	_, err = logsClient.TagResource(&cloudwatchlogs.TagResourceInput{
+	_, err = logsClient.TagResource(context.TODO(), &cloudwatchlogs.TagResourceInput{
 		ResourceArn: aws.String(logGroupArn),
 		Tags:        cloudwatchTags,
 	})

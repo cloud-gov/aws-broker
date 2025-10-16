@@ -1,19 +1,28 @@
 package rds
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 
-	awsRds "github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"gorm.io/gorm"
 )
 
-func FindOrphanedInstances(rdsClient rdsiface.RDSAPI, db *gorm.DB, dbNamePrefix string, dbConfigUrl string) error {
-	err := rdsClient.DescribeDBInstancesPages(&awsRds.DescribeDBInstancesInput{}, func(page *awsRds.DescribeDBInstancesOutput, lastPage bool) bool {
-		for _, dbInstance := range page.DBInstances {
+func FindOrphanedInstances(rdsClient RDSClientInterface, db *gorm.DB, dbNamePrefix string, dbConfigUrl string) error {
+	input := &awsRds.DescribeDBInstancesInput{}
+	paginator := awsRds.NewDescribeDBInstancesPaginator(rdsClient, input)
+
+	for paginator.HasMorePages() {
+		output, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return fmt.Errorf("CleanupCustomParameterGroups: error handling next page: %w", err)
+		}
+
+		for _, dbInstance := range output.DBInstances {
 			instanceName := *dbInstance.DBInstanceIdentifier
 			if !strings.Contains(instanceName, dbNamePrefix) {
 				log.Printf("database %s is not a brokered database for this environment, continuing", instanceName)
@@ -34,11 +43,6 @@ func FindOrphanedInstances(rdsClient rdsiface.RDSAPI, db *gorm.DB, dbNamePrefix 
 			}
 			continue
 		}
-		return !lastPage // Continue iterating until the last page is reached.
-	})
-
-	if err != nil {
-		return err
 	}
 
 	return nil
