@@ -15,18 +15,6 @@ type CatalogExternal struct {
 	Services []domain.Service `json:"services"`
 }
 
-type Credentials struct {
-	URI                string   `json:"uri"`
-	InsecureSkipVerify bool     `json:"insecure_skip_verify"`
-	AccessKeyID        string   `json:"access_key_id"`
-	SecretAccessKey    string   `json:"secret_access_key"`
-	Region             string   `json:"region"`
-	Bucket             string   `json:"bucket"`
-	Endpoint           string   `json:"endpoint"`
-	FIPSEndpoint       string   `json:"fips_endpoint"`
-	AdditionalBuckets  []string `json:"additional_buckets"`
-}
-
 func New(
 	tagManager brokertags.TagManager,
 ) *AWSBroker {

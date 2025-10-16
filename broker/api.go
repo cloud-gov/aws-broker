@@ -1,4 +1,4 @@
-package main
+package broker
 
 import (
 	"github.com/cloud-gov/aws-broker/config"
