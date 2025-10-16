@@ -4,6 +4,12 @@ go 1.23.4
 
 require (
 	github.com/aws/aws-sdk-go v1.55.5
+	github.com/aws/aws-sdk-go-v2 v1.39.2
+	github.com/aws/aws-sdk-go-v2/config v1.31.12
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.58.2
+	github.com/aws/aws-sdk-go-v2/service/elasticache v1.50.5
+	github.com/aws/aws-sdk-go-v2/service/opensearch v1.52.5
+	github.com/aws/aws-sdk-go-v2/service/rds v1.108.2
 	github.com/cloud-gov/aws-broker v0.0.0-20250701161913-b4ac44d8c1bc
 	github.com/cloud-gov/go-broker-tags v0.0.0-20250523161708-bcc86f0b9188
 	github.com/go-test/deep v1.1.0
@@ -14,20 +20,14 @@ require (
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.39.2 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.1 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.31.12 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.16 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.58.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticache v1.50.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/opensearch v1.52.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/rds v1.108.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.29.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.6 // indirect
