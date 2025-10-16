@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 
+	"code.cloudfoundry.org/brokerapi/v13"
 	"github.com/cloud-gov/aws-broker/config"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-martini/martini"
@@ -11,8 +13,10 @@ import (
 	"gorm.io/gorm"
 
 	"log"
+	"log/slog"
 	"os"
 
+	"github.com/cloud-gov/aws-broker/broker"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/db"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
@@ -45,13 +49,39 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Try to connect and create the app.
-	if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {
-		log.Println("Starting app...")
-		m.Run()
-	} else {
-		log.Println("Unable to setup application. Exiting...")
+	serviceBroker := broker.New(
+		tagManager,
+	)
+
+	username := os.Getenv("AUTH_USER")
+	password := os.Getenv("AUTH_PASS")
+
+	credentials := brokerapi.BrokerCredentials{
+		Username: username,
+		Password: password,
 	}
+
+	// Create a Text handler that writes to os.Stdout
+	handler := slog.NewTextHandler(os.Stdout, nil)
+
+	// Create a new logger with the Text handler
+	logger := slog.New(handler)
+
+	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
+	http.Handle("/", brokerAPI)
+
+	// TODO: make port not hard-coded?
+	port := "3000"
+
+	http.ListenAndServe(":"+port, nil)
+
+	// Try to connect and create the app.
+	// if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {
+	// 	log.Println("Starting app...")
+	// 	m.Run()
+	// } else {
+	// 	log.Println("Unable to setup application. Exiting...")
+	// }
 }
 
 // App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
