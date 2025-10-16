@@ -3,12 +3,27 @@ package broker
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/helpers/response"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
+	"github.com/cloud-gov/aws-broker/services/rds"
+	"github.com/cloud-gov/aws-broker/services/redis"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"gorm.io/gorm"
 )
 
 type AWSBroker struct {
+	db         *gorm.DB
+	catalog    *catalog.Catalog
+	settings   *config.Settings
+	jobManager *jobs.AsyncJobManager
+	tagManager brokertags.TagManager
 }
 
 type CatalogExternal struct {
@@ -16,9 +31,19 @@ type CatalogExternal struct {
 }
 
 func New(
+	settings *config.Settings,
+	db *gorm.DB,
+	catalog *catalog.Catalog,
+	jobManager *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
 ) *AWSBroker {
-	return &AWSBroker{}
+	return &AWSBroker{
+		db,
+		catalog,
+		settings,
+		jobManager,
+		tagManager,
+	}
 }
 
 func (b *AWSBroker) Services(context context.Context) ([]domain.Service, error) {
@@ -31,6 +56,7 @@ func (b *AWSBroker) Provision(
 	details domain.ProvisionDetails,
 	asyncAllowed bool,
 ) (domain.ProvisionedServiceSpec, error) {
+	b.createInstance(instanceID, details, asyncAllowed)
 	return domain.ProvisionedServiceSpec{IsAsync: false}, nil
 }
 
@@ -105,4 +131,56 @@ func (b *AWSBroker) LastBindingOperation(
 	details domain.PollDetails,
 ) (domain.LastOperation, error) {
 	return domain.LastOperation{}, errors.New("this broker does not support LastBindingOperation")
+}
+
+func (b *AWSBroker) findBroker(serviceID string) (Broker, error) {
+	switch serviceID {
+	// RDS Service
+	case b.catalog.RdsService.ID:
+		broker, err := rds.InitRDSBroker(b.catalog, b.db, b.settings, b.tagManager)
+		if err != nil {
+			return nil, err
+		}
+		return broker, nil
+	case b.catalog.RedisService.ID:
+		broker, err := redis.InitRedisBroker(b.db, b.settings, b.tagManager)
+		if err != nil {
+			return nil, err
+		}
+		return broker, nil
+	case b.catalog.ElasticsearchService.ID:
+		broker, err := elasticsearch.InitElasticsearchBroker(b.db, b.settings, b.jobManager, b.tagManager)
+		if err != nil {
+			return nil, err
+		}
+		return broker, nil
+	}
+
+	return nil, nil
+}
+
+func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) error {
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return err
+	}
+
+	// TODO: implement
+	// if !asyncAllowed {
+	// 	return response.ErrUnprocessableEntityResponse
+	// }
+
+	// Create instance
+	resp := broker.CreateInstance(id, details)
+
+	if resp.GetResponseType() != response.ErrorResponseType {
+		instance := base.Instance{Uuid: id, Request: createRequest}
+		err := b.db.Create(&instance).Error
+
+		if err != nil {
+			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		}
+	}
+
+	return resp
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/lager"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -66,20 +67,21 @@ func (o Options) Validate(settings *config.Settings) error {
 
 type rdsBroker struct {
 	brokerDB   *gorm.DB
+	catalog    *catalog.Catalog
 	settings   *config.Settings
 	tagManager brokertags.TagManager
 	dbAdapter  dbAdapter
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
+func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
 	logger := lager.NewLogger("aws-rds-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
 	if err != nil {
 		return nil, err
 	}
-	return &rdsBroker{brokerDB, settings, tagManager, dbAdapter}, nil
+	return &rdsBroker{brokerDB, catalog, settings, tagManager, dbAdapter}, nil
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -98,12 +100,12 @@ func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Insta
 	}
 }
 
-func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
+func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetails) response.Response {
 	newInstance := NewRDSInstance()
 
 	options := Options{}
-	if len(createRequest.RawParameters) > 0 {
-		err := json.Unmarshal(createRequest.RawParameters, &options)
+	if len(details.RawParameters) > 0 {
+		err := json.Unmarshal(details.RawParameters, &options)
 		if err != nil {
 			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
 		}
@@ -119,7 +121,7 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
 	}
 
-	plan, planErr := c.RdsService.FetchPlan(createRequest.PlanID)
+	plan, planErr := broker.catalog.RdsService.FetchPlan(details.PlanID)
 	if planErr != nil {
 		return planErr
 	}
@@ -136,12 +138,12 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
-		c.RdsService.Name,
+		broker.catalog.RdsService.Name,
 		plan.Name,
 		brokertags.ResourceGUIDs{
 			InstanceGUID:     id,
-			SpaceGUID:        createRequest.SpaceGUID,
-			OrganizationGUID: createRequest.OrganizationGUID,
+			SpaceGUID:        details.SpaceGUID,
+			OrganizationGUID: details.OrganizationGUID,
 		},
 		false,
 	)
@@ -151,9 +153,9 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 
 	err = newInstance.init(
 		id,
-		createRequest.OrganizationGUID,
-		createRequest.SpaceGUID,
-		createRequest.ServiceID,
+		details.OrganizationGUID,
+		details.SpaceGUID,
+		details.ServiceID,
 		plan,
 		options,
 		broker.settings,

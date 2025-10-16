@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"code.cloudfoundry.org/brokerapi/v13"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 
@@ -25,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	DB, err := db.InternalDBInit(settings.DbConfig)
+	db, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
 		log.Fatal(fmt.Errorf("There was an error with the DB. Error: " + err.Error()))
 	}
@@ -44,7 +45,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	path, _ := os.Getwd()
+	c := catalog.InitCatalog(path)
+
 	serviceBroker := broker.New(
+		&settings,
+		db,
+		c,
+		asyncJobManager,
 		tagManager,
 	)
 

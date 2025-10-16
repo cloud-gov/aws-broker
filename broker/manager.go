@@ -21,7 +21,7 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	switch serviceID {
 	// RDS Service
 	case c.RdsService.ID:
-		broker, err := rds.InitRDSBroker(brokerDb, settings, tagManager)
+		broker, err := rds.InitRDSBroker(c, brokerDb, settings, tagManager)
 		if err != nil {
 			return nil, response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
@@ -43,17 +43,16 @@ func findBroker(serviceID string, c *catalog.Catalog, brokerDb *gorm.DB, setting
 	return nil, response.NewErrorResponse(http.StatusNotFound, catalog.ErrNoServiceFound.Error())
 }
 
-func createInstance(req *http.Request, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
-	createRequest, err := request.ExtractRequest(req)
-	if err != nil {
-		return err
-	}
-	broker, err := findBroker(createRequest.ServiceID, c, brokerDb, settings, jobs, tagManager)
+func createInstance(serviceID string, asyncAllowed bool, c *catalog.Catalog, brokerDb *gorm.DB, id string, settings *config.Settings, jobs *jobs.AsyncJobManager, tagManager brokertags.TagManager) response.Response {
+	// createRequest, err := request.ExtractRequest(req)
+	// if err != nil {
+	// 	return err
+	// }
+	broker, err := findBroker(serviceID, c, brokerDb, settings, jobs, tagManager)
 	if err != nil {
 		return err
 	}
 
-	asyncAllowed := req.FormValue("accepts_incomplete") == "true"
 	if !asyncAllowed {
 		return response.ErrUnprocessableEntityResponse
 	}
