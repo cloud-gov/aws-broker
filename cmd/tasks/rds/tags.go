@@ -21,7 +21,7 @@ import (
 )
 
 func getRDSResourceTags(rdsClient RDSClientInterface, dbInstanceArn string) ([]rdsTypes.Tag, error) {
-	tagsResponse, err := rdsClient.ListTagsForResource(&awsRds.ListTagsForResourceInput{
+	tagsResponse, err := rdsClient.ListTagsForResource(context.TODO(), &awsRds.ListTagsForResourceInput{
 		ResourceName: aws.String(dbInstanceArn),
 	})
 	if err != nil {
