@@ -81,7 +81,7 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password 
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error) {
-	return base.InstanceReady, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
@@ -96,7 +96,7 @@ func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string
 
 func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	// TODO
-	return base.InstanceGone, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
