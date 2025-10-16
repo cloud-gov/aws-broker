@@ -81,7 +81,7 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password 
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error) {
-	return base.InstanceReady, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
@@ -96,7 +96,7 @@ func (d *mockDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[string
 
 func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	// TODO
-	return base.InstanceGone, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
@@ -621,7 +621,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 		err := d.deleteDatabaseReadReplica(i, operation)
 		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete replica database: %s", err))
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete replica database: %s", err))
 			d.logger.Error("asyncDeleteDB: deleteDatabaseReadReplica error", err)
 			return
 		}
@@ -630,7 +630,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database")
 	err := d.deleteDatabaseInstance(i, operation, i.Database)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to delete database: %s", err))
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete database: %s", err))
 		d.logger.Error("asyncDeleteDB: deleteDatabaseInstance error", err)
 		return
 	}
@@ -638,7 +638,7 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
 	err = d.parameterGroupClient.CleanupCustomParameterGroups()
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
 		d.logger.Error("asyncDeleteDB: CleanupCustomParameterGroups error", err)
 		return
 	}
