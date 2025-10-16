@@ -1,15 +1,15 @@
 package rds
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	awsRds "github.com/aws/aws-sdk-go/service/rds"
-	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"gorm.io/gorm"
 )
@@ -24,19 +24,16 @@ func updateParameterGroupInBrokerDatabase(rdsInstance rds.RDSInstance, parameter
 	return err
 }
 
-func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSInstance, db *gorm.DB) error {
-	resp, err := rdsClient.DescribeDBInstances(&awsRds.DescribeDBInstancesInput{
+func reconcileDbParameterGroup(rdsClient RDSClientInterface, rdsInstance rds.RDSInstance, db *gorm.DB) error {
+	resp, err := rdsClient.DescribeDBInstances(context.TODO(), &awsRds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(rdsInstance.Database),
 	})
 
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == awsRds.ErrCodeDBInstanceNotFoundFault {
-				log.Printf("Could not find database %s, continuing", rdsInstance.Database)
-				return nil
-			} else {
-				return fmt.Errorf("could not describe database instance: %s", err)
-			}
+		var notFoundException *rdsTypes.DBInstanceNotFoundFault
+		if errors.As(err, &notFoundException) {
+			log.Printf("Could not find database %s, continuing", rdsInstance.Database)
+			return nil
 		} else {
 			return fmt.Errorf("could not describe database instance: %s", err)
 		}
@@ -67,7 +64,7 @@ func reconcileDbParameterGroup(rdsClient rdsiface.RDSAPI, rdsInstance rds.RDSIns
 	return nil
 }
 
-func ReconcileRDSParameterGroups(rdsClient rdsiface.RDSAPI, db *gorm.DB) error {
+func ReconcileRDSParameterGroups(rdsClient RDSClientInterface, db *gorm.DB) error {
 	rows, err := db.Model(&rds.RDSInstance{}).Rows()
 	if err != nil {
 		return err

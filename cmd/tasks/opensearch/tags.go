@@ -1,13 +1,15 @@
 package opensearch
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
-	"github.com/aws/aws-sdk-go/service/opensearchservice/opensearchserviceiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/cmd/tasks/tags"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
@@ -16,19 +18,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func getOpensearchDomainArn(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, elasticsearchInstance elasticsearch.ElasticsearchInstance) (string, error) {
-	instanceInfo, err := opensearchClient.DescribeDomain(&opensearchservice.DescribeDomainInput{
+func getOpensearchDomainArn(opensearchClient OpensearchClientInterface, elasticsearchInstance elasticsearch.ElasticsearchInstance) (string, error) {
+	instanceInfo, err := opensearchClient.DescribeDomain(context.TODO(), &opensearch.DescribeDomainInput{
 		DomainName: aws.String(elasticsearchInstance.Domain),
 	})
 
 	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == opensearchservice.ErrCodeResourceNotFoundException {
-				log.Printf("Could not find domain %s, continuing", elasticsearchInstance.Domain)
-				return "", nil
-			} else {
-				return "", fmt.Errorf("could not describe domain: %s", err)
-			}
+		var notFoundException *opensearchTypes.ResourceNotFoundException
+		if errors.As(err, &notFoundException) {
+			log.Printf("Could not find domain %s, continuing", elasticsearchInstance.Domain)
+			return "", nil
 		} else {
 			return "", fmt.Errorf("could not describe domain: %s", err)
 		}
@@ -37,23 +36,23 @@ func getOpensearchDomainArn(opensearchClient opensearchserviceiface.OpenSearchSe
 	return *instanceInfo.DomainStatus.ARN, nil
 }
 
-func getOpensearchResourceTags(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, instanceArn string) ([]*opensearchservice.Tag, error) {
-	response, err := opensearchClient.ListTags(&opensearchservice.ListTagsInput{
+func getOpensearchResourceTags(opensearchClient OpensearchClientInterface, instanceArn string) ([]opensearchTypes.Tag, error) {
+	response, err := opensearchClient.ListTags(context.TODO(), &opensearch.ListTagsInput{
 		ARN: aws.String(instanceArn),
 	})
 	if err != nil {
-		return []*opensearchservice.Tag{}, fmt.Errorf("error getting tags for domain %s: %s", instanceArn, err)
+		return []opensearchTypes.Tag{}, fmt.Errorf("error getting tags for domain %s: %s", instanceArn, err)
 	}
 	return response.TagList, nil
 }
 
-func doOpensearchResourceTagsContainGeneratedTags(rdsTags []*opensearchservice.Tag, generatedTags []*opensearchservice.Tag) bool {
+func doOpensearchResourceTagsContainGeneratedTags(rdsTags []opensearchTypes.Tag, generatedTags []opensearchTypes.Tag) bool {
 	for _, v := range generatedTags {
 		if slices.Contains([]string{"Created at", "Updated at"}, *v.Key) {
 			continue
 		}
 
-		if !slices.ContainsFunc(rdsTags, func(tag *opensearchservice.Tag) bool {
+		if !slices.ContainsFunc(rdsTags, func(tag opensearchTypes.Tag) bool {
 			return *tag.Key == *v.Key && *tag.Value == *v.Value
 		}) {
 			return false
@@ -62,7 +61,7 @@ func doOpensearchResourceTagsContainGeneratedTags(rdsTags []*opensearchservice.T
 	return true
 }
 
-func processOpensearchResource(opensearchClient opensearchserviceiface.OpenSearchServiceAPI, resourceArn string, generatedTags []*opensearchservice.Tag) error {
+func processOpensearchResource(opensearchClient OpensearchClientInterface, resourceArn string, generatedTags []opensearchTypes.Tag) error {
 	existingInstanceTags, err := getOpensearchResourceTags(opensearchClient, resourceArn)
 	if err != nil {
 		return fmt.Errorf("could not get tags for resource %s: %s", resourceArn, err)
@@ -74,7 +73,7 @@ func processOpensearchResource(opensearchClient opensearchserviceiface.OpenSearc
 	}
 
 	log.Printf("updating tags for resource %s", resourceArn)
-	_, err = opensearchClient.AddTags(&opensearchservice.AddTagsInput{
+	_, err = opensearchClient.AddTags(context.TODO(), &opensearch.AddTagsInput{
 		ARN:     aws.String(resourceArn),
 		TagList: generatedTags,
 	})
@@ -86,7 +85,7 @@ func processOpensearchResource(opensearchClient opensearchserviceiface.OpenSearc
 	return nil
 }
 
-func ReconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient opensearchserviceiface.OpenSearchServiceAPI, tagManager brokertags.TagManager) error {
+func ReconcileOpensearchResourceTags(catalog *catalog.Catalog, db *gorm.DB, opensearchClient OpensearchClientInterface, tagManager brokertags.TagManager) error {
 	rows, err := db.Model(&elasticsearch.ElasticsearchInstance{}).Rows()
 	if err != nil {
 		return err
