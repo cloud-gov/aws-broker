@@ -167,21 +167,21 @@ func (broker *rdsBroker) CreateInstance(c *catalog.Catalog, id string, createReq
 	// Create the database instance.
 	status, err := broker.dbAdapter.createDB(newInstance, plan, newInstance.ClearPassword)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
 
 	switch status {
 	case base.InstanceNotCreated:
-		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("Error creating the instance: %s", err))
+		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error creating the instance: %s", err))
 	case base.InstanceInProgress:
 		newInstance.State = status
 		err = broker.brokerDB.Create(newInstance).Error
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
 		return response.NewAsyncOperationResponse(base.CreateOp.String())
 	default:
-		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
+		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
 	}
 }
 
@@ -246,7 +246,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "Failed to modify instance. Error: "+err.Error())
+		return response.NewErrorResponse(http.StatusInternalServerError, "Failed to modify instance. Error: "+err.Error())
 	}
 
 	// Check to make sure that we're not switching database engines; this is not
@@ -268,24 +268,21 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	// Modify the database instance.
 	status, err := broker.dbAdapter.modifyDB(modifiedInstance, newPlan)
-	if status == base.InstanceNotModified {
-		desc := "There was an error modifying the instance."
 
+	switch status {
+	case base.InstanceNotModified:
+		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error modifying the instance: %s", err))
+	case base.InstanceInProgress:
+		// Update the existing instance in the broker.
+		existingInstance.State = status
+		err = broker.brokerDB.Save(existingInstance).Error
 		if err != nil {
-			desc = desc + " Error: " + err.Error()
+			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
-
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
+		return response.NewAsyncOperationResponse(base.ModifyOp.String())
+	default:
+		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
 	}
-
-	// Update the existing instance in the broker.
-	existingInstance.State = status
-	err = broker.brokerDB.Save(existingInstance).Error
-	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
-	}
-
-	return response.NewAsyncOperationResponse(base.ModifyOp.String())
 }
 
 func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
@@ -387,16 +384,16 @@ func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInsta
 
 	// Delete the database instance.
 	status, err := broker.dbAdapter.deleteDB(existingInstance)
-	if err != nil && status != base.InstanceNotGone {
+	if err != nil {
 		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 	}
-	if status == base.InstanceNotGone {
-		desc := "There was an error deleting the instance."
-		if err != nil {
-			desc = desc + " Error: " + err.Error()
-		}
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
-	}
 
-	return response.NewAsyncOperationResponse(base.DeleteOp.String())
+	switch status {
+	case base.InstanceNotGone:
+		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error deleting the instance: %s", err))
+	case base.InstanceInProgress:
+		return response.NewAsyncOperationResponse(base.DeleteOp.String())
+	default:
+		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
+	}
 }
