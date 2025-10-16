@@ -1978,7 +1978,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceInProgress,
+			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"error checking replica database status": {
@@ -2003,7 +2003,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceInProgress,
+			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"error deleting database": {
@@ -2027,7 +2027,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceInProgress,
+			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"error deleting replica database": {
@@ -2052,7 +2052,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceInProgress,
+			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 	}
