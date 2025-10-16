@@ -1,18 +1,18 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/elasticache"
-	"github.com/aws/aws-sdk-go/service/opensearchservice"
-	awsRds "github.com/aws/aws-sdk-go/service/rds"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 
 	tasksElasticache "github.com/cloud-gov/aws-broker/cmd/tasks/elasticache"
@@ -66,11 +66,12 @@ func run() error {
 		return fmt.Errorf("there was an error with the DB. Error: %s", err.Error())
 	}
 
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(settings.Region),
-	})
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(settings.Region),
+	)
 	if err != nil {
-		return fmt.Errorf("could not initialize session: %s", err)
+		return fmt.Errorf("error loading AWS config: %w", err)
 	}
 
 	if *actionPtr == "reconcile-tags" {
@@ -88,24 +89,24 @@ func run() error {
 		path, _ := os.Getwd()
 		c := catalog.InitCatalog(path)
 
-		logsClient := cloudwatchlogs.New(sess)
+		logsClient := cloudwatchlogs.NewFromConfig(cfg)
 
 		if slices.Contains(services, "rds") {
-			rdsClient := awsRds.New(sess)
+			rdsClient := rds.NewFromConfig(cfg)
 			err := tasksRds.ReconcileResourceTagsForAllRDSDatabases(c, db, rdsClient, logsClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
 		if slices.Contains(services, "elasticache") {
-			elasticacheClient := elasticache.New(sess)
+			elasticacheClient := elasticache.NewFromConfig(cfg)
 			err := tasksElasticache.ReconcileElasticacheResourceTags(c, db, elasticacheClient, tagManager)
 			if err != nil {
 				return err
 			}
 		}
 		if slices.Contains(services, "elasticsearch") || slices.Contains(services, "opensearch") {
-			opensearchClient := opensearchservice.New(sess)
+			opensearchClient := opensearch.NewFromConfig(cfg)
 			err := tasksOpensearch.ReconcileOpensearchResourceTags(c, db, opensearchClient, tagManager)
 			if err != nil {
 				return err
@@ -114,10 +115,10 @@ func run() error {
 	}
 
 	if *actionPtr == "reconcile-log-groups" {
-		logsClient := cloudwatchlogs.New(sess)
+		logsClient := cloudwatchlogs.NewFromConfig(cfg)
 
 		if slices.Contains(services, "rds") {
-			rdsClient := awsRds.New(sess)
+			rdsClient := rds.NewFromConfig(cfg)
 			err := tasksRds.ReconcileRDSCloudwatchLogGroups(logsClient, rdsClient, settings.DbNamePrefix, db)
 			if err != nil {
 				return err
@@ -127,7 +128,7 @@ func run() error {
 
 	if *actionPtr == "reconcile-parameter-groups" {
 		if slices.Contains(services, "rds") {
-			rdsClient := awsRds.New(sess)
+			rdsClient := rds.NewFromConfig(cfg)
 			err := tasksRds.ReconcileRDSParameterGroups(rdsClient, db)
 			if err != nil {
 				return err
@@ -137,7 +138,7 @@ func run() error {
 
 	if *actionPtr == "find-orphaned-instances" {
 		if slices.Contains(services, "rds") {
-			rdsClient := awsRds.New(sess)
+			rdsClient := rds.NewFromConfig(cfg)
 			err := tasksRds.FindOrphanedInstances(rdsClient, db, settings.DbNamePrefix, settings.DbConfig.URL)
 			if err != nil {
 				return err
