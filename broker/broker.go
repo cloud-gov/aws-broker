@@ -57,11 +57,7 @@ func (b *AWSBroker) Provision(
 	details domain.ProvisionDetails,
 	asyncAllowed bool,
 ) (domain.ProvisionedServiceSpec, error) {
-	asyncRequired, err := b.createInstance(instanceID, details, asyncAllowed)
-	if err != nil {
-		return domain.ProvisionedServiceSpec{}, err
-	}
-	return domain.ProvisionedServiceSpec{IsAsync: asyncRequired}, nil
+	return b.createInstance(instanceID, details, asyncAllowed)
 }
 
 func (b *AWSBroker) Update(
@@ -163,21 +159,24 @@ func (b *AWSBroker) findBroker(serviceID string) (base.BrokerV2, error) {
 	return nil, nil
 }
 
-func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) (bool, error) {
+func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) (domain.ProvisionedServiceSpec, error) {
+	spec := domain.ProvisionedServiceSpec{}
 	broker, err := b.findBroker(details.ServiceID)
 	if err != nil {
-		return false, err
+		return spec, err
 	}
 
 	asyncRequired := broker.AsyncOperationRequired(base.CreateOp)
+	spec.IsAsync = asyncRequired
+
 	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
-		return asyncRequired, apiresponses.ErrAsyncRequired
+		return spec, apiresponses.ErrAsyncRequired
 	}
 
 	// Create instance
 	err = broker.CreateInstance(id, details)
 	if err != nil {
-		return asyncRequired, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "create instance")
+		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "create instance")
 	}
 
 	instance := base.Instance{Uuid: id, Request: request.Request{
@@ -190,8 +189,8 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 
 	err = b.db.Create(&instance).Error
 	if err != nil {
-		return asyncRequired, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "save new instance")
+		return spec, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "save new instance")
 	}
 
-	return asyncRequired, nil
+	return spec, nil
 }

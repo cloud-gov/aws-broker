@@ -2,6 +2,7 @@ package rds
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -215,11 +216,11 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 }
 
 func (broker *rdsBroker) parseModifyOptionsFromRequest(
-	modifyRequest request.Request,
+	details domain.UpdateDetails,
 ) (Options, error) {
 	options := Options{}
-	if len(modifyRequest.RawParameters) > 0 {
-		err := json.Unmarshal(modifyRequest.RawParameters, &options)
+	if len(details.RawParameters) > 0 {
+		err := json.Unmarshal(details.RawParameters, &options)
 		if err != nil {
 			return options, err
 		}
@@ -231,68 +232,72 @@ func (broker *rdsBroker) parseModifyOptionsFromRequest(
 	return options, nil
 }
 
-func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyRequest request.Request, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails) error {
 	existingInstance := NewRDSInstance()
 
 	// Load the existing instance provided.
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "The instance does not exist.")
+		return apiresponses.ErrInstanceDoesNotExist
 	}
 
-	options, err := broker.parseModifyOptionsFromRequest(modifyRequest)
+	options, err := broker.parseModifyOptionsFromRequest(details)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 	}
 
 	// Fetch the current plan.
-	currentPlan, errResponse := c.RdsService.FetchPlan(existingInstance.PlanID)
-	if errResponse != nil {
-		return errResponse
+	currentPlan, err := broker.catalog.RdsService.FetchPlan(existingInstance.PlanID)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "fetch RDS plan")
 	}
 
 	// Fetch the new plan that has been requested.
-	newPlan, errResponse := c.RdsService.FetchPlan(modifyRequest.PlanID)
-	if errResponse != nil {
-		return errResponse
+	newPlan, err := broker.catalog.RdsService.FetchPlan(details.PlanID)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch RDS plan")
 	}
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Update,
-		c.RdsService.Name,
+		broker.catalog.RdsService.Name,
 		newPlan.Name,
 		brokertags.ResourceGUIDs{
-			InstanceGUID:     id,
-			SpaceGUID:        modifyRequest.SpaceGUID,
-			OrganizationGUID: modifyRequest.OrganizationGUID,
+			InstanceGUID: id,
 		},
 		true,
 	)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"generate tags",
+		)
 	}
 
 	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "Failed to modify instance. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("Failed to modify instance. Error: %s", err),
+			http.StatusInternalServerError,
+			"modify RDS instance",
+		)
 	}
 
 	// Check to make sure that we're not switching database engines; this is not
 	// allowed.
 	if newPlan.DbType != existingInstance.DbType {
-		return response.NewErrorResponse(
+		return apiresponses.NewFailureResponse(
+			errors.New("Cannot switch between database engines/types. Please select a plan with the same database engine/type"),
 			http.StatusBadRequest,
-			"Cannot switch between database engines/types. Please select a plan with the same database engine/type.",
+			"modify RDS instance",
 		)
 	}
 
 	// Don't allow updating to a service plan that doesn't support updates.
 	if !newPlan.PlanUpdateable {
-		return response.NewErrorResponse(
-			http.StatusBadRequest,
-			"Cannot switch to "+newPlan.Name+" because the service plan does not allow updates or modification.",
-		)
+		return apiresponses.ErrPlanChangeNotSupported
 	}
 
 	// Modify the database instance.
@@ -300,17 +305,29 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 
 	switch status {
 	case base.InstanceNotModified:
-		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error modifying the instance: %s", err))
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("Error modifying the instance: %s", err),
+			http.StatusInternalServerError,
+			"modify RDS instance",
+		)
 	case base.InstanceInProgress:
 		// Update the existing instance in the broker.
 		existingInstance.State = status
 		err = broker.brokerDB.Save(existingInstance).Error
 		if err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+			return apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"modify RDS instance",
+			)
 		}
-		return response.NewAsyncOperationResponse(base.ModifyOp.String())
+		return nil
 	default:
-		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("Encountered unexpected state %s, error: %s", status, err),
+			http.StatusInternalServerError,
+			"modify RDS instance",
+		)
 	}
 }
 
