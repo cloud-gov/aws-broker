@@ -420,26 +420,26 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 	return response.NewSuccessBindResponse(credentials)
 }
 
-func (broker *rdsBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) DeleteInstance(id string) error {
 	existingInstance := NewRDSInstance()
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+		return apiresponses.ErrInstanceDoesNotExist
 	}
 
 	// Delete the database instance.
 	status, err := broker.dbAdapter.deleteDB(existingInstance)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "delete RDS instance")
 	}
 
 	switch status {
 	case base.InstanceNotGone:
-		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error deleting the instance: %s", err))
+		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete RDS instance")
 	case base.InstanceInProgress:
-		return response.NewAsyncOperationResponse(base.DeleteOp.String())
+		return nil
 	default:
-		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
+		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete RDS instance")
 	}
 }

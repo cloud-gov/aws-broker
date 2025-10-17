@@ -56,4 +56,5 @@ type BrokerV2 interface {
 	AsyncOperationRequired(o Operation) bool
 	CreateInstance(string, domain.ProvisionDetails) error
 	ModifyInstance(string, domain.UpdateDetails) error
+	DeleteInstance(string) error
 }

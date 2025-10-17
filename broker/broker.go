@@ -66,7 +66,7 @@ func (b *AWSBroker) Update(
 	details domain.UpdateDetails,
 	asyncAllowed bool,
 ) (domain.UpdateServiceSpec, error) {
-	return domain.UpdateServiceSpec{IsAsync: false}, nil
+	return b.modifyInstance(instanceID, details, asyncAllowed)
 }
 
 func (b *AWSBroker) Deprovision(
@@ -75,7 +75,7 @@ func (b *AWSBroker) Deprovision(
 	details domain.DeprovisionDetails,
 	asyncAllowed bool,
 ) (domain.DeprovisionServiceSpec, error) {
-	return domain.DeprovisionServiceSpec{IsAsync: false}, nil
+	return b.deleteInstance(instanceID, details, asyncAllowed)
 }
 
 func (b *AWSBroker) Bind(
@@ -190,6 +190,83 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 	err = b.db.Create(&instance).Error
 	if err != nil {
 		return spec, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "save new instance")
+	}
+
+	return spec, nil
+}
+
+func (b *AWSBroker) modifyInstance(id string, details domain.UpdateDetails, asyncAllowed bool) (domain.UpdateServiceSpec, error) {
+	spec := domain.UpdateServiceSpec{}
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return spec, err
+	}
+
+	instance, err := base.FindBaseInstance(b.db, id)
+	if err != nil {
+		return spec, err
+	}
+
+	asyncRequired := broker.AsyncOperationRequired(base.ModifyOp)
+	spec.IsAsync = asyncRequired
+
+	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
+		return spec, apiresponses.ErrAsyncRequired
+	}
+
+	// Attempt to modify the database instance.
+	err = broker.ModifyInstance(id, details)
+	if err == nil {
+		err := b.db.Save(&instance).Error
+		if err != nil {
+			return spec, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"save updated instance",
+			)
+		}
+	}
+
+	return spec, nil
+}
+
+func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails, asyncAllowed bool) (domain.DeprovisionServiceSpec, error) {
+	spec := domain.DeprovisionServiceSpec{}
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return spec, err
+	}
+
+	asyncRequired := broker.AsyncOperationRequired(base.ModifyOp)
+	spec.IsAsync = asyncRequired
+
+	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
+		return spec, apiresponses.ErrAsyncRequired
+	}
+
+	// Create instance
+	err = broker.DeleteInstance(id)
+	if err != nil {
+		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "delete instance")
+	}
+
+	instance, err := base.FindBaseInstance(b.db, id)
+	if err != nil {
+		return spec, err
+	}
+
+	err = broker.DeleteInstance(id)
+
+	// only delete from DB if it was a sync delete and succeeded
+	if err == nil && !asyncRequired {
+		err := b.db.Unscoped().Delete(&instance).Error
+		if err != nil {
+			return spec, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"delete instance",
+			)
+		}
 	}
 
 	return spec, nil
