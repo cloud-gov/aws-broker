@@ -1,6 +1,7 @@
 package base
 
 import (
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/helpers/response"
@@ -49,4 +50,10 @@ type Broker interface {
 	DeleteInstance(*catalog.Catalog, string, Instance) response.Response
 	// Supports Async operation
 	AsyncOperationRequired(*catalog.Catalog, Instance, Operation) bool
+}
+
+type BrokerV2 interface {
+	AsyncOperationRequired(o Operation) bool
+	CreateInstance(string, domain.ProvisionDetails) error
+	ModifyInstance(string, domain.UpdateServiceSpec) error
 }

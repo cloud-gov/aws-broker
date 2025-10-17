@@ -6,10 +6,11 @@ import (
 	"net/http"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/helpers/response"
+	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
@@ -56,8 +57,11 @@ func (b *AWSBroker) Provision(
 	details domain.ProvisionDetails,
 	asyncAllowed bool,
 ) (domain.ProvisionedServiceSpec, error) {
-	b.createInstance(instanceID, details, asyncAllowed)
-	return domain.ProvisionedServiceSpec{IsAsync: false}, nil
+	asyncRequired, err := b.createInstance(instanceID, details, asyncAllowed)
+	if err != nil {
+		return domain.ProvisionedServiceSpec{}, err
+	}
+	return domain.ProvisionedServiceSpec{IsAsync: asyncRequired}, nil
 }
 
 func (b *AWSBroker) Update(
@@ -133,7 +137,7 @@ func (b *AWSBroker) LastBindingOperation(
 	return domain.LastOperation{}, errors.New("this broker does not support LastBindingOperation")
 }
 
-func (b *AWSBroker) findBroker(serviceID string) (Broker, error) {
+func (b *AWSBroker) findBroker(serviceID string) (base.BrokerV2, error) {
 	switch serviceID {
 	// RDS Service
 	case b.catalog.RdsService.ID:
@@ -159,28 +163,35 @@ func (b *AWSBroker) findBroker(serviceID string) (Broker, error) {
 	return nil, nil
 }
 
-func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) error {
+func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) (bool, error) {
 	broker, err := b.findBroker(details.ServiceID)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	// TODO: implement
-	// if !asyncAllowed {
-	// 	return response.ErrUnprocessableEntityResponse
-	// }
+	asyncRequired := broker.AsyncOperationRequired(base.CreateOp)
+	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
+		return asyncRequired, apiresponses.ErrAsyncRequired
+	}
 
 	// Create instance
-	resp := broker.CreateInstance(id, details)
-
-	if resp.GetResponseType() != response.ErrorResponseType {
-		instance := base.Instance{Uuid: id, Request: createRequest}
-		err := b.db.Create(&instance).Error
-
-		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, err.Error())
-		}
+	err = broker.CreateInstance(id, details)
+	if err != nil {
+		return asyncRequired, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "create instance")
 	}
 
-	return resp
+	instance := base.Instance{Uuid: id, Request: request.Request{
+		ServiceID:        details.ServiceID,
+		PlanID:           details.PlanID,
+		OrganizationGUID: details.OrganizationGUID,
+		SpaceGUID:        details.SpaceGUID,
+		RawParameters:    details.RawParameters,
+	}}
+
+	err = b.db.Create(&instance).Error
+	if err != nil {
+		return asyncRequired, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "save new instance")
+	}
+
+	return asyncRequired, nil
 }

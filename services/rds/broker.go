@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"code.cloudfoundry.org/lager"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -74,7 +75,7 @@ type rdsBroker struct {
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
+func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.BrokerV2, error) {
 	logger := lager.NewLogger("aws-rds-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
@@ -85,7 +86,7 @@ func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
-func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
+func (broker *rdsBroker) AsyncOperationRequired(o base.Operation) bool {
 	switch o {
 	case base.DeleteOp:
 		return true
@@ -100,38 +101,40 @@ func (broker *rdsBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Insta
 	}
 }
 
-func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetails) response.Response {
+func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
 	newInstance := NewRDSInstance()
 
 	options := Options{}
 	if len(details.RawParameters) > 0 {
 		err := json.Unmarshal(details.RawParameters, &options)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return apiresponses.ErrRawParamsInvalid
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 		}
 	}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(newInstance).Count(&count)
 	if count != 0 {
-		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
+		return apiresponses.ErrInstanceAlreadyExists
 	}
 
-	plan, planErr := broker.catalog.RdsService.FetchPlan(details.PlanID)
-	if planErr != nil {
-		return planErr
+	plan, err := broker.catalog.RdsService.FetchPlan(details.PlanID)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching RDS plan")
 	}
+
 	// make sure it's a valid major version.
 	if options.Version != "" {
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.Version) {
-			return response.NewErrorResponse(
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.Version, strings.Join(plan.ApprovedMajorVersions, ", ")),
 				http.StatusBadRequest,
-				options.Version+" is not a supported major version; major version must be one of: "+strings.Join(plan.ApprovedMajorVersions, ", ")+".",
+				"fetching RDS plan",
 			)
 		}
 	}
@@ -148,7 +151,11 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 		false,
 	)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"generating tags",
+		)
 	}
 
 	err = newInstance.init(
@@ -163,27 +170,47 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 	)
 
 	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("There was an error initializing the instance. Error: %s"),
+			http.StatusInternalServerError,
+			"initializing instance",
+		)
 	}
 
 	// Create the database instance.
 	status, err := broker.dbAdapter.createDB(newInstance, plan, newInstance.ClearPassword)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"creating RDS instance",
+		)
 	}
 
 	switch status {
 	case base.InstanceNotCreated:
-		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error creating the instance: %s", err))
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("Error creating the instance: %s", err),
+			http.StatusInternalServerError,
+			"creating RDS instance",
+		)
 	case base.InstanceInProgress:
 		newInstance.State = status
 		err = broker.brokerDB.Create(newInstance).Error
 		if err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+			return apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"creating RDS instance",
+			)
 		}
-		return response.NewAsyncOperationResponse(base.CreateOp.String())
+		return nil
 	default:
-		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Encountered unexpected state %s, error: %s", status, err))
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("Encountered unexpected state %s, error: %s", status, err),
+			http.StatusInternalServerError,
+			"creating RDS instance",
+		)
 	}
 }
 
