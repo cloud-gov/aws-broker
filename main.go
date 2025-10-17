@@ -73,10 +73,7 @@ func main() {
 	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
 	http.Handle("/", brokerAPI)
 
-	// TODO: make port not hard-coded?
-	port := "3000"
-
-	http.ListenAndServe(":"+port, nil)
+	http.ListenAndServe(fmt.Sprintf(":%s", settings.Port), nil)
 
 	// Try to connect and create the app.
 	// if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {

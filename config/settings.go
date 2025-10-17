@@ -31,6 +31,7 @@ type Settings struct {
 	MinBackupRetention        int64
 	PollAwsMaxRetries         int64
 	PollAwsRetryDelaySeconds  int64
+	Port                      string
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -188,6 +189,14 @@ func (s *Settings) LoadFromEnv() error {
 
 	if s.PollAwsRetryDelaySeconds == 0 {
 		s.PollAwsRetryDelaySeconds = 60
+	}
+
+	if val, ok := os.LookupEnv("PORT"); ok {
+		s.Port = val
+	}
+
+	if s.Port == "" {
+		s.Port = "3000"
 	}
 
 	return nil
