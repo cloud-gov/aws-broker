@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"gorm.io/gorm"
@@ -62,6 +63,19 @@ func (i InstanceState) ToLastOperationStatus() string {
 		return "failed"
 	default:
 		return "in progress"
+	}
+}
+
+func (i InstanceState) ToLastOperationState() domain.LastOperationState {
+	switch i {
+	case InstanceInProgress:
+		return domain.InProgress
+	case InstanceReady, InstanceGone:
+		return domain.Succeeded
+	case InstanceNotCreated, InstanceNotModified, InstanceNotGone:
+		return domain.Failed
+	default:
+		return domain.InProgress
 	}
 }
 

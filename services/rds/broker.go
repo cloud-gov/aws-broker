@@ -331,19 +331,23 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	}
 }
 
-func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
+func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {
+	lastOperation := domain.LastOperation{}
 	existingInstance := NewRDSInstance()
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
-	if count == 0 && operation != base.DeleteOp.String() {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+	if count == 0 && details.OperationData != base.DeleteOp.String() {
+		return lastOperation, apiresponses.ErrInstanceDoesNotExist
 	}
 
 	// When asynchronous deletion has finished, the instance record no longer exists, so
 	// return a last operation status indicating that the deletion was successful.
-	if count == 0 && operation == base.DeleteOp.String() {
-		return response.NewSuccessLastOperation(base.InstanceGone.ToLastOperationStatus(), "Successfully deleted instance")
+	if count == 0 && details.OperationData == base.DeleteOp.String() {
+		return domain.LastOperation{
+			State:       domain.Succeeded,
+			Description: "Successfully deleted instance",
+		}, nil
 	}
 
 	var state base.InstanceState
@@ -351,7 +355,7 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	var instanceOperation base.Operation
 	var statusMessage string
 
-	switch operation {
+	switch details.OperationData {
 	case base.CreateOp.String():
 		// creation always uses an async job
 		needAsyncJobState = true
@@ -371,20 +375,31 @@ func (broker *rdsBroker) LastOperation(c *catalog.Catalog, id string, baseInstan
 	if needAsyncJobState {
 		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"get last async job message",
+			)
 		}
 		state = asyncJobMsg.JobState.State
 		statusMessage = asyncJobMsg.JobState.Message
 	} else {
 		dbState, err := broker.dbAdapter.checkDBStatus(existingInstance.Database)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"check DB status",
+			)
 		}
 		state = dbState
 		statusMessage = fmt.Sprintf("The database status is %s", state)
 	}
 
-	return response.NewSuccessLastOperation(state.ToLastOperationStatus(), statusMessage)
+	return domain.LastOperation{
+		State:       state.ToLastOperationState(),
+		Description: statusMessage,
+	}, nil
 }
 
 func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {

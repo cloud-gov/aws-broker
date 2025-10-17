@@ -104,7 +104,7 @@ func (b *AWSBroker) LastOperation(
 	instanceID string,
 	details domain.PollDetails,
 ) (domain.LastOperation, error) {
-	return domain.LastOperation{}, nil
+	return b.lastOperation(instanceID, details)
 }
 
 func (b *AWSBroker) GetBinding(
@@ -169,7 +169,7 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 	asyncRequired := broker.AsyncOperationRequired(base.CreateOp)
 	spec.IsAsync = asyncRequired
 
-	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
+	if asyncRequired && !asyncAllowed {
 		return spec, apiresponses.ErrAsyncRequired
 	}
 
@@ -210,7 +210,7 @@ func (b *AWSBroker) modifyInstance(id string, details domain.UpdateDetails, asyn
 	asyncRequired := broker.AsyncOperationRequired(base.ModifyOp)
 	spec.IsAsync = asyncRequired
 
-	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
+	if asyncRequired && !asyncAllowed {
 		return spec, apiresponses.ErrAsyncRequired
 	}
 
@@ -237,7 +237,7 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 		return spec, err
 	}
 
-	asyncRequired := broker.AsyncOperationRequired(base.ModifyOp)
+	asyncRequired := broker.AsyncOperationRequired(base.DeleteOp)
 	spec.IsAsync = asyncRequired
 
 	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
@@ -270,4 +270,13 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 	}
 
 	return spec, nil
+}
+
+func (b *AWSBroker) lastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return domain.LastOperation{}, err
+	}
+
+	return broker.LastOperation(id, details)
 }

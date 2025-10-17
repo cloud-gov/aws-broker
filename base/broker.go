@@ -57,4 +57,5 @@ type BrokerV2 interface {
 	CreateInstance(string, domain.ProvisionDetails) error
 	ModifyInstance(string, domain.UpdateDetails) error
 	DeleteInstance(string) error
+	LastOperation(string, domain.PollDetails) (domain.LastOperation, error)
 }
