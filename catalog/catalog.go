@@ -1,63 +1,41 @@
 package catalog
 
 import (
-	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 
 	"errors"
 	"net/http"
 	"reflect"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/cloud-gov/aws-broker/helpers/response"
 	"gopkg.in/go-playground/validator.v8"
 	"gopkg.in/yaml.v2"
 )
 
-// ServiceMetadata contains the service metadata fields listed in the Cloud Foundry docs:
-// http://docs.cloudfoundry.org/services/catalog-metadata.html#services-metadata-fields
-type ServiceMetadata struct {
-	DisplayName         string `yaml:"displayName" json:"displayName"`
-	ImageURL            string `yaml:"imageUrl" json:"imageUrl"`
-	LongDescription     string `yaml:"longDescription" json:"longDescription"`
-	ProviderDisplayName string `yaml:"providerDisplayName" json:"providerDisplayName"`
-	DocumentationURL    string `yaml:"documentationUrl" json:"documentationUrl"`
-	SupportURL          string `yaml:"supportUrl" json:"supportUrl"`
-	Shareable           bool   `yaml:"shareable" json:"shareable"`
-}
-
-// PlanCost contains an array-of-objects that describes the costs of a service,
-// in what currency, and the unit of measure.
-type PlanCost struct {
-	Amount map[string]float64 `yaml:"amount" json:"amount" validate:"required"`
-	Unit   string             `yaml:"unit" json:"unit" validate:"required"`
-}
-
-// PlanMetadata contains the plan metadata fields listed in the Cloud Foundry docs:
-// http://docs.cloudfoundry.org/services/catalog-metadata.html#plan-metadata-fields
-type PlanMetadata struct {
-	Bullets     []string   `yaml:"bullets" json:"bullets"`
-	Costs       []PlanCost `yaml:"costs" json:"costs"`
-	DisplayName string     `yaml:"displayName" json:"displayName"`
-}
-
-// Plan is a generic struct for a Cloud Foundry service plan
-// http://docs.cloudfoundry.org/services/api.html
-type Plan struct {
-	ID             string       `yaml:"id" json:"id" validate:"required"`
-	Name           string       `yaml:"name" json:"name" validate:"required"`
-	Description    string       `yaml:"description" json:"description" validate:"required"`
-	Metadata       PlanMetadata `yaml:"metadata" json:"metadata" validate:"required"`
-	Free           bool         `yaml:"free" json:"free"`
-	PlanUpdateable bool         `yaml:"plan_updateable" json:"plan_updateable"`
-}
-
 var (
 	// ErrNoServiceFound represents the error to return when the service could not be found by its ID.
-	ErrNoServiceFound = errors.New("No service found for given service id.")
+	ErrNoServiceFound = errors.New("no service found for given service id")
 	// ErrNoPlanFound represents the error to return when the plan could not be found by its ID.
-	ErrNoPlanFound = errors.New("No plan found for given plan id.")
+	ErrNoPlanFound = errors.New("no plan found for given plan id")
 )
+
+type Service struct {
+	ID                   string                         `json:"id"`
+	Name                 string                         `json:"name"`
+	Description          string                         `json:"description"`
+	Bindable             bool                           `json:"bindable"`
+	InstancesRetrievable bool                           `json:"instances_retrievable,omitempty"`
+	BindingsRetrievable  bool                           `json:"bindings_retrievable,omitempty"`
+	Tags                 []string                       `json:"tags,omitempty"`
+	PlanUpdatable        bool                           `json:"plan_updateable"`
+	Requires             []domain.RequiredPermission    `json:"requires,omitempty"`
+	Metadata             *domain.ServiceMetadata        `json:"metadata,omitempty"`
+	DashboardClient      *domain.ServiceDashboardClient `json:"dashboard_client,omitempty"`
+	AllowContextUpdates  bool                           `json:"allow_context_updates,omitempty"`
+}
 
 // RDSService describes the RDS Service. It contains the basic Service details as well as a list of RDS Plans
 type RDSService struct {
@@ -79,7 +57,7 @@ func (s RDSService) FetchPlan(planID string) (RDSPlan, error) {
 // these fields are read from the catalog.yaml file, but are not rendered
 // in the catalog API endpoint.
 type RDSPlan struct {
-	Plan                  `yaml:",inline" validate:"required"`
+	domain.ServicePlan    `yaml:",inline" validate:"required"`
 	Adapter               string            `yaml:"adapter" json:"-" validate:"required"`
 	InstanceClass         string            `yaml:"instanceClass" json:"-"`
 	DbType                string            `yaml:"dbType" json:"-" validate:"required"`
@@ -134,7 +112,7 @@ func (s RedisService) FetchPlan(planID string) (RedisPlan, response.Response) {
 
 // RedisPlan inherits from a plan and adds fields needed for AWS Redis.
 type RedisPlan struct {
-	Plan                       `yaml:",inline" validate:"required"`
+	domain.ServicePlan         `yaml:",inline" validate:"required"`
 	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required"`
 	EngineVersion              string            `yaml:"engineVersion" json:"-"`
 	SubnetGroup                string            `yaml:"subnetGroup" json:"-" validate:"required"`
@@ -185,7 +163,7 @@ func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, respo
 
 // ElasticsearchPlan inherits from a plan and adds fields needed for AWS Redis.
 type ElasticsearchPlan struct {
-	Plan                       `yaml:",inline" validate:"required"`
+	domain.ServicePlan         `yaml:",inline" validate:"required"`
 	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required" `
 	ElasticsearchVersion       string            `yaml:"elasticsearchVersion" json:"-" validate:"required"`
 	MasterCount                string            `yaml:"masterCount" json:"-"`
@@ -233,24 +211,12 @@ type Catalog struct {
 	ElasticsearchService ElasticsearchService `yaml:"elasticsearch" json:"-"`
 
 	// All helper structs to be unexported
-	secrets   Secrets   `yaml:"-" json:"-"`
 	resources Resources `yaml:"-" json:"-"`
 }
 
 // Resources contains all the secrets to be used for the catalog.
 type Resources struct {
 	RdsSettings *RDSSettings
-}
-
-// Service struct contains data for the Cloud Foundry service
-// http://docs.cloudfoundry.org/services/api.html
-type Service struct {
-	ID          string          `yaml:"id" json:"id" validate:"required"`
-	Name        string          `yaml:"name" json:"name" validate:"required"`
-	Description string          `yaml:"description" json:"description" validate:"required"`
-	Bindable    bool            `yaml:"bindable" json:"bindable" validate:"required"`
-	Tags        []string        `yaml:"tags" json:"tags" validate:"required"`
-	Metadata    ServiceMetadata `yaml:"metadata" json:"metadata" validate:"required"`
 }
 
 // GetServices returns the list of all the Services. In order to do this, it uses reflection to look for all the
@@ -279,7 +245,7 @@ func (c *Catalog) GetResources() Resources {
 func InitCatalog(path string) *Catalog {
 	var catalog Catalog
 	catalogFile := filepath.Join(path, "catalog.yml")
-	data, err := ioutil.ReadFile(catalogFile)
+	data, err := os.ReadFile(catalogFile)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -309,13 +275,13 @@ func (c *Catalog) loadServicesResources(path string) error {
 	// Load secrets
 	secrets := InitSecrets(path)
 	if secrets == nil {
-		return errors.New("Unable to load secrets.")
+		return errors.New("unable to load secrets")
 	}
 
 	// Loading resources.
 	rdsSettings, err := InitRDSSettings(secrets)
 	if err != nil {
-		return errors.New("Unable to load rds settings.")
+		return errors.New("unable to load rds settings")
 	}
 	c.resources.RdsSettings = rdsSettings
 	return nil

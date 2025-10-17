@@ -27,10 +27,6 @@ type AWSBroker struct {
 	tagManager brokertags.TagManager
 }
 
-type CatalogExternal struct {
-	Services []domain.Service `json:"services"`
-}
-
 func New(
 	settings *config.Settings,
 	db *gorm.DB,
@@ -48,7 +44,7 @@ func New(
 }
 
 func (b *AWSBroker) Services(context context.Context) ([]domain.Service, error) {
-	return []domain.Service{}, nil
+	return b.catalog.GetServices(), nil
 }
 
 func (b *AWSBroker) Provision(
@@ -95,7 +91,7 @@ func (b *AWSBroker) Unbind(
 	details domain.UnbindDetails,
 	asyncAllowed bool,
 ) (domain.UnbindSpec, error) {
-	return domain.UnbindSpec{}, errors.New("this broker does not support Unbind")
+	return domain.UnbindSpec{}, nil
 }
 
 func (b *AWSBroker) LastOperation(

@@ -170,7 +170,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 
 	if err != nil {
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("there was an error initializing the instance. Error: %s"),
+			fmt.Errorf("there was an error initializing the instance. Error: %s", err),
 			http.StatusInternalServerError,
 			"initializing instance",
 		)
@@ -294,7 +294,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	}
 
 	// Don't allow updating to a service plan that doesn't support updates.
-	if !newPlan.PlanUpdateable {
+	if !*newPlan.PlanUpdatable {
 		return apiresponses.ErrPlanChangeNotSupported
 	}
 
