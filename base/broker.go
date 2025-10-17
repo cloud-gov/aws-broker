@@ -58,4 +58,5 @@ type BrokerV2 interface {
 	ModifyInstance(string, domain.UpdateDetails) error
 	DeleteInstance(string) error
 	LastOperation(string, domain.PollDetails) (domain.LastOperation, error)
+	BindInstance(string, domain.BindDetails) (domain.Binding, error)
 }

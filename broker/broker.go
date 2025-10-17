@@ -85,8 +85,7 @@ func (b *AWSBroker) Bind(
 	details domain.BindDetails,
 	asyncAllowed bool,
 ) (domain.Binding, error) {
-
-	return domain.Binding{}, nil
+	return b.bindInstance(instanceID, details, asyncAllowed)
 }
 
 func (b *AWSBroker) Unbind(
@@ -96,7 +95,7 @@ func (b *AWSBroker) Unbind(
 	details domain.UnbindDetails,
 	asyncAllowed bool,
 ) (domain.UnbindSpec, error) {
-	return domain.UnbindSpec{}, nil
+	return domain.UnbindSpec{}, errors.New("this broker does not support Unbind")
 }
 
 func (b *AWSBroker) LastOperation(
@@ -240,7 +239,7 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 	asyncRequired := broker.AsyncOperationRequired(base.DeleteOp)
 	spec.IsAsync = asyncRequired
 
-	if broker.AsyncOperationRequired(base.CreateOp) && !asyncAllowed {
+	if asyncRequired && !asyncAllowed {
 		return spec, apiresponses.ErrAsyncRequired
 	}
 
@@ -270,6 +269,20 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 	}
 
 	return spec, nil
+}
+
+func (b *AWSBroker) bindInstance(id string, details domain.BindDetails, asyncAllowed bool) (domain.Binding, error) {
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return domain.Binding{}, err
+	}
+
+	asyncRequired := broker.AsyncOperationRequired(base.BindOp)
+	if asyncRequired && !asyncAllowed {
+		return domain.Binding{}, apiresponses.ErrAsyncRequired
+	}
+
+	return broker.BindInstance(id, details)
 }
 
 func (b *AWSBroker) lastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {

@@ -18,8 +18,6 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/helpers/request"
-	"github.com/cloud-gov/aws-broker/helpers/response"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
@@ -172,7 +170,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 
 	if err != nil {
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("There was an error initializing the instance. Error: %s"),
+			fmt.Errorf("there was an error initializing the instance. Error: %s"),
 			http.StatusInternalServerError,
 			"initializing instance",
 		)
@@ -191,7 +189,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 	switch status {
 	case base.InstanceNotCreated:
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("Error creating the instance: %s", err),
+			fmt.Errorf("error creating the instance: %s", err),
 			http.StatusInternalServerError,
 			"creating RDS instance",
 		)
@@ -208,7 +206,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 		return nil
 	default:
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("Encountered unexpected state %s, error: %s", status, err),
+			fmt.Errorf("encountered unexpected state %s, error: %s", status, err),
 			http.StatusInternalServerError,
 			"creating RDS instance",
 		)
@@ -279,7 +277,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("Failed to modify instance. Error: %s", err),
+			fmt.Errorf("failed to modify instance. Error: %s", err),
 			http.StatusInternalServerError,
 			"modify RDS instance",
 		)
@@ -289,7 +287,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	// allowed.
 	if newPlan.DbType != existingInstance.DbType {
 		return apiresponses.NewFailureResponse(
-			errors.New("Cannot switch between database engines/types. Please select a plan with the same database engine/type"),
+			errors.New("cannot switch between database engines/types. Please select a plan with the same database engine/type"),
 			http.StatusBadRequest,
 			"modify RDS instance",
 		)
@@ -306,7 +304,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	switch status {
 	case base.InstanceNotModified:
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("Error modifying the instance: %s", err),
+			fmt.Errorf("error modifying the instance: %s", err),
 			http.StatusInternalServerError,
 			"modify RDS instance",
 		)
@@ -324,7 +322,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		return nil
 	default:
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("Encountered unexpected state %s, error: %s", status, err),
+			fmt.Errorf("encountered unexpected state %s, error: %s", status, err),
 			http.StatusInternalServerError,
 			"modify RDS instance",
 		)
@@ -357,16 +355,13 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 
 	switch details.OperationData {
 	case base.CreateOp.String():
-		// creation always uses an async job
-		needAsyncJobState = true
+		needAsyncJobState = broker.AsyncOperationRequired(base.CreateOp)
 		instanceOperation = base.CreateOp
 	case base.ModifyOp.String():
-		// modify always uses an async job
-		needAsyncJobState = true
+		needAsyncJobState = broker.AsyncOperationRequired(base.ModifyOp)
 		instanceOperation = base.ModifyOp
 	case base.DeleteOp.String():
-		// deletion always uses an async job
-		needAsyncJobState = true
+		needAsyncJobState = broker.AsyncOperationRequired(base.DeleteOp)
 		instanceOperation = base.DeleteOp
 	default:
 		needAsyncJobState = false
@@ -402,13 +397,15 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 	}, nil
 }
 
-func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
+func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
+	binding := domain.Binding{}
+
 	existingInstance := NewRDSInstance()
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
 	password, err := existingInstance.dbUtils.getPassword(
@@ -417,14 +414,22 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		broker.settings.EncryptionKey,
 	)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
+		return binding, apiresponses.NewFailureResponse(
+			fmt.Errorf("unable to get instance password: %s", err),
+			http.StatusInternalServerError,
+			"get instance password",
+		)
 	}
 
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	originalInstanceState := existingInstance.State
 	if credentials, err = broker.dbAdapter.bindDBToApp(existingInstance, password); err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application. Error: %s", err))
+		return binding, apiresponses.NewFailureResponse(
+			fmt.Errorf("there was an error binding the database instance to the application: %s", err),
+			http.StatusInternalServerError,
+			"get instance password",
+		)
 	}
 
 	// If the state of the instance has changed, update it.
@@ -432,7 +437,9 @@ func (broker *rdsBroker) BindInstance(c *catalog.Catalog, id string, bindRequest
 		broker.brokerDB.Save(existingInstance)
 	}
 
-	return response.NewSuccessBindResponse(credentials)
+	return domain.Binding{
+		Credentials: credentials,
+	}, nil
 }
 
 func (broker *rdsBroker) DeleteInstance(id string) error {
