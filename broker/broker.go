@@ -44,7 +44,7 @@ func New(
 }
 
 func (b *AWSBroker) Services(context context.Context) ([]domain.Service, error) {
-	return b.catalog.GetServices(), nil
+	return b.catalog.GetServices2(), nil
 }
 
 func (b *AWSBroker) Provision(

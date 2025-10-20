@@ -20,11 +20,10 @@ require (
 	github.com/go-test/deep v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.5
-	github.com/martini-contrib/auth v0.0.0-20150219114609-fa62c19b7ae8
 	github.com/martini-contrib/render v0.0.0-20150707142108-ec18f8345a11
 	github.com/opensearch-project/opensearch-go/v2 v2.3.0
 	gopkg.in/go-playground/validator.v8 v8.18.2
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/driver/sqlite v1.6.0
@@ -74,5 +73,4 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
