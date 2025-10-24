@@ -1,21 +1,12 @@
 package catalog
 
 import (
-	"fmt"
-
 	"code.cloudfoundry.org/brokerapi/v13/domain"
-	"gopkg.in/yaml.v3"
 )
 
-// RDSService describes the RDS Service. It contains the basic Service details as well as a list of RDS Plans
-type RDSServiceRaw struct {
+type RDSService struct {
 	Service  `yaml:",inline" validate:"required"`
 	RDSPlans []RDSPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
-}
-
-type RDSService struct {
-	domain.Service `yaml:",inline" validate:"required"`
-	RDSPlans       []RDSPlan
 }
 
 // FetchPlan will look for a specific RDS Plan based on the plan ID.
@@ -28,31 +19,27 @@ func (s *RDSService) FetchPlan(planID string) (RDSPlan, error) {
 	return RDSPlan{}, ErrNoPlanFound
 }
 
-// UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (s *RDSService) UnmarshalYAML(node *yaml.Node) error {
-	// Check if the node is a mapping (object)
-	if node.Kind != yaml.MappingNode {
-		return fmt.Errorf("expected a mapping node, got %v", node.Kind)
+func (s *RDSService) ToBrokerAPIService() domain.Service {
+	service := domain.Service{
+		ID:                   s.ID,
+		Name:                 s.Name,
+		Description:          s.Description,
+		Bindable:             s.Bindable,
+		InstancesRetrievable: s.InstancesRetrievable,
+		BindingsRetrievable:  s.BindingsRetrievable,
+		Tags:                 s.Tags,
+		PlanUpdatable:        s.PlanUpdatable,
+		Requires:             s.Requires,
+		Metadata:             s.Metadata,
+		DashboardClient:      s.DashboardClient,
+		AllowContextUpdates:  s.AllowContextUpdates,
 	}
-
-	// Create an intermediate type to unmarshal the raw values
-	// This avoids infinite recursion if you try to unmarshal directly into RDSService
-	var raw RDSServiceRaw
-	// Decode the node into the rawCustomType
-	if err := node.Decode(&raw); err != nil {
-		return err
+	var plans []domain.ServicePlan
+	for _, plan := range s.RDSPlans {
+		plans = append(plans, plan.ServicePlan)
 	}
-
-	// Apply custom logic and assign values to CustomType fields
-	if len(raw.RDSPlans) > 0 {
-		for _, rdsPlan := range raw.RDSPlans {
-			s.Plans = append(s.Plans, rdsPlan.ServicePlan)
-		}
-	}
-	s.Service.ID = raw.Service.ID
-	s.Service.Name = raw.Service.Name
-
-	return nil
+	service.Plans = plans
+	return service
 }
 
 // RDSPlan inherits from a Plan and adds fields specific to AWS.

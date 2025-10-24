@@ -70,7 +70,7 @@ func (c *Catalog) GetServices() []interface{} {
 }
 
 func (c *Catalog) GetServices2() []domain.Service {
-	return []domain.Service{(*c.RdsService).Service, c.ElasticsearchService.Service, c.RdsService.Service}
+	return []domain.Service{c.RdsService.ToBrokerAPIService(), c.ElasticsearchService.Service, c.RedisService.Service}
 }
 
 // GetResources returns the resources wrapper for all the resources generated from the secrets.
