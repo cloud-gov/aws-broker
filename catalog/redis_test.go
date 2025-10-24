@@ -7,8 +7,8 @@ import (
 	"github.com/go-test/deep"
 )
 
-func TestRDSServiceToToBrokerAPIService(t *testing.T) {
-	rdsService := RDSService{
+func TestRedisServiceToBrokerAPIService(t *testing.T) {
+	redisService := RedisService{
 		Service: Service{
 			ID:                   "id1",
 			Name:                 "service1",
@@ -29,7 +29,7 @@ func TestRDSServiceToToBrokerAPIService(t *testing.T) {
 			},
 			AllowContextUpdates: false,
 		},
-		RDSPlans: []RDSPlan{
+		RedisPlans: []RedisPlan{
 			{
 				ServicePlan: domain.ServicePlan{
 					Name: "plan1",
@@ -37,7 +37,7 @@ func TestRDSServiceToToBrokerAPIService(t *testing.T) {
 			},
 		},
 	}
-	service := rdsService.ToBrokerAPIService()
+	service := redisService.ToBrokerAPIService()
 	expectedService := domain.Service{
 		ID:                   "id1",
 		Name:                 "service1",
