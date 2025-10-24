@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"code.cloudfoundry.org/lager"
 
 	"gorm.io/gorm"
@@ -41,6 +43,7 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 
 type elasticsearchBroker struct {
 	brokerDB   *gorm.DB
+	catalog    *catalog.Catalog
 	settings   *config.Settings
 	jobs       *jobs.AsyncJobManager
 	logger     lager.Logger
@@ -50,11 +53,12 @@ type elasticsearchBroker struct {
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(
+	catalog *catalog.Catalog,
 	brokerDB *gorm.DB,
 	settings *config.Settings,
 	jobs *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
-) (base.Broker, error) {
+) (base.BrokerV2, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
@@ -65,6 +69,7 @@ func InitElasticsearchBroker(
 
 	return &elasticsearchBroker{
 		brokerDB,
+		catalog,
 		settings,
 		jobs,
 		logger,
@@ -74,7 +79,7 @@ func InitElasticsearchBroker(
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
-func (broker *elasticsearchBroker) AsyncOperationRequired(c *catalog.Catalog, i base.Instance, o base.Operation) bool {
+func (broker *elasticsearchBroker) AsyncOperationRequired(o base.Operation) bool {
 	switch o {
 	case base.DeleteOp:
 		return true
@@ -89,28 +94,28 @@ func (broker *elasticsearchBroker) AsyncOperationRequired(c *catalog.Catalog, i 
 	}
 }
 
-func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string, createRequest request.Request) response.Response {
+func (broker *elasticsearchBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
 	newInstance := ElasticsearchInstance{}
 
 	options := ElasticsearchOptions{}
-	if len(createRequest.RawParameters) > 0 {
-		err := json.Unmarshal(createRequest.RawParameters, &options)
+	if len(details.RawParameters) > 0 {
+		err := json.Unmarshal(details.RawParameters, &options)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return apiresponses.ErrRawParamsInvalid
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 		}
 	}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&newInstance).Count(&count)
 	if count != 0 {
-		return response.NewErrorResponse(http.StatusConflict, "The instance already exists")
+		return apiresponses.ErrInstanceAlreadyExists
 	}
 
-	plan, planErr := c.ElasticsearchService.FetchPlan(createRequest.PlanID)
+	plan, planErr := broker.catalog.ElasticsearchService.FetchPlan(details.PlanID)
 	if planErr != nil {
 		return planErr
 	}
@@ -118,33 +123,38 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	if options.ElasticsearchVersion != "" {
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.ElasticsearchVersion) {
-			return response.NewErrorResponse(
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf(options.ElasticsearchVersion+" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4."),
 				http.StatusBadRequest,
-				options.ElasticsearchVersion+" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4 "+".",
+				"checking Elasticsearch plan",
 			)
 		}
 	}
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
-		c.ElasticsearchService.Name,
+		broker.catalog.ElasticsearchService.Name,
 		plan.Name,
 		brokertags.ResourceGUIDs{
 			InstanceGUID:     id,
-			SpaceGUID:        createRequest.SpaceGUID,
-			OrganizationGUID: createRequest.OrganizationGUID,
+			SpaceGUID:        details.SpaceGUID,
+			OrganizationGUID: details.OrganizationGUID,
 		},
 		false,
 	)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "There was an error generating the tags. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"generating tags",
+		)
 	}
 
 	err = newInstance.init(
 		id,
-		createRequest.OrganizationGUID,
-		createRequest.SpaceGUID,
-		createRequest.ServiceID,
+		details.OrganizationGUID,
+		details.SpaceGUID,
+		details.ServiceID,
 		plan,
 		options,
 		broker.settings,
@@ -152,7 +162,11 @@ func (broker *elasticsearchBroker) CreateInstance(c *catalog.Catalog, id string,
 	)
 
 	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, "There was an error initializing the instance. Error: "+err.Error())
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("there was an error initializing the instance. Error: %s", err),
+			http.StatusInternalServerError,
+			"initializing instance",
+		)
 	}
 
 	// Create the elasticsearch instance.
