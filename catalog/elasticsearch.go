@@ -6,19 +6,42 @@ import (
 
 // ElasticsearchService describes the Elasticsearch Service. It contains the basic Service details as well as a list of Elasticsearch Plans
 type ElasticsearchService struct {
-	domain.Service `yaml:",inline" validate:"required"`
-	// Plans   []ElasticsearchPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
+	Service            `yaml:",inline" validate:"required"`
+	ElasticsearchPlans []ElasticsearchPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
 }
 
 // FetchPlan will look for a specific ElasticsearchSecret Plan based on the plan ID.
-// func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, response.Response) {
-// 	for _, plan := range s.Plans {
-// 		if plan.ID == planID {
-// 			return plan, nil
-// 		}
-// 	}
-// 	return ElasticsearchPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
-// }
+func (s ElasticsearchService) FetchPlan(planID string) (ElasticsearchPlan, error) {
+	for _, plan := range s.ElasticsearchPlans {
+		if plan.ID == planID {
+			return plan, nil
+		}
+	}
+	return ElasticsearchPlan{}, ErrNoPlanFound
+}
+
+func (s *ElasticsearchService) ToBrokerAPIService() domain.Service {
+	service := domain.Service{
+		ID:                   s.ID,
+		Name:                 s.Name,
+		Description:          s.Description,
+		Bindable:             s.Bindable,
+		InstancesRetrievable: s.InstancesRetrievable,
+		BindingsRetrievable:  s.BindingsRetrievable,
+		Tags:                 s.Tags,
+		PlanUpdatable:        s.PlanUpdatable,
+		Requires:             s.Requires,
+		Metadata:             s.Metadata,
+		DashboardClient:      s.DashboardClient,
+		AllowContextUpdates:  s.AllowContextUpdates,
+	}
+	var plans []domain.ServicePlan
+	for _, plan := range s.ElasticsearchPlans {
+		plans = append(plans, plan.ServicePlan)
+	}
+	service.Plans = plans
+	return service
+}
 
 // ElasticsearchPlan inherits from a plan and adds fields needed for AWS Redis.
 type ElasticsearchPlan struct {
