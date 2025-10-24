@@ -138,7 +138,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.BrokerV2, error) {
 		}
 		return broker, nil
 	case b.catalog.RedisService.ID:
-		broker, err := redis.InitRedisBroker(b.db, b.settings, b.tagManager)
+		broker, err := redis.InitRedisBroker(b.catalog, b.db, b.settings, b.tagManager)
 		if err != nil {
 			return nil, err
 		}

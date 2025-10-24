@@ -133,7 +133,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 			return apiresponses.NewFailureResponse(
 				fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.Version, strings.Join(plan.ApprovedMajorVersions, ", ")),
 				http.StatusBadRequest,
-				"fetching RDS plan",
+				"checking RDS plan",
 			)
 		}
 	}
@@ -434,7 +434,13 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 
 	// If the state of the instance has changed, update it.
 	if existingInstance.State != originalInstanceState {
-		broker.brokerDB.Save(existingInstance)
+		if err := broker.brokerDB.Save(existingInstance).Error; err != nil {
+			return binding, apiresponses.NewFailureResponse(
+				fmt.Errorf("there was an error saving the database instance to the application: %s", err),
+				http.StatusInternalServerError,
+				"saving instance",
+			)
+		}
 	}
 
 	return domain.Binding{
