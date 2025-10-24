@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"errors"
-	"reflect"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"gopkg.in/go-playground/validator.v8"
@@ -51,25 +50,7 @@ type Resources struct {
 	RdsSettings *RDSSettings
 }
 
-// GetServices returns the list of all the Services. In order to do this, it uses reflection to look for all the
-// exported values of the catalog.
-func (c *Catalog) GetServices() []interface{} {
-	catalogStruct := reflect.ValueOf(*c)
-	numOfFields := catalogStruct.NumField()
-	var services []interface{}
-	for i := 0; i < numOfFields; i++ {
-		structField := catalogStruct.Type().Field(i)
-		// Only add the exported values
-		if structField.PkgPath == "" {
-			if service, ok := catalogStruct.Field(i).Interface().(domain.Service); ok {
-				services = append(services, service)
-			}
-		}
-	}
-	return services
-}
-
-func (c *Catalog) GetServices2() []domain.Service {
+func (c *Catalog) GetServices() []domain.Service {
 	return []domain.Service{c.RdsService.ToBrokerAPIService(), c.ElasticsearchService.ToBrokerAPIService(), c.RedisService.ToBrokerAPIService()}
 }
 
