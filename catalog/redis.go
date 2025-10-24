@@ -6,19 +6,42 @@ import (
 
 // RedisService describes the Redis Service. It contains the basic Service details as well as a list of Redis Plans
 type RedisService struct {
-	domain.Service `yaml:",inline" validate:"required"`
-	// Plans   []RedisPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
+	Service    `yaml:",inline" validate:"required"`
+	RedisPlans []RedisPlan `yaml:"plans" json:"plans" validate:"required,dive,required"`
 }
 
 // FetchPlan will look for a specific RedisSecret Plan based on the plan ID.
-// func (s RedisService) FetchPlan(planID string) (RedisPlan, response.Response) {
-// 	for _, plan := range s.Plans {
-// 		if plan.ID == planID {
-// 			return plan, nil
-// 		}
-// 	}
-// 	return RedisPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
-// }
+func (s RedisService) FetchPlan(planID string) (RedisPlan, error) {
+	for _, plan := range s.RedisPlans {
+		if plan.ID == planID {
+			return plan, nil
+		}
+	}
+	return RedisPlan{}, ErrNoPlanFound
+}
+
+func (s *RedisService) ToBrokerAPIService() domain.Service {
+	service := domain.Service{
+		ID:                   s.ID,
+		Name:                 s.Name,
+		Description:          s.Description,
+		Bindable:             s.Bindable,
+		InstancesRetrievable: s.InstancesRetrievable,
+		BindingsRetrievable:  s.BindingsRetrievable,
+		Tags:                 s.Tags,
+		PlanUpdatable:        s.PlanUpdatable,
+		Requires:             s.Requires,
+		Metadata:             s.Metadata,
+		DashboardClient:      s.DashboardClient,
+		AllowContextUpdates:  s.AllowContextUpdates,
+	}
+	var plans []domain.ServicePlan
+	for _, plan := range s.RedisPlans {
+		plans = append(plans, plan.ServicePlan)
+	}
+	service.Plans = plans
+	return service
+}
 
 // RedisPlan inherits from a plan and adds fields needed for AWS Redis.
 type RedisPlan struct {
