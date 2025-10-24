@@ -45,86 +45,86 @@ func TestCatalogGetServices(t *testing.T) {
 	}
 }
 
-// func TestFetchPlan(t *testing.T) {
-// 	wd := checkedGetwd(t)
-// 	path := filepath.Join(wd, "..")
-// 	catalog := InitCatalog(path)
+func TestFetchPlan(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
 
-// 	_, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
+	_, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
 
-// 	if err != nil {
-// 		t.Error("Could not fetch plan " + rdsPGTestPlanID)
-// 	}
-// }
+	if err != nil {
+		t.Error("Could not fetch plan " + rdsPGTestPlanID)
+	}
+}
 
-// func TestRDSPGCheckVersion(t *testing.T) {
-// 	wd := checkedGetwd(t)
-// 	path := filepath.Join(wd, "..")
-// 	catalog := InitCatalog(path)
+func TestRDSPGCheckVersion(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
 
-// 	plan, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
+	plan, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
 
-// 	if err != nil {
-// 		t.Error("Could not fetch plan " + rdsPGTestPlanID)
-// 	}
+	if err != nil {
+		t.Error("Could not fetch plan " + rdsPGTestPlanID)
+	}
 
-// 	// Test that a valid version returns true.
-// 	validVersion := plan.CheckVersion(rdsPGValidVersion)
+	// Test that a valid version returns true.
+	validVersion := plan.CheckVersion(rdsPGValidVersion)
 
-// 	if !validVersion {
-// 		t.Error("Valid RDS version check failed.")
-// 	}
+	if !validVersion {
+		t.Error("Valid RDS version check failed.")
+	}
 
-// 	// Test that an invalid version returns false.
-// 	validVersion = plan.CheckVersion(rdsPGInvalidVersion)
+	// Test that an invalid version returns false.
+	validVersion = plan.CheckVersion(rdsPGInvalidVersion)
 
-// 	if validVersion {
-// 		t.Error("Invalid RDS version check failed.")
-// 	}
-// }
+	if validVersion {
+		t.Error("Invalid RDS version check failed.")
+	}
+}
 
-// func TestRDSMySQLCheckVersion(t *testing.T) {
-// 	wd := checkedGetwd(t)
-// 	path := filepath.Join(wd, "..")
-// 	catalog := InitCatalog(path)
+func TestRDSMySQLCheckVersion(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
 
-// 	plan, err := catalog.RdsService.FetchPlan(rdsMySQLTestPlanID)
+	plan, err := catalog.RdsService.FetchPlan(rdsMySQLTestPlanID)
 
-// 	if err != nil {
-// 		t.Error("Could not fetch plan " + rdsMySQLTestPlanID)
-// 	}
+	if err != nil {
+		t.Error("Could not fetch plan " + rdsMySQLTestPlanID)
+	}
 
-// 	// Test that a valid version returns true.
-// 	validVersion := plan.CheckVersion(rdsMySQLValidVersion)
+	// Test that a valid version returns true.
+	validVersion := plan.CheckVersion(rdsMySQLValidVersion)
 
-// 	if !validVersion {
-// 		t.Error("Valid RDS version check failed.")
-// 	}
+	if !validVersion {
+		t.Error("Valid RDS version check failed.")
+	}
 
-// 	// Test that an invalid version returns false.
-// 	validVersion = plan.CheckVersion(rdsMySQLInvalidVersion)
+	// Test that an invalid version returns false.
+	validVersion = plan.CheckVersion(rdsMySQLInvalidVersion)
 
-// 	if validVersion {
-// 		t.Error("Invalid RDS version check failed.")
-// 	}
-// }
+	if validVersion {
+		t.Error("Invalid RDS version check failed.")
+	}
+}
 
-// func TestRDSCheckVersionEmpty(t *testing.T) {
-// 	wd := checkedGetwd(t)
-// 	path := filepath.Join(wd, "..")
-// 	catalog := InitCatalog(path)
+func TestRDSCheckVersionEmpty(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
 
-// 	plan, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
+	plan, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
 
-// 	if err != nil {
-// 		t.Error("Could not fetch plan " + rdsPGTestPlanID)
-// 	}
+	if err != nil {
+		t.Error("Could not fetch plan " + rdsPGTestPlanID)
+	}
 
-// 	// Test that no versions set in the plan returns true if a version is
-// 	// specified.
-// 	validVersion := plan.CheckVersion(rdsPGValidVersion)
+	// Test that no versions set in the plan returns true if a version is
+	// specified.
+	validVersion := plan.CheckVersion(rdsPGValidVersion)
 
-// 	if !validVersion {
-// 		t.Error("Empty RDS version check failed.")
-// 	}
-// }
+	if !validVersion {
+		t.Error("Empty RDS version check failed.")
+	}
+}
