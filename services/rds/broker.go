@@ -399,7 +399,6 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 
 func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
 	binding := domain.Binding{}
-
 	existingInstance := NewRDSInstance()
 
 	var count int64

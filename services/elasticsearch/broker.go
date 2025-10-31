@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,8 +16,6 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/helpers/request"
-	"github.com/cloud-gov/aws-broker/helpers/response"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
@@ -171,83 +170,118 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 
 	// Create the elasticsearch instance.
 	status, err := broker.adapter.createElasticsearch(&newInstance, newInstance.ClearPassword)
-	if status == base.InstanceNotCreated {
-		desc := "There was an error creating the instance."
-		if err != nil {
-			desc = desc + " Error: " + err.Error()
-		}
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"creating instance",
+		)
 	}
 
-	newInstance.State = status
-	err = broker.brokerDB.Create(&newInstance).Error
-	if err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, err.Error())
+	switch status {
+	case base.InstanceNotCreated:
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("error creating the instance: %s", err),
+			http.StatusInternalServerError,
+			"creating instance",
+		)
+	case base.InstanceInProgress:
+		newInstance.State = status
+		err = broker.brokerDB.Create(&newInstance).Error
+		if err != nil {
+			return apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"creating instance",
+			)
+		}
+		return nil
+	default:
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("encountered unexpected state %s, error: %s", status, err),
+			http.StatusInternalServerError,
+			"creating instance",
+		)
 	}
-	return response.NewAsyncOperationResponse(base.CreateOp.String())
 }
 
-func (broker *elasticsearchBroker) ModifyInstance(c *catalog.Catalog, id string, updateRequest request.Request, baseInstance base.Instance) response.Response {
+func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.UpdateDetails) error {
+
 	esInstance := ElasticsearchInstance{}
 	options := ElasticsearchOptions{}
-	if len(updateRequest.RawParameters) > 0 {
-		err := json.Unmarshal(updateRequest.RawParameters, &options)
+	if len(details.RawParameters) > 0 {
+		err := json.Unmarshal(details.RawParameters, &options)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 		}
 	}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&esInstance).Count(&count)
-	if count != 1 {
-		return response.NewErrorResponse(http.StatusNotFound, "The instance doesn't exist")
+	if count == 0 {
+		return apiresponses.ErrInstanceDoesNotExist
 	}
-	if esInstance.PlanID != updateRequest.PlanID {
-		return response.NewErrorResponse(http.StatusBadRequest, "Updating Elasticsearch service instances is not supported at this time.")
+
+	if esInstance.PlanID != details.PlanID {
+		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
 	}
 
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", err)
-		return response.NewErrorResponse(http.StatusBadRequest, "Error updating Elasticsearch service instance")
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating servie instance")
 	}
 
 	state, err := broker.adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", err)
-		return response.NewErrorResponse(http.StatusBadRequest, "Error modifying Elasticsearch service instance")
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "modifying Elasticsearch instance")
 	}
 	esInstance.State = state
 
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
 		broker.logger.Error("Saving instance failed", err)
-		return response.NewErrorResponse(http.StatusBadRequest, "Error saving updated Elasticsearch service instance")
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "saving modified service instance")
 	}
 
-	return response.NewAsyncOperationResponse(base.ModifyOp.String())
+	return nil
 }
 
-func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, baseInstance base.Instance, operation string) response.Response {
+func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {
+	lastOperation := domain.LastOperation{}
 	existingInstance := ElasticsearchInstance{}
+
+	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
+	if err != nil {
+		return lastOperation, apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"find base instance",
+		)
+	}
 
 	var count int64
 	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
-		response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+		return lastOperation, apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"find existing instance",
+		)
 	}
 	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+		return lastOperation, apiresponses.ErrInstanceDoesNotExist
 	}
 
 	var state string
 	var status base.InstanceState
 	var statusErr error
 
-	switch operation {
+	switch details.OperationData {
 	case base.DeleteOp.String(): // delete is true concurrent operation
 		jobstate, err := broker.jobs.GetJobState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
 		if err != nil {
@@ -260,10 +294,18 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 		status, statusErr = broker.adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
 			broker.logger.Error("Error checking Elasticsearch status", statusErr)
-			return response.NewErrorResponse(http.StatusInternalServerError, statusErr.Error())
+			return lastOperation, apiresponses.NewFailureResponse(
+				statusErr,
+				http.StatusInternalServerError,
+				"find existing instance",
+			)
 		}
 		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
-			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"saving updated instance",
+			)
 		}
 	}
 
@@ -273,33 +315,41 @@ func (broker *elasticsearchBroker) LastOperation(c *catalog.Catalog, id string, 
 	}
 
 	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
-	return response.NewSuccessLastOperation(status.ToLastOperationStatus(), fmt.Sprintf("The service instance status is %s", state))
+	return domain.LastOperation{
+		State:       status.ToLastOperationState(),
+		Description: fmt.Sprintf("The service instance status is %s", state),
+	}, nil
 }
 
-func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, bindRequest request.Request, baseInstance base.Instance) response.Response {
+func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
+	binding := domain.Binding{}
 	existingInstance := ElasticsearchInstance{}
 
 	options := ElasticsearchOptions{}
-	if len(bindRequest.RawParameters) > 0 {
-		err := json.Unmarshal(bindRequest.RawParameters, &options)
+	if len(details.RawParameters) > 0 {
+		err := json.Unmarshal(details.RawParameters, &options)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return binding, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return response.NewErrorResponse(http.StatusBadRequest, "Invalid parameters. Error: "+err.Error())
+			return binding, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 		}
 	}
 
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
 	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
+		return binding, apiresponses.NewFailureResponse(
+			fmt.Errorf("unable to get instance password: %s", err),
+			http.StatusInternalServerError,
+			"get instance password",
+		)
 	}
 
 	// Get the correct database logic depending on the type of plan
@@ -307,24 +357,51 @@ func (broker *elasticsearchBroker) BindInstance(c *catalog.Catalog, id string, b
 	// Bind the database instance to the application.
 	existingInstance.setBucket(options.Bucket)
 	if credentials, err = broker.adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
-		return response.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("There was an error binding the database instance to the application. Error: %s", err))
+		return binding, apiresponses.NewFailureResponse(
+			fmt.Errorf("there was an error binding the service to the application: %s", err),
+			http.StatusInternalServerError,
+			"binding service to application",
+		)
 	}
 
-	broker.brokerDB.Save(&existingInstance)
-	return response.NewSuccessBindResponse(credentials)
+	if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
+		return binding, apiresponses.NewFailureResponse(
+			fmt.Errorf("there was an error saving the database instance to the application: %s", err),
+			http.StatusInternalServerError,
+			"saving instance",
+		)
+	}
+
+	return domain.Binding{
+		Credentials: credentials,
+	}, nil
 }
 
-func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string, baseInstance base.Instance) response.Response {
+func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	existingInstance := ElasticsearchInstance{}
 	var count int64
+
+	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"find base instance",
+		)
+	}
+
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {
-		return response.NewErrorResponse(http.StatusNotFound, "Instance not found")
+		return apiresponses.ErrInstanceDoesNotExist
 	}
 
 	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
 	if err != nil {
-		return response.NewErrorResponse(http.StatusInternalServerError, "Unable to get instance password.")
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("unable to get instance password: %s", err),
+			http.StatusInternalServerError,
+			"get instance password",
+		)
 	}
 
 	// send async deletion request.
@@ -333,18 +410,19 @@ func (broker *elasticsearchBroker) DeleteInstance(c *catalog.Catalog, id string,
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
 		broker.brokerDB.Unscoped().Delete(&baseInstance)
-		return response.SuccessDeleteResponse
+		return nil
 
 	case base.InstanceInProgress: // we have done an async request
 		broker.brokerDB.Save(&existingInstance)
-		return response.NewAsyncOperationResponse(base.DeleteOp.String())
+		return nil
+
 	default:
-		desc := "There was an error deleting the instance."
-		if err != nil {
-			desc = desc + " Error: " + err.Error()
-		}
 		broker.brokerDB.Save(&existingInstance)
-		return response.NewErrorResponse(http.StatusBadRequest, desc)
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("error deleting the instance: %s", err),
+			http.StatusInternalServerError,
+			"deleting instance",
+		)
 	}
 
 }
