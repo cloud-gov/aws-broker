@@ -39,7 +39,7 @@ func TestCatalogGetServices(t *testing.T) {
 	if catalog == nil {
 		t.Fatal("Did not read catalog")
 	}
-	services := catalog.GetServices2()
+	services := catalog.GetServices()
 	if len(services) != 3 {
 		t.Fatalf("expected 3 services, got %d", len(services))
 	}
