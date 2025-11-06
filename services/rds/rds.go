@@ -313,6 +313,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 }
 
 func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan, password string) {
+	d.logger.Debug(fmt.Sprintf("asyncCreateDB started for ID %s", i.Uuid))
 	operation := base.CreateOp
 
 	createDbInputParams, err := d.prepareCreateDbInput(i, plan, password)
@@ -346,6 +347,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan,
 	}
 
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
+	d.logger.Debug(fmt.Sprintf("asyncCreateDB finished for ID %s", i.Uuid))
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password string) (base.InstanceState, error) {
@@ -388,6 +390,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 }
 
 func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan) {
+	d.logger.Debug(fmt.Sprintf("asyncModifyDb started for ID %s", i.Uuid))
 	operation := base.ModifyOp
 
 	err := d.asyncModifyDbInstance(operation, i, plan, i.Database)
@@ -431,6 +434,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 	}
 
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
+	d.logger.Debug(fmt.Sprintf("asyncModifyDb finished for ID %s", i.Uuid))
 }
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
