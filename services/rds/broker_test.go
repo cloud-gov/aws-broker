@@ -311,6 +311,7 @@ func TestModify(t *testing.T) {
 		catalog              *catalog.Catalog
 		modifyRequest        request.Request
 		expectedDbInstance   *RDSInstance
+		dbAdapter            dbAdapter
 	}{
 		"success": {
 			catalog: &catalog.Catalog{
@@ -422,7 +423,9 @@ func TestModify(t *testing.T) {
 				brokerDB:   brokerDB,
 				settings:   test.settings,
 				tagManager: test.tagManager,
-				dbAdapter:  &mockDBAdapter{},
+				dbAdapter: &mockDBAdapter{
+					db: brokerDB,
+				},
 			}
 
 			err = brokerDB.Create(test.dbInstance).Error

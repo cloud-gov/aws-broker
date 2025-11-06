@@ -36,7 +36,9 @@ type dbAdapter interface {
 func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (dbAdapter, error) {
 	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
-		return &mockDBAdapter{}, nil
+		return &mockDBAdapter{
+			db: db,
+		}, nil
 	}
 
 	cfg, err := awsConfig.LoadDefaultConfig(
@@ -69,6 +71,7 @@ func NewRdsDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClie
 // It is only here because *_test.go files are only compiled during "go test"
 // and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
 type mockDBAdapter struct {
+	db            *gorm.DB
 	createDBState *base.InstanceState
 }
 
@@ -81,7 +84,8 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password 
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error) {
-	return base.InstanceInProgress, nil
+	err := d.db.Save(i).Error
+	return base.InstanceInProgress, err
 }
 
 func (d *mockDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {

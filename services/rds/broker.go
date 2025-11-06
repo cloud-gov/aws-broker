@@ -274,8 +274,7 @@ func (broker *rdsBroker) ModifyInstance(c *catalog.Catalog, id string, modifyReq
 		return response.NewErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Error modifying the instance: %s", err))
 	case base.InstanceInProgress:
 		// Update the existing instance in the broker.
-		existingInstance.State = status
-		err = broker.brokerDB.Save(existingInstance).Error
+		err = broker.brokerDB.Model(RDSInstance{}).Where("uuid", existingInstance.Uuid).Update("state", status).Error
 		if err != nil {
 			return response.NewErrorResponse(http.StatusInternalServerError, err.Error())
 		}
