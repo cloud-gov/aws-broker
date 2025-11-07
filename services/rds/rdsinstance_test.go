@@ -737,8 +737,11 @@ func TestModifyInstance(t *testing.T) {
 			if test.expectErr && err == nil {
 				t.Errorf("expected error, got nil")
 			}
+			if diff := deep.Equal(test.existingInstance, test.expectedInstance); diff == nil {
+				t.Fatal("Expected no modifications to existing instance")
+			}
 			if diff := deep.Equal(modifiedInstance, test.expectedInstance); diff != nil {
-				t.Error(diff)
+				t.Fatal(diff)
 			}
 		})
 	}

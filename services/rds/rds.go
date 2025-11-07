@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -36,7 +37,9 @@ type dbAdapter interface {
 func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (dbAdapter, error) {
 	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
-		return &mockDBAdapter{}, nil
+		return &mockDBAdapter{
+			db: db,
+		}, nil
 	}
 
 	cfg, err := awsConfig.LoadDefaultConfig(
@@ -69,6 +72,7 @@ func NewRdsDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClie
 // It is only here because *_test.go files are only compiled during "go test"
 // and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
 type mockDBAdapter struct {
+	db            *gorm.DB
 	createDBState *base.InstanceState
 }
 
@@ -81,7 +85,8 @@ func (d *mockDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password 
 }
 
 func (d *mockDBAdapter) modifyDB(i *RDSInstance, plan catalog.RDSPlan) (base.InstanceState, error) {
-	return base.InstanceInProgress, nil
+	err := d.db.Save(i).Error
+	return base.InstanceInProgress, err
 }
 
 func (d *mockDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
@@ -244,7 +249,9 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	var dbState base.InstanceState
 	var err error
 
-	for attempt <= int(d.settings.PollAwsMaxRetries) {
+	maxRetries := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxRetries)
+
+	for attempt <= int(maxRetries) {
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
 			updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
@@ -258,7 +265,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 			return nil
 		}
 
-		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, maxRetries))
 		if err != nil {
 			return fmt.Errorf("waitForDbReady: %w", err)
 		}
@@ -674,4 +681,12 @@ func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
 func isDatabaseInstanceNotFoundError(err error) bool {
 	var notFoundException *rdsTypes.DBInstanceNotFoundFault
 	return errors.As(err, &notFoundException)
+}
+
+func getMaxCheckDBStatusRetries(storageSize int64, defaultMaxRetries int64) int64 {
+	// Scale the number of retries in proportion to the database
+	// storage size
+	retryMultiplier := math.Ceil(float64(storageSize) / 200)
+	maxRetries := defaultMaxRetries * int64(retryMultiplier)
+	return max(defaultMaxRetries, maxRetries)
 }
