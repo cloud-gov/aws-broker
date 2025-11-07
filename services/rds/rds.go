@@ -258,6 +258,8 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 			return fmt.Errorf("waitForDbReady: %w", err)
 		}
 
+		d.logger.Debug(fmt.Sprintf("database state for ID %s: %s", i.Uuid, dbState))
+
 		if dbState == base.InstanceReady {
 			return nil
 		}
@@ -378,6 +380,8 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
+	d.logger.Debug(fmt.Sprintf("sent modify request for database ID %s", i.Uuid))
+
 	err = d.waitForDbReady(operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
@@ -403,6 +407,8 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 		d.logger.Error("asyncModifyDb: asyncModifyDbInstance error", err)
 		return
 	}
+
+	d.logger.Debug(fmt.Sprintf("done modifying database instance for ID %s", i.Uuid))
 
 	if i.AddReadReplica {
 		// Add new read replica
