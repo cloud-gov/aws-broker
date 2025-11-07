@@ -74,7 +74,7 @@ type rdsBroker struct {
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
 	logger := lager.NewLogger("aws-rds-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
 	if err != nil {
 		return nil, err
