@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -248,7 +249,9 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	var dbState base.InstanceState
 	var err error
 
-	for attempt <= int(d.settings.PollAwsMaxRetries) {
+	maxRetries := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxRetries)
+
+	for attempt <= int(maxRetries) {
 		dbState, err = d.checkDBStatus(database)
 		if err != nil {
 			updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
@@ -264,7 +267,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 			return nil
 		}
 
-		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
+		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, maxRetries))
 		if err != nil {
 			return fmt.Errorf("waitForDbReady: %w", err)
 		}
@@ -693,4 +696,12 @@ func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
 func isDatabaseInstanceNotFoundError(err error) bool {
 	var notFoundException *rdsTypes.DBInstanceNotFoundFault
 	return errors.As(err, &notFoundException)
+}
+
+func getMaxCheckDBStatusRetries(storageSize int64, defaultMaxRetries int64) int64 {
+	// Scale the number of retries in proportion to the database
+	// storage size
+	retryMultiplier := math.Ceil(float64(storageSize) / 200)
+	maxRetries := defaultMaxRetries * int64(retryMultiplier)
+	return max(defaultMaxRetries, maxRetries)
 }

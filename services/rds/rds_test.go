@@ -2211,3 +2211,41 @@ func TestDeleteDb(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMaxCheckDBStatusRetries(t *testing.T) {
+	testCases := map[string]struct {
+		storageSize        int64
+		defaultMaxRetries  int64
+		expectedMaxRetries int64
+	}{
+		"storage = 0": {
+			storageSize:        0,
+			defaultMaxRetries:  1,
+			expectedMaxRetries: 1,
+		},
+		"storage = 1": {
+			storageSize:        1,
+			defaultMaxRetries:  1,
+			expectedMaxRetries: 1,
+		},
+		"storage = 201": {
+			storageSize:        201,
+			defaultMaxRetries:  1,
+			expectedMaxRetries: 2,
+		},
+		"storage = 1000": {
+			storageSize:        1000,
+			defaultMaxRetries:  1,
+			expectedMaxRetries: 5,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			retries := getMaxCheckDBStatusRetries(test.storageSize, test.defaultMaxRetries)
+			if retries != test.expectedMaxRetries {
+				t.Fatalf("expected %d, got %d", test.expectedMaxRetries, retries)
+			}
+		})
+	}
+}
