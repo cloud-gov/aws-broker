@@ -261,8 +261,6 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 			return fmt.Errorf("waitForDbReady: %w", err)
 		}
 
-		d.logger.Debug(fmt.Sprintf("database state for ID %s: %s", i.Uuid, dbState))
-
 		if dbState == base.InstanceReady {
 			return nil
 		}
@@ -322,7 +320,6 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 }
 
 func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan, password string) {
-	d.logger.Debug(fmt.Sprintf("asyncCreateDB started for ID %s", i.Uuid))
 	operation := base.CreateOp
 
 	createDbInputParams, err := d.prepareCreateDbInput(i, plan, password)
@@ -356,7 +353,6 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan catalog.RDSPlan,
 	}
 
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
-	d.logger.Debug(fmt.Sprintf("asyncCreateDB finished for ID %s", i.Uuid))
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan catalog.RDSPlan, password string) (base.InstanceState, error) {
@@ -383,11 +379,6 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
-	if modifyReplicaOutput.DBInstance.DBInstanceStatus != nil {
-		d.logger.Debug(fmt.Sprintf("modify response status for %s: %s", i.Uuid, *modifyReplicaOutput.DBInstance.DBInstanceStatus))
-	}
-	d.logger.Debug(fmt.Sprintf("sent modify request for database ID %s", i.Uuid))
-
 	err = d.waitForDbReady(operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
@@ -404,7 +395,6 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 }
 
 func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan) {
-	d.logger.Debug(fmt.Sprintf("asyncModifyDb started for ID %s", i.Uuid))
 	operation := base.ModifyOp
 
 	err := d.asyncModifyDbInstance(operation, i, plan, i.Database)
@@ -413,8 +403,6 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 		d.logger.Error("asyncModifyDb: asyncModifyDbInstance error", err)
 		return
 	}
-
-	d.logger.Debug(fmt.Sprintf("done modifying database instance for ID %s", i.Uuid))
 
 	if i.AddReadReplica {
 		// Add new read replica
@@ -450,7 +438,6 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan catalog.RDSPlan)
 	}
 
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
-	d.logger.Debug(fmt.Sprintf("asyncModifyDb finished for ID %s", i.Uuid))
 }
 
 // This should ultimately get exposed as part of the "update-service" method for the broker:
@@ -493,8 +480,6 @@ func (d *dedicatedDBAdapter) checkDBStatus(database string) (base.InstanceState,
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
-
-	d.logger.Debug(fmt.Sprintf("database status: %s", *dbInstance.DBInstanceStatus))
 
 	// Possible instance statuses: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/accessing-monitoring.html#Overview.DBInstance.Status
 	switch *(dbInstance.DBInstanceStatus) {
