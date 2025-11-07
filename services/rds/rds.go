@@ -380,6 +380,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
+	d.logger.Debug(fmt.Sprintf("modify response status for %s: %s", i.Uuid, *modifyReplicaOutput.DBInstance.DBInstanceStatus))
 	d.logger.Debug(fmt.Sprintf("sent modify request for database ID %s", i.Uuid))
 
 	err = d.waitForDbReady(operation, i, database)
@@ -487,6 +488,8 @@ func (d *dedicatedDBAdapter) checkDBStatus(database string) (base.InstanceState,
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
+
+	d.logger.Debug(fmt.Sprintf("database status: %s", *dbInstance.DBInstanceStatus))
 
 	// Possible instance statuses: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/accessing-monitoring.html#Overview.DBInstance.Status
 	switch *(dbInstance.DBInstanceStatus) {
