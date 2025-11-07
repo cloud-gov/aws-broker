@@ -380,7 +380,9 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
-	d.logger.Debug(fmt.Sprintf("modify response status for %s: %s", i.Uuid, *modifyReplicaOutput.DBInstance.DBInstanceStatus))
+	if modifyReplicaOutput.DBInstance.DBInstanceStatus != nil {
+		d.logger.Debug(fmt.Sprintf("modify response status for %s: %s", i.Uuid, *modifyReplicaOutput.DBInstance.DBInstanceStatus))
+	}
 	d.logger.Debug(fmt.Sprintf("sent modify request for database ID %s", i.Uuid))
 
 	err = d.waitForDbReady(operation, i, database)
