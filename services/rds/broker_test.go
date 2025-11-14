@@ -5,13 +5,13 @@ import (
 	"reflect"
 	"testing"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	responseHelpers "github.com/cloud-gov/aws-broker/helpers/response"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/go-test/deep"
@@ -252,9 +252,9 @@ func TestCreateInstanceSuccess(t *testing.T) {
 		"success": {
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
 						},
@@ -316,15 +316,15 @@ func TestModify(t *testing.T) {
 		"success": {
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID:             "123",
 								PlanUpdateable: true,
 							},
 						},
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID: "456",
 							},
 						},
@@ -363,9 +363,9 @@ func TestModify(t *testing.T) {
 		"success with replica": {
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID:             "123",
 								PlanUpdateable: true,
 							},
@@ -373,7 +373,7 @@ func TestModify(t *testing.T) {
 							ReadReplica: true,
 						},
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID: "456",
 							},
 						},
@@ -456,20 +456,22 @@ func TestLastOperation(t *testing.T) {
 	testCases := map[string]struct {
 		planID        string
 		dbInstance    *RDSInstance
-		expectedState string
+		expectedState base.InstanceState
 		tagManager    brokertags.TagManager
 		settings      *config.Settings
 		catalog       *catalog.Catalog
-		operation     string
 		asyncJobMsg   *jobs.AsyncJobMsg
+		pollDetails   domain.PollDetails
 	}{
 		"create": {
-			operation: base.CreateOp.String(),
+			pollDetails: domain.PollDetails{
+				OperationData: base.CreateOp.String(),
+			},
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
 						},
@@ -497,15 +499,17 @@ func TestLastOperation(t *testing.T) {
 					State:   base.InstanceReady,
 				},
 			},
-			expectedState: "succeeded",
+			expectedState: base.InstanceReady,
 		},
 		"modify": {
-			operation: base.ModifyOp.String(),
+			pollDetails: domain.PollDetails{
+				OperationData: base.ModifyOp.String(),
+			},
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
 						},
@@ -533,15 +537,17 @@ func TestLastOperation(t *testing.T) {
 					State:   base.InstanceReady,
 				},
 			},
-			expectedState: "succeeded",
+			expectedState: base.InstanceReady,
 		},
 		"delete": {
-			operation: base.DeleteOp.String(),
+			pollDetails: domain.PollDetails{
+				OperationData: base.DeleteOp.String(),
+			},
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
-							Plan: catalog.Plan{
+							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
 						},
@@ -562,7 +568,7 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			expectedState: "succeeded",
+			expectedState: base.InstanceGone,
 			asyncJobMsg: &jobs.AsyncJobMsg{
 				JobType: base.DeleteOp,
 				JobState: jobs.AsyncJobState{
@@ -601,19 +607,14 @@ func TestLastOperation(t *testing.T) {
 				}
 			}
 
-			response := broker.LastOperation(test.catalog, test.dbInstance.Uuid, base.Instance{
-				Request: request.Request{
-					PlanID: test.planID,
-				},
-			}, test.operation)
+			lastOperation, err := broker.LastOperation(test.dbInstance.Uuid, test.pollDetails)
 
-			lastOperationResponse, ok := response.(*responseHelpers.LastOperationResponse)
-			if !ok {
-				t.Fatal(lastOperationResponse)
+			if err != nil {
+				t.Fatal(err)
 			}
 
-			if lastOperationResponse.State != test.expectedState {
-				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperationResponse.State)
+			if lastOperation.State != test.expectedState.ToLastOperationState() {
+				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperation.State)
 			}
 		})
 	}

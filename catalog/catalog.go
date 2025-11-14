@@ -37,7 +37,7 @@ type Service struct {
 // Catalog struct holds a collections of services
 type Catalog struct {
 	// Instances of Services
-	RdsService           *RDSService          `yaml:"rds" json:"-"`
+	RdsService           RDSService           `yaml:"rds" json:"-"`
 	RedisService         RedisService         `yaml:"redis" json:"-"`
 	ElasticsearchService ElasticsearchService `yaml:"elasticsearch" json:"-"`
 
