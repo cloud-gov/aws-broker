@@ -310,8 +310,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	case base.InstanceInProgress:
 		// Update the existing instance in the broker.
-		existingInstance.State = status
-		err = broker.brokerDB.Save(existingInstance).Error
+		err = broker.brokerDB.Model(RDSInstance{}).Where("uuid", existingInstance.Uuid).Update("state", status).Error
 		if err != nil {
 			return apiresponses.NewFailureResponse(
 				err,
