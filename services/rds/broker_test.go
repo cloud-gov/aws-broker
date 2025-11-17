@@ -71,7 +71,7 @@ func TestValidate(t *testing.T) {
 func TestParseModifyOptionsFromRequest(t *testing.T) {
 	testCases := map[string]struct {
 		broker          *rdsBroker
-		modifyRequest   request.Request
+		updateDetails   domain.UpdateDetails
 		expectedOptions Options
 		expectErr       bool
 	}{
@@ -79,7 +79,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(``),
 			},
 			expectedOptions: Options{
@@ -94,7 +94,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{ "enable_pg_cron": true }`),
 			},
 			expectedOptions: Options{
@@ -110,7 +110,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{ "enable_pg_cron": false }`),
 			},
 			expectedOptions: Options{
@@ -126,7 +126,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{ "rotate_credentials": true }`),
 			},
 			expectedOptions: Options{
@@ -142,7 +142,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{ "rotate_credentials": false }`),
 			},
 			expectedOptions: Options{
@@ -158,7 +158,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{}`),
 			},
 			expectedOptions: Options{
@@ -175,7 +175,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 					MinBackupRetention: 14,
 				},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{"backup_retention_period": 0}`),
 			},
 			expectedOptions: Options{
@@ -194,7 +194,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 					MaxAllocatedStorage: 100,
 				},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{"storage": 150}`),
 			},
 			expectedOptions: Options{
@@ -210,7 +210,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				RawParameters: []byte(`{"foo": }`),
 			},
 			expectedOptions: Options{
@@ -225,7 +225,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			options, err := test.broker.parseModifyOptionsFromRequest(test.modifyRequest)
+			options, err := test.broker.parseModifyOptionsFromRequest(test.updateDetails)
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -241,13 +241,12 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 
 func TestCreateInstanceSuccess(t *testing.T) {
 	testCases := map[string]struct {
-		planID               string
-		dbInstance           *RDSInstance
-		expectedResponseCode int
-		tagManager           brokertags.TagManager
-		settings             *config.Settings
-		catalog              *catalog.Catalog
-		createRequest        request.Request
+		planID           string
+		dbInstance       *RDSInstance
+		tagManager       brokertags.TagManager
+		settings         *config.Settings
+		catalog          *catalog.Catalog
+		provisionDetails domain.ProvisionDetails
 	}{
 		"success": {
 			catalog: &catalog.Catalog{
@@ -272,10 +271,9 @@ func TestCreateInstanceSuccess(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			createRequest: request.Request{
+			provisionDetails: domain.ProvisionDetails{
 				PlanID: "123",
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 	}
 
@@ -293,10 +291,9 @@ func TestCreateInstanceSuccess(t *testing.T) {
 				dbAdapter:  &mockDBAdapter{},
 			}
 
-			response := broker.CreateInstance(test.catalog, test.dbInstance.Uuid, test.createRequest)
-
-			if response.GetStatusCode() != test.expectedResponseCode {
-				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			err = broker.CreateInstance(test.dbInstance.Uuid, test.provisionDetails)
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
@@ -310,6 +307,7 @@ func TestModify(t *testing.T) {
 		settings             *config.Settings
 		catalog              *catalog.Catalog
 		modifyRequest        request.Request
+		updateDetails        domain.UpdateDetails
 		expectedDbInstance   *RDSInstance
 		dbAdapter            dbAdapter
 	}{
@@ -319,8 +317,8 @@ func TestModify(t *testing.T) {
 					RDSPlans: []catalog.RDSPlan{
 						{
 							ServicePlan: domain.ServicePlan{
-								ID:             "123",
-								PlanUpdateable: true,
+								ID:            "123",
+								PlanUpdatable: aws.Bool(true),
 							},
 						},
 						{
@@ -355,7 +353,7 @@ func TestModify(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				PlanID: "123",
 			},
 			expectedResponseCode: http.StatusAccepted,
@@ -366,8 +364,8 @@ func TestModify(t *testing.T) {
 					RDSPlans: []catalog.RDSPlan{
 						{
 							ServicePlan: domain.ServicePlan{
-								ID:             "123",
-								PlanUpdateable: true,
+								ID:            "123",
+								PlanUpdatable: aws.Bool(true),
 							},
 							Redundant:   true,
 							ReadReplica: true,
@@ -405,7 +403,7 @@ func TestModify(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			modifyRequest: request.Request{
+			updateDetails: domain.UpdateDetails{
 				PlanID: "123",
 			},
 			expectedResponseCode: http.StatusAccepted,
@@ -421,6 +419,7 @@ func TestModify(t *testing.T) {
 
 			broker := &rdsBroker{
 				brokerDB:   brokerDB,
+				catalog:    test.catalog,
 				settings:   test.settings,
 				tagManager: test.tagManager,
 				dbAdapter: &mockDBAdapter{
@@ -433,10 +432,9 @@ func TestModify(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			response := broker.ModifyInstance(test.catalog, test.dbInstance.Uuid, test.modifyRequest, base.Instance{})
-
-			if response.GetStatusCode() != test.expectedResponseCode {
-				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			err = broker.ModifyInstance(test.dbInstance.Uuid, test.updateDetails)
+			if err != nil {
+				t.Fatal(err)
 			}
 
 			updatedInstance := &RDSInstance{}
