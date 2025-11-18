@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"log/slog"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
 	"github.com/cloud-gov/aws-broker/testutil"
+	"github.com/google/uuid"
 )
 
 var brokerDB *gorm.DB
@@ -140,44 +143,44 @@ func TestCatalog(t *testing.T) {
 /*
 Testing RDS
 */
-// func TestCreateRDSInstance(t *testing.T) {
-// 	instanceUUID := uuid.NewString()
-// 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-// 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+func TestCreateRDSInstance(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
+	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
-// 	if resp.Code != http.StatusUnprocessableEntity {
-// 		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
-// 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
-// 	}
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+	}
 
-// 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-// 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
-// 	if res.Code != http.StatusAccepted {
-// 		t.Logf("Unable to create instance. Body is: " + res.Body.String())
-// 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
-// 	}
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
+	}
 
-// 	// Is it a valid JSON?
-// 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-// 	isAsyncOperationResponse(t, res, base.CreateOp)
+	isAsyncOperationResponse(t, res, base.CreateOp)
 
-// 	// Is it in the database and has a username and password?
-// 	i := rds.RDSInstance{}
-// 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-// 	if i.Uuid == "0" {
-// 		t.Error("The instance should be saved in the DB")
-// 	}
+	// Is it in the database and has a username and password?
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
 
-// 	if i.Username == "" || i.Password == "" {
-// 		t.Error("The instance should have a username and password")
-// 	}
+	if i.Username == "" || i.Password == "" {
+		t.Error("The instance should have a username and password")
+	}
 
-// 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
-// 		t.Error("The instance should have metadata")
-// 	}
-// }
+	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
+		t.Error("The instance should have metadata")
+	}
+}
 
 // func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 // 	instanceUUID := uuid.NewString()
