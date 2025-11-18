@@ -64,27 +64,22 @@ type mockRedisAdapter struct {
 }
 
 func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	// TODO
-	return base.InstanceReady, nil
+	return base.InstanceNotModified, nil
 }
 
 func (d *mockRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
-	// TODO
 	return base.InstanceReady, nil
 }
 
 func (d *mockRedisAdapter) bindRedisToApp(i *RedisInstance, password string) (map[string]string, error) {
-	// TODO
 	return i.getCredentials(password)
 }
 
 func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
-	// TODO
 	return base.InstanceGone, nil
 }
 
@@ -136,7 +131,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
 			for _, value := range resp.ReplicationGroups {
-				d.logger.Debug(fmt.Sprintf("Redis Instance:" + i.ClusterID + " is " + *(value.Status)))
+				d.logger.Debug(fmt.Sprintf("Redis Instance: %s is %s", i.ClusterID, *(value.Status)))
 				switch *(value.Status) {
 				case "available":
 					return base.InstanceReady, nil

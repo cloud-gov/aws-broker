@@ -98,7 +98,7 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.EngineVersion) {
 			return apiresponses.NewFailureResponse(
-				fmt.Errorf(options.EngineVersion+" is not a supported major version; major version must be one of: 7.0, 6.2, 6.0, 5.0.6"),
+				fmt.Errorf("%s is not a supported major version; major version must be one of: 7.0, 6.2, 6.0, 5.0.6", options.EngineVersion),
 				http.StatusBadRequest,
 				"checking Redis plan",
 			)
@@ -183,7 +183,7 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetails) error {
 	// Note:  This is not currently supported for Redis instances.
 	return apiresponses.NewFailureResponse(
-		fmt.Errorf("Updating Redis service instances is not supported at this time."),
+		fmt.Errorf("updating Redis service instances is not supported at this time"),
 		http.StatusBadRequest,
 		"modifying Redis instance",
 	)
