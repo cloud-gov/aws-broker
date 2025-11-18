@@ -28,7 +28,7 @@ func main() {
 
 	db, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
-		log.Fatal(fmt.Errorf("There was an error with the DB. Error: " + err.Error()))
+		log.Fatal(fmt.Errorf("there was an error with the DB. Error: %s", err))
 	}
 
 	asyncJobManager := jobs.NewAsyncJobManager()
@@ -48,14 +48,6 @@ func main() {
 	path, _ := os.Getwd()
 	c := catalog.InitCatalog(path)
 
-	serviceBroker := broker.New(
-		&settings,
-		db,
-		c,
-		asyncJobManager,
-		tagManager,
-	)
-
 	username := os.Getenv("AUTH_USER")
 	password := os.Getenv("AUTH_PASS")
 
@@ -70,69 +62,16 @@ func main() {
 	// Create a new logger with the Text handler
 	logger := slog.New(handler)
 
+	serviceBroker := broker.New(
+		&settings,
+		db,
+		c,
+		asyncJobManager,
+		tagManager,
+	)
+
 	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
 	http.Handle("/", brokerAPI)
 
 	http.ListenAndServe(fmt.Sprintf(":%s", settings.Port), nil)
-
-	// Try to connect and create the app.
-	// if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {
-	// 	log.Println("Starting app...")
-	// 	m.Run()
-	// } else {
-	// 	log.Println("Unable to setup application. Exiting...")
-	// }
 }
-
-// App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-// func App(settings *config.Settings, DB *gorm.DB, asyncJobManager *jobs.AsyncJobManager, tagManager brokertags.TagManager) *martini.ClassicMartini {
-
-// 	m := martini.Classic()
-
-// 	username := os.Getenv("AUTH_USER")
-// 	password := os.Getenv("AUTH_PASS")
-
-// 	m.Use(auth.Basic(username, password))
-// 	m.Use(render.Renderer())
-
-// 	m.Map(DB)
-// 	m.Map(settings)
-// 	m.Map(asyncJobManager)
-// 	m.Map(tagManager)
-
-// 	path, _ := os.Getwd()
-// 	m.Map(catalog.InitCatalog(path))
-
-// 	log.Println("Loading Routes")
-
-// 	// Serve the catalog with services and plans
-// 	m.Get("/v2/catalog", func(r render.Render, c *catalog.Catalog) {
-// 		r.JSON(200, map[string]interface{}{
-// 			"services": c.GetServices(),
-// 		})
-// 	})
-
-// 	// Create the service instance (cf create-service-instance)
-// 	// This is a PUT per https://github.com/openservicebrokerapi/servicebroker/blob/v2.16/spec.md#provisioning
-// 	m.Put("/v2/service_instances/:id", CreateInstance)
-
-// 	// Update the service instance
-// 	m.Patch("/v2/service_instances/:id", ModifyInstance)
-
-// 	// Poll service endpoint to get status of rds or elasticache
-// 	m.Get("/v2/service_instances/:instance_id/last_operation", LastOperation)
-
-// 	// Bind the service to app (cf bind-service)
-// 	m.Put("/v2/service_instances/:instance_id/service_bindings/:id", BindInstance)
-
-// 	// Unbind the service from app
-// 	m.Delete("/v2/service_instances/:instance_id/service_bindings/:id", func(p martini.Params, r render.Render) {
-// 		var emptyJSON struct{}
-// 		r.JSON(200, emptyJSON)
-// 	})
-
-// 	// Delete service instance
-// 	m.Delete("/v2/service_instances/:instance_id", DeleteInstance)
-
-// 	return m
-// }

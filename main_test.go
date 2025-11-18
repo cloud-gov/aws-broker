@@ -2,8 +2,9 @@ package main
 
 import (
 	"log"
+	"log/slog"
 
-	"github.com/go-martini/martini"
+	"code.cloudfoundry.org/brokerapi/v13"
 	"gorm.io/gorm"
 
 	"encoding/json"
@@ -14,6 +15,8 @@ import (
 	"testing"
 
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/broker"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
@@ -26,9 +29,7 @@ import (
 
 var brokerDB *gorm.DB
 
-func setup() *martini.ClassicMartini {
-	os.Setenv("AUTH_USER", "default")
-	os.Setenv("AUTH_PASS", "default")
+func setup() http.Handler {
 	var s config.Settings
 
 	s.EncryptionKey = helpers.RandStr(32)
@@ -48,29 +49,51 @@ func setup() *martini.ClassicMartini {
 	tq := jobs.NewAsyncJobManager()
 	tq.Init()
 
-	m := App(&s, brokerDB, tq, &mocks.MockTagGenerator{})
+	path, _ := os.Getwd()
+	c := catalog.InitCatalog(path)
 
-	return m
+	serviceBroker := broker.New(
+		&s,
+		brokerDB,
+		c,
+		tq,
+		&mocks.MockTagGenerator{},
+	)
+
+	credentials := brokerapi.BrokerCredentials{
+		Username: "default",
+		Password: "default",
+	}
+
+	handler := slog.NewTextHandler(os.Stdout, nil)
+	logger := slog.New(handler)
+
+	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
+
+	return brokerAPI
 }
 
 /*
 	Mock Objects
 */
 
-func doRequest(m *martini.ClassicMartini, url string, method string, auth bool, body io.Reader) (*httptest.ResponseRecorder, *martini.ClassicMartini) {
-	if m == nil {
-		m = setup()
-	}
+func doRequest(url string, method string, auth bool, body io.Reader) *httptest.ResponseRecorder {
+	brokerAPI := setup()
 
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest(method, url, body)
 	if auth {
 		req.SetBasicAuth("default", "default")
 	}
+	req.Header.Set("X-Broker-API-Version", "2.13")
 
-	m.ServeHTTP(res, req)
+	brokerAPI.ServeHTTP(res, req)
 
-	return res, m
+	if auth {
+		req.SetBasicAuth("default", "default")
+	}
+
+	return res
 }
 
 /*
@@ -96,14 +119,14 @@ func isAsyncOperationResponse(t *testing.T, response *httptest.ResponseRecorder,
 
 func TestCatalog(t *testing.T) {
 	url := "/v2/catalog"
-	res, _ := doRequest(nil, url, "GET", false, nil)
+	res := doRequest(url, "GET", false, nil)
 
 	// Without auth
 	if res.Code != http.StatusUnauthorized {
 		t.Error(url, "without auth should return 401")
 	}
 
-	res, _ = doRequest(nil, url, "GET", true, nil)
+	res = doRequest(url, "GET", true, nil)
 
 	// With auth
 	if res.Code != http.StatusOK {
