@@ -123,7 +123,7 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.ElasticsearchVersion) {
 			return apiresponses.NewFailureResponse(
-				fmt.Errorf(options.ElasticsearchVersion+" is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4."),
+				fmt.Errorf("%s is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4", options.ElasticsearchVersion),
 				http.StatusBadRequest,
 				"checking Elasticsearch plan",
 			)

@@ -286,6 +286,7 @@ func TestCreateInstanceSuccess(t *testing.T) {
 
 			broker := &rdsBroker{
 				brokerDB:   brokerDB,
+				catalog:    test.catalog,
 				settings:   test.settings,
 				tagManager: test.tagManager,
 				dbAdapter:  &mockDBAdapter{},
@@ -586,6 +587,7 @@ func TestLastOperation(t *testing.T) {
 
 			broker := &rdsBroker{
 				brokerDB:   brokerDB,
+				catalog:    test.catalog,
 				settings:   test.settings,
 				tagManager: test.tagManager,
 				dbAdapter:  &mockDBAdapter{},

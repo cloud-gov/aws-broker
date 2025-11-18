@@ -45,7 +45,7 @@ type mockElasticsearchAdapter struct {
 
 func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	// TODO
-	return base.InstanceReady, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
