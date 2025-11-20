@@ -1,6 +1,6 @@
 module github.com/cloud-gov/aws-broker/cmd/tasks
 
-go 1.23.4
+go 1.24.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.39.2
@@ -58,10 +58,10 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
