@@ -57,6 +57,22 @@ func TestFetchPlan(t *testing.T) {
 	}
 }
 
+func TestRDSCheckPlanUpdatable(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
+
+	plan, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
+
+	if err != nil {
+		t.Error("Could not fetch plan " + rdsPGTestPlanID)
+	}
+
+	if plan.PlanUpdatable == nil {
+		t.Error("PlanUpdatable property not set")
+	}
+}
+
 func TestRDSPGCheckVersion(t *testing.T) {
 	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
