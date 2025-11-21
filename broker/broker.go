@@ -155,7 +155,9 @@ func (b *AWSBroker) findBroker(serviceID string) (base.BrokerV2, error) {
 }
 
 func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) (domain.ProvisionedServiceSpec, error) {
-	spec := domain.ProvisionedServiceSpec{}
+	spec := domain.ProvisionedServiceSpec{
+		OperationData: base.CreateOp.String(),
+	}
 	broker, err := b.findBroker(details.ServiceID)
 	if err != nil {
 		return spec, err
@@ -191,7 +193,9 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 }
 
 func (b *AWSBroker) modifyInstance(id string, details domain.UpdateDetails, asyncAllowed bool) (domain.UpdateServiceSpec, error) {
-	spec := domain.UpdateServiceSpec{}
+	spec := domain.UpdateServiceSpec{
+		OperationData: base.ModifyOp.String(),
+	}
 	broker, err := b.findBroker(details.ServiceID)
 	if err != nil {
 		return spec, err
@@ -226,7 +230,9 @@ func (b *AWSBroker) modifyInstance(id string, details domain.UpdateDetails, asyn
 }
 
 func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails, asyncAllowed bool) (domain.DeprovisionServiceSpec, error) {
-	spec := domain.DeprovisionServiceSpec{}
+	spec := domain.DeprovisionServiceSpec{
+		OperationData: base.DeleteOp.String(),
+	}
 	broker, err := b.findBroker(details.ServiceID)
 	if err != nil {
 		return spec, err
@@ -268,14 +274,18 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 }
 
 func (b *AWSBroker) bindInstance(id string, details domain.BindDetails, asyncAllowed bool) (domain.Binding, error) {
+	binding := domain.Binding{
+		OperationData: base.BindOp.String(),
+	}
+
 	broker, err := b.findBroker(details.ServiceID)
 	if err != nil {
-		return domain.Binding{}, err
+		return binding, err
 	}
 
 	asyncRequired := broker.AsyncOperationRequired(base.BindOp)
 	if asyncRequired && !asyncAllowed {
-		return domain.Binding{}, apiresponses.ErrAsyncRequired
+		return binding, apiresponses.ErrAsyncRequired
 	}
 
 	return broker.BindInstance(id, details)

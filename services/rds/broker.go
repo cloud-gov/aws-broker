@@ -397,7 +397,9 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 }
 
 func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
-	binding := domain.Binding{}
+	binding := domain.Binding{
+		OperationData: base.BindOp.String(),
+	}
 	existingInstance := NewRDSInstance()
 
 	var count int64
@@ -430,6 +432,8 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 		)
 	}
 
+	binding.Credentials = credentials
+
 	// If the state of the instance has changed, update it.
 	if existingInstance.State != originalInstanceState {
 		if err := broker.brokerDB.Save(existingInstance).Error; err != nil {
@@ -441,9 +445,7 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 		}
 	}
 
-	return domain.Binding{
-		Credentials: credentials,
-	}, nil
+	return binding, nil
 }
 
 func (broker *rdsBroker) DeleteInstance(id string) error {

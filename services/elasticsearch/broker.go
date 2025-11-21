@@ -322,7 +322,9 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 }
 
 func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
-	binding := domain.Binding{}
+	binding := domain.Binding{
+		OperationData: base.BindOp.String(),
+	}
 	existingInstance := ElasticsearchInstance{}
 
 	options := ElasticsearchOptions{}
@@ -364,6 +366,8 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 		)
 	}
 
+	binding.Credentials = credentials
+
 	if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
 		return binding, apiresponses.NewFailureResponse(
 			fmt.Errorf("there was an error saving the database instance to the application: %s", err),
@@ -372,9 +376,7 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 		)
 	}
 
-	return domain.Binding{
-		Credentials: credentials,
-	}, nil
+	return binding, nil
 }
 
 func (broker *elasticsearchBroker) DeleteInstance(id string) error {

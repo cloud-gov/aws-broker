@@ -216,7 +216,9 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 }
 
 func (broker *redisBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
-	binding := domain.Binding{}
+	binding := domain.Binding{
+		OperationData: base.BindOp.String(),
+	}
 	existingInstance := RedisInstance{}
 
 	var count int64
@@ -245,6 +247,8 @@ func (broker *redisBroker) BindInstance(id string, details domain.BindDetails) (
 		)
 	}
 
+	binding.Credentials = credentials
+
 	// If the state of the instance has changed, update it.
 	if existingInstance.State != originalInstanceState {
 		if err := broker.brokerDB.Save(&existingInstance).Error; err != nil {
@@ -256,9 +260,7 @@ func (broker *redisBroker) BindInstance(id string, details domain.BindDetails) (
 		}
 	}
 
-	return domain.Binding{
-		Credentials: credentials,
-	}, nil
+	return binding, nil
 }
 
 func (broker *redisBroker) DeleteInstance(id string) error {
