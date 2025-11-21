@@ -173,7 +173,7 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 	// Create instance
 	err = broker.CreateInstance(id, details)
 	if err != nil {
-		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "create instance")
+		return spec, err
 	}
 
 	instance := base.Instance{Uuid: id, Request: request.Request{
@@ -215,15 +215,17 @@ func (b *AWSBroker) modifyInstance(id string, details domain.UpdateDetails, asyn
 
 	// Attempt to modify the database instance.
 	err = broker.ModifyInstance(id, details)
-	if err == nil {
-		err := b.db.Save(&instance).Error
-		if err != nil {
-			return spec, apiresponses.NewFailureResponse(
-				err,
-				http.StatusInternalServerError,
-				"save updated instance",
-			)
-		}
+	if err != nil {
+		return spec, err
+	}
+
+	err = b.db.Save(&instance).Error
+	if err != nil {
+		return spec, apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"save updated instance",
+		)
 	}
 
 	return spec, nil
@@ -248,7 +250,7 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 	// Create instance
 	err = broker.DeleteInstance(id)
 	if err != nil {
-		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "delete instance")
+		return spec, err
 	}
 
 	instance, err := base.FindBaseInstance(b.db, id)
