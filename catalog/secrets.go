@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/cloud-gov/aws-broker/common"
+	"github.com/goccy/go-yaml"
 	"gopkg.in/go-playground/validator.v8"
-	"gopkg.in/yaml.v3"
 )
 
 // Secrets contains all the secrets for all the services.

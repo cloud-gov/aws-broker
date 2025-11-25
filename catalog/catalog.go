@@ -8,8 +8,8 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"github.com/goccy/go-yaml"
 	"gopkg.in/go-playground/validator.v8"
-	"gopkg.in/yaml.v3"
 )
 
 var (
