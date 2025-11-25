@@ -170,12 +170,6 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 		return spec, apiresponses.ErrAsyncRequired
 	}
 
-	// Create instance
-	err = broker.CreateInstance(id, details)
-	if err != nil {
-		return spec, err
-	}
-
 	instance := base.Instance{Uuid: id, Request: request.Request{
 		ServiceID:        details.ServiceID,
 		PlanID:           details.PlanID,
@@ -187,6 +181,12 @@ func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, a
 	err = b.db.Create(&instance).Error
 	if err != nil {
 		return spec, apiresponses.NewFailureResponse(err, http.StatusBadRequest, "save new instance")
+	}
+
+	// Create instance
+	err = broker.CreateInstance(id, details)
+	if err != nil {
+		return spec, err
 	}
 
 	return spec, nil
