@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -114,11 +115,12 @@ func (t *TestRequestHandler) doRequest(url string, method string, auth bool, bod
 	End Mock Objects
 */
 
-func validJSON(response []byte, url string, t *testing.T) {
+func validJSON(response []byte, url string, t *testing.T) map[string]interface{} {
 	var aJSON map[string]interface{}
 	if json.Unmarshal(response, &aJSON) != nil {
 		t.Error(url, "should return a valid json")
 	}
+	return aJSON
 }
 
 func isAsyncOperationResponse(t *testing.T, response *httptest.ResponseRecorder, expectedOperation base.Operation) {
@@ -133,6 +135,9 @@ func isAsyncOperationResponse(t *testing.T, response *httptest.ResponseRecorder,
 
 func TestMain(m *testing.M) {
 	requestHandler = NewTestRequestHandler()
+
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }
 
 func TestCatalog(t *testing.T) {
@@ -152,7 +157,32 @@ func TestCatalog(t *testing.T) {
 	}
 
 	// Is it a valid JSON?
-	validJSON(res.Body.Bytes(), url, t)
+	catalog := validJSON(res.Body.Bytes(), url, t)
+	services := catalog["services"]
+	catalogServices, ok := services.([]interface{})
+
+	if !ok {
+		t.Fatal("Catalog does not have the expected format")
+	}
+
+	if len(catalogServices) != 3 {
+		t.Fatal("There should be three services in the catalog")
+	}
+
+	var foundServices []string
+	for _, service := range catalogServices {
+		catalogService, ok := service.(map[string]interface{})
+		if !ok {
+			t.Fatal("Catalog service does not have the right format")
+		}
+		if serviceName, ok := catalogService["name"].(string); ok {
+			foundServices = append(foundServices, serviceName)
+		}
+	}
+
+	if !reflect.DeepEqual(foundServices, []string{"rds", "aws-elasticsearch", "redis"}) {
+		t.Fatal("Catalog did not contain the expected service names")
+	}
 }
 
 /*
