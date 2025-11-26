@@ -294,7 +294,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	}
 
 	// Don't allow updating to a service plan that doesn't support updates.
-	if !*newPlan.PlanUpdatable {
+	if newPlan.PlanUpdatable == nil || !*newPlan.PlanUpdatable {
 		return apiresponses.ErrPlanChangeNotSupported
 	}
 
