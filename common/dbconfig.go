@@ -4,14 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // DBConfig holds configuration information to connect to a database.
@@ -76,19 +73,7 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			DSN: conn,
 		}), &gorm.Config{})
 	case "sqlite3":
-		newLogger := logger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-			logger.Config{
-				SlowThreshold:             time.Second, // Slow SQL threshold
-				LogLevel:                  logger.Info, // Log level
-				IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
-				Colorful:                  true,        // Disable color
-			},
-		)
-
-		DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-			Logger: newLogger,
-		})
+		DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	default:
 		errorString := "Cannot connect. Unsupported DB type: (" + dbConfig.DbType + ")"
 		log.Println(errorString)

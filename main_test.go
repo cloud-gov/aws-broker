@@ -33,6 +33,7 @@ import (
 )
 
 var brokerDB *gorm.DB
+var requestHandler *TestRequestHandler
 
 func setup() http.Handler {
 	var s config.Settings
@@ -82,9 +83,17 @@ func setup() http.Handler {
 	Mock Objects
 */
 
-func doRequest(url string, method string, auth bool, body io.Reader) *httptest.ResponseRecorder {
-	brokerAPI := setup()
+type TestRequestHandler struct {
+	brokerAPI http.Handler
+}
 
+func NewTestRequestHandler() *TestRequestHandler {
+	return &TestRequestHandler{
+		brokerAPI: setup(),
+	}
+}
+
+func (t *TestRequestHandler) doRequest(url string, method string, auth bool, body io.Reader) *httptest.ResponseRecorder {
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest(method, url, body)
 	if auth {
@@ -92,7 +101,7 @@ func doRequest(url string, method string, auth bool, body io.Reader) *httptest.R
 	}
 	req.Header.Set("X-Broker-API-Version", "2.13")
 
-	brokerAPI.ServeHTTP(res, req)
+	t.brokerAPI.ServeHTTP(res, req)
 
 	if auth {
 		req.SetBasicAuth("default", "default")
@@ -122,16 +131,20 @@ func isAsyncOperationResponse(t *testing.T, response *httptest.ResponseRecorder,
 	}
 }
 
+func TestMain(m *testing.M) {
+	requestHandler = NewTestRequestHandler()
+}
+
 func TestCatalog(t *testing.T) {
 	url := "/v2/catalog"
-	res := doRequest(url, "GET", false, nil)
+	res := requestHandler.doRequest(url, "GET", false, nil)
 
 	// Without auth
 	if res.Code != http.StatusUnauthorized {
 		t.Error(url, "without auth should return 401")
 	}
 
-	res = doRequest(url, "GET", true, nil)
+	res = requestHandler.doRequest(url, "GET", true, nil)
 
 	// With auth
 	if res.Code != http.StatusOK {
@@ -148,7 +161,7 @@ Testing RDS
 func TestCreateRDSInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -156,7 +169,7 @@ func TestCreateRDSInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -187,7 +200,7 @@ func TestCreateRDSInstance(t *testing.T) {
 func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -195,7 +208,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -224,7 +237,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -232,7 +245,7 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -265,7 +278,7 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -273,7 +286,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -306,7 +319,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -314,7 +327,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if res.Code != http.StatusBadRequest {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -333,7 +346,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceWithEnabledLogGroupsReq))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceWithEnabledLogGroupsReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -367,7 +380,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -389,7 +402,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -397,7 +410,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -422,7 +435,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -443,7 +456,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -451,7 +464,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusBadRequest {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -479,7 +492,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -500,7 +513,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -509,7 +522,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 
 	// Pull in AllocatedStorage and increase the storage
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -538,7 +551,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -559,7 +572,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -568,7 +581,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 
 	// Pull in AllocatedStorage and increase the storage
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -596,7 +609,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -617,7 +630,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -626,7 +639,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 
 	// Pull in AllocatedStorage and increase the storage
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -654,7 +667,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -676,7 +689,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 
 	// Pull in AllocatedStorage and increase the storage
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp := doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnableCloudwatchLogGroups))
+	resp := requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnableCloudwatchLogGroups))
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -703,7 +716,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 func TestRDSLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
-	res := doRequest(url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -711,14 +724,14 @@ func TestRDSLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Check instance was created and StatusOK
-	res = doRequest(url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
+	res = requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusOK {
 		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
@@ -728,7 +741,7 @@ func TestRDSLastOperation(t *testing.T) {
 func TestRDSBindInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
-	res := doRequest(url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res := requestHandler.doRequest(url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -736,13 +749,13 @@ func TestRDSBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
-	res = doRequest(url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	res = requestHandler.doRequest(url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusCreated {
 		t.Logf("Unable to bind instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -784,7 +797,7 @@ func TestRDSBindInstance(t *testing.T) {
 func TestRDSUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
-	res := doRequest(url, "DELETE", true, nil)
+	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
@@ -802,7 +815,7 @@ func TestRDSUnbind(t *testing.T) {
 func TestRDSDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(url, "DELETE", true, nil)
+	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
 	if res.Code != http.StatusNotFound {
@@ -810,14 +823,14 @@ func TestRDSDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
 
-	res = doRequest(url, "DELETE", true, nil)
+	res = requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to delete instance. Body is: %s", res.Body.String())
@@ -834,7 +847,7 @@ func TestRDSDeleteInstance(t *testing.T) {
 func TestCreateRedisInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -842,7 +855,7 @@ func TestCreateRedisInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -876,7 +889,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -897,7 +910,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -905,7 +918,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
 	if resp.Code != http.StatusBadRequest {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -932,7 +945,7 @@ func TestModifyRedisInstance(t *testing.T) {
 func TestRedisLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
-	res := doRequest(url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
+	res := requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -940,14 +953,14 @@ func TestRedisLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Check instance was created and StatusOK
-	res = doRequest(url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
+	res = requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusOK {
 		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
@@ -957,7 +970,7 @@ func TestRedisLastOperation(t *testing.T) {
 func TestRedisBindInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
-	res := doRequest(url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res := requestHandler.doRequest(url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -965,13 +978,13 @@ func TestRedisBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
-	res = doRequest(url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res = requestHandler.doRequest(url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusCreated {
 		t.Logf("Unable to bind instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1013,7 +1026,7 @@ func TestRedisBindInstance(t *testing.T) {
 func TestRedisUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
-	res := doRequest(url, "DELETE", true, nil)
+	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
@@ -1031,7 +1044,7 @@ func TestRedisUnbind(t *testing.T) {
 func TestRedisDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	res := doRequest(url, "DELETE", true, nil)
+	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
 	if res.Code != http.StatusNotFound {
@@ -1039,14 +1052,14 @@ func TestRedisDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	i := redis.RedisInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
 
-	res = doRequest(url, "DELETE", true, nil)
+	res = requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -1068,7 +1081,7 @@ func TestRedisDeleteInstance(t *testing.T) {
 func TestCreateElasticsearchInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
@@ -1076,7 +1089,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -1119,7 +1132,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 
 	advancedInstanceUUID := uuid.NewString()
 	urlAcceptsIncompleteAdv := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", advancedInstanceUUID)
-	res = doRequest(urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceAdvancedOptionsReq))
+	res = requestHandler.doRequest(urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceAdvancedOptionsReq))
 
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
@@ -1165,7 +1178,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -1186,7 +1199,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -1194,7 +1207,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -1223,7 +1236,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	// We need to create an instance first before we can try to modify it.
 	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	res := doRequest(createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
@@ -1244,7 +1257,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	}
 
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	resp := doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
+	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -1252,7 +1265,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
-	resp = doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
+	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusBadRequest {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
@@ -1279,7 +1292,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 func TestElasticsearchLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
-	res := doRequest(url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res := requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -1287,14 +1300,14 @@ func TestElasticsearchLastOperation(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Check instance was created and StatusOK
-	res = doRequest(url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res = requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusOK {
 		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
@@ -1304,7 +1317,7 @@ func TestElasticsearchLastOperation(t *testing.T) {
 func TestElasticsearchBindInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
-	res := doRequest(url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res := requestHandler.doRequest(url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Without the instance
 	if res.Code != http.StatusNotFound {
@@ -1312,13 +1325,13 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
-	res = doRequest(url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res = requestHandler.doRequest(url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusCreated {
 		t.Logf("Unable to bind instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
@@ -1360,7 +1373,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 func TestElasticsearchUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
-	res := doRequest(url, "DELETE", true, nil)
+	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
@@ -1378,7 +1391,7 @@ func TestElasticsearchUnbind(t *testing.T) {
 func TestElasticsearchDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
-	res := doRequest(url, "DELETE", true, nil)
+	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
 	if res.Code != http.StatusNotFound {
@@ -1386,14 +1399,14 @@ func TestElasticsearchDeleteInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	i := elasticsearch.ElasticsearchInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be in the DB")
 	}
 
-	res = doRequest(url, "DELETE", true, nil)
+	res = requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
