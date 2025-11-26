@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -100,7 +101,9 @@ func (t *TestRequestHandler) doRequest(url string, method string, auth bool, bod
 	if auth {
 		req.SetBasicAuth("default", "default")
 	}
-	req.Header.Set("X-Broker-API-Version", "2.13")
+	req.Header.Set("X-Broker-API-Version", "2.14")
+	ctx := context.WithValue(context.Background(), "test_context", true)
+	req = req.WithContext(ctx)
 
 	t.brokerAPI.ServeHTTP(res, req)
 
@@ -496,7 +499,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
-	if resp.Code != http.StatusBadRequest {
+	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
@@ -504,8 +507,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it contain "...because the service plan does not allow updates or modification."?
-	if !strings.Contains(resp.Body.String(), "because the service plan does not allow updates or modification.") {
+	if !strings.Contains(resp.Body.String(), "The requested plan migration cannot be performed") {
 		t.Error(urlAcceptsIncomplete, "should return a message that the plan cannot be chosen")
 	}
 
