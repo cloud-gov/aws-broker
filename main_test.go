@@ -747,12 +747,12 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 
 func TestRDSLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
-	res := requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
+	url := fmt.Sprintf("/v2/service_instances/%s/last_operation?service_id=%s&plan_id=%s", instanceUUID, rdsServiceId, originalRDSPlanID)
+	res := requestHandler.doRequest(url, "GET", true, nil)
 
 	// Without the instance
-	if res.Code != http.StatusNotFound {
-		t.Error(url, "with auth status should be returned 404", res.Code)
+	if res.Code != http.StatusGone {
+		t.Error(url, "with auth should return 410", res.Code)
 	}
 
 	// Create the instance and try again
@@ -763,7 +763,7 @@ func TestRDSLastOperation(t *testing.T) {
 	}
 
 	// Check instance was created and StatusOK
-	res = requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
+	res = requestHandler.doRequest(url, "GET", true, nil)
 	if res.Code != http.StatusOK {
 		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
