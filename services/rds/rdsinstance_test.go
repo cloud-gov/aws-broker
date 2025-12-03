@@ -782,81 +782,81 @@ func TestModifyInstance(t *testing.T) {
 	}
 }
 
-// func TestModifyInstanceRotateCredentials(t *testing.T) {
-// 	testCases := map[string]struct {
-// 		options                 Options
-// 		currentPlan             *catalog.RDSPlan
-// 		newPlan                 *catalog.RDSPlan
-// 		settings                *config.Settings
-// 		originalPassword        string
-// 		originalSalt            string
-// 		username                string
-// 		shouldRotateCredentials bool
-// 		tags                    map[string]string
-// 	}{
-// 		"rotate credentials": {
-// 			options: Options{
-// 				RotateCredentials: aws.Bool(true),
-// 			},
-// 			currentPlan: &catalog.RDSPlan{},
-// 			newPlan:     &catalog.RDSPlan{},
-// 			settings: &config.Settings{
-// 				EncryptionKey: helpers.RandStr(32),
-// 			},
-// 			originalPassword:        helpers.RandStr(20),
-// 			originalSalt:            helpers.RandStr(10),
-// 			username:                helpers.RandStr(10),
-// 			shouldRotateCredentials: true,
-// 		},
-// 		"do not rotate credentials": {
-// 			options: Options{
-// 				RotateCredentials: aws.Bool(false),
-// 			},
-// 			currentPlan: &catalog.RDSPlan{},
-// 			newPlan:     &catalog.RDSPlan{},
-// 			settings: &config.Settings{
-// 				EncryptionKey: helpers.RandStr(32),
-// 			},
-// 			originalPassword:        helpers.RandStr(20),
-// 			originalSalt:            helpers.RandStr(10),
-// 			username:                helpers.RandStr(10),
-// 			shouldRotateCredentials: false,
-// 		},
-// 		"rotate credentials not specified": {
-// 			options:     Options{},
-// 			currentPlan: &catalog.RDSPlan{},
-// 			newPlan:     &catalog.RDSPlan{},
-// 			settings: &config.Settings{
-// 				EncryptionKey: helpers.RandStr(32),
-// 			},
-// 			originalPassword:        helpers.RandStr(20),
-// 			originalSalt:            helpers.RandStr(10),
-// 			username:                helpers.RandStr(10),
-// 			shouldRotateCredentials: false,
-// 		},
-// 	}
+func TestModifyInstanceRotateCredentials(t *testing.T) {
+	testCases := map[string]struct {
+		options                 Options
+		currentPlan             *catalog.RDSPlan
+		newPlan                 *catalog.RDSPlan
+		settings                *config.Settings
+		originalPassword        string
+		originalSalt            string
+		username                string
+		shouldRotateCredentials bool
+		tags                    map[string]string
+	}{
+		"rotate credentials": {
+			options: Options{
+				RotateCredentials: aws.Bool(true),
+			},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			originalPassword:        helpers.RandStr(20),
+			originalSalt:            helpers.RandStr(10),
+			username:                helpers.RandStr(10),
+			shouldRotateCredentials: true,
+		},
+		"do not rotate credentials": {
+			options: Options{
+				RotateCredentials: aws.Bool(false),
+			},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			originalPassword:        helpers.RandStr(20),
+			originalSalt:            helpers.RandStr(10),
+			username:                helpers.RandStr(10),
+			shouldRotateCredentials: false,
+		},
+		"rotate credentials not specified": {
+			options:     Options{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			originalPassword:        helpers.RandStr(20),
+			originalSalt:            helpers.RandStr(10),
+			username:                helpers.RandStr(10),
+			shouldRotateCredentials: false,
+		},
+	}
 
-// 	for name, test := range testCases {
-// 		t.Run(name, func(t *testing.T) {
-// 			existingInstance := &RDSInstance{
-// 				Username:      test.username,
-// 				ClearPassword: test.originalPassword,
-// 				Salt:          test.originalSalt,
-// 				dbUtils:       &RDSDatabaseUtils{},
-// 			}
-// 			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
-// 			if err != nil {
-// 				t.Fatalf("unexpected error: %s", err)
-// 			}
-// 			if test.shouldRotateCredentials && modifiedInstance.ClearPassword == test.originalPassword {
-// 				t.Fatal("instance password should have been updated")
-// 			}
-// 			if test.shouldRotateCredentials && modifiedInstance.Salt == test.originalSalt {
-// 				t.Fatal("instance salt should have been updated")
-// 			}
-// 		})
-// 	}
-// }
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			existingInstance := &RDSInstance{
+				Username:      test.username,
+				ClearPassword: test.originalPassword,
+				Salt:          test.originalSalt,
+				dbUtils:       &RDSDatabaseUtils{},
+			}
+			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.shouldRotateCredentials && modifiedInstance.ClearPassword == test.originalPassword {
+				t.Fatal("instance password should have been updated")
+			}
+			if test.shouldRotateCredentials && modifiedInstance.Salt == test.originalSalt {
+				t.Fatal("instance salt should have been updated")
+			}
+		})
+	}
+}
 
 func TestSetTagsConcurrency(t *testing.T) {
 	var wg sync.WaitGroup

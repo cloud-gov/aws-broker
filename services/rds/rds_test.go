@@ -40,6 +40,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 		password          string
 		expectedParams    *rds.CreateDBInstanceInput
 		plan              *catalog.RDSPlan
+		tags              map[string]string
 	}{
 		"expect error": {
 			dbInstance: &RDSInstance{
@@ -56,6 +57,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 					rds:       &mockRDSClient{},
 				},
 			),
+			plan:        &catalog.RDSPlan{},
 			expectedErr: testErr,
 		},
 		"creates correct params": {
@@ -73,6 +75,9 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				BackupRetentionPeriod: 14,
 				DbSubnetGroup:         "subnet-group-1",
 				SecGroup:              "sec-group-1",
+			},
+			tags: map[string]string{
+				"foo": "bar",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
@@ -136,6 +141,9 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				SecGroup:              "sec-group-1",
 				LicenseModel:          "foo",
 			},
+			tags: map[string]string{
+				"foo": "bar",
+			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
 					PubliclyAccessibleFeature: true,
@@ -186,6 +194,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
+			test.dbInstance.setTags(test.plan, test.tags)
 			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.plan, test.password)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
