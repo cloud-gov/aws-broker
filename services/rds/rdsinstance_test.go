@@ -36,7 +36,7 @@ func TestInit(t *testing.T) {
 		rdsInstance      *RDSInstance
 		expectedInstance *RDSInstance
 		expectErr        bool
-		plan             catalog.RDSPlan
+		plan             *catalog.RDSPlan
 		settings         *config.Settings
 		uuid             string
 		orgGUID          string
@@ -50,7 +50,7 @@ func TestInit(t *testing.T) {
 			options: Options{
 				BackupRetentionPeriod: aws.Int64(21),
 			},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -112,7 +112,7 @@ func TestInit(t *testing.T) {
 		},
 		"MySQL sets db version from plan": {
 			options: Options{},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -150,7 +150,7 @@ func TestInit(t *testing.T) {
 			options: Options{
 				Version: "9.0",
 			},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -188,7 +188,7 @@ func TestInit(t *testing.T) {
 			options: Options{
 				Version: "15",
 			},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -224,7 +224,7 @@ func TestInit(t *testing.T) {
 		},
 		"sets backup retention period from plan": {
 			options: Options{},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -262,7 +262,7 @@ func TestInit(t *testing.T) {
 			options: Options{
 				BackupRetentionPeriod: aws.Int64(14),
 			},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -337,7 +337,7 @@ func TestInit(t *testing.T) {
 			options: Options{
 				BackupRetentionPeriod: aws.Int64(21),
 			},
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-1",
 				},
@@ -433,8 +433,8 @@ func TestModifyInstance(t *testing.T) {
 		existingInstance *RDSInstance
 		expectedInstance *RDSInstance
 		expectErr        bool
-		currentPlan      catalog.RDSPlan
-		newPlan          catalog.RDSPlan
+		currentPlan      *catalog.RDSPlan
+		newPlan          *catalog.RDSPlan
 		settings         *config.Settings
 		expectedErr      error
 		tags             map[string]string
@@ -459,8 +459,8 @@ func TestModifyInstance(t *testing.T) {
 				SecGroup: "sec-group1",
 				Tags:     map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan: catalog.RDSPlan{
+			currentPlan: &catalog.RDSPlan{},
+			newPlan: &catalog.RDSPlan{
 				Plan: catalog.Plan{
 					ID: "plan-2",
 				},
@@ -479,8 +479,8 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 20,
 				Tags:             map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"allocated storage option less than existing, does not update": {
@@ -491,8 +491,8 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 20,
 			},
 			expectErr:   true,
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"allocated storage empty, does not update": {
@@ -506,8 +506,8 @@ func TestModifyInstance(t *testing.T) {
 				AllocatedStorage: 20,
 				Tags:             map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"update backup retention period": {
@@ -521,8 +521,8 @@ func TestModifyInstance(t *testing.T) {
 				BackupRetentionPeriod: 20,
 				Tags:                  map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"does not update backup retention period": {
@@ -536,8 +536,8 @@ func TestModifyInstance(t *testing.T) {
 				BackupRetentionPeriod: 20,
 				Tags:                  map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"update binary log format": {
@@ -549,8 +549,8 @@ func TestModifyInstance(t *testing.T) {
 				BinaryLogFormat: "ROW",
 				Tags:            map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"enable PG cron": {
@@ -562,8 +562,8 @@ func TestModifyInstance(t *testing.T) {
 				EnablePgCron: aws.Bool(true),
 				Tags:         map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"enable PG cron not specified": {
@@ -572,8 +572,8 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				Tags: map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"enable PG cron not specified on options, true on existing instance": {
@@ -584,8 +584,8 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				Tags: map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"gp3 fails for allocated storage < 20": {
@@ -595,8 +595,8 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				AllocatedStorage: 10,
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 			expectErr:   true,
 		},
@@ -613,8 +613,8 @@ func TestModifyInstance(t *testing.T) {
 				StorageType:      "gp3",
 				Tags:             map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings:    &config.Settings{},
 		},
 		"does not allow backup retention less than minimum backup retention": {
@@ -626,8 +626,8 @@ func TestModifyInstance(t *testing.T) {
 				BackupRetentionPeriod: 14,
 				Tags:                  map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings: &config.Settings{
 				MinBackupRetention: 14,
 			},
@@ -643,8 +643,8 @@ func TestModifyInstance(t *testing.T) {
 				AddReadReplica:  true,
 				Tags:            map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan: catalog.RDSPlan{
+			currentPlan: &catalog.RDSPlan{},
+			newPlan: &catalog.RDSPlan{
 				ReadReplica: true,
 				Redundant:   true,
 			},
@@ -661,8 +661,8 @@ func TestModifyInstance(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				Tags:            map[string]string{},
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan: catalog.RDSPlan{
+			currentPlan: &catalog.RDSPlan{},
+			newPlan: &catalog.RDSPlan{
 				ReadReplica: true,
 				Redundant:   true,
 			},
@@ -673,8 +673,8 @@ func TestModifyInstance(t *testing.T) {
 			existingInstance: &RDSInstance{
 				Database: "db",
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan: catalog.RDSPlan{
+			currentPlan: &catalog.RDSPlan{},
+			newPlan: &catalog.RDSPlan{
 				ReadReplica: true,
 				Redundant:   false,
 			},
@@ -687,10 +687,10 @@ func TestModifyInstance(t *testing.T) {
 				Database:        "db",
 				ReplicaDatabase: "replica",
 			},
-			currentPlan: catalog.RDSPlan{
+			currentPlan: &catalog.RDSPlan{
 				ReadReplica: true,
 			},
-			newPlan:  catalog.RDSPlan{},
+			newPlan:  &catalog.RDSPlan{},
 			settings: &config.Settings{},
 			expectedInstance: &RDSInstance{
 				Database:          "db",
@@ -705,10 +705,10 @@ func TestModifyInstance(t *testing.T) {
 				Database:        "db",
 				ReplicaDatabase: "replica",
 			},
-			currentPlan: catalog.RDSPlan{
+			currentPlan: &catalog.RDSPlan{
 				ReadReplica: true,
 			},
-			newPlan: catalog.RDSPlan{
+			newPlan: &catalog.RDSPlan{
 				Tags: map[string]string{
 					"foo": "bar",
 				},
@@ -751,8 +751,8 @@ func TestModifyInstance(t *testing.T) {
 func TestModifyInstanceRotateCredentials(t *testing.T) {
 	testCases := map[string]struct {
 		options                 Options
-		currentPlan             catalog.RDSPlan
-		newPlan                 catalog.RDSPlan
+		currentPlan             *catalog.RDSPlan
+		newPlan                 *catalog.RDSPlan
 		settings                *config.Settings
 		originalPassword        string
 		originalSalt            string
@@ -764,8 +764,8 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			options: Options{
 				RotateCredentials: aws.Bool(true),
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
@@ -778,8 +778,8 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			options: Options{
 				RotateCredentials: aws.Bool(false),
 			},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
@@ -790,8 +790,8 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 		},
 		"rotate credentials not specified": {
 			options:     Options{},
-			currentPlan: catalog.RDSPlan{},
-			newPlan:     catalog.RDSPlan{},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan:     &catalog.RDSPlan{},
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},

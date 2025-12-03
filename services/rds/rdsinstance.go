@@ -77,7 +77,7 @@ func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
 	return nil
 }
 
-func (i RDSInstance) modify(options Options, currentPlan catalog.RDSPlan, newPlan catalog.RDSPlan, settings *config.Settings, tags map[string]string) (*RDSInstance, error) {
+func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPlan *catalog.RDSPlan, settings *config.Settings, tags map[string]string) (*RDSInstance, error) {
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
 	modifiedInstance.PlanID = newPlan.ID
@@ -170,7 +170,7 @@ func (i *RDSInstance) init(
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
-	plan catalog.RDSPlan,
+	plan *catalog.RDSPlan,
 	options Options,
 	settings *config.Settings,
 	tags map[string]string,
@@ -240,7 +240,7 @@ func (i *RDSInstance) init(
 }
 
 func (i *RDSInstance) setTags(
-	plan catalog.RDSPlan,
+	plan *catalog.RDSPlan,
 	tags map[string]string,
 ) error {
 	// Load tags

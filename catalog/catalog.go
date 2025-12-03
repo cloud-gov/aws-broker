@@ -66,13 +66,13 @@ type RDSService struct {
 }
 
 // FetchPlan will look for a specific RDS Plan based on the plan ID.
-func (s RDSService) FetchPlan(planID string) (RDSPlan, response.Response) {
+func (s RDSService) FetchPlan(planID string) (*RDSPlan, response.Response) {
 	for _, plan := range s.Plans {
 		if plan.ID == planID {
-			return plan, nil
+			return &plan, nil
 		}
 	}
-	return RDSPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
+	return &RDSPlan{}, response.NewErrorResponse(http.StatusBadRequest, ErrNoPlanFound.Error())
 }
 
 // RDSPlan inherits from a Plan and adds fields specific to AWS.
