@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -821,4 +822,32 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSetTagsConcurrency(t *testing.T) {
+	var wg sync.WaitGroup
+
+	plan := catalog.RDSPlan{
+		Tags: map[string]string{
+			"foo": "bar",
+		},
+	}
+
+	foo := func(tags map[string]string, expectedTags map[string]string, wg *sync.WaitGroup) {
+		defer wg.Done()
+		i := &RDSInstance{}
+		i.setTags(plan, tags)
+
+		if diff := deep.Equal(expectedTags, i.Tags); diff != nil {
+			t.Error(diff)
+		}
+	}
+
+	// Launch two goroutines
+	wg.Add(2)
+
+	go foo(map[string]string{"moo": "cow"}, map[string]string{"foo": "bar", "moo": "cow"}, &wg)
+	go foo(map[string]string{"foo2": "bar2"}, map[string]string{"foo": "bar", "foo2": "bar2"}, &wg)
+
+	wg.Wait()
 }
