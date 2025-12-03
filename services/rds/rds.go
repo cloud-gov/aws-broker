@@ -128,7 +128,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	plan *catalog.RDSPlan,
 	password string,
 ) (*rds.CreateDBInstanceInput, error) {
-	rdsTags := ConvertTagsToRDSTags(i.Tags)
+	rdsTags := ConvertTagsToRDSTags(i.getTags())
 
 	allocatedStorage, err := common.ConvertInt64ToInt32Safely(i.AllocatedStorage)
 	if err != nil {
@@ -213,7 +213,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan *
 		params.MasterUserPassword = aws.String(i.ClearPassword)
 	}
 
-	rdsTags := ConvertTagsToRDSTags(i.Tags)
+	rdsTags := ConvertTagsToRDSTags(i.getTags())
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
@@ -228,7 +228,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan *
 }
 
 func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.RDSPlan) (*rds.CreateDBInstanceReadReplicaOutput, error) {
-	rdsTags := ConvertTagsToRDSTags(i.Tags)
+	rdsTags := ConvertTagsToRDSTags(i.getTags())
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
 		DBInstanceIdentifier:       &i.ReplicaDatabase,
@@ -288,7 +288,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) error {
 	_, err := d.rds.AddTagsToResource(context.TODO(), &rds.AddTagsToResourceInput{
 		ResourceName: aws.String(dbInstanceARN),
-		Tags:         ConvertTagsToRDSTags(i.Tags),
+		Tags:         ConvertTagsToRDSTags(i.getTags()),
 	})
 	return err
 }

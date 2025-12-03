@@ -67,11 +67,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				dbUtils: &MockDbUtils{
 					mockFormattedDbName: "formatted-name",
 				},
-				Username:    "fake-user",
-				StorageType: "storage-1",
-				Tags: map[string]string{
-					"foo": "bar",
-				},
+				Username:              "fake-user",
+				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
 				BackupRetentionPeriod: 14,
 				DbSubnetGroup:         "subnet-group-1",
@@ -131,11 +128,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				dbUtils: &MockDbUtils{
 					mockFormattedDbName: "formatted-name",
 				},
-				Username:    "fake-user",
-				StorageType: "storage-1",
-				Tags: map[string]string{
-					"foo": "bar",
-				},
+				Username:              "fake-user",
+				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
 				BackupRetentionPeriod: 14,
 				DbSubnetGroup:         "subnet-group-1",
