@@ -242,6 +242,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 		},
@@ -264,6 +265,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 		},
@@ -285,6 +287,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 		},
@@ -326,6 +329,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
@@ -355,6 +359,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -391,6 +396,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -747,6 +753,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceInProgress,
 		},
 		"error checking database creation status": {
@@ -770,6 +777,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -794,6 +802,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan: &catalog.RDSPlan{},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -836,6 +845,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -897,6 +907,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"modify primary DB error": {
@@ -918,6 +929,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"error waiting for database to be ready": {
@@ -939,6 +951,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"success without read replica": {
@@ -961,6 +974,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan: &catalog.RDSPlan{},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1034,6 +1048,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan: &catalog.RDSPlan{},
 		},
 		"error modifying read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -1067,6 +1082,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"error creating read replica": {
@@ -1109,6 +1125,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"success with deleting read replica": {
@@ -1155,6 +1172,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: "db-3",
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan: &catalog.RDSPlan{},
 		},
 		"error updating read replica tags": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -1195,6 +1213,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 	}
