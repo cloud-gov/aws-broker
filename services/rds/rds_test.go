@@ -487,6 +487,7 @@ func TestCreateDb(t *testing.T) {
 			},
 			expectedState:          base.InstanceInProgress,
 			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
+			plan:                   &catalog.RDSPlan{},
 		},
 	}
 
@@ -1301,6 +1302,7 @@ func TestModifyDb(t *testing.T) {
 			},
 			expectedState:          base.InstanceInProgress,
 			expectedAsyncJobStates: []base.InstanceState{base.InstanceReady, base.InstanceInProgress},
+			plan:                   &catalog.RDSPlan{},
 		},
 	}
 
