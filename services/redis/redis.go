@@ -136,7 +136,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
 			for _, value := range resp.ReplicationGroups {
-				d.logger.Debug(fmt.Sprintf("Redis Instance:" + i.ClusterID + " is " + *(value.Status)))
+				d.logger.Debug(fmt.Sprintf("Redis Instance: %s is %s", i.ClusterID, *(value.Status)))
 				switch *(value.Status) {
 				case "available":
 					return base.InstanceReady, nil
