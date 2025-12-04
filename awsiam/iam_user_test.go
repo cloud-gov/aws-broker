@@ -2,7 +2,6 @@ package awsiam
 
 import (
 	"errors"
-	"os"
 	"testing"
 
 	"code.cloudfoundry.org/lager/lagertest"
@@ -19,14 +18,13 @@ var (
 	userName = "iam-user"
 )
 
-func TestMain(m *testing.M) {
+func NewTestIAMUserClient(iamSvc IAMClientInterface) *IAMUserClient {
 	logger.RegisterSink(testSink)
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	return NewIAMUserClient(iamSvc, logger)
 }
 
 func TestDescribeIAMUser(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		getUserOutput: &iam.GetUserOutput{
 			User: &iamTypes.User{
@@ -34,7 +32,7 @@ func TestDescribeIAMUser(t *testing.T) {
 				UserId: aws.String("user-id"),
 			},
 		},
-	}, logger)
+	})
 
 	userDetails, err := iamUserClient.Describe(userName)
 	if err != nil {
@@ -52,7 +50,7 @@ func TestDescribeIAMUser(t *testing.T) {
 }
 
 func TestDescribeIAMUserError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		getUserOutput: &iam.GetUserOutput{
 			User: &iamTypes.User{
@@ -61,7 +59,7 @@ func TestDescribeIAMUserError(t *testing.T) {
 			},
 		},
 		getUserErr: errors.New("operation failed"),
-	}, logger)
+	})
 
 	_, err := iamUserClient.Describe(userName)
 	if err == nil {
@@ -74,7 +72,7 @@ func TestDescribeIAMUserError(t *testing.T) {
 }
 
 func TestDescribeIAMUserAWSError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		getUserOutput: &iam.GetUserOutput{
 			User: &iamTypes.User{
@@ -85,7 +83,7 @@ func TestDescribeIAMUserAWSError(t *testing.T) {
 		getUserErr: &iamTypes.NoSuchEntityException{
 			Message: aws.String("not found"),
 		},
-	}, logger)
+	})
 
 	_, err := iamUserClient.Describe(userName)
 
@@ -96,14 +94,14 @@ func TestDescribeIAMUserAWSError(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		createUserOutput: &iam.CreateUserOutput{
 			User: &iamTypes.User{
 				Arn: aws.String("user-arn"),
 			},
 		},
-	}, logger)
+	})
 
 	iamTags := []iamTypes.Tag{
 		{
@@ -123,10 +121,10 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestCreateUserError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:      userName,
 		createUserErr: &iamTypes.EntityAlreadyExistsException{},
-	}, logger)
+	})
 
 	iamTags := []iamTypes.Tag{
 		{
@@ -144,7 +142,7 @@ func TestCreateUserError(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{}, logger)
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{})
 
 	err := iamUserClient.Delete(userName)
 	if err != nil {
@@ -153,9 +151,9 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestDeleteUserError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		deleteUserErr: &iamTypes.DeleteConflictException{},
-	}, logger)
+	})
 
 	err := iamUserClient.Delete(userName)
 	var deleteConflictException *iamTypes.DeleteConflictException
@@ -165,7 +163,7 @@ func TestDeleteUserError(t *testing.T) {
 }
 
 func TestListAccessKeys(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		listAccessKeysOutput: iam.ListAccessKeysOutput{
 			AccessKeyMetadata: []iamTypes.AccessKeyMetadata{
@@ -177,7 +175,7 @@ func TestListAccessKeys(t *testing.T) {
 				},
 			},
 		},
-	}, logger)
+	})
 
 	accessKeys, err := iamUserClient.ListAccessKeys(userName)
 	if err != nil {
@@ -190,10 +188,10 @@ func TestListAccessKeys(t *testing.T) {
 }
 
 func TestListAccessKeysError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:          userName,
 		listAccessKeysErr: &iamTypes.NoSuchEntityException{},
-	}, logger)
+	})
 
 	_, err := iamUserClient.ListAccessKeys(userName)
 	var exception *iamTypes.NoSuchEntityException
@@ -203,7 +201,7 @@ func TestListAccessKeysError(t *testing.T) {
 }
 
 func TestCreateAccessKey(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		createAccessKeyOutput: iam.CreateAccessKeyOutput{
 			AccessKey: &iamTypes.AccessKey{
@@ -211,7 +209,7 @@ func TestCreateAccessKey(t *testing.T) {
 				SecretAccessKey: aws.String("secret-access-key"),
 			},
 		},
-	}, logger)
+	})
 
 	accessKeyID, secretAccessKey, err := iamUserClient.CreateAccessKey(userName)
 	if err != nil {
@@ -228,10 +226,10 @@ func TestCreateAccessKey(t *testing.T) {
 }
 
 func TestCreateAccessKeyError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:           userName,
 		createAccessKeyErr: &iamTypes.NoSuchEntityException{},
-	}, logger)
+	})
 
 	_, _, err := iamUserClient.CreateAccessKey(userName)
 	var exception *iamTypes.NoSuchEntityException
@@ -241,9 +239,9 @@ func TestCreateAccessKeyError(t *testing.T) {
 }
 
 func TestDeleteAccessKey(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
-	}, logger)
+	})
 	err := iamUserClient.DeleteAccessKey(userName, "access-key-id")
 	if err != nil {
 		t.Fatal(err)
@@ -251,10 +249,10 @@ func TestDeleteAccessKey(t *testing.T) {
 }
 
 func TestDeleteAccessKeyError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:           userName,
 		deleteAccessKeyErr: &iamTypes.NoSuchEntityException{},
-	}, logger)
+	})
 	err := iamUserClient.DeleteAccessKey(userName, "access-key-id")
 	var exception *iamTypes.NoSuchEntityException
 	if !errors.As(err, &exception) {
@@ -263,7 +261,7 @@ func TestDeleteAccessKeyError(t *testing.T) {
 }
 
 func TestListAttachedUserPolicies(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
 		iamPath:  iamPath,
 		listAttachedUserPoliciesOutput: iam.ListAttachedUserPoliciesOutput{
@@ -276,7 +274,7 @@ func TestListAttachedUserPolicies(t *testing.T) {
 				},
 			},
 		},
-	}, logger)
+	})
 	policies, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
 	if err != nil {
 		t.Fatal(err)
@@ -288,11 +286,11 @@ func TestListAttachedUserPolicies(t *testing.T) {
 }
 
 func TestListAttachedUserPoliciesError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:                    userName,
 		iamPath:                     iamPath,
 		listAttachedUserPoliciesErr: &iamTypes.NoSuchEntityException{},
-	}, logger)
+	})
 	_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
 	var exception *iamTypes.NoSuchEntityException
 	if !errors.As(err, &exception) {
@@ -301,10 +299,10 @@ func TestListAttachedUserPoliciesError(t *testing.T) {
 }
 
 func TestAttachUserPolicy(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:  userName,
 		policyArn: "policy-arn",
-	}, logger)
+	})
 	err := iamUserClient.AttachUserPolicy(userName, "policy-arn")
 	if err != nil {
 		t.Fatal(err)
@@ -312,11 +310,11 @@ func TestAttachUserPolicy(t *testing.T) {
 }
 
 func TestAttachUserPolicyError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:            userName,
 		policyArn:           "policy-arn",
 		attachUserPolicyErr: &iamTypes.NoSuchEntityException{},
-	}, logger)
+	})
 	err := iamUserClient.AttachUserPolicy(userName, "policy-arn")
 	var exception *iamTypes.NoSuchEntityException
 	if !errors.As(err, &exception) {
@@ -325,10 +323,10 @@ func TestAttachUserPolicyError(t *testing.T) {
 }
 
 func TestDetachUserPolicy(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:  userName,
 		policyArn: "policy-arn",
-	}, logger)
+	})
 	err := iamUserClient.DetachUserPolicy(userName, "policy-arn")
 	if err != nil {
 		t.Fatal(err)
@@ -336,11 +334,11 @@ func TestDetachUserPolicy(t *testing.T) {
 }
 
 func TestDetachUserPolicyError(t *testing.T) {
-	iamUserClient := NewIAMUserClient(&mockIAMClient{
+	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName:            userName,
 		policyArn:           "policy-arn",
 		detachUserPolicyErr: &iamTypes.NoSuchEntityException{},
-	}, logger)
+	})
 	err := iamUserClient.DetachUserPolicy(userName, "policy-arn")
 	var exception *iamTypes.NoSuchEntityException
 	if !errors.As(err, &exception) {
