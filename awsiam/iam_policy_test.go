@@ -31,10 +31,15 @@ var objectStatement PolicyStatementEntry = PolicyStatementEntry{
 	Resource: []string{bucketArn + "/*"},
 }
 
+func NewTestIAMPolicyClient(iamSvc IAMClientInterface) *IAMPolicyClient {
+	logger.RegisterSink(testSink)
+	return NewIAMPolicyClient(iamSvc, logger)
+}
+
 func TestCreateAssumeRole(t *testing.T) {
 	policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 	rolename := "test-role"
-	ip := NewIAMPolicyClient(&mockIAMClient{}, nil)
+	ip := NewTestIAMPolicyClient(&mockIAMClient{})
 	iamTags := []types.Tag{
 		{
 			Key:   aws.String("foo"),
@@ -60,11 +65,11 @@ func TestCreateAssumeRoleAlreadyExists(t *testing.T) {
 	policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 	rolename := "test-role"
 
-	ip := NewIAMPolicyClient(&mockIAMClient{
+	ip := NewTestIAMPolicyClient(&mockIAMClient{
 		createRoleErr: &types.EntityAlreadyExistsException{
 			Message: aws.String("fail"),
 		},
-	}, nil)
+	})
 
 	role, err := ip.CreateAssumeRole(policy, rolename, nil)
 	if err != nil {
@@ -80,7 +85,7 @@ func TestCreateAssumeRoleAlreadyExists(t *testing.T) {
 }
 
 func TestCreateUserPolicy(t *testing.T) {
-	ip := NewIAMPolicyClient(&mockIAMClient{}, nil)
+	ip := NewTestIAMPolicyClient(&mockIAMClient{})
 	Domain := "Test"
 	ARN := "arn:aws:iam::123456789012:elasticsearch/" + Domain
 	snapshotRoleARN := "arn:aws:iam::123456789012:role/test-role"
@@ -109,8 +114,7 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 	policyname := Domain + "-to-S3-ESRolePolicy"
 	username := Domain
 
-	ip := NewIAMPolicyClient(&mockIAMClient{
-
+	ip := NewTestIAMPolicyClient(&mockIAMClient{
 		listAttachedUserPoliciesOutput: iam.ListAttachedUserPoliciesOutput{
 			AttachedPolicies: []types.AttachedPolicy{
 				{
@@ -122,7 +126,7 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 		createPolicyErr: &types.EntityAlreadyExistsException{
 			Message: aws.String("policy already exists"),
 		},
-	}, nil)
+	})
 
 	policyArn, err := ip.CreateUserPolicy(policy, policyname, username, nil)
 	if err != nil {
@@ -136,7 +140,7 @@ func TestCreateUserPolicyAlreadyExists(t *testing.T) {
 }
 
 func TestCreatePolicyAttachRole(t *testing.T) {
-	ip := NewIAMPolicyClient(&mockIAMClient{}, nil)
+	ip := NewTestIAMPolicyClient(&mockIAMClient{})
 	role := types.Role{
 		RoleName: aws.String("test-role"),
 	}
@@ -159,7 +163,7 @@ func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
 	policyName := "test-pol"
 	roleName := "test-role"
 
-	ip := NewIAMPolicyClient(&mockIAMClient{
+	ip := NewTestIAMPolicyClient(&mockIAMClient{
 		attachedRolePolicies: []types.AttachedPolicy{
 			{
 				PolicyName: aws.String(policyName),
@@ -169,7 +173,7 @@ func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
 		createPolicyErr: &types.EntityAlreadyExistsException{
 			Message: aws.String("policy already exists"),
 		},
-	}, nil)
+	})
 
 	role := types.Role{
 		RoleName: aws.String(roleName),
@@ -187,13 +191,13 @@ func TestCreatePolicyAttachRoleAlreadyExists(t *testing.T) {
 }
 
 func TestUpdateExistingPolicy(t *testing.T) {
-	ip := NewIAMPolicyClient(&mockIAMClient{
+	ip := NewTestIAMPolicyClient(&mockIAMClient{
 		listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
 			Versions: []types.PolicyVersion{
 				{VersionId: aws.String("1"), IsDefaultVersion: true},
 			},
 		},
-	}, logger)
+	})
 
 	ps := []PolicyStatementEntry{listStatement, existStatement, objectStatement}
 	arn := "arn:aws:iam::123456789012:policy/test-pol"
@@ -226,29 +230,29 @@ func TestDeletePolicy(t *testing.T) {
 	}{
 		"success": {
 			policyArn: "arn1",
-			iamPolicyClient: NewIAMPolicyClient(&mockIAMClient{
+			iamPolicyClient: NewTestIAMPolicyClient(&mockIAMClient{
 				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
 					Versions: []types.PolicyVersion{
 						{VersionId: aws.String("1"), IsDefaultVersion: true},
 					},
 				},
-			}, logger),
+			}),
 		},
 		"returns delete policy error": {
 			policyArn: "arn2",
-			iamPolicyClient: NewIAMPolicyClient(&mockIAMClient{
+			iamPolicyClient: NewTestIAMPolicyClient(&mockIAMClient{
 				deletePolicyErr: errors.New("delete policy version error"),
 				listPolicyVersionsOutput: iam.ListPolicyVersionsOutput{
 					Versions: []types.PolicyVersion{
 						{VersionId: aws.String("1"), IsDefaultVersion: true},
 					},
 				},
-			}, logger),
+			}),
 			expectedErrMessage: "delete policy version error",
 		},
 		"returns an AWS error": {
 			policyArn: "arn2",
-			iamPolicyClient: NewIAMPolicyClient(&mockIAMClient{
+			iamPolicyClient: NewTestIAMPolicyClient(&mockIAMClient{
 				deletePolicyErr: &types.NoSuchEntityException{
 					Message: aws.String("not found"),
 				},
@@ -257,8 +261,8 @@ func TestDeletePolicy(t *testing.T) {
 						{VersionId: aws.String("1"), IsDefaultVersion: true},
 					},
 				},
-			}, logger),
-			expectedErrMessage: "not found",
+			}),
+			expectedErrMessage: "NoSuchEntity: not found",
 		},
 	}
 
@@ -324,7 +328,7 @@ func TestDeleteNonDefaultPolicyVersions(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			iamPolicyClient := NewIAMPolicyClient(test.fakeIAMClient, logger)
+			iamPolicyClient := NewTestIAMPolicyClient(test.fakeIAMClient)
 			err := iamPolicyClient.deleteNonDefaultPolicyVersions(test.policyArn)
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
@@ -420,7 +424,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 			}`,
 			resources:          []string{"resource"},
 			iamPath:            "/path/",
-			expectedErrMessage: "already exists",
+			expectedErrMessage: "EntityAlreadyExists: already exists",
 		},
 	}
 

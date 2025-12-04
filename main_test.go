@@ -128,7 +128,7 @@ func TestCreateRDSInstance(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -136,7 +136,7 @@ func TestCreateRDSInstance(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -167,7 +167,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -175,7 +175,7 @@ func TestCreateRDSPGWithVersionInstance(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -204,7 +204,7 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -212,7 +212,7 @@ func TestCreateRDSMySQLWithBinaryLogFormat(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSMySQLWithBinaryLogFormat))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -245,7 +245,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -253,7 +253,7 @@ func TestCreateRDSPostgreSQLWithEnablePgCron(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPostgreSQLWithEnablePgCron))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -286,7 +286,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -294,7 +294,7 @@ func TestCreateRDSPGWithInvaildVersionInstance(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSPGWithInvaildVersionInstanceReq))
 
 	if res.Code != http.StatusBadRequest {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", res.Code)
 	}
 
@@ -313,7 +313,7 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceWithEnabledLogGroupsReq))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -348,7 +348,7 @@ func TestModifyRDSInstance(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -369,7 +369,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Fatal(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -377,7 +377,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReq))
 
 	if resp.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Fatal(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
@@ -390,7 +390,7 @@ func TestModifyRDSInstance(t *testing.T) {
 	i = rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != updateableRDSPlanID {
-		t.Logf("The instance was not modified: " + i.PlanID + " != " + updateableRDSPlanID)
+		t.Logf("The instance was not modified: %s != %s", i.PlanID, updateableRDSPlanID)
 		t.Error("The instance was not modified to have the new instance class plan.")
 	}
 }
@@ -403,7 +403,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -423,7 +423,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -431,7 +431,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceNotAllowedReq))
 
 	if resp.Code != http.StatusBadRequest {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
 
@@ -447,7 +447,7 @@ func TestModifyRDSInstanceNotAllowed(t *testing.T) {
 	i = rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != originalRDSPlanID {
-		t.Logf("The instance was modified: " + i.PlanID + " != " + originalRDSPlanID)
+		t.Logf("The instance was modified: %s != %s", i.PlanID, originalRDSPlanID)
 		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
 	}
 }
@@ -460,7 +460,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -480,7 +480,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -489,7 +489,7 @@ func TestModifyRDSInstanceSizeIncrease(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceReqStorage))
 
 	if resp.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
@@ -519,7 +519,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -539,7 +539,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -548,7 +548,7 @@ func TestModifyBinaryLogFormat(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceBinaryLogFormat))
 
 	if resp.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
@@ -577,7 +577,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -597,7 +597,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -606,7 +606,7 @@ func TestModifyEnablePgCron(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnablePgCron))
 
 	if resp.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
@@ -635,7 +635,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -656,7 +656,7 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	resp, _ := doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnableCloudwatchLogGroups))
 
 	if resp.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
@@ -690,14 +690,14 @@ func TestRDSLastOperation(t *testing.T) {
 	// Create the instance and try again
 	res, m = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Check instance was created and StatusOK
 	res, _ = doRequest(m, url, "GET", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusOK {
-		t.Logf("Unable to check last operation. Body is: " + res.Body.String())
+		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 }
@@ -715,13 +715,13 @@ func TestRDSBindInstance(t *testing.T) {
 	// Create the instance and try again
 	res, _ = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	res, _ = doRequest(m, url, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	if res.Code != http.StatusCreated {
-		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
+		t.Logf("Unable to bind instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -797,7 +797,7 @@ func TestRDSDeleteInstance(t *testing.T) {
 	res, _ = doRequest(m, url, "DELETE", true, nil)
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to delete instance. Body is: " + res.Body.String())
+		t.Logf("Unable to delete instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
@@ -814,7 +814,7 @@ func TestCreateRedisInstance(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -822,7 +822,7 @@ func TestCreateRedisInstance(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -857,7 +857,7 @@ func TestModifyRedisInstance(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -877,7 +877,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -885,7 +885,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
 	if resp.Code != http.StatusBadRequest {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
 
@@ -901,7 +901,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	i = redis.RedisInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != originalRedisPlanID {
-		t.Logf("The instance was modified: " + i.PlanID + " != " + originalRedisPlanID)
+		t.Logf("The instance was modified: %s != %s", i.PlanID, originalRedisPlanID)
 		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
 	}
 }
@@ -919,14 +919,14 @@ func TestRedisLastOperation(t *testing.T) {
 	// Create the instance and try again
 	res, m = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Check instance was created and StatusOK
 	res, _ = doRequest(m, url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusOK {
-		t.Logf("Unable to check last operation. Body is: " + res.Body.String())
+		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 }
@@ -944,13 +944,13 @@ func TestRedisBindInstance(t *testing.T) {
 	// Create the instance and try again
 	res, _ = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	res, _ = doRequest(m, url, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusCreated {
-		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
+		t.Logf("Unable to bind instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -1026,7 +1026,7 @@ func TestRedisDeleteInstance(t *testing.T) {
 	res, _ = doRequest(m, url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
@@ -1048,7 +1048,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	resp, _ := doRequest(nil, urlUnacceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to create instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -1056,7 +1056,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	res, _ := doRequest(nil, urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -1099,7 +1099,7 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	res, _ = doRequest(nil, urlAcceptsIncompleteAdv, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceAdvancedOptionsReq))
 
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncompleteAdv, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -1146,7 +1146,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -1166,7 +1166,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -1174,7 +1174,7 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
 	if resp.Code != http.StatusAccepted {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
 	}
 
@@ -1204,7 +1204,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 
 	// Check to make sure the request was successful.
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -1224,7 +1224,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	resp, _ := doRequest(m, urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusUnprocessableEntity {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
@@ -1232,7 +1232,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	resp, _ = doRequest(m, urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstancePlanReq))
 
 	if resp.Code != http.StatusBadRequest {
-		t.Logf("Unable to modify instance. Body is: " + resp.Body.String())
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
 
@@ -1248,7 +1248,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	i = elasticsearch.ElasticsearchInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.PlanID != originalElasticsearchPlanID {
-		t.Logf("The instance was modified: " + i.PlanID + " != " + originalElasticsearchPlanID)
+		t.Logf("The instance was modified: %s != %s", i.PlanID, originalElasticsearchPlanID)
 		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
 	}
 }
@@ -1266,14 +1266,14 @@ func TestElasticsearchLastOperation(t *testing.T) {
 	// Create the instance and try again
 	res, m = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	// Check instance was created and StatusOK
 	res, _ = doRequest(m, url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusOK {
-		t.Logf("Unable to check last operation. Body is: " + res.Body.String())
+		t.Logf("Unable to check last operation. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 }
@@ -1291,13 +1291,13 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	// Create the instance and try again
 	res, _ = doRequest(m, fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	if res.Code != http.StatusAccepted {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
 	res, _ = doRequest(m, url, "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusCreated {
-		t.Logf("Unable to bind instance. Body is: " + res.Body.String())
+		t.Logf("Unable to bind instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
 	}
 
@@ -1373,7 +1373,7 @@ func TestElasticsearchDeleteInstance(t *testing.T) {
 	res, _ = doRequest(m, url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
-		t.Logf("Unable to create instance. Body is: " + res.Body.String())
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
