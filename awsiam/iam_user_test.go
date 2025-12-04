@@ -2,6 +2,7 @@ package awsiam
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"code.cloudfoundry.org/lager/lagertest"
@@ -20,6 +21,8 @@ var (
 
 func TestMain(m *testing.M) {
 	logger.RegisterSink(testSink)
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }
 
 func TestDescribeIAMUser(t *testing.T) {
