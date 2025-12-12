@@ -10,13 +10,13 @@ type RDSService struct {
 }
 
 // FetchPlan will look for a specific RDS Plan based on the plan ID.
-func (s *RDSService) FetchPlan(planID string) (RDSPlan, error) {
+func (s *RDSService) FetchPlan(planID string) (*RDSPlan, error) {
 	for _, plan := range s.RDSPlans {
 		if plan.ID == planID {
-			return plan, nil
+			return &plan, nil
 		}
 	}
-	return RDSPlan{}, ErrNoPlanFound
+	return &RDSPlan{}, ErrNoPlanFound
 }
 
 func (s *RDSService) ToBrokerAPIService() domain.Service {

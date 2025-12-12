@@ -1,6 +1,8 @@
 package rds
 
 import (
+	"sync"
+
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/lib/pq"
 
@@ -23,13 +25,13 @@ type RDSInstance struct {
 
 	ClearPassword string `gorm:"-"`
 
-	Tags                  map[string]string `gorm:"-"`
-	BackupRetentionPeriod int64             `sql:"size(255)"`
-	DbSubnetGroup         string            `gorm:"-"`
-	AllocatedStorage      int64             `sql:"size(255)"`
-	SecGroup              string            `gorm:"-"`
-	EnableFunctions       bool              `gorm:"-"`
-	PubliclyAccessible    bool              `gorm:"-"`
+	Tags                  *sync.Map `gorm:"-" deep:"-"`
+	BackupRetentionPeriod int64     `sql:"size(255)"`
+	DbSubnetGroup         string    `gorm:"-"`
+	AllocatedStorage      int64     `sql:"size(255)"`
+	SecGroup              string    `gorm:"-"`
+	EnableFunctions       bool      `gorm:"-"`
+	PubliclyAccessible    bool      `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
 
@@ -77,7 +79,7 @@ func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
 	return nil
 }
 
-func (i RDSInstance) modify(options Options, currentPlan catalog.RDSPlan, newPlan catalog.RDSPlan, settings *config.Settings, tags map[string]string) (*RDSInstance, error) {
+func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPlan *catalog.RDSPlan, settings *config.Settings, tags map[string]string) (*RDSInstance, error) {
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
 	modifiedInstance.PlanID = newPlan.ID
@@ -170,7 +172,7 @@ func (i *RDSInstance) init(
 	orgGUID string,
 	spaceGUID string,
 	serviceID string,
-	plan catalog.RDSPlan,
+	plan *catalog.RDSPlan,
 	options Options,
 	settings *config.Settings,
 	tags map[string]string,
@@ -240,18 +242,43 @@ func (i *RDSInstance) init(
 }
 
 func (i *RDSInstance) setTags(
-	plan catalog.RDSPlan,
+	plan *catalog.RDSPlan,
 	tags map[string]string,
 ) error {
-	// Load tags
-	i.Tags = plan.Tags
 	if i.Tags == nil {
-		i.Tags = make(map[string]string)
+		i.Tags = &sync.Map{}
+	}
+	// Load tags from plan
+	for k, v := range plan.Tags {
+		i.Tags.Store(k, v)
 	}
 	for k, v := range tags {
-		i.Tags[k] = v
+		i.Tags.Store(k, v)
 	}
 	return nil
+}
+
+func (i *RDSInstance) getTags() map[string]string {
+	var tags = make(map[string]string)
+	if i.Tags == nil {
+		return tags
+	}
+
+	i.Tags.Range(func(k, v any) bool {
+		keyString, ok := k.(string)
+		if !ok {
+			return false
+		}
+
+		valueString, ok := v.(string)
+		if !ok {
+			return false
+		}
+
+		tags[keyString] = valueString
+		return true
+	})
+	return tags
 }
 
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {

@@ -28,7 +28,7 @@ func main() {
 
 	db, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
-		log.Fatal(fmt.Errorf("there was an error with the DB. Error: %s", err))
+		log.Fatal(fmt.Errorf("error initializing database: %s", err))
 	}
 
 	asyncJobManager := jobs.NewAsyncJobManager()

@@ -39,7 +39,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 		expectedErr       error
 		password          string
 		expectedParams    *rds.CreateDBInstanceInput
-		plan              catalog.RDSPlan
+		plan              *catalog.RDSPlan
+		tags              map[string]string
 	}{
 		"expect error": {
 			dbInstance: &RDSInstance{
@@ -56,6 +57,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 					rds:       &mockRDSClient{},
 				},
 			),
+			plan:        &catalog.RDSPlan{},
 			expectedErr: testErr,
 		},
 		"creates correct params": {
@@ -67,15 +69,15 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				dbUtils: &MockDbUtils{
 					mockFormattedDbName: "formatted-name",
 				},
-				Username:    "fake-user",
-				StorageType: "storage-1",
-				Tags: map[string]string{
-					"foo": "bar",
-				},
+				Username:              "fake-user",
+				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
 				BackupRetentionPeriod: 14,
 				DbSubnetGroup:         "subnet-group-1",
 				SecGroup:              "sec-group-1",
+			},
+			tags: map[string]string{
+				"foo": "bar",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
@@ -88,7 +90,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 					customPgroupName: "parameter-group-1",
 				},
 			),
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				InstanceClass: "class-1",
 				Redundant:     true,
 				Encrypted:     true,
@@ -131,16 +133,16 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				dbUtils: &MockDbUtils{
 					mockFormattedDbName: "formatted-name",
 				},
-				Username:    "fake-user",
-				StorageType: "storage-1",
-				Tags: map[string]string{
-					"foo": "bar",
-				},
+				Username:              "fake-user",
+				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
 				BackupRetentionPeriod: 14,
 				DbSubnetGroup:         "subnet-group-1",
 				SecGroup:              "sec-group-1",
 				LicenseModel:          "foo",
+			},
+			tags: map[string]string{
+				"foo": "bar",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
@@ -153,7 +155,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 					customPgroupName: "parameter-group-1",
 				},
 			),
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				InstanceClass: "class-1",
 				Redundant:     true,
 				Encrypted:     true,
@@ -192,6 +194,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
+			test.dbInstance.setTags(test.plan, test.tags)
 			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.plan, test.password)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
@@ -218,7 +221,7 @@ func TestAsyncCreateDb(t *testing.T) {
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
 		password      string
-		plan          catalog.RDSPlan
+		plan          *catalog.RDSPlan
 	}{
 		"error provisioning custom parameter group": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -239,6 +242,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 		},
@@ -261,6 +265,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 		},
@@ -282,6 +287,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 		},
@@ -323,6 +329,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
@@ -352,6 +359,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -388,6 +396,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -434,7 +443,7 @@ func TestCreateDb(t *testing.T) {
 		expectedState          base.InstanceState
 		password               string
 		expectedAsyncJobStates []base.InstanceState
-		plan                   catalog.RDSPlan
+		plan                   *catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -478,6 +487,7 @@ func TestCreateDb(t *testing.T) {
 			},
 			expectedState:          base.InstanceInProgress,
 			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
+			plan:                   &catalog.RDSPlan{},
 		},
 	}
 
@@ -706,7 +716,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		dbAdapter     *dedicatedDBAdapter
 		expectedState base.InstanceState
 		expectErr     bool
-		plan          catalog.RDSPlan
+		plan          *catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -744,6 +754,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceInProgress,
 		},
 		"error checking database creation status": {
@@ -767,6 +778,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -791,6 +803,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan: &catalog.RDSPlan{},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -833,6 +846,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -873,7 +887,7 @@ func TestAsyncModifyDb(t *testing.T) {
 		dbAdapter          *dedicatedDBAdapter
 		expectedState      base.InstanceState
 		expectedDbInstance *RDSInstance
-		plan               catalog.RDSPlan
+		plan               *catalog.RDSPlan
 	}{
 		"error preparing modify input": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -894,6 +908,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"modify primary DB error": {
@@ -915,6 +930,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"error waiting for database to be ready": {
@@ -936,6 +952,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"success without read replica": {
@@ -958,6 +975,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
+			plan: &catalog.RDSPlan{},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1031,6 +1049,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan: &catalog.RDSPlan{},
 		},
 		"error modifying read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -1064,6 +1083,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"error creating read replica": {
@@ -1106,6 +1126,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 		"success with deleting read replica": {
@@ -1152,6 +1173,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database: "db-3",
 				dbUtils:  &RDSDatabaseUtils{},
 			},
+			plan: &catalog.RDSPlan{},
 		},
 		"error updating read replica tags": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -1192,6 +1214,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
 		},
 	}
@@ -1236,7 +1259,7 @@ func TestModifyDb(t *testing.T) {
 		expectedErr            error
 		expectedState          base.InstanceState
 		expectedAsyncJobStates []base.InstanceState
-		plan                   catalog.RDSPlan
+		plan                   *catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -1279,6 +1302,7 @@ func TestModifyDb(t *testing.T) {
 			},
 			expectedState:          base.InstanceInProgress,
 			expectedAsyncJobStates: []base.InstanceState{base.InstanceReady, base.InstanceInProgress},
+			plan:                   &catalog.RDSPlan{},
 		},
 	}
 
@@ -1321,7 +1345,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		expectedGroupName string
 		expectedErr       error
 		expectedParams    *rds.ModifyDBInstanceInput
-		plan              catalog.RDSPlan
+		plan              *catalog.RDSPlan
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
@@ -1341,7 +1365,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					rds:              &mockRDSClient{},
 				},
 			),
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
 			},
@@ -1375,7 +1399,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					returnErr: testErr,
 				},
 			),
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
 			},
@@ -1399,7 +1423,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					rds: &mockRDSClient{},
 				},
 			),
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
 			},
@@ -1431,7 +1455,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					rds: &mockRDSClient{},
 				},
 			),
-			plan: catalog.RDSPlan{
+			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
 			},
