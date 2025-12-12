@@ -1,6 +1,9 @@
 package main
 
+import "fmt"
+
 var (
+	rdsServiceId                = "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
 	originalRDSPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c6"
 	updateableRDSPlanID         = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
 	originalRedisPlanID         = "475e36bf-387f-44c1-9b81-575fec2ee443"
@@ -9,12 +12,12 @@ var (
 
 // micro-psql plan
 var createRDSInstanceReq = []byte(
-	`{
-	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	fmt.Sprintf(`{
+	"service_id":"%s",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
-}`)
+}`, rdsServiceId))
 
 var createRDSInstanceWithEnabledLogGroupsReq = []byte(
 	`{

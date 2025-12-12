@@ -1,14 +1,13 @@
 package redis
 
 import (
-	"net/http"
 	"testing"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
-	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/testutil"
@@ -29,32 +28,20 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		planID               string
-		instance             *RedisInstance
-		expectedResponseCode int
-		catalog              *catalog.Catalog
-		createRequest        request.Request
-		redisBroker          *redisBroker
+		planID           string
+		instance         *RedisInstance
+		catalog          *catalog.Catalog
+		redisBroker      *redisBroker
+		provisionDetails domain.ProvisionDetails
 	}{
 		"success": {
-			catalog: &catalog.Catalog{
-				RedisService: catalog.RedisService{
-					Plans: []catalog.RedisPlan{
-						{
-							Plan: catalog.Plan{
-								ID: "123",
-							},
-						},
-					},
-				},
-			},
 			planID: "123",
 			instance: &RedisInstance{
 				Instance: base.Instance{
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			createRequest: request.Request{
+			provisionDetails: domain.ProvisionDetails{
 				PlanID: "123",
 			},
 			redisBroker: &redisBroker{
@@ -65,17 +52,26 @@ func TestCreateInstance(t *testing.T) {
 				tagManager: &mocks.MockTagGenerator{},
 				adapter:    &mockRedisAdapter{},
 				brokerDB:   brokerDB,
+				catalog: &catalog.Catalog{
+					RedisService: catalog.RedisService{
+						RedisPlans: []catalog.RedisPlan{
+							{
+								ServicePlan: domain.ServicePlan{
+									ID: "123",
+								},
+							},
+						},
+					},
+				},
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			response := test.redisBroker.CreateInstance(test.catalog, test.instance.Uuid, test.createRequest)
-
-			if response.GetStatusCode() != test.expectedResponseCode {
-				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			err := test.redisBroker.CreateInstance(test.instance.Uuid, test.provisionDetails)
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

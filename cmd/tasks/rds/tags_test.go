@@ -229,7 +229,7 @@ func TestReconcileRDSResourceTagsSuccess(t *testing.T) {
 			},
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
 							Plan: catalog.Plan{
 								ID:   "plan-1",
@@ -254,7 +254,7 @@ func TestReconcileRDSResourceTagsSuccess(t *testing.T) {
 			},
 			catalog: &catalog.Catalog{
 				RdsService: catalog.RDSService{
-					Plans: []catalog.RDSPlan{
+					RDSPlans: []catalog.RDSPlan{
 						{
 							Plan: catalog.Plan{
 								ID:   "plan-2",

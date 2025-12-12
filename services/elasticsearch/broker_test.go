@@ -1,14 +1,13 @@
 package elasticsearch
 
 import (
-	"net/http"
 	"testing"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
-	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/testutil"
@@ -64,35 +63,34 @@ func TestCreateInstance(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		planID               string
-		instance             *ElasticsearchInstance
-		expectedResponseCode int
-		catalog              *catalog.Catalog
-		createRequest        request.Request
-		elasticsearchBroker  *elasticsearchBroker
+		planID              string
+		instance            *ElasticsearchInstance
+		catalog             *catalog.Catalog
+		provisionDetails    domain.ProvisionDetails
+		elasticsearchBroker *elasticsearchBroker
 	}{
 		"success": {
-			catalog: &catalog.Catalog{
-				ElasticsearchService: catalog.ElasticsearchService{
-					Plans: []catalog.ElasticsearchPlan{
-						{
-							Plan: catalog.Plan{
-								ID: "123",
-							},
-						},
-					},
-				},
-			},
 			planID: "123",
 			instance: &ElasticsearchInstance{
 				Instance: base.Instance{
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			createRequest: request.Request{
+			provisionDetails: domain.ProvisionDetails{
 				PlanID: "123",
 			},
 			elasticsearchBroker: &elasticsearchBroker{
+				catalog: &catalog.Catalog{
+					ElasticsearchService: catalog.ElasticsearchService{
+						ElasticsearchPlans: []catalog.ElasticsearchPlan{
+							{
+								ServicePlan: domain.ServicePlan{
+									ID: "123",
+								},
+							},
+						},
+					},
+				},
 				settings: &config.Settings{
 					EncryptionKey: helpers.RandStr(32),
 					Environment:   "test", // use the mock adapter
@@ -101,16 +99,15 @@ func TestCreateInstance(t *testing.T) {
 				brokerDB:   brokerDB,
 				adapter:    &mockElasticsearchAdapter{},
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			response := test.elasticsearchBroker.CreateInstance(test.catalog, test.instance.Uuid, test.createRequest)
+			err := test.elasticsearchBroker.CreateInstance(test.instance.Uuid, test.provisionDetails)
 
-			if response.GetStatusCode() != test.expectedResponseCode {
-				t.Errorf("expected: %d, got: %d", test.expectedResponseCode, response.GetStatusCode())
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

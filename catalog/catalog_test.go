@@ -32,6 +32,19 @@ func TestInitCatalog(t *testing.T) {
 	}
 }
 
+func TestCatalogGetServices(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
+	if catalog == nil {
+		t.Fatal("Did not read catalog")
+	}
+	services := catalog.GetServices()
+	if len(services) != 3 {
+		t.Fatalf("expected 3 services, got %d", len(services))
+	}
+}
+
 func TestFetchPlan(t *testing.T) {
 	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")
@@ -41,6 +54,22 @@ func TestFetchPlan(t *testing.T) {
 
 	if err != nil {
 		t.Error("Could not fetch plan " + rdsPGTestPlanID)
+	}
+}
+
+func TestRDSCheckPlanUpdatable(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
+
+	plan, err := catalog.RdsService.FetchPlan(rdsPGTestPlanID)
+
+	if err != nil {
+		t.Error("Could not fetch plan " + rdsPGTestPlanID)
+	}
+
+	if plan.PlanUpdatable == nil {
+		t.Error("PlanUpdatable property not set")
 	}
 }
 

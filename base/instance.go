@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	"github.com/cloud-gov/aws-broker/helpers/response"
 	"gorm.io/gorm"
 )
 
@@ -65,6 +66,19 @@ func (i InstanceState) ToLastOperationStatus() string {
 	}
 }
 
+func (i InstanceState) ToLastOperationState() domain.LastOperationState {
+	switch i {
+	case InstanceInProgress:
+		return domain.InProgress
+	case InstanceReady, InstanceGone:
+		return domain.Succeeded
+	case InstanceNotCreated, InstanceNotModified, InstanceNotGone:
+		return domain.Failed
+	default:
+		return domain.InProgress
+	}
+}
+
 type Instance struct {
 	Uuid string `gorm:"primaryKey" sql:"type:varchar(255) PRIMARY KEY"`
 
@@ -80,15 +94,19 @@ type Instance struct {
 }
 
 // FindBaseInstance is a helper function to find the base instance of the
-func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, response.Response) {
+func FindBaseInstance(brokerDb *gorm.DB, id string) (Instance, error) {
 	instance := Instance{}
 	log.Println("Looking for instance with id " + id)
 	result := brokerDb.Where("uuid = ?", id).First(&instance)
 	if result.Error == nil {
 		return instance, nil
 	} else if result.RowsAffected == 0 {
-		return instance, response.NewErrorResponse(http.StatusNotFound, result.Error.Error())
+		return instance, apiresponses.ErrInstanceDoesNotExist
 	} else {
-		return instance, response.NewErrorResponse(http.StatusInternalServerError, result.Error.Error())
+		return instance, apiresponses.NewFailureResponse(
+			result.Error,
+			http.StatusInternalServerError,
+			"find base instance",
+		)
 	}
 }
