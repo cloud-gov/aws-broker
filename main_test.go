@@ -828,7 +828,7 @@ func TestRDSBindInstance(t *testing.T) {
 
 func TestRDSUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding?service_id=service_id&plan_id=plan_id", instanceUUID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -839,7 +839,7 @@ func TestRDSUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if res.Body.String() != "{}" {
+	if strings.TrimSpace(res.Body.String()) != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
