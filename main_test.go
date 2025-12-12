@@ -828,7 +828,7 @@ func TestRDSBindInstance(t *testing.T) {
 
 func TestRDSUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding?service_id=service_id&plan_id=plan_id", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding?service_id=%s&plan_id=%s", instanceUUID, rdsServiceId, originalRDSPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -846,16 +846,16 @@ func TestRDSUnbind(t *testing.T) {
 
 func TestRDSDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true&service_id=%s&plan_id=%s", instanceUUID, rdsServiceId, originalRDSPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
-	if res.Code != http.StatusNotFound {
+	if res.Code != http.StatusGone {
 		t.Error(url, "with auth should return 404 and it returned", res.Code)
 	}
 
 	// Create the instance and try again
-	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true&service_id=%s&plan_id=%s", instanceUUID, rdsServiceId, originalRDSPlanID), "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
 	i := rds.RDSInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
