@@ -4,6 +4,7 @@ import "fmt"
 
 var (
 	rdsServiceId                = "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
+	redisServiceId              = "cda65825-e357-4a93-a24b-9ab138d97815"
 	originalRDSPlanID           = "da91e15c-98c9-46a9-b114-02b8d28062c6"
 	updateableRDSPlanID         = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
 	originalRedisPlanID         = "475e36bf-387f-44c1-9b81-575fec2ee443"
@@ -144,23 +145,23 @@ var modifyRDSInstanceNotAllowedReq = []byte(
 }`)
 
 var createRedisInstanceReq = []byte(
-	`{
-	"service_id":"cda65825-e357-4a93-a24b-9ab138d97815",
+	fmt.Sprintf(`{
+	"service_id":"%s",
 	"plan_id":"475e36bf-387f-44c1-9b81-575fec2ee443",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
-}`)
+}`, redisServiceId))
 
 var modifyRedisInstanceReq = []byte(
-	`{
-	"service_id":"cda65825-e357-4a93-a24b-9ab138d97815",
+	fmt.Sprintf(`{
+	"service_id":"%s",
 	"plan_id":"5nd336bf-0k7f-44c1-9b81-575fp3k764r6",
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"previous_values": {
 		"plan_id": "475e36bf-387f-44c1-9b81-575fec2ee443"
 	}
-}`)
+}`, redisServiceId))
 
 var createElasticsearchInstanceAdvancedOptionsReq = []byte(
 	`{

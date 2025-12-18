@@ -897,10 +897,8 @@ func TestCreateRedisInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it say "accepted"?
-	if !strings.Contains(res.Body.String(), "accepted") {
-		t.Error(urlAcceptsIncomplete, "should return the instance accepted message")
-	}
+	isAsyncOperationResponse(t, res, base.CreateOp)
+
 	// Is it in the database and has a username and password?
 	i := redis.RedisInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
@@ -944,9 +942,9 @@ func TestModifyRedisInstance(t *testing.T) {
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
-	if resp.Code != http.StatusUnprocessableEntity {
+	if resp.Code != http.StatusBadRequest {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
-		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
+		t.Error(urlUnacceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
@@ -961,7 +959,7 @@ func TestModifyRedisInstance(t *testing.T) {
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
 	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(resp.Body.String(), "Updating Redis service instances is not supported at this time") {
+	if !strings.Contains(resp.Body.String(), "updating Redis service instances is not supported at this time") {
 		t.Error(urlAcceptsIncomplete, "should return a message that Redis services cannot be modified at this time")
 	}
 
@@ -976,12 +974,12 @@ func TestModifyRedisInstance(t *testing.T) {
 
 func TestRedisLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s/last_operation?service_id=%s&plan_id=%s", instanceUUID, redisServiceId, originalRedisPlanID)
 	res := requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createRedisInstanceReq))
 
 	// Without the instance
-	if res.Code != http.StatusNotFound {
-		t.Error(url, "with auth status should be returned 404", res.Code)
+	if res.Code != http.StatusGone {
+		t.Error(url, "with auth status should be returned 410", res.Code)
 	}
 
 	// Create the instance and try again
