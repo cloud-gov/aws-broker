@@ -1583,7 +1583,7 @@ resources:
     source:
       commit_verification_keys: ((cloud-gov-pgp-keys))
       uri: ((aws-broker-url))
-      branch: ((aws-broker-branch-development))
+      branch: org-credhub
 
   - name: db-app-development
     source:
