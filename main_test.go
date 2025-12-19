@@ -1055,7 +1055,7 @@ func TestRedisBindInstance(t *testing.T) {
 
 func TestRedisUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding?service_id=%s&plan_id=%s", instanceUUID, redisServiceId, originalRedisPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -1066,23 +1066,23 @@ func TestRedisUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if res.Body.String() != "{}" {
+	if strings.TrimSpace(res.Body.String()) != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
 
 func TestRedisDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s?service_id=%s&plan_id=%s", instanceUUID, redisServiceId, originalRedisPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
-	if res.Code != http.StatusNotFound {
-		t.Error(url, "with auth should return 404 and it returned", res.Code)
+	if res.Code != http.StatusGone {
+		t.Error(url, "with auth should return 410 and it returned", res.Code)
 	}
 
 	// Create the instance and try again
-	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true&service_id=%s&plan_id=%s", instanceUUID, redisServiceId, originalRedisPlanID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
 	i := redis.RedisInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
