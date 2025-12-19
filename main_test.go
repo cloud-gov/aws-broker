@@ -1321,16 +1321,16 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 
 func TestElasticsearchLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s/last_operation?service_id=%s&plan_id=%s", instanceUUID, elasticsearchServiceId, originalElasticsearchPlanID)
 	res := requestHandler.doRequest(url, "GET", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 
 	// Without the instance
-	if res.Code != http.StatusNotFound {
-		t.Error(url, "with auth status should be returned 404", res.Code)
+	if res.Code != http.StatusGone {
+		t.Error(url, "with auth status should be returned 410", res.Code)
 	}
 
 	// Create the instance and try again
-	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true&service_id=%s&plan_id=%s", instanceUUID, elasticsearchServiceId, originalElasticsearchPlanID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)

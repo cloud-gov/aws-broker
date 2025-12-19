@@ -258,11 +258,7 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 
 	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
 	if err != nil {
-		return lastOperation, apiresponses.NewFailureResponse(
-			err,
-			http.StatusInternalServerError,
-			"find base instance",
-		)
+		return lastOperation, err
 	}
 
 	var count int64
