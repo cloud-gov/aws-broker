@@ -225,7 +225,7 @@ jobs:
             aws-rds:xlarge-gp-psql-m6
             aws-rds:xlarge-gp-psql-m6-redundant
             aws-rds:xlarge-gp-psql-m6-replica
-          SERVICE_ORGANIZATION: ((enterprise-orgs)
+          SERVICE_ORGANIZATION: ((enterprise-orgs))
 
       - task: update-broker-replicas
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -1301,8 +1301,7 @@ jobs:
             aws-rds:xlarge-gp-psql-m6
             aws-rds:xlarge-gp-psql-m6-redundant
             aws-rds:xlarge-gp-psql-m6-replica
-          SERVICE_ORGANIZATION: ((enterprise-orgs))
-
+          SERVICE_ORGANIZATION: cloud-gov
       - task: update-broker-datagov
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
         params:
