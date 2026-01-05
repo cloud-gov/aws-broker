@@ -253,7 +253,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	})
 
 	// Define the waiting strategy
-	maxDurationMutliple := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
+	maxDurationMutliple := getPollAwsMaxDurationMultiplier(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
 	maxWaitTime := time.Duration(maxDurationMutliple) * d.settings.PollAwsMaxDuration // Modifications can take significant time
 
 	waiterInput := &rds.DescribeDBInstancesInput{
@@ -547,7 +547,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	})
 
 	// Define the waiting strategy
-	maxDurationMutliple := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
+	maxDurationMutliple := getPollAwsMaxDurationMultiplier(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
 	maxWaitTime := time.Duration(maxDurationMutliple) * d.settings.PollAwsMaxDuration // Modifications can take significant time
 
 	waiterInput := &rds.DescribeDBInstancesInput{
@@ -657,7 +657,7 @@ func isDatabaseInstanceNotFoundError(err error) bool {
 	return errors.As(err, &notFoundException)
 }
 
-func getMaxCheckDBStatusRetries(storageSize int64, defaultMaxRetries int64) int64 {
+func getPollAwsMaxDurationMultiplier(storageSize int64, defaultMaxRetries int64) int64 {
 	// Scale the number of retries in proportion to the database
 	// storage size
 	retryMultiplier := math.Ceil(float64(storageSize) / 200)

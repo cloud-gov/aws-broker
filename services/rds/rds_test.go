@@ -2266,7 +2266,7 @@ func TestDeleteDb(t *testing.T) {
 	}
 }
 
-func TestGetMaxCheckDBStatusRetries(t *testing.T) {
+func TestGetPollAwsMaxDurationMultiplier(t *testing.T) {
 	testCases := map[string]struct {
 		storageSize        int64
 		defaultMaxRetries  int64
@@ -2296,7 +2296,7 @@ func TestGetMaxCheckDBStatusRetries(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			retries := getMaxCheckDBStatusRetries(test.storageSize, test.defaultMaxRetries)
+			retries := getPollAwsMaxDurationMultiplier(test.storageSize, test.defaultMaxRetries)
 			if retries != test.expectedMaxRetries {
 				t.Fatalf("expected %d, got %d", test.expectedMaxRetries, retries)
 			}
