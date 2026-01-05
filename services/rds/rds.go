@@ -245,7 +245,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
-	d.logger.Info(fmt.Sprintf("Waiting for DB instance %s to be available...\n", database))
+	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
 
 	// Create a waiter
 	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
@@ -256,9 +256,10 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	maxDurationMutliple := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
 	maxWaitTime := time.Duration(maxDurationMutliple) * d.settings.PollAwsMaxDuration // Modifications can take significant time
 
-	err := waiter.Wait(context.TODO(), &rds.DescribeDBInstancesInput{
+	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
-	}, maxWaitTime)
+	}
+	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
 
 	if err != nil {
 		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
@@ -538,7 +539,7 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 }
 
 func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSInstance, database string) error {
-	d.logger.Info(fmt.Sprintf("Waiting for DB instance %s to be available...\n", database))
+	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be deleted", database))
 
 	// Create a waiter
 	waiter := rds.NewDBInstanceDeletedWaiter(d.rds, func(dawo *rds.DBInstanceDeletedWaiterOptions) {
@@ -549,9 +550,10 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	maxDurationMutliple := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
 	maxWaitTime := time.Duration(maxDurationMutliple) * d.settings.PollAwsMaxDuration // Modifications can take significant time
 
-	err := waiter.Wait(context.TODO(), &rds.DescribeDBInstancesInput{
+	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
-	}, maxWaitTime)
+	}
+	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
 
 	if err != nil {
 		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
