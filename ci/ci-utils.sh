@@ -1,8 +1,11 @@
 #!/bin/bash
 
 login() {
-  # todo (mxplusb): update the auth mechanism.
-  cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORGANIZATION" -s "$CF_SPACE"
+  cf api "$CF_API_URL"
+  set +x
+  cf auth "$CF_USERNAME" "$CF_PASSWORD"
+  set -x
+  cf target -o "$CF_ORGANIZATION" -s "$CF_SPACE"
 }
 
 # Function for waiting on a service instance to finish being processed.
