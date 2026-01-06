@@ -25,15 +25,7 @@ cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 # Create service instance
 cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME"
 
-while true; do
-  if out=$(cf bind-service "$APP_NAME" "$SERVICE_NAME"); then
-    break
-  fi
-  if [[ $out =~ "Instance not available yet" ]]; then
-    echo "${out}"
-  fi
-  sleep 90
-done
+wait_for_service_bindable $APP_NAME $SERVICE_NAME
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
 cf push "$APP_NAME" --var rds-service="$SERVICE_NAME"
@@ -63,5 +55,5 @@ cf restage "$APP_NAME"
 cf restart "$APP_NAME"
 
 # Clean up app and service
-cf delete -f "smoke-tests-db-rotate-creds-$SERVICE_PLAN"
+cf delete -f "$APP_NAME"
 cf delete-service -f "$SERVICE_NAME"

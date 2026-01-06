@@ -41,3 +41,24 @@ wait_for_service_bindable() {
     sleep 60
   done
 }
+
+
+# Function for getting task state
+get_task_state() {
+  local app_guid=$1
+  local task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
+
+  while [ "$task_state" != "FAILED" ] && [ "$task_state" != "SUCCEEDED" ]; do
+    sleep 15
+    task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
+  done
+
+  # If task FAILED exit with error
+  if [[ "$task_state" == "FAILED" ]]; then
+    echo "Smoke test failed."
+    echo "Check '$> cf logs $TEST_APP --recent' for more info."
+    exit 1
+  fi
+
+  echo "$task_state"
+}

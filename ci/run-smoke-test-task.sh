@@ -4,7 +4,6 @@ set -euxo pipefail
 
 . aws-broker-app/ci/ci-utils.sh
 
-
 # Environment variables used for reference
 # $CF_API_URL
 # $CF_USERNAME
@@ -19,26 +18,6 @@ set -euxo pipefail
 TEST_APP="smoke-test-$SERVICE_PLAN-app"
 TEST_SERVICE="smoke-test-$SERVICE_PLAN-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/$SERVICE_NAME/"
-
-# Function for getting task state
-get_task_state() {
-  local app_guid=$1
-  local task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
-
-  while [ "$task_state" != "FAILED" ] && [ "$task_state" != "SUCCEEDED" ]; do
-    sleep 15
-    task_state=$(cf curl "/v3/tasks?app_guids=$app_guid&order_by=-created_at" | jq -r ".resources[0].state")
-  done
-
-  # If task FAILED exit with error
-  if [[ "$task_state" == "FAILED" ]]; then
-    echo "Smoke test failed."
-    echo "Check '$> cf logs $TEST_APP --recent' for more info."
-    exit 1
-  fi
-
-  echo "$task_state"
-}
 
 # Log into CF
 login
