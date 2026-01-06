@@ -245,41 +245,28 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
-	attempt := 1
-	var dbState base.InstanceState
-	var err error
+	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
 
-	maxRetries := getMaxCheckDBStatusRetries(i.AllocatedStorage, d.settings.PollAwsMaxRetries)
+	// Create a waiter
+	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
+		dawo.MinDelay = d.settings.PollAwsMinDelay
+	})
 
-	for attempt <= int(maxRetries) {
-		dbState, err = d.checkDBStatus(database)
-		if err != nil {
-			updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed to get database status: %s", err))
-			if updateErr != nil {
-				err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
-			}
-			return fmt.Errorf("waitForDbReady: %w", err)
-		}
+	// Define the waiting strategy
+	maxDurationMutliple := getPollAwsMaxDurationMultiplier(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
+	maxWaitTime := time.Duration(maxDurationMutliple) * d.settings.PollAwsMaxDuration // Modifications can take significant time
 
-		if dbState == base.InstanceReady {
-			return nil
-		}
-
-		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be available. Current status: %s (attempt %d of %d)", dbState, attempt, maxRetries))
-		if err != nil {
-			return fmt.Errorf("waitForDbReady: %w", err)
-		}
-
-		attempt += 1
-		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
+	waiterInput := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: &database,
 	}
+	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
 
-	if dbState != base.InstanceReady {
-		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, "Exhausted maximum retries waiting for database to be available")
-		if err != nil {
-			return fmt.Errorf("waitForDbReady: %w", err)
+	if err != nil {
+		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
+		if updateErr != nil {
+			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		return errors.New("waitForDbReady: exhausted maximum retries waiting for database to be available")
+		return fmt.Errorf("waitForDbReady: %w", err)
 	}
 
 	return nil
@@ -552,41 +539,28 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 }
 
 func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSInstance, database string) error {
-	attempt := 1
-	var dbState base.InstanceState
-	var err error
-	var isDeleted bool
+	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be deleted", database))
 
-	for !isDeleted && attempt <= int(d.settings.PollAwsMaxRetries) {
-		dbState, err = d.checkDBStatus(database)
-		if err != nil {
-			if !isDatabaseInstanceNotFoundError(err) {
-				updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Could not check database status: %s", err))
-				if updateErr != nil {
-					err = fmt.Errorf("waitForDbDeleted: while handling error %w, error updating async job message %w", err, updateErr)
-				}
-				return fmt.Errorf("waitForDbDeleted: checkDBStatus err %w", err)
-			}
+	// Create a waiter
+	waiter := rds.NewDBInstanceDeletedWaiter(d.rds, func(dawo *rds.DBInstanceDeletedWaiterOptions) {
+		dawo.MinDelay = d.settings.PollAwsMinDelay
+	})
 
-			isDeleted = true
-			break
-		}
+	// Define the waiting strategy
+	maxDurationMutliple := getPollAwsMaxDurationMultiplier(i.AllocatedStorage, d.settings.PollAwsMaxDurationMultiplier)
+	maxWaitTime := time.Duration(maxDurationMutliple) * d.settings.PollAwsMaxDuration // Modifications can take significant time
 
-		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for database to be be deleted. Current status: %s (attempt %d of %d)", dbState, attempt, d.settings.PollAwsMaxRetries))
-		if err != nil {
-			return fmt.Errorf("waitForDbDeleted: %w", err)
-		}
-
-		attempt += 1
-		time.Sleep(time.Duration(d.settings.PollAwsRetryDelaySeconds) * time.Second)
+	waiterInput := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: &database,
 	}
+	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
 
-	if !isDeleted {
-		err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, "Exhausted maximum retries waiting for database to be deleted")
-		if err != nil {
-			return fmt.Errorf("waitForDbDeleted: %w", err)
+	if err != nil {
+		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
+		if updateErr != nil {
+			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
-		return errors.New("waitForDbDeleted: exhausted maximum retries waiting for database to be deleted")
+		return fmt.Errorf("waitForDbReady: %w", err)
 	}
 
 	return nil
@@ -683,7 +657,7 @@ func isDatabaseInstanceNotFoundError(err error) bool {
 	return errors.As(err, &notFoundException)
 }
 
-func getMaxCheckDBStatusRetries(storageSize int64, defaultMaxRetries int64) int64 {
+func getPollAwsMaxDurationMultiplier(storageSize int64, defaultMaxRetries int64) int64 {
 	// Scale the number of retries in proportion to the database
 	// storage size
 	retryMultiplier := math.Ceil(float64(storageSize) / 200)
