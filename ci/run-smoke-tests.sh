@@ -23,7 +23,7 @@ pushd aws-db-test/databases/aws-rds
 cf push "smoke-tests-${SERVICE_PLAN}" -f manifest.yml --var rds-service="$SERVICE_NAME" --no-start
 
 # set some variables that it needs
-cf set-env "smoke-tests-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
+cf set-env "smoke-tests-${SERVICE_PLAN}" DB_TYPE "$DB_TYPE"
 cf set-env "smoke-tests-${SERVICE_PLAN}" SERVICE_NAME "$SERVICE_NAME"
 
 # Create service

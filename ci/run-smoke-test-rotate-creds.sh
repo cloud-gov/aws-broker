@@ -19,7 +19,7 @@ pushd aws-db-test/databases/aws-rds
 cf push "smoke-tests-db-rotate-creds-${SERVICE_PLAN}" -f manifest.yml --var rds-service="$SERVICE_NAME" --no-start
 
 # set some variables that it needs
-cf set-env "$APP_NAME" DB_TYPE "${SERVICE_PLAN}"
+cf set-env "$APP_NAME" DB_TYPE "$DB_TYPE"
 cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 
 # Create service instance
