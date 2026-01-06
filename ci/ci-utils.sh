@@ -26,7 +26,7 @@ function wait_for_deletion {
       break
     fi
     echo "Waiting for $1 to be deleted"
-    sleep 90
+    sleep 60
   done
 }
 
@@ -38,6 +38,6 @@ wait_for_service_bindable() {
     if [[ $out =~ "Instance not available yet" ]]; then
       echo "${out}"
     fi
-    sleep 90
+    sleep 60
   done
 }
