@@ -522,6 +522,20 @@ jobs:
                 CF_SPACE: ((development-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+
+            - task: smoke-tests-update-replica
+              file: aws-broker-app/ci/run-smoke-tests-update-replica.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-cf-organization))
+                CF_SPACE: ((development-cf-space))
+                SERVICE_PLAN: micro-psql
+                REPLICA_PLAN: micro-psql-replica
+                DB_TYPE: postgres
     on_failure:
       put: slack
       params:

@@ -1,0 +1,9 @@
+---
+platform: linux
+
+inputs:
+- name: aws-broker-app
+- name: aws-db-test
+
+run:
+  path: aws-broker-app/ci/run-smoke-tests-update-replica.sh
