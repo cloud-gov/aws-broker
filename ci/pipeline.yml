@@ -523,8 +523,8 @@ jobs:
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
 
-            - task: smoke-tests-update-replica
-              file: aws-broker-app/ci/run-smoke-tests-update-replica.yml
+            - task: smoke-tests-postgresql-update-replica
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((development-broker-name))
@@ -534,7 +534,7 @@ jobs:
                 CF_ORGANIZATION: ((development-cf-organization))
                 CF_SPACE: ((development-cf-space))
                 SERVICE_PLAN: micro-psql
-                REPLICA_PLAN: micro-psql-replica
+                NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
     on_failure:
       put: slack

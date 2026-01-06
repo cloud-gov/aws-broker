@@ -16,3 +16,25 @@ wait_for_service_instance() {
     status=$(cf curl /v2/service_instances/${guid} | jq -r '.entity.last_operation.state')
   done
 }
+
+function wait_for_deletion {
+  while true; do
+    if ! cf service "$1"; then
+      break
+    fi
+    echo "Waiting for $1 to be deleted"
+    sleep 90
+  done
+}
+
+wait_for_service_bindable() {
+  while true; do
+    if out=$(cf bind-service "$1" "$2"); then
+      break
+    fi
+    if [[ $out =~ "Instance not available yet" ]]; then
+      echo "${out}"
+    fi
+    sleep 90
+  done
+}
