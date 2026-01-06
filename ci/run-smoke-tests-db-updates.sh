@@ -7,8 +7,9 @@ set -euxo pipefail
 # Log in to CF
 login
 
-APP_NAME="smoke-tests-db-update-$SERVICE_PLAN"
-SERVICE_NAME="rds-smoke-tests-db-update-$SERVICE_PLAN"
+TEST_ID="$RANDOM"
+APP_NAME="smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
+SERVICE_NAME="rds-smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
