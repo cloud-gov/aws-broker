@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-. ./ci-utils.sh
+. aws-broker-app/ci/ci-utils.sh
 
 APP_NAME="smoke-tests-$SERVICE_PLAN"
 SERVICE_NAME="rds-smoke-tests-$SERVICE_PLAN"

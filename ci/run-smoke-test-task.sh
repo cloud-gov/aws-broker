@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-. ./ci-utils.sh
+. aws-broker-app/ci/ci-utils.sh
 
 
 # Environment variables used for reference

@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-. ./ci-utils.sh
+. aws-broker-app/ci/ci-utils.sh
 
 # Log in to CF
 login
