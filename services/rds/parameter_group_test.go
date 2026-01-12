@@ -224,7 +224,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			paramName:          "shared_preload_libraries",
 			expectedParamValue: "",
@@ -239,7 +239,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 					},
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 1,
@@ -251,7 +251,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			paramName:          "shared_preload_libraries",
 			expectedParamValue: "random-library",
@@ -271,7 +271,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 					},
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 1,
@@ -283,7 +283,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			paramName: "shared_preload_libraries",
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -313,7 +313,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 					},
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 2,
@@ -326,7 +326,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			paramName:          "shared_preload_libraries",
 			expectedErr:        describeEngineDefaultParamsErr,
@@ -336,7 +336,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 					describeEngineDefaultParamsErr: describeEngineDefaultParamsErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 				},
@@ -346,7 +346,7 @@ func TestGetDefaultEngineParameterValue(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			paramName:          "shared_preload_libraries",
 			expectedParamValue: "",
@@ -447,7 +447,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "12",
+				DbVersion: "16",
 			},
 			parameterName:          "foo",
 			expectedParameterValue: "",
@@ -471,7 +471,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "12",
+				DbVersion: "16",
 			},
 			parameterName:          "foo",
 			expectedParameterValue: "bar",
@@ -504,7 +504,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "12",
+				DbVersion: "16",
 			},
 			parameterName:          "foo",
 			expectedParameterValue: "bar",
@@ -518,7 +518,7 @@ func TestGetCustomParameterValue(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "12",
+				DbVersion: "16",
 			},
 			parameterName: "foo",
 			expectedErr:   describeDbParamsError,
@@ -701,7 +701,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			expectedParams: map[string]map[string]paramDetails{
 				"postgres": {
@@ -723,7 +723,7 @@ func TestGetCustomParameters(t *testing.T) {
 					},
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 1,
@@ -734,7 +734,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron:       aws.Bool(true),
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "group1",
 			},
 			expectedParams: map[string]map[string]paramDetails{
@@ -761,7 +761,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(false),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			expectedParams: map[string]map[string]paramDetails{
 				"postgres": {
@@ -799,7 +799,7 @@ func TestGetCustomParameters(t *testing.T) {
 					},
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 2,
@@ -810,7 +810,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron:       aws.Bool(false),
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "group1",
 			},
 			expectedParams: map[string]map[string]paramDetails{
@@ -842,7 +842,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
@@ -852,7 +852,7 @@ func TestGetCustomParameters(t *testing.T) {
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 				},
@@ -862,7 +862,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron:       aws.Bool(true),
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "group1",
 			},
 			expectedParams: nil,
@@ -878,7 +878,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(false),
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 			},
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
@@ -888,7 +888,7 @@ func TestGetCustomParameters(t *testing.T) {
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 				},
@@ -898,7 +898,7 @@ func TestGetCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron:       aws.Bool(false),
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "group1",
 			},
 			expectedParams: nil,
@@ -1043,7 +1043,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 		"RDS service returns error": {
 			dbInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "12",
+				DbVersion: "16",
 			},
 			expectedErr: "fail",
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -1148,7 +1148,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 				Database:           "foobar",
 				DbType:             "postgres",
 				ParameterGroupName: "foobar",
-				DbVersion:          "12",
+				DbVersion:          "16",
 			},
 			expectedErr: describeEngVersionsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -1162,7 +1162,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Database:           "foobar",
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "foobar",
 			},
 			expectedErr: createDbParamGroupErr,
@@ -1172,7 +1172,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					createDbParamGroupErr: createDbParamGroupErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 				},
@@ -1182,7 +1182,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Database:           "foobar",
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "foobar",
 			},
 			expectedErr: modifyDbParamGroupErr,
@@ -1191,7 +1191,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					modifyDbParamGroupErr: modifyDbParamGroupErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 				},
@@ -1201,14 +1201,14 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Database:           "foobar",
 				DbType:             "postgres",
-				DbVersion:          "12",
+				DbVersion:          "16",
 				ParameterGroupName: "foobar",
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 				},
@@ -1263,7 +1263,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 		"enable PG cron, success": {
 			dbInstance: &RDSInstance{
 				DbType:       "postgres",
-				DbVersion:    "12",
+				DbVersion:    "16",
 				EnablePgCron: aws.Bool(true),
 				Database:     "database2",
 			},
@@ -1283,7 +1283,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 					},
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
 						{
-							DBParameterGroupFamily: aws.String("postgres12"),
+							DBParameterGroupFamily: aws.String("postgres16"),
 						},
 					},
 					describeEngineDefaultParamsNumPages: 1,

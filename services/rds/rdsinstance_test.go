@@ -194,7 +194,7 @@ func TestInit(t *testing.T) {
 					ID: "plan-1",
 				},
 				DbType:                "postgres",
-				DbVersion:             "12",
+				DbVersion:             "16",
 				AllocatedStorage:      20,
 				BackupRetentionPeriod: 14,
 			},
