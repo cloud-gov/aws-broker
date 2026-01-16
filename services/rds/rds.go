@@ -250,6 +250,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	// Create a waiter
 	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
 		dawo.MinDelay = d.settings.PollAwsMinDelay
+		dawo.LogWaitAttempts = true
 	})
 
 	// Define the waiting strategy
