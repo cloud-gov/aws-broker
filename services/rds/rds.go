@@ -396,11 +396,6 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan *catalog.RDSPlan
 
 	if i.AddReadReplica {
 		d.logger.Info("Adding new read replica")
-		resp, err := d.describeDatabaseInstance(i.Database)
-		if err != nil {
-			d.logger.Error("describing database", err)
-		}
-		d.logger.Info(fmt.Sprintf("DescribeDatabaseInstance resp: %+v", resp))
 
 		// Add new read replica
 		err = d.waitAndCreateDBReadReplica(operation, i, plan)
