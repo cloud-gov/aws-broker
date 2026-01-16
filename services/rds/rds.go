@@ -245,7 +245,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
-	d.logger.Info(fmt.Sprintf("Waiting for DB instance %s to be available", database))
+	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
 
 	// Create a waiter
 	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
