@@ -284,6 +284,12 @@ func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) 
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan) error {
 	d.logger.Info("About to create read replica")
 
+	err := d.waitForDbReady(operation, i, i.Database)
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
+	}
+
 	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	createReplicaOutput, err := d.createDBReadReplica(i, plan)
@@ -361,6 +367,12 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
+	}
+
+	err = d.waitForDbReady(operation, i, i.Database)
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
 	}
 
 	modifyReplicaOutput, err := d.rds.ModifyDBInstance(context.TODO(), modifyParams)
