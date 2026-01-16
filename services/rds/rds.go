@@ -381,12 +381,6 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
-	err = d.waitForDbReady(operation, i, database)
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return fmt.Errorf("asyncModifyDb, error waiting for database to be ready: %w", err)
-	}
-
 	err = d.updateDBTags(i, *modifyReplicaOutput.DBInstance.DBInstanceArn)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))
@@ -407,8 +401,6 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan *catalog.RDSPlan
 	}
 
 	if i.AddReadReplica {
-		d.logger.Info("Adding new read replica")
-
 		// Add new read replica
 		err = d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {

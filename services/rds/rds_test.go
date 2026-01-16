@@ -358,6 +358,13 @@ func TestAsyncCreateDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				&mockParameterGroupClient{},
@@ -388,6 +395,13 @@ func TestAsyncCreateDb(t *testing.T) {
 				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -775,7 +789,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				brokerDB,
 				&mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					describeDbInstancesErrs: []error{nil, errors.New("error describing database instances")},
 				},
 				&mockParameterGroupClient{},
 			),
@@ -838,6 +861,13 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				&mockRDSClient{
 					addTagsToResourceErr: errors.New("error adding tags to read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -984,6 +1014,13 @@ func TestAsyncModifyDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				&mockParameterGroupClient{},
@@ -1021,6 +1058,13 @@ func TestAsyncModifyDb(t *testing.T) {
 				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -1075,6 +1119,20 @@ func TestAsyncModifyDb(t *testing.T) {
 				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -1155,6 +1213,13 @@ func TestAsyncModifyDb(t *testing.T) {
 				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
