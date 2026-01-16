@@ -369,7 +369,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
 	}
 
-	err = d.waitForDbReady(operation, i, i.Database)
+	err = d.waitForDbReady(operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
@@ -381,7 +381,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
-	err = d.waitForDbReady(operation, i, i.Database)
+	err = d.waitForDbReady(operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
