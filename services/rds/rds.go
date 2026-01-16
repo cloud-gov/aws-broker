@@ -245,7 +245,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
-	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
+	d.logger.Info(fmt.Sprintf("Waiting for DB instance %s to be available", database))
 
 	// Create a waiter
 	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
@@ -282,6 +282,8 @@ func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) 
 }
 
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan) error {
+	d.logger.Info("About to create read replica")
+
 	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	createReplicaOutput, err := d.createDBReadReplica(i, plan)
@@ -393,8 +395,15 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan *catalog.RDSPlan
 	}
 
 	if i.AddReadReplica {
+		d.logger.Info("Adding new read replica")
+		resp, err := d.describeDatabaseInstance(i.Database)
+		if err != nil {
+			d.logger.Error("describing database", err)
+		}
+		d.logger.Info(fmt.Sprintf("DescribeDatabaseInstance resp: %+v", resp))
+
 		// Add new read replica
-		err := d.waitAndCreateDBReadReplica(operation, i, plan)
+		err = d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
 			d.logger.Error("asyncModifyDb: waitAndCreateDBReadReplica error", err)
