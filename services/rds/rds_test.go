@@ -1035,6 +1035,13 @@ func TestAsyncModifyDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				&mockParameterGroupClient{},
