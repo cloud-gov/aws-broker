@@ -228,6 +228,8 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan *
 }
 
 func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.RDSPlan) (*rds.CreateDBInstanceReadReplicaOutput, error) {
+	var err error
+
 	rdsTags := ConvertTagsToRDSTags(i.getTags())
 	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
 		AutoMinorVersionUpgrade:    aws.Bool(true),
@@ -249,7 +251,27 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 	}
 
 	d.logger.Info("before CreateDBInstanceReadReplica")
-	return d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
+
+	var createDbInstanceReplicaSuccess bool
+	var createDbInstanceReadReplicaOutput *rds.CreateDBInstanceReadReplicaOutput
+	attempt := 1
+
+	for !createDbInstanceReplicaSuccess && attempt <= int(d.settings.PollAwsMaxRetries) {
+		createDbInstanceReadReplicaOutput, err = d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
+		if err != nil {
+			var invalidDbInstanceStateErr *rdsTypes.InvalidDBInstanceStateFault
+			if errors.As(err, &invalidDbInstanceStateErr) {
+				d.logger.Info("database is not in a valid state, retrying replica creation")
+				time.Sleep(d.settings.PollAwsMinDelay)
+				continue
+			} else {
+				return createDbInstanceReadReplicaOutput, err
+			}
+		}
+		d.logger.Info("replica creation initiated successfully")
+		createDbInstanceReplicaSuccess = true
+	}
+	return createDbInstanceReadReplicaOutput, nil
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {

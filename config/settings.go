@@ -35,6 +35,7 @@ type Settings struct {
 	PollAwsMaxDuration           time.Duration
 	pollAwsMinDelaySeconds       int64
 	PollAwsMinDelay              time.Duration
+	PollAwsMaxRetries            int64
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -199,6 +200,17 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	s.PollAwsMaxDuration = time.Duration(s.pollAwsMaxDurationSeconds) * time.Second
+
+	if val, ok := os.LookupEnv("POLL_AWS_MAX_RETRIES"); ok {
+		s.PollAwsMaxRetries, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.PollAwsMaxRetries == 0 {
+		s.PollAwsMaxRetries = 60
+	}
 
 	return nil
 }
