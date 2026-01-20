@@ -2496,3 +2496,41 @@ func TestGetPollAwsMaxWaitTime(t *testing.T) {
 		})
 	}
 }
+
+func TestGetPollAwsMaxRetries(t *testing.T) {
+	testCases := map[string]struct {
+		storageSize       int64
+		defaultMaxRetries int64
+		expectedRetries   int
+	}{
+		"storage = 0": {
+			storageSize:       0,
+			defaultMaxRetries: 1,
+			expectedRetries:   1,
+		},
+		"storage = 1": {
+			storageSize:       1,
+			defaultMaxRetries: 1,
+			expectedRetries:   1,
+		},
+		"storage = 201": {
+			storageSize:       201,
+			defaultMaxRetries: 1,
+			expectedRetries:   2,
+		},
+		"storage = 1000": {
+			storageSize:       1000,
+			defaultMaxRetries: 1,
+			expectedRetries:   5,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			retries := getPollAwsMaxRetries(test.storageSize, test.defaultMaxRetries)
+			if retries != test.expectedRetries {
+				t.Fatalf("expected %d, got %d", test.expectedRetries, retries)
+			}
+		})
+	}
+}
