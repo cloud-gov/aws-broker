@@ -2331,39 +2331,49 @@ func TestDeleteDb(t *testing.T) {
 	}
 }
 
-func TestGetPollAwsMaxDurationMultiplier(t *testing.T) {
+func TestGetPollAwsMaxWaitTime(t *testing.T) {
 	testCases := map[string]struct {
-		storageSize        int64
-		defaultMaxRetries  int64
-		expectedMaxRetries int64
+		storageSize         int64
+		defaultMaxRetries   int64
+		expectedMaxRetries  int64
+		initialMaxWaitTime  time.Duration
+		expectedMaxWaitTime time.Duration
 	}{
 		"storage = 0": {
-			storageSize:        0,
-			defaultMaxRetries:  1,
-			expectedMaxRetries: 1,
+			storageSize:         0,
+			defaultMaxRetries:   1,
+			expectedMaxRetries:  1,
+			initialMaxWaitTime:  1 * time.Second,
+			expectedMaxWaitTime: 1 * time.Second,
 		},
 		"storage = 1": {
-			storageSize:        1,
-			defaultMaxRetries:  1,
-			expectedMaxRetries: 1,
+			storageSize:         1,
+			defaultMaxRetries:   1,
+			expectedMaxRetries:  1,
+			initialMaxWaitTime:  1 * time.Second,
+			expectedMaxWaitTime: 1 * time.Second,
 		},
 		"storage = 201": {
-			storageSize:        201,
-			defaultMaxRetries:  1,
-			expectedMaxRetries: 2,
+			storageSize:         201,
+			defaultMaxRetries:   1,
+			expectedMaxRetries:  2,
+			initialMaxWaitTime:  1 * time.Second,
+			expectedMaxWaitTime: 2 * time.Second,
 		},
 		"storage = 1000": {
-			storageSize:        1000,
-			defaultMaxRetries:  1,
-			expectedMaxRetries: 5,
+			storageSize:         1000,
+			defaultMaxRetries:   1,
+			expectedMaxRetries:  5,
+			initialMaxWaitTime:  1 * time.Second,
+			expectedMaxWaitTime: 5 * time.Second,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			retries := getPollAwsMaxDurationMultiplier(test.storageSize, test.defaultMaxRetries)
-			if retries != test.expectedMaxRetries {
-				t.Fatalf("expected %d, got %d", test.expectedMaxRetries, retries)
+			maxWaitTime := getPollAwsMaxWaitTime(test.storageSize, test.initialMaxWaitTime, test.defaultMaxRetries)
+			if maxWaitTime != test.expectedMaxWaitTime {
+				t.Fatalf("expected %d, got %d", test.expectedMaxRetries, maxWaitTime)
 			}
 		})
 	}
