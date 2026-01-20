@@ -275,7 +275,6 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
 
 	// Create a waiter
-	fmt.Printf("Minimum delay: %d\n", d.settings.PollAwsMinDelay)
 	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
 		dawo.MinDelay = d.settings.PollAwsMinDelay
 		dawo.LogWaitAttempts = true
@@ -287,7 +286,6 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
 	}
-	fmt.Printf("maximum wait time: %d\n", maxWaitTime)
 	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
 
 	if err != nil {
@@ -296,13 +294,6 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
 		return fmt.Errorf("waitForDbReady: %w", err)
-	}
-
-	status, err := d.describeDatabaseInstance(database)
-	if err != nil {
-		d.logger.Error("error checking db status", err)
-	} else {
-		fmt.Printf("database status: %s", *status.DBInstanceStatus)
 	}
 
 	return nil

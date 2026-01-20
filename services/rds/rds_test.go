@@ -1167,6 +1167,13 @@ func TestAsyncModifyDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				&mockParameterGroupClient{},
@@ -1269,6 +1276,13 @@ func TestAsyncModifyDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 					createDBInstanceReadReplicaErrs: []error{errors.New("error creating read replica")},
 				},
@@ -1313,7 +1327,7 @@ func TestAsyncModifyDb(t *testing.T) {
 							},
 						},
 					},
-					describeDbInstancesErrs: []error{nil, dbInstanceNotFoundErr},
+					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
 				},
 				&mockParameterGroupClient{},
 			),
