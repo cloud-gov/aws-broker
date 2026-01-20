@@ -241,6 +241,13 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 			i.SecGroup,
 		},
 	}
+	status, err := d.describeDatabaseInstance(i.Database)
+	if err != nil {
+		d.logger.Error("error checking db status", err)
+	} else {
+		fmt.Printf("database status: %s", *status.DBInstanceStatus)
+	}
+
 	d.logger.Info("before CreateDBInstanceReadReplica")
 	return d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
 }
