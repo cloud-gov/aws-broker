@@ -245,7 +245,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 	if err != nil {
 		d.logger.Error("error checking db status", err)
 	} else {
-		fmt.Printf("database status: %s", *status.DBInstanceStatus)
+		fmt.Printf("database status: %s\n", *status.DBInstanceStatus)
 	}
 
 	d.logger.Info("before CreateDBInstanceReadReplica")
