@@ -262,6 +262,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
 	}
+	fmt.Printf("maximum wait time: %d", maxWaitTime)
 	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
 
 	if err != nil {
