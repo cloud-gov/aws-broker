@@ -254,14 +254,15 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 
 	var createDbInstanceReplicaSuccess bool
 	var createDbInstanceReadReplicaOutput *rds.CreateDBInstanceReadReplicaOutput
-	attempt := 1
+	retries := 0
 
-	for !createDbInstanceReplicaSuccess && attempt <= int(d.settings.PollAwsMaxRetries) {
+	for !createDbInstanceReplicaSuccess && retries <= int(d.settings.PollAwsMaxRetries) {
 		createDbInstanceReadReplicaOutput, err = d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
 		if err != nil {
 			var invalidDbInstanceStateErr *rdsTypes.InvalidDBInstanceStateFault
 			if errors.As(err, &invalidDbInstanceStateErr) {
 				d.logger.Info("database is not in a valid state, retrying replica creation")
+				retries += 1
 				time.Sleep(d.settings.PollAwsMinDelay)
 				continue
 			} else {
@@ -271,7 +272,8 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 		d.logger.Info("replica creation initiated successfully")
 		createDbInstanceReplicaSuccess = true
 	}
-	return createDbInstanceReadReplicaOutput, nil
+
+	return createDbInstanceReadReplicaOutput, err
 }
 
 func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {

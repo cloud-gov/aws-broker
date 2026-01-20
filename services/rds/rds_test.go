@@ -410,7 +410,7 @@ func TestAsyncCreateDb(t *testing.T) {
 							},
 						},
 					},
-					createDBInstanceReadReplicaErr: errors.New("fail"),
+					createDBInstanceReadReplicaErrs: []error{errors.New("fail")},
 				},
 				&mockParameterGroupClient{},
 			),
@@ -727,6 +727,136 @@ func TestWaitForDbReady(t *testing.T) {
 	}
 }
 
+func TestCreateDBReadReplica(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		dbInstance *RDSInstance
+		dbAdapter  *dedicatedDBAdapter
+		expectErr  bool
+		plan       *catalog.RDSPlan
+	}{
+		"success": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 1,
+				},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			plan: &catalog.RDSPlan{},
+		},
+		"success on retry": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 1,
+				},
+				brokerDB,
+				&mockRDSClient{
+					createDBInstanceReadReplicaErrs: []error{
+						&rdsTypes.InvalidDBInstanceStateFault{},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			plan: &catalog.RDSPlan{},
+		},
+		"gives up after maximum retries": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 3,
+				},
+				brokerDB,
+				&mockRDSClient{
+					createDBInstanceReadReplicaErrs: []error{
+						&rdsTypes.InvalidDBInstanceStateFault{},
+						&rdsTypes.InvalidDBInstanceStateFault{},
+						&rdsTypes.InvalidDBInstanceStateFault{},
+						&rdsTypes.InvalidDBInstanceStateFault{},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			plan:      &catalog.RDSPlan{},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			_, err = test.dbAdapter.createDBReadReplica(test.dbInstance, test.plan)
+			if !test.expectErr && err != nil {
+				t.Fatal(err)
+			}
+			if test.expectErr && err == nil {
+				t.Fatal("expected error but received nil")
+			}
+		})
+	}
+}
+
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	brokerDB, err := testDBInit()
 	if err != nil {
@@ -824,7 +954,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				brokerDB,
 				&mockRDSClient{
-					createDBInstanceReadReplicaErr: errors.New("error creating database instance read replica"),
+					createDBInstanceReadReplicaErrs: []error{errors.New("error creating database instance read replica")},
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -1184,7 +1314,7 @@ func TestAsyncModifyDb(t *testing.T) {
 							},
 						},
 					},
-					createDBInstanceReadReplicaErr: errors.New("error creating read replica"),
+					createDBInstanceReadReplicaErrs: []error{errors.New("error creating read replica")},
 				},
 				&mockParameterGroupClient{},
 			),
