@@ -243,33 +243,28 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 			i.SecGroup,
 		},
 	}
-	status, err := d.describeDatabaseInstance(i.Database)
-	if err != nil {
-		d.logger.Error("error checking db status", err)
-	} else {
-		fmt.Printf("database status: %s\n", *status.DBInstanceStatus)
-	}
-
-	d.logger.Info("before CreateDBInstanceReadReplica")
 
 	var createDbInstanceReplicaSuccess bool
 	var createDbInstanceReadReplicaOutput *rds.CreateDBInstanceReadReplicaOutput
-	retries := 0
 
-	for !createDbInstanceReplicaSuccess && retries <= int(d.settings.PollAwsMaxRetries) {
+	attempts := 1
+	maxRetries := getPollAwsMaxRetries(i.AllocatedStorage, d.settings.PollAwsMaxRetries)
+	// max attempts = initial attempt + retries
+	maxAttempts := 1 + maxRetries
+
+	for !createDbInstanceReplicaSuccess && attempts <= maxAttempts {
+		d.logger.Info(fmt.Sprintf("attempting replica creation. attempt %d of %d", attempts, maxAttempts))
 		createDbInstanceReadReplicaOutput, err = d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
 		if err != nil {
 			var invalidDbInstanceStateErr *rdsTypes.InvalidDBInstanceStateFault
 			if errors.As(err, &invalidDbInstanceStateErr) {
-				d.logger.Info("database is not in a valid state, retrying replica creation")
-				retries += 1
+				attempts += 1
 				time.Sleep(d.settings.PollAwsMinDelay)
 				continue
 			} else {
 				return createDbInstanceReadReplicaOutput, err
 			}
 		}
-		d.logger.Info("replica creation initiated successfully")
 		createDbInstanceReplicaSuccess = true
 	}
 
@@ -287,7 +282,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	})
 
 	// Define the waiting strategy
-	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, d.settings.PollAwsMaxDuration, d.settings.PollAwsMaxDurationMultiplier)
+	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, d.settings.PollAwsMaxDuration)
 
 	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
@@ -604,7 +599,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	})
 
 	// Define the waiting strategy
-	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, d.settings.PollAwsMaxDuration, d.settings.PollAwsMaxDurationMultiplier)
+	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, d.settings.PollAwsMaxDuration)
 
 	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
@@ -713,11 +708,16 @@ func isDatabaseInstanceNotFoundError(err error) bool {
 	return errors.As(err, &notFoundException)
 }
 
-func getPollAwsMaxWaitTime(storageSize int64, initialMaxWaitTimeDuration time.Duration, defaultMaxWaitTimeMultiplier int64) time.Duration {
+func getRetryMultiplier(storageSize int64) int64 {
 	// Scale the number of retries in proportion to the database
 	// storage size
-	retryMultiplier := math.Ceil(float64(storageSize) / 200)
-	maxRetries := defaultMaxWaitTimeMultiplier * int64(retryMultiplier)
-	maxWaitTimeMultiplier := max(defaultMaxWaitTimeMultiplier, maxRetries)
-	return initialMaxWaitTimeDuration * time.Duration(maxWaitTimeMultiplier)
+	return max(int64(math.Ceil(float64(storageSize)/200)), 1)
+}
+
+func getPollAwsMaxWaitTime(storageSize int64, initialMaxWaitTimeDuration time.Duration) time.Duration {
+	return initialMaxWaitTimeDuration * time.Duration(getRetryMultiplier(storageSize))
+}
+
+func getPollAwsMaxRetries(storageSize int64, defaultMaxRetries int64) int {
+	return int(defaultMaxRetries * getRetryMultiplier(storageSize))
 }

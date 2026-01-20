@@ -295,9 +295,8 @@ func TestAsyncCreateDb(t *testing.T) {
 		"success without replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -337,9 +336,8 @@ func TestAsyncCreateDb(t *testing.T) {
 		"success with replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -388,9 +386,8 @@ func TestAsyncCreateDb(t *testing.T) {
 		"error creating replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -466,8 +463,7 @@ func TestCreateDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
+					PollAwsMinDelay: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -556,9 +552,8 @@ func TestWaitForDbReady(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -587,9 +582,8 @@ func TestWaitForDbReady(t *testing.T) {
 		"waits with retries for database creation": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           3 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -632,9 +626,8 @@ func TestWaitForDbReady(t *testing.T) {
 		"gives up after maximum retries for database creation": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           3 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -680,9 +673,8 @@ func TestWaitForDbReady(t *testing.T) {
 		"error checking database creation status": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           3 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -743,20 +735,10 @@ func TestCreateDBReadReplica(t *testing.T) {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
 					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 1,
+					PollAwsMaxRetries: 0,
 				},
 				brokerDB,
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-				},
+				&mockRDSClient{},
 				&mockParameterGroupClient{},
 			),
 			dbInstance: &RDSInstance{
@@ -780,15 +762,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 				&mockRDSClient{
 					createDBInstanceReadReplicaErrs: []error{
 						&rdsTypes.InvalidDBInstanceStateFault{},
-					},
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
 					},
 				},
 				&mockParameterGroupClient{},
@@ -817,15 +790,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 						&rdsTypes.InvalidDBInstanceStateFault{},
 						&rdsTypes.InvalidDBInstanceStateFault{},
 						&rdsTypes.InvalidDBInstanceStateFault{},
-					},
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
 					},
 				},
 				&mockParameterGroupClient{},
@@ -873,9 +837,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -913,9 +876,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		"error checking database creation status": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -948,9 +910,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		"error creating database replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -983,9 +944,8 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		"error adding tags": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           3 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1130,9 +1090,8 @@ func TestAsyncModifyDb(t *testing.T) {
 		"success without read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1181,9 +1140,8 @@ func TestAsyncModifyDb(t *testing.T) {
 		"success with adding read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1242,9 +1200,8 @@ func TestAsyncModifyDb(t *testing.T) {
 		"error modifying read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1292,9 +1249,8 @@ func TestAsyncModifyDb(t *testing.T) {
 		"error creating read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1336,9 +1292,8 @@ func TestAsyncModifyDb(t *testing.T) {
 		"success with deleting read replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1390,9 +1345,8 @@ func TestAsyncModifyDb(t *testing.T) {
 		"error updating read replica tags": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1477,8 +1431,7 @@ func TestModifyDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
+					PollAwsMinDelay: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1976,9 +1929,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -1999,9 +1951,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 		"waits with retries for database creation": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           3 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2038,9 +1989,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 		"gives up after maximum retries for database creation": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           3 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2086,9 +2036,8 @@ func TestWaitForDbDeleted(t *testing.T) {
 		"error checking database creation status": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2152,9 +2101,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"success without replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2176,9 +2124,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"success with replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2201,9 +2148,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"error checking database status": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2226,9 +2172,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"error checking replica database status": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2252,9 +2197,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"error deleting database": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2277,9 +2221,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"error deleting replica database": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2303,9 +2246,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"database already deleted": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2327,9 +2269,8 @@ func TestAsyncDeleteDB(t *testing.T) {
 		"replica and database already deleted": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
-					PollAwsMaxDuration:           1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2405,8 +2346,7 @@ func TestDeleteDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:              1 * time.Millisecond,
-					PollAwsMaxDurationMultiplier: 1,
+					PollAwsMinDelay: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2461,6 +2401,44 @@ func TestDeleteDb(t *testing.T) {
 	}
 }
 
+func TestGetRetryMultiplier(t *testing.T) {
+	testCases := map[string]struct {
+		storageSize        int64
+		defaultMaxRetries  int64
+		expectedMultiplier int64
+	}{
+		"storage = 0": {
+			storageSize:        0,
+			defaultMaxRetries:  1,
+			expectedMultiplier: 1,
+		},
+		"storage = 1": {
+			storageSize:        1,
+			defaultMaxRetries:  1,
+			expectedMultiplier: 1,
+		},
+		"storage = 201": {
+			storageSize:        201,
+			defaultMaxRetries:  1,
+			expectedMultiplier: 2,
+		},
+		"storage = 1000": {
+			storageSize:        1000,
+			defaultMaxRetries:  1,
+			expectedMultiplier: 5,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			multiplier := getRetryMultiplier(test.storageSize)
+			if multiplier != test.expectedMultiplier {
+				t.Fatalf("expected %d, got %d", test.expectedMultiplier, multiplier)
+			}
+		})
+	}
+}
+
 func TestGetPollAwsMaxWaitTime(t *testing.T) {
 	testCases := map[string]struct {
 		storageSize         int64
@@ -2471,28 +2449,24 @@ func TestGetPollAwsMaxWaitTime(t *testing.T) {
 	}{
 		"storage = 0": {
 			storageSize:         0,
-			defaultMaxRetries:   1,
 			expectedMaxRetries:  1,
 			initialMaxWaitTime:  1 * time.Second,
 			expectedMaxWaitTime: 1 * time.Second,
 		},
 		"storage = 1": {
 			storageSize:         1,
-			defaultMaxRetries:   1,
 			expectedMaxRetries:  1,
 			initialMaxWaitTime:  1 * time.Second,
 			expectedMaxWaitTime: 1 * time.Second,
 		},
 		"storage = 201": {
 			storageSize:         201,
-			defaultMaxRetries:   1,
 			expectedMaxRetries:  2,
 			initialMaxWaitTime:  1 * time.Second,
 			expectedMaxWaitTime: 2 * time.Second,
 		},
 		"storage = 1000": {
 			storageSize:         1000,
-			defaultMaxRetries:   1,
 			expectedMaxRetries:  5,
 			initialMaxWaitTime:  1 * time.Second,
 			expectedMaxWaitTime: 5 * time.Second,
@@ -2501,7 +2475,7 @@ func TestGetPollAwsMaxWaitTime(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			maxWaitTime := getPollAwsMaxWaitTime(test.storageSize, test.initialMaxWaitTime, test.defaultMaxRetries)
+			maxWaitTime := getPollAwsMaxWaitTime(test.storageSize, test.initialMaxWaitTime)
 			if maxWaitTime != test.expectedMaxWaitTime {
 				t.Fatalf("expected %d, got %d", test.expectedMaxRetries, maxWaitTime)
 			}
