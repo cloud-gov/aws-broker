@@ -241,6 +241,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 			i.SecGroup,
 		},
 	}
+	d.logger.Info("before CreateDBInstanceReadReplica")
 	return d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
 }
 
@@ -248,6 +249,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
 
 	// Create a waiter
+	fmt.Printf("Minimum delay: %d", d.settings.PollAwsMinDelay)
 	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
 		dawo.MinDelay = d.settings.PollAwsMinDelay
 		dawo.LogWaitAttempts = true
@@ -268,6 +270,13 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
 		return fmt.Errorf("waitForDbReady: %w", err)
+	}
+
+	status, err := d.describeDatabaseInstance(database)
+	if err != nil {
+		d.logger.Error("error checking db status", err)
+	} else {
+		fmt.Printf("database status: %s", *status.DBInstanceStatus)
 	}
 
 	return nil
@@ -292,6 +301,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 
 	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
+	d.logger.Info("before createDBReadReplica")
 	createReplicaOutput, err := d.createDBReadReplica(i, plan)
 	if err != nil {
 		d.logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", err)
@@ -340,6 +350,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan *catalog.RDSPlan
 	}
 
 	if i.AddReadReplica {
+		d.logger.Info("before waitAndCreateDBReadReplica")
 		err := d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
