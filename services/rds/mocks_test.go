@@ -79,7 +79,8 @@ func (m *MockDbUtils) buildUsername() string {
 
 type mockRDSClient struct {
 	createDbErr                         error
-	createDBInstanceReadReplicaErr      error
+	createDBInstanceReadReplicaErrs     []error
+	createDBInstanceReadReplicaCallNum  int
 	dbEngineVersions                    []rdsTypes.DBEngineVersion
 	describeEngVersionsErr              error
 	describeDbParamsErr                 error
@@ -117,11 +118,16 @@ func (m *mockRDSClient) CreateDBInstance(ctx context.Context, params *rds.Create
 }
 
 func (m *mockRDSClient) CreateDBInstanceReadReplica(ctx context.Context, params *rds.CreateDBInstanceReadReplicaInput, optFns ...func(*rds.Options)) (*rds.CreateDBInstanceReadReplicaOutput, error) {
+	var err error
+	if m.createDBInstanceReadReplicaCallNum >= 0 && m.createDBInstanceReadReplicaCallNum < len(m.createDBInstanceReadReplicaErrs) {
+		err = m.createDBInstanceReadReplicaErrs[m.createDBInstanceReadReplicaCallNum]
+	}
+	m.createDBInstanceReadReplicaCallNum++
 	return &rds.CreateDBInstanceReadReplicaOutput{
 		DBInstance: &rdsTypes.DBInstance{
 			DBInstanceArn: aws.String("arn"),
 		},
-	}, m.createDBInstanceReadReplicaErr
+	}, err
 }
 
 func (m *mockRDSClient) CreateDBParameterGroup(ctx context.Context, params *rds.CreateDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.CreateDBParameterGroupOutput, error) {
