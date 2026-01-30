@@ -97,7 +97,7 @@ func (broker *redisBroker) CreateInstance(c *catalog.Catalog, id string, createR
 		if !plan.CheckVersion(options.EngineVersion) {
 			return response.NewErrorResponse(
 				http.StatusBadRequest,
-				options.EngineVersion+" is not a supported major version; major version must be one of: 7.0, 6.2, 6.0, 5.0.6 "+".",
+				options.EngineVersion+" is not a supported major version; major version must be one of: 7.1, 7.0, 6.2, 6.0, 5.0.6 "+".",
 			)
 		}
 	}
