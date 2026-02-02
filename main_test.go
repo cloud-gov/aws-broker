@@ -1355,7 +1355,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	}
 
 	// Create the instance and try again
-	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	res = requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	if res.Code != http.StatusAccepted {
 		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 202 and it returned", res.Code)
