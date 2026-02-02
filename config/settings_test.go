@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/go-test/deep"
@@ -42,8 +43,9 @@ func TestSettings(t *testing.T) {
 		CfApiUrl:                  "fake-api",
 		CfApiClientId:             "fake-client-id",
 		CfApiClientSecret:         "fake-client-secret",
+		PollAwsMinDelay:           30 * time.Second,
+		PollAwsMaxDuration:        3600 * time.Second,
 		PollAwsMaxRetries:         60,
-		PollAwsRetryDelaySeconds:  60,
 		Port:                      "3000",
 	}
 	if diff := deep.Equal(settings, expectedSettings); diff != nil {
@@ -87,8 +89,9 @@ func TestSettingsPort(t *testing.T) {
 		CfApiUrl:                  "fake-api",
 		CfApiClientId:             "fake-client-id",
 		CfApiClientSecret:         "fake-client-secret",
+		PollAwsMinDelay:           30 * time.Second,
+		PollAwsMaxDuration:        3600 * time.Second,
 		PollAwsMaxRetries:         60,
-		PollAwsRetryDelaySeconds:  60,
 		Port:                      "5000",
 	}
 	if diff := deep.Equal(settings, expectedSettings); diff != nil {

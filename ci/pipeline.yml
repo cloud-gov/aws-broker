@@ -188,7 +188,6 @@ jobs:
             aws-rds:small-mysql-redundant
             aws-rds:small-psql
             aws-rds:small-psql-redundant
-            aws-rds:medium-oracle-se2
             aws-elasticache-redis:redis-dev
             aws-elasticache-redis:redis-3node
             aws-elasticache-redis:redis-5node
@@ -218,14 +217,13 @@ jobs:
           AUTH_USER: ((development-auth-user))
           AUTH_PASS: ((development-auth-pass))
           SERVICES: >-
-            aws-rds:large-gp-sqlserver-se
             aws-rds:2xlarge-gp-psql-redundant
             aws-rds:2xlarge-gp-psql
             aws-rds:2xlarge-gp-psql-replica
             aws-rds:xlarge-gp-psql-m6
             aws-rds:xlarge-gp-psql-m6-redundant
             aws-rds:xlarge-gp-psql-m6-replica
-          SERVICE_ORGANIZATION: cloud-gov
+          SERVICE_ORGANIZATION: ((enterprise-plan-cf-orgs-development))
 
       - task: update-broker-replicas
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -471,19 +469,6 @@ jobs:
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
-            - task: smoke-tests-oracle
-              file: aws-broker-app/ci/run-smoke-tests.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
-                SERVICE_PLAN: medium-oracle-se2
-                DB_TYPE: oracle-se2
-
             - task: smoke-tests-postgres-rotate-creds
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
               image: general-task
@@ -724,7 +709,6 @@ jobs:
             aws-rds:micro-psql-redundant
             aws-rds:small-psql
             aws-rds:small-psql-redundant
-            aws-rds:medium-oracle-se2
             aws-elasticache-redis:redis-dev
             aws-elasticache-redis:redis-3node
             aws-elasticache-redis:redis-5node
@@ -754,14 +738,13 @@ jobs:
           AUTH_USER: ((staging-auth-user))
           AUTH_PASS: ((staging-auth-pass))
           SERVICES: >-
-            aws-rds:large-gp-sqlserver-se
             aws-rds:2xlarge-gp-psql-redundant
             aws-rds:2xlarge-gp-psql
             aws-rds:2xlarge-gp-psql-replica
             aws-rds:xlarge-gp-psql-m6
             aws-rds:xlarge-gp-psql-m6-redundant
             aws-rds:xlarge-gp-psql-m6-replica
-          SERVICE_ORGANIZATION: cloud-gov
+          SERVICE_ORGANIZATION: ((enterprise-plan-cf-orgs-staging))
 
       - task: update-broker-replicas
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -909,19 +892,6 @@ jobs:
                 SERVICE_PLAN: small-mysql
                 NEW_SERVICE_PLAN: medium-mysql
                 DB_TYPE: mysql
-
-            - task: smoke-tests-oracle
-              file: aws-broker-app/ci/run-smoke-tests.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((staging-broker-name))
-                CF_API_URL: ((staging-cf-api-url))
-                CF_USERNAME: ((staging-cf-deploy-username))
-                CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
-                SERVICE_PLAN: medium-oracle-se2
-                DB_TYPE: oracle-se2
 
             - task: smoke-tests-postgres-rotate-creds
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -1264,7 +1234,6 @@ jobs:
             aws-rds:micro-psql-redundant
             aws-rds:small-psql
             aws-rds:small-psql-redundant
-            aws-rds:medium-oracle-se2
             aws-elasticache-redis:redis-dev
             aws-elasticache-redis:redis-3node
             aws-elasticache-redis:redis-5node
@@ -1294,15 +1263,13 @@ jobs:
           AUTH_USER: ((prod-auth-user))
           AUTH_PASS: ((prod-auth-pass))
           SERVICES: >-
-            aws-rds:large-gp-sqlserver-se
             aws-rds:2xlarge-gp-psql-redundant
             aws-rds:2xlarge-gp-psql
             aws-rds:2xlarge-gp-psql-replica
             aws-rds:xlarge-gp-psql-m6
             aws-rds:xlarge-gp-psql-m6-redundant
             aws-rds:xlarge-gp-psql-m6-replica
-          SERVICE_ORGANIZATION: cloud-gov
-
+          SERVICE_ORGANIZATION: ((enterprise-plan-cf-orgs-production))
       - task: update-broker-datagov
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
         params:
@@ -1459,19 +1426,6 @@ jobs:
                 SERVICE_PLAN: small-mysql
                 NEW_SERVICE_PLAN: medium-mysql
                 DB_TYPE: mysql
-
-            - task: smoke-tests-oracle
-              file: aws-broker-app/ci/run-smoke-tests.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((prod-broker-name))
-                CF_API_URL: ((prod-cf-api-url))
-                CF_USERNAME: ((prod-cf-deploy-username))
-                CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
-                SERVICE_PLAN: medium-oracle-se2
-                DB_TYPE: oracle-se2
 
             - task: smoke-tests-postgres-rotate-creds
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml

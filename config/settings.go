@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/cloud-gov/aws-broker/common"
 )
@@ -29,8 +30,11 @@ type Settings struct {
 	CfApiClientSecret         string
 	MaxBackupRetention        int64
 	MinBackupRetention        int64
+	pollAwsMaxDurationSeconds int64
+	PollAwsMaxDuration        time.Duration
+	pollAwsMinDelaySeconds    int64
+	PollAwsMinDelay           time.Duration
 	PollAwsMaxRetries         int64
-	PollAwsRetryDelaySeconds  int64
 	Port                      string
 }
 
@@ -169,6 +173,32 @@ func (s *Settings) LoadFromEnv() error {
 		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
 	}
 
+	if val, ok := os.LookupEnv("POLL_AWS_MIN_DELAY_SECONDS"); ok {
+		s.pollAwsMinDelaySeconds, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.pollAwsMinDelaySeconds == 0 {
+		s.pollAwsMinDelaySeconds = 30
+	}
+
+	s.PollAwsMinDelay = time.Duration(s.pollAwsMinDelaySeconds) * time.Second
+
+	if val, ok := os.LookupEnv("POLL_AWS_MAX_DURATION_SECONDS"); ok {
+		s.pollAwsMaxDurationSeconds, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.pollAwsMaxDurationSeconds == 0 {
+		s.pollAwsMaxDurationSeconds = 3600 // 3600 seconds = 1 hour
+	}
+
+	s.PollAwsMaxDuration = time.Duration(s.pollAwsMaxDurationSeconds) * time.Second
+
 	if val, ok := os.LookupEnv("POLL_AWS_MAX_RETRIES"); ok {
 		s.PollAwsMaxRetries, err = strconv.ParseInt(val, 10, 64)
 		if err != nil {
@@ -178,17 +208,6 @@ func (s *Settings) LoadFromEnv() error {
 
 	if s.PollAwsMaxRetries == 0 {
 		s.PollAwsMaxRetries = 60
-	}
-
-	if val, ok := os.LookupEnv("POLL_AWS_RETRY_DELAY_SECONDS"); ok {
-		s.PollAwsRetryDelaySeconds, err = strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return err
-		}
-	}
-
-	if s.PollAwsRetryDelaySeconds == 0 {
-		s.PollAwsRetryDelaySeconds = 60
 	}
 
 	if val, ok := os.LookupEnv("PORT"); ok {
