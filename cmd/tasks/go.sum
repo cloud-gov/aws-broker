@@ -61,8 +61,8 @@ github.com/aws/aws-sdk-go-v2/service/sts v1.38.6/go.mod h1:WtKK+ppze5yKPkZ0XwqIV
 github.com/aws/smithy-go v1.13.5/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J3gBHzA=
 github.com/aws/smithy-go v1.23.0 h1:8n6I3gXzWJB2DxBDnfxgBaSX6oe0d/t10qGz7OKqMCE=
 github.com/aws/smithy-go v1.23.0/go.mod h1:t1ufH5HMublsJYulve2RKmHDC15xu1f26kHCp/HgceI=
-github.com/cloud-gov/aws-broker v0.0.0-20251016140505-52e47009edcc h1:NX09m+ZIosPNQevJrkOavaxiEuJcK1iomKSwvbcWdYw=
-github.com/cloud-gov/aws-broker v0.0.0-20251016140505-52e47009edcc/go.mod h1:PbXXin8I/4EieTBZ7o1mL5E68kjBQKb2XGy/r3pcenw=
+github.com/cloud-gov/aws-broker v0.0.0-20260203142121-08253ae3c10d h1:wWn6WLHUusFA3nABGF4ZrBfK6d1JTuTNPiNGwb4eedU=
+github.com/cloud-gov/aws-broker v0.0.0-20260203142121-08253ae3c10d/go.mod h1:+fWNbXcpIsfgrs9PDlcba1VEZzfGhUvCD4b1M35CKEI=
 github.com/cloud-gov/go-broker-tags v0.0.0-20250523161708-bcc86f0b9188 h1:GZ7/6KdHHD9dBrvONVW1FfrhnjqDSOkT+TqSQhHPogw=
 github.com/cloud-gov/go-broker-tags v0.0.0-20250523161708-bcc86f0b9188/go.mod h1:cAg7jfurQqVmzJV0/kqvFzgTbUzP5jNH1avJjbXM/e8=
 github.com/cloudfoundry/go-cfclient/v3 v3.0.0-alpha.9 h1:HK3+nJEPgwlhc5H74aw/V4mVowqWaTKGjHONdVQQ2Vw=
