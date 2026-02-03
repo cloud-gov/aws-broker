@@ -1371,11 +1371,11 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		URI      string
-		Username string
-		Password string
-		Host     string
-		DbName   string
+		URI              string `json:"uri"`
+		AccessKey        string `json:"access_key"`
+		SecretKey        string `json:"secret_key"`
+		Host             string `json:"host"`
+		CurrentESVersion string `json:"current_elasticsearch_version"`
 	}
 
 	type response struct {
@@ -1389,14 +1389,6 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	// Does it contain "uri"
 	if r.Credentials.URI == "" {
 		t.Error(url, "should return credentials")
-	}
-
-	instance := elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", "the_elasticsearch_instance").First(&instance)
-
-	// Does it return an unencrypted password?
-	if instance.Password == r.Credentials.Password || r.Credentials.Password == "" {
-		t.Error(url, "should return an unencrypted password and it returned", r.Credentials.Password)
 	}
 }
 
