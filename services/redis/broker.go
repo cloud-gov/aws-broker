@@ -41,7 +41,7 @@ func InitRedisBroker(
 	brokerDB *gorm.DB,
 	settings *config.Settings,
 	tagManager brokertags.TagManager,
-) (base.BrokerV2, error) {
+) (base.Broker, error) {
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 

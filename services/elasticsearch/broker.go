@@ -57,7 +57,7 @@ func InitElasticsearchBroker(
 	settings *config.Settings,
 	jobs *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
-) (base.BrokerV2, error) {
+) (base.Broker, error) {
 	logger := lager.NewLogger("aws-es-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 

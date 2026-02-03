@@ -128,7 +128,7 @@ func (b *AWSBroker) LastBindingOperation(
 	return domain.LastOperation{}, errors.New("this broker does not support LastBindingOperation")
 }
 
-func (b *AWSBroker) findBroker(serviceID string) (base.BrokerV2, error) {
+func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 	switch serviceID {
 	// RDS Service
 	case b.catalog.RdsService.ID:
