@@ -2,62 +2,41 @@
 
 set -euxo pipefail
 
+. aws-broker-app/ci/ci-utils.sh
 
-# Function for waiting on a service instance to finish being processed.
-wait_for_service_instance() {
-  local service_name=$1
-  local guid=$(cf service --guid $service_name)
-  local status=$(cf curl /v2/service_instances/${guid} | jq -r '.entity.last_operation.state')
+# Log in to CF
+login
 
-  while [ "$status" == "in progress" ]; do
-    sleep 60
-    status=$(cf curl /v2/service_instances/${guid} | jq -r '.entity.last_operation.state')
-  done
-}
-
-# todo (mxplusb): update the auth mechanism.
-cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORGANIZATION" -s "$CF_SPACE"
+TEST_ID="$RANDOM"
+APP_NAME="smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
+SERVICE_NAME="rds-smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
-cf delete-service -f "rds-smoke-tests-db-update-$SERVICE_PLAN"
+cf delete-service -f "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
-cf push "smoke-tests-db-update-${SERVICE_PLAN}" -f manifest.yml --var rds-service="rds-smoke-tests-update-$SERVICE_PLAN" --no-start
+cf push "$APP_NAME" -f manifest.yml --var rds-service="$SERVICE_NAME" --no-start
 
 # set some variables that it needs
-cf set-env "smoke-tests-db-update-${SERVICE_PLAN}" DB_TYPE "${SERVICE_PLAN}"
-cf set-env "smoke-tests-db-update-${SERVICE_PLAN}" SERVICE_NAME "rds-smoke-tests-db-update-$SERVICE_PLAN"
+cf set-env "$APP_NAME" DB_TYPE "$DB_TYPE"
+cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 
 # Create service
-if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
-  # test out the enable_functions stuff
-  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-update-$SERVICE_PLAN" -b "$BROKER_NAME" -c '{"enable_functions": true}'
-else
-  # create a regular instance
-  cf create-service aws-rds "$SERVICE_PLAN" "rds-smoke-tests-db-update-$SERVICE_PLAN" -b "$BROKER_NAME"
-fi
+cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME"
 
-while true; do
-  if out=$(cf bind-service "smoke-tests-db-update-${SERVICE_PLAN}" "rds-smoke-tests-db-update-$SERVICE_PLAN"); then
-    break
-  fi
-  if [[ $out =~ "Instance not available yet" ]]; then
-    echo "${out}"
-  fi
-  sleep 90
-done
+wait_for_service_bindable $APP_NAME $SERVICE_NAME
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
-cf push "smoke-tests-db-update-${SERVICE_PLAN}" --var rds-service="rds-smoke-tests-db-update-$SERVICE_PLAN"
+cf push "$APP_NAME" --var rds-service="$SERVICE_NAME"
 
 # Update service
-cf update-service "rds-smoke-tests-db-update-$SERVICE_PLAN" -p "$NEW_SERVICE_PLAN"
+cf update-service "$SERVICE_NAME" -p "$NEW_SERVICE_PLAN"
 
 # Wait to make sure that the service instance has been successfully updated.
-wait_for_service_instance "rds-smoke-tests-db-update-$SERVICE_PLAN"
+wait_for_service_instance "$SERVICE_NAME"
 
 # Clean up app and service
-cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
-cf delete-service -f "rds-smoke-tests-db-update-$SERVICE_PLAN"
+cf delete -f "$APP_NAME"
+cf delete-service -f "$SERVICE_NAME"
