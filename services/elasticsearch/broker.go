@@ -379,15 +379,6 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	existingInstance := ElasticsearchInstance{}
 	var count int64
 
-	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
-	if err != nil {
-		return apiresponses.NewFailureResponse(
-			err,
-			http.StatusInternalServerError,
-			"find base instance",
-		)
-	}
-
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {
 		return apiresponses.ErrInstanceDoesNotExist
@@ -407,7 +398,6 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
-		broker.brokerDB.Unscoped().Delete(&baseInstance)
 		return nil
 
 	case base.InstanceInProgress: // we have done an async request

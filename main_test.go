@@ -1394,7 +1394,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 
 func TestElasticsearchUnbind(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s/service_bindings/the_binding?service_id=%s&plan_id=%s", instanceUUID, elasticsearchServiceId, originalElasticsearchPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	if res.Code != http.StatusOK {
@@ -1405,23 +1405,23 @@ func TestElasticsearchUnbind(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	// Is it an empty object?
-	if res.Body.String() != "{}" {
+	if strings.TrimSpace(res.Body.String()) != "{}" {
 		t.Error(url, "should return an empty JSON")
 	}
 }
 
 func TestElasticsearchDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
+	url := fmt.Sprintf("/v2/service_instances/%s?service_id=%s&plan_id=%s&accepts_incomplete=true", instanceUUID, elasticsearchServiceId, originalElasticsearchPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
-	if res.Code != http.StatusNotFound {
-		t.Error(url, "with auth should return 404 and it returned", res.Code)
+	if res.Code != http.StatusGone {
+		t.Error(url, "with auth should return 410 and it returned", res.Code)
 	}
 
 	// Create the instance and try again
-	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+	requestHandler.doRequest(fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID), "PUT", true, bytes.NewBuffer(createElasticsearchInstanceReq))
 	i := elasticsearch.ElasticsearchInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
 	if i.Uuid == "0" {
@@ -1430,15 +1430,10 @@ func TestElasticsearchDeleteInstance(t *testing.T) {
 
 	res = requestHandler.doRequest(url, "DELETE", true, nil)
 
-	if res.Code != http.StatusOK {
-		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to delete instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
-	// Is it actually gone from the DB?
-	i = elasticsearch.ElasticsearchInstance{}
-	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if len(i.Uuid) > 0 {
-		t.Error("The instance shouldn't be in the DB")
-	}
+	isAsyncOperationResponse(t, res, base.DeleteOp)
 }
