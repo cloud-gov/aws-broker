@@ -247,7 +247,6 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 		return spec, apiresponses.ErrAsyncRequired
 	}
 
-	// Create instance
 	err = broker.DeleteInstance(id)
 	if err != nil {
 		return spec, err
@@ -258,10 +257,8 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 		return spec, err
 	}
 
-	err = broker.DeleteInstance(id)
-
 	// only delete from DB if it was a sync delete and succeeded
-	if err == nil && !asyncRequired {
+	if !asyncRequired {
 		err := b.db.Unscoped().Delete(&instance).Error
 		if err != nil {
 			return spec, apiresponses.NewFailureResponse(
