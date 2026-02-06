@@ -57,3 +57,4 @@ cf restart "$APP_NAME"
 # Clean up app and service
 cf delete -f "$APP_NAME"
 cf delete-service -f "$SERVICE_NAME"
+wait_for_deletion "$SERVICE_NAME"

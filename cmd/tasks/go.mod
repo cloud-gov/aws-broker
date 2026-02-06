@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticache v1.50.5
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.52.5
 	github.com/aws/aws-sdk-go-v2/service/rds v1.108.2
-	github.com/cloud-gov/aws-broker v0.0.0-20251016140505-52e47009edcc
+	github.com/cloud-gov/aws-broker v0.0.0-20260203142121-08253ae3c10d
 	github.com/cloud-gov/go-broker-tags v0.0.0-20250523161708-bcc86f0b9188
 	github.com/go-test/deep v1.1.0
 	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e

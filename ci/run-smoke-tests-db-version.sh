@@ -33,3 +33,4 @@ cf push "$APP_NAME" --var rds-service="$SERVICE_NAME"
 # Clean up app and service
 cf delete -f "smoke-tests-db-version-$SERVICE_PLAN"
 cf delete-service -f "$SERVICE_NAME"
+wait_for_deletion "$SERVICE_NAME"

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"testing"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -52,7 +53,7 @@ func TestInit(t *testing.T) {
 				BackupRetentionPeriod: aws.Int64(21),
 			},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				Adapter:          "adapter-1",
@@ -114,7 +115,7 @@ func TestInit(t *testing.T) {
 		"MySQL sets db version from plan": {
 			options: Options{},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				DbType:                "mysql",
@@ -152,7 +153,7 @@ func TestInit(t *testing.T) {
 				Version: "9.0",
 			},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				DbType:                "mysql",
@@ -190,7 +191,7 @@ func TestInit(t *testing.T) {
 				Version: "15",
 			},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				DbType:                "postgres",
@@ -226,7 +227,7 @@ func TestInit(t *testing.T) {
 		"sets backup retention period from plan": {
 			options: Options{},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				DbType:                "postgres",
@@ -264,7 +265,7 @@ func TestInit(t *testing.T) {
 				BackupRetentionPeriod: aws.Int64(14),
 			},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				Adapter:          "adapter-1",
@@ -336,7 +337,7 @@ func TestInit(t *testing.T) {
 				BackupRetentionPeriod: aws.Int64(21),
 			},
 			plan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-1",
 				},
 				Adapter:          "adapter-1",
@@ -463,7 +464,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			currentPlan: &catalog.RDSPlan{},
 			newPlan: &catalog.RDSPlan{
-				Plan: catalog.Plan{
+				ServicePlan: domain.ServicePlan{
 					ID: "plan-2",
 				},
 				SecurityGroup: "sec-group1",
