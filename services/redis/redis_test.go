@@ -31,8 +31,9 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				PreferredMaintenanceWindow: "1AM",
 				SnapshotWindow:             "4AM",
 				SnapshotRetentionLimit:     14,
+				ClearPassword:              "fake-password",
 			},
-			password: "fake-password",
+
 			expectedParams: &elasticache.CreateReplicationGroupInput{
 				AtRestEncryptionEnabled:     aws.Bool(true),
 				TransitEncryptionEnabled:    aws.Bool(true),
@@ -74,8 +75,8 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:             "4AM",
 				SnapshotRetentionLimit:     14,
 				EngineVersion:              "7.0",
+				ClearPassword:              "fake-password",
 			},
-			password: "fake-password",
 			expectedParams: &elasticache.CreateReplicationGroupInput{
 				AtRestEncryptionEnabled:     aws.Bool(true),
 				TransitEncryptionEnabled:    aws.Bool(true),
@@ -107,7 +108,6 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			params, err := prepareCreateReplicationGroupInput(
 				test.redisInstance,
-				test.password,
 			)
 			if err != nil {
 				t.Fatal(err)
