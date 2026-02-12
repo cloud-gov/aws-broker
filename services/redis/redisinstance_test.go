@@ -222,6 +222,105 @@ func TestInitInstance(t *testing.T) {
 
 }
 
+func TestModifyInstance(t *testing.T) {
+	testCases := map[string]struct {
+		existingInstance *RedisInstance
+		newPlan          catalog.RedisPlan
+		catalog          *catalog.Catalog
+		redisBroker      *redisBroker
+		tags             map[string]string
+		options          RedisOptions
+		expectedInstance *RedisInstance
+		expectUpdates    bool
+	}{
+		"sets plan properties": {
+			existingInstance: &RedisInstance{},
+			newPlan: catalog.RedisPlan{
+				Tags: map[string]string{
+					"plan-tag-1": "foo",
+				},
+				ServicePlan: domain.ServicePlan{
+					ID:          "plan-1",
+					Description: "test description",
+				},
+				SubnetGroup:                "subnet-1",
+				SecurityGroup:              "sec-group-1",
+				NumCacheClusters:           1,
+				CacheNodeType:              "type-1",
+				PreferredMaintenanceWindow: "12 AM",
+				SnapshotWindow:             "3 AM",
+				SnapshotRetentionLimit:     14,
+				AutomaticFailoverEnabled:   true,
+			},
+			expectedInstance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						PlanID: "plan-1",
+					},
+				},
+				Description:                "test description",
+				DbSubnetGroup:              "subnet-1",
+				SecGroup:                   "sec-group-1",
+				NumCacheClusters:           1,
+				CacheNodeType:              "type-1",
+				PreferredMaintenanceWindow: "12 AM",
+				SnapshotWindow:             "3 AM",
+				SnapshotRetentionLimit:     14,
+				AutomaticFailoverEnabled:   true,
+				Tags: map[string]string{
+					"plan-tag-1": "foo",
+				},
+			},
+			expectUpdates: true,
+		},
+		"sets engine version from plan": {
+			existingInstance: &RedisInstance{
+				EngineVersion: "version-1",
+			},
+			newPlan: catalog.RedisPlan{
+				EngineVersion: "version-2",
+			},
+			expectedInstance: &RedisInstance{
+				EngineVersion: "version-2",
+			},
+			expectUpdates: true,
+		},
+		"sets engine version from options": {
+			existingInstance: &RedisInstance{
+				EngineVersion: "version-1",
+			},
+			newPlan: catalog.RedisPlan{
+				EngineVersion: "version-2",
+			},
+			options: RedisOptions{
+				EngineVersion: "version-3",
+			},
+			expectedInstance: &RedisInstance{
+				EngineVersion: "version-3",
+			},
+			expectUpdates: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			modifiedInstance := test.existingInstance.modify(test.options, &test.newPlan, test.tags)
+
+			if test.expectUpdates {
+				if diff := deep.Equal(test.existingInstance, test.expectedInstance); diff == nil {
+					t.Error("Expected no modifications to existing instance")
+					t.Error(diff)
+				}
+			}
+
+			if diff := deep.Equal(modifiedInstance, test.expectedInstance); diff != nil {
+				t.Fatal(diff)
+			}
+		})
+	}
+
+}
+
 func TestInitInstanceTags(t *testing.T) {
 	plan := catalog.RedisPlan{
 		Tags: map[string]string{

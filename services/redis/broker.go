@@ -228,14 +228,7 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		)
 	}
 
-	modifiedInstance, err := existingInstance.modify(options, &newPlan, tags)
-	if err != nil {
-		return apiresponses.NewFailureResponse(
-			fmt.Errorf("failed to modify instance. Error: %s", err),
-			http.StatusInternalServerError,
-			"modify Elasticache instance",
-		)
-	}
+	modifiedInstance := existingInstance.modify(options, &newPlan, tags)
 
 	// Modify the database instance.
 	status, err := broker.adapter.modifyRedis(modifiedInstance)

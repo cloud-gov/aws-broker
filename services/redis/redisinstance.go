@@ -131,7 +131,7 @@ func (i *RedisInstance) init(
 
 func (i RedisInstance) modify(
 	options RedisOptions, newPlan *catalog.RedisPlan, tags map[string]string,
-) (*RedisInstance, error) {
+) *RedisInstance {
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
 
@@ -139,7 +139,7 @@ func (i RedisInstance) modify(
 
 	modifiedInstance.setTags(*newPlan, tags)
 
-	return &modifiedInstance, nil
+	return &modifiedInstance
 }
 
 func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.RedisPlan) {
