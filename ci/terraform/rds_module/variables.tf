@@ -25,7 +25,7 @@ variable "rds_db_engine" {
 }
 
 variable "rds_db_engine_version" {
-  default = "12.3"
+  default = "16.8"
 }
 
 variable "rds_username" {
@@ -50,7 +50,7 @@ variable "rds_parameter_group_name" {
 }
 
 variable "rds_parameter_group_family" {
-  default = "postgres12"
+  default = "postgres16"
 }
 
 variable "rds_multi_az" {
