@@ -115,11 +115,7 @@ func (i *RedisInstance) init(
 	i.SpaceGUID = spaceGUID
 
 	// Load AWS values
-	i.PlanID = plan.ID
-	i.DbSubnetGroup = plan.SubnetGroup
-	i.SecGroup = plan.SecurityGroup
-
-	i.Description = plan.Description
+	setInstanceParameters(i, options, plan)
 
 	i.ClusterID = s.DbShorthandPrefix + "-" + uuid
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
@@ -127,20 +123,6 @@ func (i *RedisInstance) init(
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err
 	}
-	// Set the DB Version
-	if options.EngineVersion != "" {
-		i.EngineVersion = options.EngineVersion
-	} else {
-		// Default to the version provided by the plan chosen in catalog.
-		i.EngineVersion = plan.EngineVersion
-	}
-
-	i.NumCacheClusters = plan.NumCacheClusters
-	i.CacheNodeType = plan.CacheNodeType
-	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
-	i.SnapshotWindow = plan.SnapshotWindow
-	i.SnapshotRetentionLimit = plan.SnapshotRetentionLimit
-	i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
 
 	i.setTags(plan, tags)
 
@@ -153,14 +135,14 @@ func (i RedisInstance) modify(
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
 
-	modifiedInstance = setInstanceParameters(modifiedInstance, options, *newPlan)
+	setInstanceParameters(&modifiedInstance, options, *newPlan)
 
 	modifiedInstance.setTags(*newPlan, tags)
 
 	return &modifiedInstance, nil
 }
 
-func setInstanceParameters(i RedisInstance, options RedisOptions, plan catalog.RedisPlan) RedisInstance {
+func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.RedisPlan) {
 	i.PlanID = plan.ID
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
@@ -181,8 +163,6 @@ func setInstanceParameters(i RedisInstance, options RedisOptions, plan catalog.R
 	i.SnapshotWindow = plan.SnapshotWindow
 	i.SnapshotRetentionLimit = plan.SnapshotRetentionLimit
 	i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
-
-	return i
 }
 
 func (i *RedisInstance) setTags(
