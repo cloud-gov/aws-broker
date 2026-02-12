@@ -68,7 +68,7 @@ func (d *mockRedisAdapter) createRedis(i *RedisInstance) (base.InstanceState, er
 }
 
 func (d *mockRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
-	return base.InstanceNotModified, nil
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
@@ -111,10 +111,13 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance) (base.InstanceStat
 }
 
 func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
-	_, err := d.elasticache.ModifyReplicationGroup(context.TODO(), &elasticache.ModifyReplicationGroupInput{
-		EngineVersion: &i.EngineVersion,
-	})
+	params, err := prepareModifyReplicationGroupInput(i)
+	if err != nil {
+		d.logger.Error("prepareModifyReplicationGroupInput err", err)
+		return base.InstanceNotModified, err
+	}
 
+	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
 	if err != nil {
 		d.logger.Error("ModifyReplicationGroup err", err)
 		return base.InstanceNotModified, err
@@ -325,8 +328,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateReplicationGroupInput, error) {
 	redisTags := ConvertTagsToElasticacheTags(i.Tags)
 
-	var securityGroups []string
-	securityGroups = append(securityGroups, i.SecGroup)
+	securityGroups := []string{i.SecGroup}
 
 	numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
 	if err != nil {
@@ -357,6 +359,39 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      snapshotRetentionLimit,
 		Tags:                        redisTags,
+	}
+	if i.EngineVersion != "" {
+		params.EngineVersion = aws.String(i.EngineVersion)
+	}
+	return params, nil
+}
+
+func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyReplicationGroupInput, error) {
+	securityGroups := []string{i.SecGroup}
+
+	numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshotRetentionLimit, err := common.ConvertIntToInt32Safely(i.SnapshotRetentionLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Standard parameters
+	params := &elasticache.ModifyReplicationGroupInput{
+		ReplicationGroupDescription: aws.String(i.Description),
+		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
+		ReplicationGroupId:          aws.String(i.ClusterID),
+		CacheNodeType:               aws.String(i.CacheNodeType),
+		CacheSubnetGroupName:        aws.String(i.DbSubnetGroup),
+		SecurityGroupIds:            securityGroups,
+		Engine:                      aws.String("redis"),
+		NumCacheClusters:            numCacheClusters,
+		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
+		SnapshotWindow:              aws.String(i.SnapshotWindow),
+		SnapshotRetentionLimit:      snapshotRetentionLimit,
 	}
 	if i.EngineVersion != "" {
 		params.EngineVersion = aws.String(i.EngineVersion)

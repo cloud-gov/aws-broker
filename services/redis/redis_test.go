@@ -1,11 +1,15 @@
 package redis
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/helpers"
+	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
 )
 
@@ -114,6 +118,46 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestModifyRedis(t *testing.T) {
+	testCases := map[string]struct {
+		instance               *RedisInstance
+		adapter                redisAdapter
+		expectedErr            error
+		expectedState          base.InstanceState
+		expectedAsyncJobStates []base.InstanceState
+	}{
+		"success": {
+			adapter: &mockRedisAdapter{},
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			expectedState: base.InstanceInProgress,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			responseCode, err := test.adapter.modifyRedis(test.instance)
+			if err != nil && test.expectedErr == nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(test.expectedErr, err) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
 			}
 		})
 	}
