@@ -20,10 +20,10 @@ type RedisInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password string `sql:"size(255)"`
-	Salt     string `sql:"size(255)"`
+	Password string `sql:"size(255)" deep:"-"`
+	Salt     string `sql:"size(255)" deep:"-"`
 
-	ClearPassword string `gorm:"-"`
+	ClearPassword string `gorm:"-" deep:"-"`
 
 	EngineVersion              string `sql:"size(255)"`
 	ClusterID                  string `sql:"size(255)"`
@@ -111,11 +111,11 @@ func (i *RedisInstance) init(
 
 	i.Uuid = uuid
 	i.ServiceID = serviceID
-	i.PlanID = plan.ID
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
 	// Load AWS values
+	i.PlanID = plan.ID
 	i.DbSubnetGroup = plan.SubnetGroup
 	i.SecGroup = plan.SecurityGroup
 
@@ -152,25 +152,37 @@ func (i RedisInstance) modify(
 ) (*RedisInstance, error) {
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
-	modifiedInstance.PlanID = newPlan.ID
 
-	i.Description = newPlan.Description
+	modifiedInstance = setInstanceParameters(modifiedInstance, options, *newPlan)
 
-	i.DbSubnetGroup = newPlan.SubnetGroup
-	i.SecGroup = newPlan.SecurityGroup
-
-	i.NumCacheClusters = newPlan.NumCacheClusters
-	i.CacheNodeType = newPlan.CacheNodeType
-	i.PreferredMaintenanceWindow = newPlan.PreferredMaintenanceWindow
-	i.SnapshotWindow = newPlan.SnapshotWindow
-	i.SnapshotRetentionLimit = newPlan.SnapshotRetentionLimit
-	i.AutomaticFailoverEnabled = newPlan.AutomaticFailoverEnabled
-
-	i.EngineVersion = options.EngineVersion
-
-	i.setTags(*newPlan, tags)
+	modifiedInstance.setTags(*newPlan, tags)
 
 	return &modifiedInstance, nil
+}
+
+func setInstanceParameters(i RedisInstance, options RedisOptions, plan catalog.RedisPlan) RedisInstance {
+	i.PlanID = plan.ID
+	i.DbSubnetGroup = plan.SubnetGroup
+	i.SecGroup = plan.SecurityGroup
+
+	i.Description = plan.Description
+
+	// Set the DB Version
+	if options.EngineVersion != "" {
+		i.EngineVersion = options.EngineVersion
+	} else {
+		// Default to the version provided by the plan chosen in catalog.
+		i.EngineVersion = plan.EngineVersion
+	}
+
+	i.NumCacheClusters = plan.NumCacheClusters
+	i.CacheNodeType = plan.CacheNodeType
+	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
+	i.SnapshotWindow = plan.SnapshotWindow
+	i.SnapshotRetentionLimit = plan.SnapshotRetentionLimit
+	i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
+
+	return i
 }
 
 func (i *RedisInstance) setTags(
