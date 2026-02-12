@@ -300,6 +300,24 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectUpdates: true,
 		},
+		"sets tags": {
+			existingInstance: &RedisInstance{},
+			newPlan: catalog.RedisPlan{
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+			},
+			tags: map[string]string{
+				"foo2": "baz",
+			},
+			expectedInstance: &RedisInstance{
+				Tags: map[string]string{
+					"foo":  "bar",
+					"foo2": "baz",
+				},
+			},
+			expectUpdates: true,
+		},
 	}
 
 	for name, test := range testCases {
