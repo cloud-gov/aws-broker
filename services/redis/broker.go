@@ -69,19 +69,29 @@ func (broker *redisBroker) AsyncOperationRequired(o base.Operation) bool {
 	}
 }
 
-func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
-	newInstance := RedisInstance{}
-
+func (broker *redisBroker) parseOptionsFromRequest(
+	rawParameters json.RawMessage,
+) (RedisOptions, error) {
 	options := RedisOptions{}
-	if len(details.RawParameters) > 0 {
-		err := json.Unmarshal(details.RawParameters, &options)
+	if len(rawParameters) > 0 {
+		err := json.Unmarshal(rawParameters, &options)
 		if err != nil {
-			return apiresponses.ErrRawParamsInvalid
+			return options, err
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
+			return options, err
 		}
+	}
+	return options, nil
+}
+
+func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
+	newInstance := RedisInstance{}
+
+	options, err := broker.parseOptionsFromRequest(details.RawParameters)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "invalid input parameters")
 	}
 
 	var count int64
@@ -181,12 +191,86 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 }
 
 func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetails) error {
-	// Note:  This is not currently supported for Redis instances.
-	return apiresponses.NewFailureResponse(
-		fmt.Errorf("updating Redis service instances is not supported at this time"),
-		http.StatusBadRequest,
-		"modifying Redis instance",
+	existingInstance := &RedisInstance{}
+
+	// Load the existing instance provided.
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
+	if count == 0 {
+		return apiresponses.ErrInstanceDoesNotExist
+	}
+
+	options, err := broker.parseOptionsFromRequest(details.RawParameters)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "invalid input parameters")
+	}
+
+	// Fetch the current plan.
+	currentPlan, err := broker.catalog.RedisService.FetchPlan(existingInstance.PlanID)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "fetch RDS plan")
+	}
+
+	// Fetch the new plan that has been requested.
+	newPlan, err := broker.catalog.RedisService.FetchPlan(details.PlanID)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch RDS plan")
+	}
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Update,
+		broker.catalog.RedisService.Name,
+		newPlan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID: id,
+		},
+		true,
 	)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"generate tags",
+		)
+	}
+
+	modifiedInstance, err := existingInstance.modify(options, &currentPlan, &newPlan, broker.settings, tags)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("failed to modify instance. Error: %s", err),
+			http.StatusInternalServerError,
+			"modify RDS instance",
+		)
+	}
+
+	// Modify the database instance.
+	status, err := broker.adapter.modifyRedis(modifiedInstance)
+
+	switch status {
+	case base.InstanceNotModified:
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("error modifying the instance: %s", err),
+			http.StatusInternalServerError,
+			"modify RDS instance",
+		)
+	case base.InstanceInProgress:
+		// Update the existing instance in the broker.
+		err = broker.brokerDB.Model(RedisInstance{}).Where("uuid", existingInstance.Uuid).Update("state", status).Error
+		if err != nil {
+			return apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"modify RDS instance",
+			)
+		}
+		return nil
+	default:
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("encountered unexpected state %s, error: %s", status, err),
+			http.StatusInternalServerError,
+			"modify RDS instance",
+		)
+	}
 }
 
 func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {

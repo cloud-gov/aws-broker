@@ -25,7 +25,7 @@ import (
 
 type redisAdapter interface {
 	createRedis(i *RedisInstance, password string) (base.InstanceState, error)
-	modifyRedis(i *RedisInstance, password string) (base.InstanceState, error)
+	modifyRedis(i *RedisInstance) (base.InstanceState, error)
 	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
@@ -67,7 +67,7 @@ func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.
 	return base.InstanceInProgress, nil
 }
 
-func (d *mockRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+func (d *mockRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
 	return base.InstanceNotModified, nil
 }
 
@@ -110,8 +110,17 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	return base.InstanceNotModified, nil
+func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
+	_, err := d.elasticache.ModifyReplicationGroup(context.TODO(), &elasticache.ModifyReplicationGroupInput{
+		EngineVersion: &i.EngineVersion,
+	})
+
+	if err != nil {
+		d.logger.Error("ModifyReplicationGroup err", err)
+		return base.InstanceNotModified, err
+	}
+
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {

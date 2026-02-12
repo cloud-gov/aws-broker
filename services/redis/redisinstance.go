@@ -147,6 +147,20 @@ func (i *RedisInstance) init(
 	return nil
 }
 
+func (i RedisInstance) modify(
+	options RedisOptions, currentPlan *catalog.RedisPlan, newPlan *catalog.RedisPlan, settings *config.Settings, tags map[string]string,
+) (*RedisInstance, error) {
+	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
+	modifiedInstance := i
+	modifiedInstance.PlanID = newPlan.ID
+
+	i.EngineVersion = options.EngineVersion
+
+	i.setTags(*newPlan, tags)
+
+	return &modifiedInstance, nil
+}
+
 func (i *RedisInstance) setTags(
 	plan catalog.RedisPlan,
 	tags map[string]string,
