@@ -61,7 +61,7 @@ func (broker *redisBroker) AsyncOperationRequired(o base.Operation) bool {
 	case base.CreateOp:
 		return true
 	case base.ModifyOp:
-		return false
+		return true
 	case base.BindOp:
 		return false
 	default:
@@ -205,16 +205,10 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "invalid input parameters")
 	}
 
-	// Fetch the current plan.
-	currentPlan, err := broker.catalog.RedisService.FetchPlan(existingInstance.PlanID)
-	if err != nil {
-		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "fetch RDS plan")
-	}
-
 	// Fetch the new plan that has been requested.
 	newPlan, err := broker.catalog.RedisService.FetchPlan(details.PlanID)
 	if err != nil {
-		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch RDS plan")
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch Elasticache plan")
 	}
 
 	tags, err := broker.tagManager.GenerateTags(
@@ -234,12 +228,12 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		)
 	}
 
-	modifiedInstance, err := existingInstance.modify(options, &currentPlan, &newPlan, broker.settings, tags)
+	modifiedInstance, err := existingInstance.modify(options, &newPlan, tags)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("failed to modify instance. Error: %s", err),
 			http.StatusInternalServerError,
-			"modify RDS instance",
+			"modify Elasticache instance",
 		)
 	}
 
@@ -251,7 +245,7 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("error modifying the instance: %s", err),
 			http.StatusInternalServerError,
-			"modify RDS instance",
+			"modify Elasticache instance",
 		)
 	case base.InstanceInProgress:
 		// Update the existing instance in the broker.
@@ -260,7 +254,7 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 			return apiresponses.NewFailureResponse(
 				err,
 				http.StatusInternalServerError,
-				"modify RDS instance",
+				"modify Elasticache instance",
 			)
 		}
 		return nil
@@ -268,7 +262,7 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("encountered unexpected state %s, error: %s", status, err),
 			http.StatusInternalServerError,
-			"modify RDS instance",
+			"modify Elasticache instance",
 		)
 	}
 }

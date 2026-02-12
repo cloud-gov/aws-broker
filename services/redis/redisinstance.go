@@ -148,11 +148,23 @@ func (i *RedisInstance) init(
 }
 
 func (i RedisInstance) modify(
-	options RedisOptions, currentPlan *catalog.RedisPlan, newPlan *catalog.RedisPlan, settings *config.Settings, tags map[string]string,
+	options RedisOptions, newPlan *catalog.RedisPlan, tags map[string]string,
 ) (*RedisInstance, error) {
 	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
 	modifiedInstance := i
 	modifiedInstance.PlanID = newPlan.ID
+
+	i.Description = newPlan.Description
+
+	i.DbSubnetGroup = newPlan.SubnetGroup
+	i.SecGroup = newPlan.SecurityGroup
+
+	i.NumCacheClusters = newPlan.NumCacheClusters
+	i.CacheNodeType = newPlan.CacheNodeType
+	i.PreferredMaintenanceWindow = newPlan.PreferredMaintenanceWindow
+	i.SnapshotWindow = newPlan.SnapshotWindow
+	i.SnapshotRetentionLimit = newPlan.SnapshotRetentionLimit
+	i.AutomaticFailoverEnabled = newPlan.AutomaticFailoverEnabled
 
 	i.EngineVersion = options.EngineVersion
 
