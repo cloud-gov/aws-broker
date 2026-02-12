@@ -24,7 +24,7 @@ import (
 )
 
 type redisAdapter interface {
-	createRedis(i *RedisInstance, password string) (base.InstanceState, error)
+	createRedis(i *RedisInstance) (base.InstanceState, error)
 	modifyRedis(i *RedisInstance) (base.InstanceState, error)
 	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
@@ -63,7 +63,7 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, e
 type mockRedisAdapter struct {
 }
 
-func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+func (d *mockRedisAdapter) createRedis(i *RedisInstance) (base.InstanceState, error) {
 	return base.InstanceInProgress, nil
 }
 
@@ -93,9 +93,9 @@ type dedicatedRedisAdapter struct {
 // This is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-redis-broker-"
 
-func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance) (base.InstanceState, error) {
 	// Standard parameters
-	params, err := prepareCreateReplicationGroupInput(i, password)
+	params, err := prepareCreateReplicationGroupInput(i)
 	if err != nil {
 		d.logger.Error("prepareCreateReplicationGroupInput err", err)
 		return base.InstanceNotCreated, err
@@ -322,10 +322,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
 }
 
-func prepareCreateReplicationGroupInput(
-	i *RedisInstance,
-	password string,
-) (*elasticache.CreateReplicationGroupInput, error) {
+func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateReplicationGroupInput, error) {
 	redisTags := ConvertTagsToElasticacheTags(i.Tags)
 
 	var securityGroups []string
@@ -347,7 +344,7 @@ func prepareCreateReplicationGroupInput(
 		TransitEncryptionEnabled:    aws.Bool(true),
 		AutoMinorVersionUpgrade:     aws.Bool(true),
 		ReplicationGroupDescription: aws.String(i.Description),
-		AuthToken:                   &password,
+		AuthToken:                   &i.ClearPassword,
 		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
 		ReplicationGroupId:          aws.String(i.ClusterID),
 		CacheNodeType:               aws.String(i.CacheNodeType),

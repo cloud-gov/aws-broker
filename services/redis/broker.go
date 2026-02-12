@@ -154,7 +154,7 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 	}
 
 	// Create the redis instance.
-	status, err := broker.adapter.createRedis(&newInstance, newInstance.ClearPassword)
+	status, err := broker.adapter.createRedis(&newInstance)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,
