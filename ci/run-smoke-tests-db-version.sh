@@ -23,12 +23,7 @@ cf set-env "$APP_NAME" DB_TYPE "$DB_TYPE"
 cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 
 # Create service
-if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
-  cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"version": "'"$DB_VERSION"'"}'
-else
-  # create a regular instance
-  cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"version": "'"$DB_VERSION"'"}'
-fi
+cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"version": "'"$DB_VERSION"'"}'
 
 wait_for_service_bindable $APP_NAME $SERVICE_NAME
 
@@ -38,3 +33,4 @@ cf push "$APP_NAME" --var rds-service="$SERVICE_NAME"
 # Clean up app and service
 cf delete -f "smoke-tests-db-version-$SERVICE_PLAN"
 cf delete-service -f "$SERVICE_NAME"
+wait_for_deletion "$SERVICE_NAME"

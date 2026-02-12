@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 
+	"code.cloudfoundry.org/brokerapi/v13"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"github.com/go-martini/martini"
-	"github.com/martini-contrib/auth"
-	"github.com/martini-contrib/render"
-	"gorm.io/gorm"
 
 	"log"
+	"log/slog"
 	"os"
 
-	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/broker"
 	"github.com/cloud-gov/aws-broker/db"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	DB, err := db.InternalDBInit(settings.DbConfig)
+	db, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error initializing database: %s", err))
 	}
@@ -45,64 +45,33 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Try to connect and create the app.
-	if m := App(&settings, DB, asyncJobManager, tagManager); m != nil {
-		log.Println("Starting app...")
-		m.Run()
-	} else {
-		log.Println("Unable to setup application. Exiting...")
-	}
-}
-
-// App gathers all necessary dependencies (databases, settings), injects them into the router, and starts the app.
-func App(settings *config.Settings, DB *gorm.DB, asyncJobManager *jobs.AsyncJobManager, tagManager brokertags.TagManager) *martini.ClassicMartini {
-
-	m := martini.Classic()
+	path, _ := os.Getwd()
+	c := catalog.InitCatalog(path)
 
 	username := os.Getenv("AUTH_USER")
 	password := os.Getenv("AUTH_PASS")
 
-	m.Use(auth.Basic(username, password))
-	m.Use(render.Renderer())
+	credentials := brokerapi.BrokerCredentials{
+		Username: username,
+		Password: password,
+	}
 
-	m.Map(DB)
-	m.Map(settings)
-	m.Map(asyncJobManager)
-	m.Map(tagManager)
+	// Create a Text handler that writes to os.Stdout
+	handler := slog.NewTextHandler(os.Stdout, nil)
 
-	path, _ := os.Getwd()
-	m.Map(catalog.InitCatalog(path))
+	// Create a new logger with the Text handler
+	logger := slog.New(handler)
 
-	log.Println("Loading Routes")
+	serviceBroker := broker.New(
+		&settings,
+		db,
+		c,
+		asyncJobManager,
+		tagManager,
+	)
 
-	// Serve the catalog with services and plans
-	m.Get("/v2/catalog", func(r render.Render, c *catalog.Catalog) {
-		r.JSON(200, map[string]interface{}{
-			"services": c.GetServices(),
-		})
-	})
+	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
+	http.Handle("/", brokerAPI)
 
-	// Create the service instance (cf create-service-instance)
-	// This is a PUT per https://github.com/openservicebrokerapi/servicebroker/blob/v2.16/spec.md#provisioning
-	m.Put("/v2/service_instances/:id", CreateInstance)
-
-	// Update the service instance
-	m.Patch("/v2/service_instances/:id", ModifyInstance)
-
-	// Poll service endpoint to get status of rds or elasticache
-	m.Get("/v2/service_instances/:instance_id/last_operation", LastOperation)
-
-	// Bind the service to app (cf bind-service)
-	m.Put("/v2/service_instances/:instance_id/service_bindings/:id", BindInstance)
-
-	// Unbind the service from app
-	m.Delete("/v2/service_instances/:instance_id/service_bindings/:id", func(p martini.Params, r render.Render) {
-		var emptyJSON struct{}
-		r.JSON(200, emptyJSON)
-	})
-
-	// Delete service instance
-	m.Delete("/v2/service_instances/:instance_id", DeleteInstance)
-
-	return m
+	http.ListenAndServe(fmt.Sprintf(":%s", settings.Port), nil)
 }

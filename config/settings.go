@@ -13,28 +13,29 @@ import (
 
 // Settings stores settings used to run the application
 type Settings struct {
-	EncryptionKey                string
-	DbNamePrefix                 string
-	DbShorthandPrefix            string
-	MaxAllocatedStorage          int64
-	DbConfig                     *common.DBConfig
-	Environment                  string
-	Region                       string
-	PubliclyAccessibleFeature    bool
-	EnableFunctionsFeature       bool
-	SnapshotsBucketName          string
-	SnapshotsRepoName            string
-	LastSnapshotName             string
-	CfApiUrl                     string
-	CfApiClientId                string
-	CfApiClientSecret            string
-	MaxBackupRetention           int64
-	MinBackupRetention           int64
-	PollAwsMaxDurationMultiplier int64
-	pollAwsMaxDurationSeconds    int64
-	PollAwsMaxDuration           time.Duration
-	pollAwsMinDelaySeconds       int64
-	PollAwsMinDelay              time.Duration
+	EncryptionKey             string
+	DbNamePrefix              string
+	DbShorthandPrefix         string
+	MaxAllocatedStorage       int64
+	DbConfig                  *common.DBConfig
+	Environment               string
+	Region                    string
+	PubliclyAccessibleFeature bool
+	EnableFunctionsFeature    bool
+	SnapshotsBucketName       string
+	SnapshotsRepoName         string
+	LastSnapshotName          string
+	CfApiUrl                  string
+	CfApiClientId             string
+	CfApiClientSecret         string
+	MaxBackupRetention        int64
+	MinBackupRetention        int64
+	pollAwsMaxDurationSeconds int64
+	PollAwsMaxDuration        time.Duration
+	pollAwsMinDelaySeconds    int64
+	PollAwsMinDelay           time.Duration
+	PollAwsMaxRetries         int64
+	Port                      string
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -172,8 +173,6 @@ func (s *Settings) LoadFromEnv() error {
 		return errors.New("CF_API_CLIENT_SECRET environment variable is required")
 	}
 
-	s.PollAwsMaxDurationMultiplier = 1
-
 	if val, ok := os.LookupEnv("POLL_AWS_MIN_DELAY_SECONDS"); ok {
 		s.pollAwsMinDelaySeconds, err = strconv.ParseInt(val, 10, 64)
 		if err != nil {
@@ -199,6 +198,25 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	s.PollAwsMaxDuration = time.Duration(s.pollAwsMaxDurationSeconds) * time.Second
+
+	if val, ok := os.LookupEnv("POLL_AWS_MAX_RETRIES"); ok {
+		s.PollAwsMaxRetries, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.PollAwsMaxRetries == 0 {
+		s.PollAwsMaxRetries = 60
+	}
+
+	if val, ok := os.LookupEnv("PORT"); ok {
+		s.Port = val
+	}
+
+	if s.Port == "" {
+		s.Port = "3000"
+	}
 
 	return nil
 }
