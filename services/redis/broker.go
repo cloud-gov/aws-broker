@@ -242,7 +242,8 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		)
 	case base.InstanceInProgress:
 		// Update the existing instance in the broker.
-		err = broker.brokerDB.Model(RedisInstance{}).Where("uuid", existingInstance.Uuid).Update("state", status).Error
+		modifiedInstance.State = status
+		err = broker.brokerDB.Save(modifiedInstance).Error
 		if err != nil {
 			return apiresponses.NewFailureResponse(
 				err,

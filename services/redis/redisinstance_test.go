@@ -12,7 +12,7 @@ import (
 	"github.com/go-test/deep"
 )
 
-func TestInitInstance(t *testing.T) {
+func TestInstanceInit(t *testing.T) {
 	testCases := map[string]struct {
 		planID           string
 		uuid             string
@@ -222,7 +222,7 @@ func TestInitInstance(t *testing.T) {
 
 }
 
-func TestModifyInstance(t *testing.T) {
+func TestInstanceModify(t *testing.T) {
 	testCases := map[string]struct {
 		existingInstance *RedisInstance
 		newPlan          catalog.RedisPlan
