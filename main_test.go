@@ -942,15 +942,15 @@ func TestModifyRedisInstance(t *testing.T) {
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
-	if resp.Code != http.StatusBadRequest {
+	if resp.Code != http.StatusUnprocessableEntity {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
-		t.Error(urlUnacceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+		t.Error(urlUnacceptsIncomplete, "with auth should return 422 and it returned", resp.Code)
 	}
 
 	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
 	resp = requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisInstanceReq))
 
-	if resp.Code != http.StatusBadRequest {
+	if resp.Code != http.StatusAccepted {
 		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
 		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
 	}
@@ -958,17 +958,56 @@ func TestModifyRedisInstance(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(resp.Body.String(), "updating Redis service instances is not supported at this time") {
-		t.Error(urlAcceptsIncomplete, "should return a message that Redis services cannot be modified at this time")
-	}
-
-	// Reload the instance and check to see that the plan has not been modified.
+	// Reload the instance and check to see that the plan has been modified.
 	i = redis.RedisInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.PlanID != updateableRedisPlanID {
+		t.Logf("The instance was not modified: %s != %s", i.PlanID, updateableRedisPlanID)
+		t.Error("The instance was not modified to have a new instance class plan")
+	}
+}
+
+func TestModifyRedisEngineVersion(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	// We need to create an instance first before we can try to modify it.
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
 	if i.PlanID != originalRedisPlanID {
-		t.Logf("The instance was modified: %s != %s", i.PlanID, originalRedisPlanID)
-		t.Error("The instance was modified to have a new instance class plan when it should not have been.")
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	resp := requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisEngineVersion))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Reload the instance and check to see that the plan has been modified.
+	i = redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.EngineVersion != "1.2.3" {
+		t.Logf("The instance was not modified: %s != %s", i.EngineVersion, "1.2.3")
+		t.Error("The instance was not modified to have a new engine version")
 	}
 }
 

@@ -10,6 +10,7 @@ var (
 	updateableRDSPlanID         = "1070028c-b5fb-4de8-989b-4e00d07ef5e8"
 	originalRedisPlanID         = "475e36bf-387f-44c1-9b81-575fec2ee443"
 	originalElasticsearchPlanID = "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
+	updateableRedisPlanID       = "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
 )
 
 // micro-psql plan
@@ -123,15 +124,15 @@ var modifyRDSInstanceEnableCloudwatchLogGroups = []byte(
 
 // medium-psql plan
 var modifyRDSInstanceReq = []byte(
-	`{
+	fmt.Sprintf(`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
-	"plan_id":"1070028c-b5fb-4de8-989b-4e00d07ef5e8",
+	"plan_id":"%s",
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"previous_values": {
 		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
 	}
-}`)
+}`, updateableRDSPlanID))
 
 // medium-psql-redundant plan
 var modifyRDSInstanceNotAllowedReq = []byte(
@@ -148,21 +149,32 @@ var modifyRDSInstanceNotAllowedReq = []byte(
 var createRedisInstanceReq = []byte(
 	fmt.Sprintf(`{
 	"service_id":"%s",
-	"plan_id":"475e36bf-387f-44c1-9b81-575fec2ee443",
+	"plan_id":"%s",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
-}`, redisServiceId))
+}`, redisServiceId, originalRedisPlanID))
 
 var modifyRedisInstanceReq = []byte(
 	fmt.Sprintf(`{
 	"service_id":"%s",
-	"plan_id":"5nd336bf-0k7f-44c1-9b81-575fp3k764r6",
+	"plan_id":"%s",
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"previous_values": {
 		"plan_id": "475e36bf-387f-44c1-9b81-575fec2ee443"
 	}
-}`, redisServiceId))
+}`, redisServiceId, updateableRedisPlanID))
+
+var modifyRedisEngineVersion = []byte(
+	fmt.Sprintf(`{
+	"service_id":"%s",
+	"plan_id":"%s",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
+		"engineVersion": "1.2.3"
+	}
+}`, redisServiceId, originalRedisPlanID))
 
 var createElasticsearchInstanceAdvancedOptionsReq = []byte(
 	fmt.Sprintf(`{
