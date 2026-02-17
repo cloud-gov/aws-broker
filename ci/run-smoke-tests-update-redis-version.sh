@@ -18,7 +18,7 @@ cf delete-service -f "$SERVICE_NAME"
 cf create-service aws-elasticache-redis $SERVICE_PLAN $SERVICE_NAME -b "$BROKER_NAME"
 
 # Wait for service to be created
-wait_for_service_instance $TEST_SERVICE
+wait_for_service_instance $SERVICE_NAME
 
 # Update service
 cf update-service "$SERVICE_NAME" -c '{"engineVersion": "'"$NEW_VERSION"'"}'
@@ -27,7 +27,7 @@ cf update-service "$SERVICE_NAME" -c '{"engineVersion": "'"$NEW_VERSION"'"}'
 wait_for_service_instance "$SERVICE_NAME"
 
 # Clean up app and service
-cf delete-service -f $TEST_SERVICE
+cf delete-service -f $SERVICE_NAME
 
 # Wait for service to be deleted
 wait_for_deletion "$SERVICE_NAME"
