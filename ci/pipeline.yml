@@ -277,6 +277,19 @@ jobs:
                 SERVICE_NAME: aws-elasticache-redis
                 SERVICE_PLAN: redis-dev
                 REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-redis-upgrade-dev-3node
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-cf-organization))
+                CF_SPACE: ((development-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_SERVICE_PLAN: redis-3node
     on_failure:
       put: slack
       params:

@@ -40,16 +40,6 @@ cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE -b "$BROKER_NAME"
 wait_for_service_instance $TEST_SERVICE
 
 # Bind service to app
-while true; do
-  if out=$(cf bind-service $TEST_APP $TEST_SERVICE); then
-    break
-  fi
-  if [[ $out =~ "Instance not available yet" ]]; then
-    echo "${out}"
-  fi
-  sleep 90
-done
-
 wait_for_service_bindable $TEST_APP $TEST_SERVICE
 
 # Start app
