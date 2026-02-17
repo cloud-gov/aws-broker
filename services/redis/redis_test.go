@@ -123,6 +123,89 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 	}
 }
 
+func TestPrepareModifyReplicationGroupInput(t *testing.T) {
+	testCases := map[string]struct {
+		redisInstance  *RedisInstance
+		password       string
+		accessPolicy   string
+		expectedParams *elasticache.ModifyReplicationGroupInput
+	}{
+		"sets properties correctly": {
+			redisInstance: &RedisInstance{
+				Description:              "description",
+				AutomaticFailoverEnabled: true,
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+				ClusterID:                  "cluster-1",
+				CacheNodeType:              "node-type",
+				DbSubnetGroup:              "db-group-1",
+				SecGroup:                   "sec-group-1",
+				NumCacheClusters:           3,
+				PreferredMaintenanceWindow: "1AM",
+				SnapshotWindow:             "4AM",
+				SnapshotRetentionLimit:     14,
+				ClearPassword:              "fake-password",
+			},
+			expectedParams: &elasticache.ModifyReplicationGroupInput{
+				ReplicationGroupDescription: aws.String("description"),
+				AutomaticFailoverEnabled:    aws.Bool(true),
+				ReplicationGroupId:          aws.String("cluster-1"),
+				CacheNodeType:               aws.String("node-type"),
+				SecurityGroupIds:            []string{"sec-group-1"},
+				Engine:                      aws.String("redis"),
+				PreferredMaintenanceWindow:  aws.String("1AM"),
+				SnapshotWindow:              aws.String("4AM"),
+				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+			},
+		},
+		"sets engine version": {
+			redisInstance: &RedisInstance{
+				Description:              "description",
+				AutomaticFailoverEnabled: true,
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+				ClusterID:                  "cluster-1",
+				CacheNodeType:              "node-type",
+				DbSubnetGroup:              "db-group-1",
+				SecGroup:                   "sec-group-1",
+				NumCacheClusters:           3,
+				PreferredMaintenanceWindow: "1AM",
+				SnapshotWindow:             "4AM",
+				SnapshotRetentionLimit:     14,
+				EngineVersion:              "7.0",
+				ClearPassword:              "fake-password",
+			},
+			expectedParams: &elasticache.ModifyReplicationGroupInput{
+				ReplicationGroupDescription: aws.String("description"),
+				AutomaticFailoverEnabled:    aws.Bool(true),
+				ReplicationGroupId:          aws.String("cluster-1"),
+				CacheNodeType:               aws.String("node-type"),
+				SecurityGroupIds:            []string{"sec-group-1"},
+				Engine:                      aws.String("redis"),
+				PreferredMaintenanceWindow:  aws.String("1AM"),
+				SnapshotWindow:              aws.String("4AM"),
+				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+				EngineVersion:               aws.String("7.0"),
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params, err := prepareModifyReplicationGroupInput(
+				test.redisInstance,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := deep.Equal(params, test.expectedParams); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
 func TestModifyRedis(t *testing.T) {
 	testCases := map[string]struct {
 		instance               *RedisInstance

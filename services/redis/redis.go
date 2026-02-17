@@ -369,11 +369,6 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyReplicationGroupInput, error) {
 	securityGroups := []string{i.SecGroup}
 
-	numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
-	if err != nil {
-		return nil, err
-	}
-
 	snapshotRetentionLimit, err := common.ConvertIntToInt32Safely(i.SnapshotRetentionLimit)
 	if err != nil {
 		return nil, err
@@ -385,10 +380,8 @@ func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyRe
 		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
 		ReplicationGroupId:          aws.String(i.ClusterID),
 		CacheNodeType:               aws.String(i.CacheNodeType),
-		CacheSubnetGroupName:        aws.String(i.DbSubnetGroup),
 		SecurityGroupIds:            securityGroups,
 		Engine:                      aws.String("redis"),
-		NumCacheClusters:            numCacheClusters,
 		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      snapshotRetentionLimit,
