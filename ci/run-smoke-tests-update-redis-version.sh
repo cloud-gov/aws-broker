@@ -8,7 +8,7 @@ set -euxo pipefail
 login
 
 TEST_ID="$RANDOM"
-SERVICE_NAME="rds-smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
+SERVICE_NAME="redis-smoke-tests-update-version-$SERVICE_PLAN-$TEST_ID"
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
