@@ -301,7 +301,8 @@ jobs:
                 CF_ORGANIZATION: ((development-cf-organization))
                 CF_SPACE: ((development-cf-space))
                 SERVICE_PLAN: redis-dev
-                NEW_VERSION: "7.0"
+                OLD_VERSION: "7.0"
+                NEW_VERSION: "7.1"
     on_failure:
       put: slack
       params:

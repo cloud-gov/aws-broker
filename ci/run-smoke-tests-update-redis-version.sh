@@ -10,12 +10,11 @@ login
 TEST_ID="$RANDOM"
 SERVICE_NAME="redis-smoke-tests-update-version-$SERVICE_PLAN-$TEST_ID"
 
-# Clean up existing app and service if present
-cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
+# Clean up existing service if present
 cf delete-service -f "$SERVICE_NAME"
 
 # Create service
-cf create-service aws-elasticache-redis $SERVICE_PLAN $SERVICE_NAME -b "$BROKER_NAME"
+cf create-service aws-elasticache-redis $SERVICE_PLAN $SERVICE_NAME -b "$BROKER_NAME" -c '{"engineVersion": "'"$OLD_VERSION"'"}'
 
 # Wait for service to be created
 wait_for_service_instance $SERVICE_NAME
@@ -26,7 +25,7 @@ cf update-service "$SERVICE_NAME" -c '{"engineVersion": "'"$NEW_VERSION"'"}'
 # Wait to make sure that the service instance has been successfully updated.
 wait_for_service_instance "$SERVICE_NAME"
 
-# Clean up app and service
+# Clean up service
 cf delete-service -f $SERVICE_NAME
 
 # Wait for service to be deleted
