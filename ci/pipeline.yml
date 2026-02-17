@@ -278,7 +278,7 @@ jobs:
                 REGION: ((development-aws-default-region))
 
             - task: smoke-tests-redis-upgrade-dev-3node
-              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
               image: general-task
               params:
                 BROKER_NAME: ((development-broker-name))
@@ -291,7 +291,7 @@ jobs:
                 NEW_SERVICE_PLAN: redis-3node
 
             - task: smoke-tests-redis-upgrade-version
-              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              file: aws-broker-app/ci/run-smoke-tests-update-redis-version.yml
               image: general-task
               params:
                 BROKER_NAME: ((development-broker-name))
