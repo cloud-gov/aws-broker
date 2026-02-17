@@ -256,7 +256,6 @@ jobs:
           steps:
             - get: aws-broker-app
               resource: aws-broker-app-development
-            - get: aws-db-test
             - get: redis-app-development
               passed:
                 - deploy-aws-broker-development
@@ -290,6 +289,19 @@ jobs:
                 CF_SPACE: ((development-cf-space))
                 SERVICE_PLAN: redis-dev
                 NEW_SERVICE_PLAN: redis-3node
+
+            - task: smoke-tests-redis-upgrade-version
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-cf-organization))
+                CF_SPACE: ((development-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_VERSION: "7.0"
     on_failure:
       put: slack
       params:
