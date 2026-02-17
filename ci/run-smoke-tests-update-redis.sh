@@ -15,7 +15,7 @@ cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
 cf delete-service -f "$SERVICE_NAME"
 
 # Create service
-cf create-service aws-elasticache $SERVICE_PLAN $SERVICE_NAME -b "$BROKER_NAME"
+cf create-service aws-elasticache-redis $SERVICE_PLAN $SERVICE_NAME -b "$BROKER_NAME"
 
 # Wait for service to be created
 wait_for_service_instance $TEST_SERVICE
