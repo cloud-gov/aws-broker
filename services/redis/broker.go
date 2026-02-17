@@ -19,7 +19,7 @@ import (
 )
 
 type RedisOptions struct {
-	EngineVersion string `json:"engineVersion"`
+	EngineVersion string `json:"engine_version"`
 }
 
 func (r RedisOptions) Validate(settings *config.Settings) error {

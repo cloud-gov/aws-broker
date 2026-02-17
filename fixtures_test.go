@@ -172,7 +172,7 @@ var modifyRedisEngineVersion = []byte(
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
-		"engineVersion": "1.2.3"
+		"engine_version": "1.2.3"
 	}
 }`, redisServiceId, originalRedisPlanID))
 
