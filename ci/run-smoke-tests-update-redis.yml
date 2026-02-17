@@ -5,4 +5,4 @@ inputs:
 - name: aws-broker-app
 
 run:
-  path: aws-broker-app/ci/run-smoke-tests-db-updates.sh
+  path: aws-broker-app/ci/run-smoke-tests-update-redis.sh
