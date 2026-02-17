@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
@@ -207,6 +208,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 }
 
 func TestModifyRedis(t *testing.T) {
+	modifyReplicationGroupErr := errors.New("error modifying replication group")
 	testCases := map[string]struct {
 		instance               *RedisInstance
 		adapter                redisAdapter
@@ -226,6 +228,25 @@ func TestModifyRedis(t *testing.T) {
 			},
 			expectedState: base.InstanceInProgress,
 		},
+		"error modifying redis isntance": {
+			adapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				&mockRedisClient{
+					modifyReplicationGroupErr: modifyReplicationGroupErr,
+				},
+				&mockS3Client{},
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			expectedState: base.InstanceNotModified,
+			expectedErr:   modifyReplicationGroupErr,
+		},
 	}
 
 	for name, test := range testCases {
@@ -235,7 +256,7 @@ func TestModifyRedis(t *testing.T) {
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if !errors.Is(test.expectedErr, err) {
+			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 

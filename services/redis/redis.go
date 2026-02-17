@@ -51,13 +51,17 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, e
 	elasticacheClient := elasticache.NewFromConfig(cfg)
 	s3 := s3.NewFromConfig(cfg)
 
-	redisAdapter = &dedicatedRedisAdapter{
+	redisAdapter = NewRedisDedicatedDBAdapter(s, elasticacheClient, s3, logger)
+	return redisAdapter, nil
+}
+
+func NewRedisDedicatedDBAdapter(s *config.Settings, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface, logger lager.Logger) *dedicatedRedisAdapter {
+	return &dedicatedRedisAdapter{
 		settings:    *s,
 		logger:      logger,
-		elasticache: elasticacheClient,
+		elasticache: elasticache,
 		s3:          s3,
 	}
-	return redisAdapter, nil
 }
 
 type mockRedisAdapter struct {
@@ -114,13 +118,13 @@ func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceStat
 	params, err := prepareModifyReplicationGroupInput(i)
 	if err != nil {
 		d.logger.Error("prepareModifyReplicationGroupInput err", err)
-		return base.InstanceNotModified, err
+		return base.InstanceNotModified, fmt.Errorf("error preparing modify replication group input: %w", err)
 	}
 
 	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
 	if err != nil {
 		d.logger.Error("ModifyReplicationGroup err", err)
-		return base.InstanceNotModified, err
+		return base.InstanceNotModified, fmt.Errorf("error modifying replication group: %w", err)
 	}
 
 	return base.InstanceInProgress, nil
