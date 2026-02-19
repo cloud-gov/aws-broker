@@ -34,12 +34,12 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
+      approvedMajorVersions: &approved_rds_pg_versions
         - "13"
         - "14"
         - "15"
-      dbVersion: "15"
+        - "16"
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -70,13 +70,8 @@ rds:
       free: false
       adapter: dedicated
       instanceClass: db.t3.micro
-      allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -109,12 +104,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -147,12 +138,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -184,12 +171,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -222,12 +205,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -260,12 +239,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -297,12 +272,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -335,12 +306,8 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -373,12 +340,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.large
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -410,12 +373,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.large
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -448,12 +407,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.large
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -486,12 +441,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.large
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -523,12 +474,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.large
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -560,12 +507,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.large
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -599,12 +542,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -636,12 +575,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -674,12 +609,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -714,12 +645,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.2xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -751,12 +678,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.2xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -789,12 +712,8 @@ rds:
       adapter: dedicated
       instanceClass: db.m5.2xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -829,12 +748,8 @@ rds:
       adapter: dedicated
       instanceClass: &m6-xlarge db.m6g.xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -866,12 +781,8 @@ rds:
       adapter: dedicated
       instanceClass: *m6-xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -904,12 +815,8 @@ rds:
       adapter: dedicated
       instanceClass: *m6-xlarge
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
-      dbVersion: "15"
+      approvedMajorVersions: *approved_rds_pg_versions
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: true
