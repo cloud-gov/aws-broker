@@ -1507,6 +1507,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 1
       automaticFailoverEnabled: false
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
