@@ -121,6 +121,18 @@ func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceStat
 		return base.InstanceNotModified, fmt.Errorf("error preparing modify replication group input: %w", err)
 	}
 
+	if i.NewReplicaCount > 0 {
+		newReplicaCount, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
+		if err != nil {
+			return base.InstanceNotModified, err
+		}
+
+		_, err = d.elasticache.IncreaseReplicaCount(context.TODO(), &elasticache.IncreaseReplicaCountInput{
+			ReplicationGroupId: &i.ClusterID,
+			NewReplicaCount:    newReplicaCount,
+		})
+	}
+
 	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
 	if err != nil {
 		d.logger.Error("ModifyReplicationGroup err", err)
