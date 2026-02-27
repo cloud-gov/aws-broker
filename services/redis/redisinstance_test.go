@@ -407,6 +407,16 @@ func TestSetInstanceParameters(t *testing.T) {
 		options          RedisOptions
 		expectedInstance *RedisInstance
 	}{
+		"update from 0 to 1 cache clusters": {
+			instance: &RedisInstance{},
+			options:  RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumCacheClusters: 1,
+			},
+			expectedInstance: &RedisInstance{
+				NumCacheClusters: 1,
+			},
+		},
 		"update from 1 to 3 cache clusters": {
 			instance: &RedisInstance{
 				NumCacheClusters: 1,

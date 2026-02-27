@@ -162,7 +162,9 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 	if plan.NumCacheClusters > i.NumCacheClusters {
 		// If we are increasing the number of cluster nodes, we need
 		// to increase the number of replica nodes
-		i.NewReplicaCount = plan.NumCacheClusters - i.NumCacheClusters
+		if i.NumCacheClusters > 0 {
+			i.NewReplicaCount = plan.NumCacheClusters - i.NumCacheClusters
+		}
 		i.NumCacheClusters = plan.NumCacheClusters
 	}
 

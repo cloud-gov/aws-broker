@@ -45,6 +45,10 @@ func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elastic
 	return nil, nil
 }
 
+func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elasticache.IncreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.IncreaseReplicaCountOutput, error) {
+	return nil, nil
+}
+
 func (m *mockRedisClient) ModifyReplicationGroup(ctx context.Context, params *elasticache.ModifyReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.ModifyReplicationGroupOutput, error) {
 	return nil, m.modifyReplicationGroupErr
 }
