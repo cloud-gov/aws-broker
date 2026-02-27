@@ -44,6 +44,8 @@ type RedisInstance struct {
 
 	EngineLogsGroupName string `sql:"size(512)"`
 	SlowLogsGroupName   string `sql:"size(512)"`
+
+	NewReplicaCount int `gorm:"-"`
 }
 
 func (i *RedisInstance) setPassword(password, key string) error {
@@ -157,7 +159,13 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 		i.EngineVersion = plan.EngineVersion
 	}
 
-	i.NumCacheClusters = plan.NumCacheClusters
+	if plan.NumCacheClusters > i.NumCacheClusters {
+		// If we are increasing the number of cluster nodes, we need
+		// to increase the number of replica nodes
+		i.NewReplicaCount = plan.NumCacheClusters - i.NumCacheClusters
+		i.NumCacheClusters = plan.NumCacheClusters
+	}
+
 	i.CacheNodeType = plan.CacheNodeType
 	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
 	i.SnapshotWindow = plan.SnapshotWindow

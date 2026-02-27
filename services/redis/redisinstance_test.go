@@ -399,3 +399,48 @@ func TestGetCredentials(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+func TestSetInstanceParameters(t *testing.T) {
+	testCases := map[string]struct {
+		instance         *RedisInstance
+		plan             catalog.RedisPlan
+		options          RedisOptions
+		expectedInstance *RedisInstance
+	}{
+		"update from 1 to 3 cache clusters": {
+			instance: &RedisInstance{
+				NumCacheClusters: 1,
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumCacheClusters: 3,
+			},
+			expectedInstance: &RedisInstance{
+				NumCacheClusters: 3,
+				NewReplicaCount:  2,
+			},
+		},
+		"update from 1 to 5 cache clusters": {
+			instance: &RedisInstance{
+				NumCacheClusters: 1,
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumCacheClusters: 5,
+			},
+			expectedInstance: &RedisInstance{
+				NumCacheClusters: 5,
+				NewReplicaCount:  4,
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			setInstanceParameters(test.instance, test.options, test.plan)
+			if diff := deep.Equal(test.instance, test.expectedInstance); diff != nil {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
