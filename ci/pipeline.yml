@@ -1,8 +1,6 @@
 ---
 jobs:
   - name: deploy-aws-broker-development
-    serial_groups:
-      - deploy-dev-and-test
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -253,8 +251,6 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-redis-development
-    serial_groups:
-      - deploy-dev-and-test
     plan:
       - in_parallel:
           steps:
@@ -316,8 +312,6 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-development
-    serial_groups:
-      - deploy-dev-and-test
     plan:
       - in_parallel:
           steps:
@@ -381,8 +375,6 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-db-development
-    serial_groups:
-      - deploy-dev-and-test
     plan:
       - in_parallel:
           - get: aws-broker-app
