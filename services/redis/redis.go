@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
+	"gorm.io/gorm"
 
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/jobs"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -32,7 +34,7 @@ type redisAdapter interface {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, error) {
+func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (redisAdapter, error) {
 	var redisAdapter redisAdapter
 
 	if s.Environment == "test" {
@@ -51,11 +53,11 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, e
 	elasticacheClient := elasticache.NewFromConfig(cfg)
 	s3 := s3.NewFromConfig(cfg)
 
-	redisAdapter = NewRedisDedicatedDBAdapter(s, elasticacheClient, s3, logger)
+	redisAdapter = NewRedisDedicatedDBAdapter(s, db, elasticacheClient, s3, logger)
 	return redisAdapter, nil
 }
 
-func NewRedisDedicatedDBAdapter(s *config.Settings, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface, logger lager.Logger) *dedicatedRedisAdapter {
+func NewRedisDedicatedDBAdapter(s *config.Settings, db *gorm.DB, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface, logger lager.Logger) *dedicatedRedisAdapter {
 	return &dedicatedRedisAdapter{
 		settings:    *s,
 		logger:      logger,
@@ -92,6 +94,7 @@ type dedicatedRedisAdapter struct {
 	logger      lager.Logger
 	elasticache ElasticacheClientInterface
 	s3          brokerAws.S3ClientInterface
+	db          *gorm.DB
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -114,30 +117,70 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance) (base.InstanceStat
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
+func (d *dedicatedRedisAdapter) asyncModifyRedis(i *RedisInstance) {
+	operation := base.ModifyOp
+
 	params, err := prepareModifyReplicationGroupInput(i)
 	if err != nil {
 		d.logger.Error("prepareModifyReplicationGroupInput err", err)
-		return base.InstanceNotModified, fmt.Errorf("error preparing modify replication group input: %w", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
+		return
 	}
 
 	if i.NewReplicaCount > 0 {
 		newReplicaCount, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
 		if err != nil {
-			return base.InstanceNotModified, err
+			d.logger.Error("error preparing new replica count", err)
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing new replica count: %s", err))
+			return
 		}
 
 		_, err = d.elasticache.IncreaseReplicaCount(context.TODO(), &elasticache.IncreaseReplicaCountInput{
 			ReplicationGroupId: &i.ClusterID,
 			NewReplicaCount:    newReplicaCount,
+			ApplyImmediately:   aws.Bool(true),
 		})
+		if err != nil {
+			d.logger.Error("error increasing replica count", err)
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
+			return
+		}
+
+		// Create a waiter
+		waiter := elasticache.NewReplicationGroupAvailableWaiter(d.elasticache, func(dawo *elasticache.ReplicationGroupAvailableWaiterOptions) {
+			dawo.MinDelay = d.settings.PollAwsMinDelay
+		})
+
+		waiterInput := &elasticache.DescribeReplicationGroupsInput{
+			ReplicationGroupId: &i.ClusterID,
+		}
+
+		err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
+
+		if err != nil {
+			d.logger.Error("error waiting for cluster to be available", err)
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for cluster to be available: %s", err))
+			return
+		}
 	}
 
 	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
 	if err != nil {
 		d.logger.Error("ModifyReplicationGroup err", err)
-		return base.InstanceNotModified, fmt.Errorf("error modifying replication group: %w", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
+		return
 	}
+
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
+}
+
+func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
+	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Modification in progress")
+	if err != nil {
+		return base.InstanceNotModified, err
+	}
+
+	go d.asyncModifyRedis(i)
 
 	return base.InstanceInProgress, nil
 }

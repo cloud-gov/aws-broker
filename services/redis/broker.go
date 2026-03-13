@@ -45,7 +45,7 @@ func InitRedisBroker(
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
-	adapter, err := initializeAdapter(settings, logger)
+	adapter, err := initializeAdapter(settings, brokerDB, logger)
 	if err != nil {
 		return nil, err
 	}
