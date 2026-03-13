@@ -8,9 +8,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/go-test/deep"
 )
 
@@ -202,6 +204,55 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestAsyncModifyRedis(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		instance         *RedisInstance
+		adapter          *dedicatedRedisAdapter
+		expectedState    base.InstanceState
+		expectedInstance *RedisInstance
+		plan             *catalog.RDSPlan
+	}{
+		"success": {
+			adapter: NewTestDedicatedRedisAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRedisClient{},
+				&mockS3Client{},
+			),
+			plan: &catalog.RDSPlan{},
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+			},
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			test.adapter.asyncModifyRedis(test.instance)
+
+			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.ModifyOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 		})
 	}
