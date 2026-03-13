@@ -60,6 +60,7 @@ func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (re
 func NewRedisDedicatedDBAdapter(s *config.Settings, db *gorm.DB, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface, logger lager.Logger) *dedicatedRedisAdapter {
 	return &dedicatedRedisAdapter{
 		settings:    *s,
+		db:          db,
 		logger:      logger,
 		elasticache: elasticache,
 		s3:          s3,

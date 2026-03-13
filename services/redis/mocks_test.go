@@ -8,13 +8,24 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/testutil"
+	"gorm.io/gorm"
 )
 
-func NewTestDedicatedDBAdapter(s *config.Settings, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface) *dedicatedRedisAdapter {
+func testDBInit() (*gorm.DB, error) {
+	db, err := testutil.TestDbInit()
+	// Automigrate!
+	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	return db, err
+}
+
+func NewTestDedicatedRedisAdapter(s *config.Settings, db *gorm.DB, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface) *dedicatedRedisAdapter {
 	logger := lager.NewLogger("aws-redis-test")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return NewRedisDedicatedDBAdapter(s, elasticache, s3, logger)
+	return NewRedisDedicatedDBAdapter(s, db, elasticache, s3, logger)
 }
 
 type mockRedisClient struct {

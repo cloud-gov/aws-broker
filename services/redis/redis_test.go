@@ -208,6 +208,11 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 }
 
 func TestModifyRedis(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	modifyReplicationGroupErr := errors.New("error modifying replication group")
 	testCases := map[string]struct {
 		instance               *RedisInstance
@@ -229,8 +234,9 @@ func TestModifyRedis(t *testing.T) {
 			expectedState: base.InstanceInProgress,
 		},
 		"error modifying redis isntance": {
-			adapter: NewTestDedicatedDBAdapter(
+			adapter: NewTestDedicatedRedisAdapter(
 				&config.Settings{},
+				brokerDB,
 				&mockRedisClient{
 					modifyReplicationGroupErr: modifyReplicationGroupErr,
 				},

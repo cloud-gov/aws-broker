@@ -10,20 +10,10 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
-	"github.com/cloud-gov/aws-broker/testutil"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-test/deep"
-	"gorm.io/gorm"
 )
-
-func testDBInit() (*gorm.DB, error) {
-	db, err := testutil.TestDbInit()
-	// Automigrate!
-	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
-	return db, err
-}
 
 func TestCreateInstance(t *testing.T) {
 	brokerDB, err := testDBInit()
