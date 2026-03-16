@@ -272,6 +272,15 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 		return lastOperation, apiresponses.ErrInstanceDoesNotExist
 	}
 
+	// When asynchronous deletion has finished, the instance record no longer exists, so
+	// return a last operation status indicating that the deletion was successful.
+	if count == 0 && details.OperationData == base.DeleteOp.String() {
+		return domain.LastOperation{
+			State:       domain.Succeeded,
+			Description: "Successfully deleted instance",
+		}, nil
+	}
+
 	var state base.InstanceState
 	var needAsyncJobState bool
 	var instanceOperation base.Operation

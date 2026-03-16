@@ -370,7 +370,7 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 		return
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting cluster")
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
 }
 
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
