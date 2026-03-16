@@ -388,8 +388,8 @@ func (broker *redisBroker) DeleteInstance(id string) error {
 	switch status {
 	case base.InstanceNotGone:
 		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
-	case base.InstanceGone:
-		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
+	case base.InstanceInProgress:
+		return nil
 	default:
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete Redis instance")
 	}
