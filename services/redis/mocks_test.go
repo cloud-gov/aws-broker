@@ -29,7 +29,11 @@ func NewTestDedicatedRedisAdapter(s *config.Settings, db *gorm.DB, elasticache E
 }
 
 type mockRedisClient struct {
-	modifyReplicationGroupErr error
+	modifyReplicationGroupErr        error
+	increaseReplicaCountErr          error
+	describeReplicationGroupsErrs    []error
+	describeReplicationGroupsCallNum int
+	describeReplicationGroupsResults []*elasticache.DescribeReplicationGroupsOutput
 }
 
 func (m *mockRedisClient) CopySnapshot(ctx context.Context, params *elasticache.CopySnapshotInput, optFns ...func(*elasticache.Options)) (*elasticache.CopySnapshotOutput, error) {
@@ -49,7 +53,12 @@ func (m *mockRedisClient) DeleteSnapshot(ctx context.Context, params *elasticach
 }
 
 func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params *elasticache.DescribeReplicationGroupsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeReplicationGroupsOutput, error) {
-	return nil, nil
+	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum] != nil {
+		return nil, m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum]
+	}
+	output := m.describeReplicationGroupsResults[m.describeReplicationGroupsCallNum]
+	m.describeReplicationGroupsCallNum++
+	return output, nil
 }
 
 func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elasticache.DescribeSnapshotsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeSnapshotsOutput, error) {
@@ -57,7 +66,7 @@ func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elastic
 }
 
 func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elasticache.IncreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.IncreaseReplicaCountOutput, error) {
-	return nil, nil
+	return nil, m.increaseReplicaCountErr
 }
 
 func (m *mockRedisClient) ModifyReplicationGroup(ctx context.Context, params *elasticache.ModifyReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.ModifyReplicationGroupOutput, error) {

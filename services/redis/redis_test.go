@@ -3,6 +3,7 @@ package redis
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
@@ -240,6 +241,146 @@ func TestAsyncModifyRedis(t *testing.T) {
 			},
 			expectedState: base.InstanceReady,
 		},
+		"error modifying redis isntance": {
+			adapter: NewTestDedicatedRedisAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRedisClient{
+					modifyReplicationGroupErr: errors.New("error modifying redis"),
+				},
+				&mockS3Client{},
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			expectedState: base.InstanceNotModified,
+		},
+		"error increasing replica count": {
+			adapter: NewTestDedicatedRedisAdapter(
+				&config.Settings{},
+				brokerDB,
+				&mockRedisClient{
+					increaseReplicaCountErr: errors.New("error increasing replica count"),
+				},
+				&mockS3Client{},
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				NewReplicaCount: 1,
+			},
+			expectedState: base.InstanceNotModified,
+		},
+		"success with increased replica count": {
+			adapter: NewTestDedicatedRedisAdapter(
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				brokerDB,
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockS3Client{},
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				NewReplicaCount: 1,
+			},
+			expectedState: base.InstanceReady,
+		},
+		"failure waiting for increased replica count": {
+			adapter: NewTestDedicatedRedisAdapter(
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				brokerDB,
+				&mockRedisClient{
+					describeReplicationGroupsErrs: []error{
+						errors.New("error waiting for replication group"),
+					},
+				},
+				&mockS3Client{},
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				NewReplicaCount: 1,
+			},
+			expectedState: base.InstanceNotModified,
+		},
+		"success waiting for increase replica count on retry": {
+			adapter: NewTestDedicatedRedisAdapter(
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
+				},
+				brokerDB,
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("modifying"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("modifying"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockS3Client{},
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				NewReplicaCount: 1,
+			},
+			expectedState: base.InstanceReady,
+		},
 	}
 
 	for name, test := range testCases {
@@ -259,12 +400,6 @@ func TestAsyncModifyRedis(t *testing.T) {
 }
 
 func TestModifyRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	modifyReplicationGroupErr := errors.New("error modifying replication group")
 	testCases := map[string]struct {
 		instance               *RedisInstance
 		adapter                redisAdapter
@@ -283,26 +418,6 @@ func TestModifyRedis(t *testing.T) {
 				},
 			},
 			expectedState: base.InstanceInProgress,
-		},
-		"error modifying redis isntance": {
-			adapter: NewTestDedicatedRedisAdapter(
-				&config.Settings{},
-				brokerDB,
-				&mockRedisClient{
-					modifyReplicationGroupErr: modifyReplicationGroupErr,
-				},
-				&mockS3Client{},
-			),
-			instance: &RedisInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-			},
-			expectedState: base.InstanceNotModified,
-			expectedErr:   modifyReplicationGroupErr,
 		},
 	}
 
