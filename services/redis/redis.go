@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
@@ -162,6 +163,43 @@ func (d *dedicatedRedisAdapter) asyncModifyRedis(i *RedisInstance) {
 			d.logger.Error("error waiting for cluster to be available", err)
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for cluster to be available: %s", err))
 			return
+		}
+
+		var nodesReady bool
+		var output *elasticache.DescribeReplicationGroupsOutput
+
+		attempts := 1
+		maxAttempts := 1 + int(d.settings.PollAwsMaxRetries)
+
+		for !nodesReady && attempts <= maxAttempts {
+			d.logger.Info(fmt.Sprintf("attempting replica creation. attempt %d of %d", attempts, maxAttempts))
+			output, err = d.elasticache.DescribeReplicationGroups(context.TODO(), &elasticache.DescribeReplicationGroupsInput{
+				ReplicationGroupId: &i.ClusterID,
+			})
+
+			if err != nil {
+				d.logger.Error("error waiting for cluster replicas to be available", err)
+				return
+			}
+
+			nodeGroup := output.ReplicationGroups[0].NodeGroups[0]
+			status := *nodeGroup.Status
+
+			var replicaNodes []elasticacheTypes.NodeGroupMember
+			for _, nodeMember := range nodeGroup.NodeGroupMembers {
+				if *nodeMember.CurrentRole == "replica" {
+					replicaNodes = append(replicaNodes, nodeMember)
+				}
+			}
+
+			nodesReady = (status == "available" && len(replicaNodes) == i.NewReplicaCount)
+			if nodesReady {
+				break
+			}
+
+			attempts += 1
+			time.Sleep(d.settings.PollAwsMinDelay)
+			continue
 		}
 	}
 
