@@ -16,6 +16,7 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/jobs"
 )
 
 type RedisOptions struct {
@@ -271,19 +272,47 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 		return lastOperation, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	status, err := broker.adapter.checkRedisStatus(&existingInstance)
-	if err != nil {
-		broker.logger.Error("Error checking Redis status", err)
-		return lastOperation, apiresponses.NewFailureResponse(
-			err,
-			http.StatusInternalServerError,
-			"check Redis status",
-		)
+	var state base.InstanceState
+	var needAsyncJobState bool
+	var instanceOperation base.Operation
+	var statusMessage string
+
+	switch details.OperationData {
+	case base.ModifyOp.String():
+		needAsyncJobState = broker.AsyncOperationRequired(base.ModifyOp)
+		instanceOperation = base.ModifyOp
+	default:
+		needAsyncJobState = false
+	}
+
+	if needAsyncJobState {
+		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		if err != nil {
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"get last async job message",
+			)
+		}
+		state = asyncJobMsg.JobState.State
+		statusMessage = asyncJobMsg.JobState.Message
+	} else {
+		redisState, err := broker.adapter.checkRedisStatus(&existingInstance)
+		if err != nil {
+			broker.logger.Error("Error checking Redis status", err)
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"check Redis status",
+			)
+		}
+		state = redisState
+		statusMessage = fmt.Sprintf("The status is %s", state)
 	}
 
 	return domain.LastOperation{
-		State:       status.ToLastOperationState(),
-		Description: fmt.Sprintf("The service instance status is %s", status),
+		State:       state.ToLastOperationState(),
+		Description: statusMessage,
 	}, nil
 }
 
