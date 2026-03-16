@@ -297,6 +297,22 @@ func TestAsyncModifyRedis(t *testing.T) {
 								},
 							},
 						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{
+													CurrentRole: aws.String("replica"),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				&mockS3Client{},
@@ -364,6 +380,22 @@ func TestAsyncModifyRedis(t *testing.T) {
 							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
 								{
 									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{
+													CurrentRole: aws.String("replica"),
+												},
+											},
+										},
+									},
 								},
 							},
 						},
