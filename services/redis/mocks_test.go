@@ -34,10 +34,16 @@ type mockRedisClient struct {
 	describeReplicationGroupsErrs    []error
 	describeReplicationGroupsCallNum int
 	describeReplicationGroupsResults []*elasticache.DescribeReplicationGroupsOutput
+	describeSnapshotsResults         []*elasticache.DescribeSnapshotsOutput
+	describeSnapshotsCallNum         int
+	describeSnapshotsErrors          []error
+	deleteReplicationGroupErr        error
+	copySnapshotErr                  error
+	deleteSnapshotErr                error
 }
 
 func (m *mockRedisClient) CopySnapshot(ctx context.Context, params *elasticache.CopySnapshotInput, optFns ...func(*elasticache.Options)) (*elasticache.CopySnapshotOutput, error) {
-	return nil, nil
+	return nil, m.copySnapshotErr
 }
 
 func (m *mockRedisClient) CreateReplicationGroup(ctx context.Context, params *elasticache.CreateReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.CreateReplicationGroupOutput, error) {
@@ -45,11 +51,11 @@ func (m *mockRedisClient) CreateReplicationGroup(ctx context.Context, params *el
 }
 
 func (m *mockRedisClient) DeleteReplicationGroup(ctx context.Context, params *elasticache.DeleteReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.DeleteReplicationGroupOutput, error) {
-	return nil, nil
+	return nil, m.deleteReplicationGroupErr
 }
 
 func (m *mockRedisClient) DeleteSnapshot(ctx context.Context, params *elasticache.DeleteSnapshotInput, optFns ...func(*elasticache.Options)) (*elasticache.DeleteSnapshotOutput, error) {
-	return nil, nil
+	return nil, m.deleteSnapshotErr
 }
 
 func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params *elasticache.DescribeReplicationGroupsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeReplicationGroupsOutput, error) {
@@ -62,7 +68,12 @@ func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params 
 }
 
 func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elasticache.DescribeSnapshotsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeSnapshotsOutput, error) {
-	return nil, nil
+	if len(m.describeSnapshotsErrors) > 0 && m.describeSnapshotsErrors[m.describeSnapshotsCallNum] != nil {
+		return nil, m.describeSnapshotsErrors[m.describeSnapshotsCallNum]
+	}
+	output := m.describeSnapshotsResults[m.describeSnapshotsCallNum]
+	m.describeSnapshotsCallNum++
+	return output, nil
 }
 
 func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elasticache.IncreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.IncreaseReplicaCountOutput, error) {
@@ -73,8 +84,10 @@ func (m *mockRedisClient) ModifyReplicationGroup(ctx context.Context, params *el
 	return nil, m.modifyReplicationGroupErr
 }
 
-type mockS3Client struct{}
+type mockS3Client struct {
+	putObjectErr error
+}
 
 func (s *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-	return nil, nil
+	return nil, s.putObjectErr
 }

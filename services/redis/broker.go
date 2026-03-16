@@ -389,11 +389,7 @@ func (broker *redisBroker) DeleteInstance(id string) error {
 	case base.InstanceNotGone:
 		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
 	case base.InstanceGone:
-		err := broker.brokerDB.Unscoped().Delete(&existingInstance).Error
-		if err != nil {
-			return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
-		}
-		return nil
+		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
 	default:
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete Redis instance")
 	}

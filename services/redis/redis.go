@@ -279,15 +279,35 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 	_, err := d.elasticache.DeleteReplicationGroup(context.TODO(), params)
 
 	if err != nil {
-		d.logger.Error("deleteRedis: DeleteReplicationGroup failed", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("deleteRedis: DeleteReplicationGroup failed: %s", err))
+		d.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
+		return
+	}
+
+	// Create a waiter
+	waiter := elasticache.NewReplicationGroupDeletedWaiter(d.elasticache, func(dawo *elasticache.ReplicationGroupDeletedWaiterOptions) {
+		dawo.MinDelay = d.settings.PollAwsMinDelay
+	})
+	waiterInput := &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}
+	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
+	if err != nil {
+		d.logger.Error("error waiting for cluster to be deleted", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
 		return
 	}
 
 	err = d.exportRedisSnapshot(i)
 	if err != nil {
-		d.logger.Error("deleteRedis: exportRedisSnapshot failed", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("deleteRedis: exportRedisSnapshot failed: %s", err))
+		d.logger.Error("asyncDeleteRedis: exportRedisSnapshot failed", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
+		return
+	}
+
+	err = d.db.Unscoped().Delete(i).Error
+	if err != nil {
+		d.logger.Error("asyncDeleteRedis: error deleting record", err)
 		return
 	}
 
@@ -343,7 +363,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) error {
 		return err
 	}
 
-	d.logger.Info("exportRedisSnapshot: Writing Instance manisfest to s3", lager.Data{"uuid": i.Uuid})
+	d.logger.Info("exportRedisSnapshot: Writing Instance manifest to s3", lager.Data{"uuid": i.Uuid})
 	// write instance to manifest
 	// marshall instance to bytes.
 	data, err := json.Marshal(i)
