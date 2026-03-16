@@ -269,7 +269,9 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
+func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
+	operation := base.DeleteOp
+
 	params := &elasticache.DeleteReplicationGroupInput{
 		ReplicationGroupId:      aws.String(i.ClusterID), // Required
 		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
@@ -278,14 +280,32 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 
 	if err != nil {
 		d.logger.Error("deleteRedis: DeleteReplicationGroup failed", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("deleteRedis: DeleteReplicationGroup failed: %s", err))
+		return
+	}
+
+	err = d.exportRedisSnapshot(i)
+	if err != nil {
+		d.logger.Error("deleteRedis: exportRedisSnapshot failed", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("deleteRedis: exportRedisSnapshot failed: %s", err))
+		return
+	}
+
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting cluster")
+}
+
+func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
+	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deletion in progress")
+	if err != nil {
 		return base.InstanceNotGone, err
 	}
 
-	go d.exportRedisSnapshot(i)
-	return base.InstanceGone, nil
+	go d.asyncDeleteRedis(i)
+
+	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
+func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) error {
 	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	bucket := d.settings.SnapshotsBucketName
 
@@ -301,7 +321,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
-			return
+			return err
 		}
 
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
@@ -320,7 +340,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	_, err := d.elasticache.CopySnapshot(context.TODO(), copy_input)
 	if err != nil {
 		d.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", err, lager.Data{"uuid": i.Uuid})
-		return
+		return err
 	}
 
 	d.logger.Info("exportRedisSnapshot: Writing Instance manisfest to s3", lager.Data{"uuid": i.Uuid})
@@ -328,14 +348,14 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	// marshall instance to bytes.
 	data, err := json.Marshal(i)
 	if err != nil {
-		return
+		return err
 	}
 	body := bytes.NewReader(data)
 
 	serverSideEncryption, err := brokerAws.GetS3ServerSideEncryptionEnum("AES256")
 	if err != nil {
 		d.logger.Error("exportRedisSnapshot: GetS3ServerSideEncryptionEnum failed", err)
-		return
+		return err
 	}
 
 	input := s3.PutObjectInput{
@@ -350,7 +370,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	// Decide if AWS service call was successful
 	if err != nil {
 		d.logger.Error("exportRedisSnapshot: S3.PutObject Failed", err, lager.Data{"uuid": i.Uuid})
-		return
+		return err
 	}
 
 	d.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot Copy to Complete", lager.Data{"uuid": i.Uuid})
@@ -362,7 +382,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
-			return
+			return err
 		}
 
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
@@ -379,10 +399,11 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	_, err = d.elasticache.DeleteSnapshot(context.TODO(), delete_input)
 	if err != nil {
 		d.logger.Error("Redis.DeleteSnapshot: Failed", err, lager.Data{"uuid": i.Uuid})
-		return
+		return err
 	}
 
 	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
+	return nil
 }
 
 func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateReplicationGroupInput, error) {

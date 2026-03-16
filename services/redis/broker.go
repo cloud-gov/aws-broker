@@ -58,7 +58,7 @@ func InitRedisBroker(
 func (broker *redisBroker) AsyncOperationRequired(o base.Operation) bool {
 	switch o {
 	case base.DeleteOp:
-		return false
+		return true
 	case base.CreateOp:
 		return true
 	case base.ModifyOp:
@@ -281,6 +281,9 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 	case base.ModifyOp.String():
 		needAsyncJobState = broker.AsyncOperationRequired(base.ModifyOp)
 		instanceOperation = base.ModifyOp
+	case base.DeleteOp.String():
+		needAsyncJobState = broker.AsyncOperationRequired(base.DeleteOp)
+		instanceOperation = base.DeleteOp
 	default:
 		needAsyncJobState = false
 	}
