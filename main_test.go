@@ -1112,7 +1112,7 @@ func TestRedisUnbind(t *testing.T) {
 
 func TestRedisDeleteInstance(t *testing.T) {
 	instanceUUID := uuid.NewString()
-	url := fmt.Sprintf("/v2/service_instances/%s?service_id=%s&plan_id=%s", instanceUUID, redisServiceId, originalRedisPlanID)
+	url := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true&service_id=%s&plan_id=%s", instanceUUID, redisServiceId, originalRedisPlanID)
 	res := requestHandler.doRequest(url, "DELETE", true, nil)
 
 	// With no instance
@@ -1130,17 +1130,12 @@ func TestRedisDeleteInstance(t *testing.T) {
 
 	res = requestHandler.doRequest(url, "DELETE", true, nil)
 
-	if res.Code != http.StatusOK {
-		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to delete instance. Body is: %s", res.Body.String())
 		t.Error(url, "with auth should return 200 and it returned", res.Code)
 	}
 
-	// Is it actually gone from the DB?
-	i = redis.RedisInstance{}
-	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if len(i.Uuid) > 0 {
-		t.Error("The instance shouldn't be in the DB")
-	}
+	isAsyncOperationResponse(t, res, base.DeleteOp)
 }
 
 /*

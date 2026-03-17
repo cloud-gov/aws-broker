@@ -88,7 +88,7 @@ func (d *mockRedisAdapter) bindRedisToApp(i *RedisInstance, password string) (ma
 }
 
 func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
-	return base.InstanceGone, nil
+	return base.InstanceInProgress, nil
 }
 
 type dedicatedRedisAdapter struct {
