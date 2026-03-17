@@ -992,6 +992,33 @@ jobs:
                 SERVICE_NAME: aws-elasticache-redis
                 SERVICE_PLAN: redis-dev
                 REGION: ((staging-aws-default-region))
+
+            - task: smoke-tests-redis-upgrade-dev-3node
+              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_SERVICE_PLAN: redis-3node
+
+            - task: smoke-tests-redis-upgrade-version
+              file: aws-broker-app/ci/run-smoke-tests-update-redis-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                OLD_VERSION: "7.0"
+                NEW_VERSION: "7.1"
     on_failure:
       put: slack
       params:
@@ -1506,6 +1533,33 @@ jobs:
                 SERVICE_NAME: aws-elasticache-redis
                 SERVICE_PLAN: redis-dev
                 REGION: ((prod-aws-default-region))
+
+            - task: smoke-tests-redis-upgrade-dev-3node
+              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_SERVICE_PLAN: redis-3node
+
+            - task: smoke-tests-redis-upgrade-version
+              file: aws-broker-app/ci/run-smoke-tests-update-redis-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                OLD_VERSION: "7.0"
+                NEW_VERSION: "7.1"
 
             - task: smoke-tests-unbound-elasticsearch
               file: aws-broker-app/ci/run-smoke-test-unbound.yml
