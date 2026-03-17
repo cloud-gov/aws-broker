@@ -20,10 +20,10 @@ type RedisInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password string `sql:"size(255)"`
-	Salt     string `sql:"size(255)"`
+	Password string `sql:"size(255)" deep:"-"`
+	Salt     string `sql:"size(255)" deep:"-"`
 
-	ClearPassword string `gorm:"-"`
+	ClearPassword string `gorm:"-" deep:"-"`
 
 	EngineVersion              string `sql:"size(255)"`
 	ClusterID                  string `sql:"size(255)"`
@@ -44,6 +44,8 @@ type RedisInstance struct {
 
 	EngineLogsGroupName string `sql:"size(512)"`
 	SlowLogsGroupName   string `sql:"size(512)"`
+
+	NewReplicaCount int `gorm:"-"`
 }
 
 func (i *RedisInstance) setPassword(password, key string) error {
@@ -111,15 +113,11 @@ func (i *RedisInstance) init(
 
 	i.Uuid = uuid
 	i.ServiceID = serviceID
-	i.PlanID = plan.ID
 	i.OrganizationGUID = orgGUID
 	i.SpaceGUID = spaceGUID
 
 	// Load AWS values
-	i.DbSubnetGroup = plan.SubnetGroup
-	i.SecGroup = plan.SecurityGroup
-
-	i.Description = plan.Description
+	setInstanceParameters(i, options, plan)
 
 	i.ClusterID = s.DbShorthandPrefix + "-" + uuid
 	i.Salt = helpers.GenerateSalt(aes.BlockSize)
@@ -127,6 +125,32 @@ func (i *RedisInstance) init(
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err
 	}
+
+	i.setTags(plan, tags)
+
+	return nil
+}
+
+func (i RedisInstance) modify(
+	options RedisOptions, newPlan *catalog.RedisPlan, tags map[string]string,
+) *RedisInstance {
+	// Copy the existing instance so that we can return a modified instance rather than mutating the instance
+	modifiedInstance := i
+
+	setInstanceParameters(&modifiedInstance, options, *newPlan)
+
+	modifiedInstance.setTags(*newPlan, tags)
+
+	return &modifiedInstance
+}
+
+func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.RedisPlan) {
+	i.PlanID = plan.ID
+	i.DbSubnetGroup = plan.SubnetGroup
+	i.SecGroup = plan.SecurityGroup
+
+	i.Description = plan.Description
+
 	// Set the DB Version
 	if options.EngineVersion != "" {
 		i.EngineVersion = options.EngineVersion
@@ -135,16 +159,20 @@ func (i *RedisInstance) init(
 		i.EngineVersion = plan.EngineVersion
 	}
 
-	i.NumCacheClusters = plan.NumCacheClusters
+	if plan.NumCacheClusters > i.NumCacheClusters {
+		// If we are increasing the number of cluster nodes, we need
+		// to increase the number of replica nodes
+		if i.NumCacheClusters > 0 {
+			i.NewReplicaCount = plan.NumCacheClusters - i.NumCacheClusters
+		}
+		i.NumCacheClusters = plan.NumCacheClusters
+	}
+
 	i.CacheNodeType = plan.CacheNodeType
 	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
 	i.SnapshotWindow = plan.SnapshotWindow
 	i.SnapshotRetentionLimit = plan.SnapshotRetentionLimit
 	i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
-
-	i.setTags(plan, tags)
-
-	return nil
 }
 
 func (i *RedisInstance) setTags(

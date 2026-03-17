@@ -7,15 +7,18 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
+	"gorm.io/gorm"
 
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/jobs"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
@@ -24,15 +27,15 @@ import (
 )
 
 type redisAdapter interface {
-	createRedis(i *RedisInstance, password string) (base.InstanceState, error)
-	modifyRedis(i *RedisInstance, password string) (base.InstanceState, error)
+	createRedis(i *RedisInstance) (base.InstanceState, error)
+	modifyRedis(i *RedisInstance) (base.InstanceState, error)
 	checkRedisStatus(i *RedisInstance) (base.InstanceState, error)
 	bindRedisToApp(i *RedisInstance, password string) (map[string]string, error)
 	deleteRedis(i *RedisInstance) (base.InstanceState, error)
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, error) {
+func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (redisAdapter, error) {
 	var redisAdapter redisAdapter
 
 	if s.Environment == "test" {
@@ -51,24 +54,29 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (redisAdapter, e
 	elasticacheClient := elasticache.NewFromConfig(cfg)
 	s3 := s3.NewFromConfig(cfg)
 
-	redisAdapter = &dedicatedRedisAdapter{
+	redisAdapter = NewRedisDedicatedDBAdapter(s, db, elasticacheClient, s3, logger)
+	return redisAdapter, nil
+}
+
+func NewRedisDedicatedDBAdapter(s *config.Settings, db *gorm.DB, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface, logger lager.Logger) *dedicatedRedisAdapter {
+	return &dedicatedRedisAdapter{
 		settings:    *s,
+		db:          db,
 		logger:      logger,
-		elasticache: elasticacheClient,
+		elasticache: elasticache,
 		s3:          s3,
 	}
-	return redisAdapter, nil
 }
 
 type mockRedisAdapter struct {
 }
 
-func (d *mockRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+func (d *mockRedisAdapter) createRedis(i *RedisInstance) (base.InstanceState, error) {
 	return base.InstanceInProgress, nil
 }
 
-func (d *mockRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	return base.InstanceNotModified, nil
+func (d *mockRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
+	return base.InstanceInProgress, nil
 }
 
 func (d *mockRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
@@ -80,7 +88,7 @@ func (d *mockRedisAdapter) bindRedisToApp(i *RedisInstance, password string) (ma
 }
 
 func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
-	return base.InstanceGone, nil
+	return base.InstanceInProgress, nil
 }
 
 type dedicatedRedisAdapter struct {
@@ -88,14 +96,15 @@ type dedicatedRedisAdapter struct {
 	logger      lager.Logger
 	elasticache ElasticacheClientInterface
 	s3          brokerAws.S3ClientInterface
+	db          *gorm.DB
 }
 
 // This is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-redis-broker-"
 
-func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance) (base.InstanceState, error) {
 	// Standard parameters
-	params, err := prepareCreateReplicationGroupInput(i, password)
+	params, err := prepareCreateReplicationGroupInput(i)
 	if err != nil {
 		d.logger.Error("prepareCreateReplicationGroupInput err", err)
 		return base.InstanceNotCreated, err
@@ -110,8 +119,126 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance, password string) (
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance, password string) (base.InstanceState, error) {
-	return base.InstanceNotModified, nil
+func (d *dedicatedRedisAdapter) verifyIncreasedReplicaCount(i *RedisInstance) error {
+	var nodesReady bool
+
+	attempts := 1
+	maxAttempts := 1 + int(d.settings.PollAwsMaxRetries)
+
+	for !nodesReady && attempts <= maxAttempts {
+		d.logger.Info(fmt.Sprintf("verifying replica creation. attempt %d of %d", attempts, maxAttempts))
+		output, err := d.elasticache.DescribeReplicationGroups(context.TODO(), &elasticache.DescribeReplicationGroupsInput{
+			ReplicationGroupId: &i.ClusterID,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		nodeGroup := output.ReplicationGroups[0].NodeGroups[0]
+		status := *nodeGroup.Status
+
+		var replicaNodes []elasticacheTypes.NodeGroupMember
+		for _, nodeMember := range nodeGroup.NodeGroupMembers {
+			if *nodeMember.CurrentRole == "replica" {
+				replicaNodes = append(replicaNodes, nodeMember)
+			}
+		}
+
+		nodesReady = (status == "available" && len(replicaNodes) == i.NewReplicaCount)
+		if nodesReady {
+			break
+		}
+
+		attempts += 1
+		time.Sleep(d.settings.PollAwsMinDelay)
+		continue
+	}
+
+	return nil
+}
+
+func (d *dedicatedRedisAdapter) increaseReplicaCount(i *RedisInstance, operation base.Operation) error {
+	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new replica nodes")
+
+	newReplicaCount, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.elasticache.IncreaseReplicaCount(context.TODO(), &elasticache.IncreaseReplicaCountInput{
+		ReplicationGroupId: &i.ClusterID,
+		NewReplicaCount:    newReplicaCount,
+		ApplyImmediately:   aws.Bool(true),
+	})
+	if err != nil {
+		d.logger.Error("error increasing replica count", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
+		return err
+	}
+
+	// Wait for replication group to be available
+	waiter := elasticache.NewReplicationGroupAvailableWaiter(d.elasticache, func(dawo *elasticache.ReplicationGroupAvailableWaiterOptions) {
+		dawo.MinDelay = d.settings.PollAwsMinDelay
+	})
+
+	waiterInput := &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}
+
+	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
+	if err != nil {
+		return err
+	}
+
+	err = d.verifyIncreasedReplicaCount(i)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *dedicatedRedisAdapter) asyncModifyRedis(i *RedisInstance) {
+	operation := base.ModifyOp
+
+	params, err := prepareModifyReplicationGroupInput(i)
+	if err != nil {
+		d.logger.Error("prepareModifyReplicationGroupInput err", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
+		return
+	}
+
+	if i.NewReplicaCount > 0 {
+		err = d.increaseReplicaCount(i, operation)
+		if err != nil {
+			d.logger.Error("error increasing replica count", err)
+			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
+			return
+		}
+	}
+
+	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
+
+	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
+	if err != nil {
+		d.logger.Error("ModifyReplicationGroup err", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
+		return
+	}
+
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
+}
+
+func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
+	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Modification in progress")
+	if err != nil {
+		return base.InstanceNotModified, err
+	}
+
+	go d.asyncModifyRedis(i)
+
+	return base.InstanceInProgress, nil
 }
 
 func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.InstanceState, error) {
@@ -197,7 +324,11 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
+func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
+	operation := base.DeleteOp
+
+	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
+
 	params := &elasticache.DeleteReplicationGroupInput{
 		ReplicationGroupId:      aws.String(i.ClusterID), // Required
 		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
@@ -205,15 +336,55 @@ func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceStat
 	_, err := d.elasticache.DeleteReplicationGroup(context.TODO(), params)
 
 	if err != nil {
-		d.logger.Error("deleteRedis: DeleteReplicationGroup failed", err)
+		d.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
+		return
+	}
+
+	// Create a waiter
+	waiter := elasticache.NewReplicationGroupDeletedWaiter(d.elasticache, func(dawo *elasticache.ReplicationGroupDeletedWaiterOptions) {
+		dawo.MinDelay = d.settings.PollAwsMinDelay
+	})
+	waiterInput := &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}
+	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
+	if err != nil {
+		d.logger.Error("error waiting for cluster to be deleted", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
+		return
+	}
+
+	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+
+	err = d.exportRedisSnapshot(i)
+	if err != nil {
+		d.logger.Error("asyncDeleteRedis: exportRedisSnapshot failed", err)
+		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
+		return
+	}
+
+	err = d.db.Unscoped().Delete(i).Error
+	if err != nil {
+		d.logger.Error("asyncDeleteRedis: error deleting record", err)
+		return
+	}
+
+	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
+}
+
+func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
+	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deletion in progress")
+	if err != nil {
 		return base.InstanceNotGone, err
 	}
 
-	go d.exportRedisSnapshot(i)
-	return base.InstanceGone, nil
+	go d.asyncDeleteRedis(i)
+
+	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
+func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) error {
 	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	bucket := d.settings.SnapshotsBucketName
 
@@ -229,7 +400,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
-			return
+			return err
 		}
 
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
@@ -248,22 +419,22 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	_, err := d.elasticache.CopySnapshot(context.TODO(), copy_input)
 	if err != nil {
 		d.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", err, lager.Data{"uuid": i.Uuid})
-		return
+		return err
 	}
 
-	d.logger.Info("exportRedisSnapshot: Writing Instance manisfest to s3", lager.Data{"uuid": i.Uuid})
+	d.logger.Info("exportRedisSnapshot: Writing Instance manifest to s3", lager.Data{"uuid": i.Uuid})
 	// write instance to manifest
 	// marshall instance to bytes.
 	data, err := json.Marshal(i)
 	if err != nil {
-		return
+		return err
 	}
 	body := bytes.NewReader(data)
 
 	serverSideEncryption, err := brokerAws.GetS3ServerSideEncryptionEnum("AES256")
 	if err != nil {
 		d.logger.Error("exportRedisSnapshot: GetS3ServerSideEncryptionEnum failed", err)
-		return
+		return err
 	}
 
 	input := s3.PutObjectInput{
@@ -278,7 +449,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	// Decide if AWS service call was successful
 	if err != nil {
 		d.logger.Error("exportRedisSnapshot: S3.PutObject Failed", err, lager.Data{"uuid": i.Uuid})
-		return
+		return err
 	}
 
 	d.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot Copy to Complete", lager.Data{"uuid": i.Uuid})
@@ -290,7 +461,7 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
 		if err != nil {
 			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", err, lager.Data{"uuid": i.Uuid})
-			return
+			return err
 		}
 
 		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
@@ -307,20 +478,17 @@ func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) {
 	_, err = d.elasticache.DeleteSnapshot(context.TODO(), delete_input)
 	if err != nil {
 		d.logger.Error("Redis.DeleteSnapshot: Failed", err, lager.Data{"uuid": i.Uuid})
-		return
+		return err
 	}
 
 	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete.", lager.Data{"uuid": i.Uuid})
+	return nil
 }
 
-func prepareCreateReplicationGroupInput(
-	i *RedisInstance,
-	password string,
-) (*elasticache.CreateReplicationGroupInput, error) {
+func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateReplicationGroupInput, error) {
 	redisTags := ConvertTagsToElasticacheTags(i.Tags)
 
-	var securityGroups []string
-	securityGroups = append(securityGroups, i.SecGroup)
+	securityGroups := []string{i.SecGroup}
 
 	numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
 	if err != nil {
@@ -338,7 +506,7 @@ func prepareCreateReplicationGroupInput(
 		TransitEncryptionEnabled:    aws.Bool(true),
 		AutoMinorVersionUpgrade:     aws.Bool(true),
 		ReplicationGroupDescription: aws.String(i.Description),
-		AuthToken:                   &password,
+		AuthToken:                   &i.ClearPassword,
 		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
 		ReplicationGroupId:          aws.String(i.ClusterID),
 		CacheNodeType:               aws.String(i.CacheNodeType),
@@ -351,6 +519,32 @@ func prepareCreateReplicationGroupInput(
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      snapshotRetentionLimit,
 		Tags:                        redisTags,
+	}
+	if i.EngineVersion != "" {
+		params.EngineVersion = aws.String(i.EngineVersion)
+	}
+	return params, nil
+}
+
+func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyReplicationGroupInput, error) {
+	securityGroups := []string{i.SecGroup}
+
+	snapshotRetentionLimit, err := common.ConvertIntToInt32Safely(i.SnapshotRetentionLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Standard parameters
+	params := &elasticache.ModifyReplicationGroupInput{
+		ReplicationGroupDescription: aws.String(i.Description),
+		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
+		ReplicationGroupId:          aws.String(i.ClusterID),
+		CacheNodeType:               aws.String(i.CacheNodeType),
+		SecurityGroupIds:            securityGroups,
+		Engine:                      aws.String("redis"),
+		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
+		SnapshotWindow:              aws.String(i.SnapshotWindow),
+		SnapshotRetentionLimit:      snapshotRetentionLimit,
 	}
 	if i.EngineVersion != "" {
 		params.EngineVersion = aws.String(i.EngineVersion)

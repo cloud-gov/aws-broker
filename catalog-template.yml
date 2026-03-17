@@ -1507,6 +1507,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 1
       automaticFailoverEnabled: false
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1544,6 +1545,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1581,6 +1583,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1618,6 +1621,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1655,6 +1659,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
