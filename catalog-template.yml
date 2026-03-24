@@ -1494,9 +1494,6 @@ redis:
       approvedMajorVersions: &supported-elasticache-versions
         - "7.1"
         - "7.0"
-        - "6.2"
-        - "6.0"
-        - "5.0.6"
       numberCluster: 1
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
