@@ -426,7 +426,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 14
+                DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-storage
               file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
@@ -863,7 +863,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 14
+                DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-micro-to-small
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1424,7 +1424,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 14
+                DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-micro-to-small
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
