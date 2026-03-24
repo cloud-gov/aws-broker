@@ -1027,7 +1027,7 @@ func TestGetParameterGroupFamily(t *testing.T) {
 		"has db version": {
 			dbInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "13",
+				DbVersion: "15",
 			},
 			expectedPGroupFamily: "postgres13",
 			parameterGroupAdapter: &awsParameterGroupClient{
