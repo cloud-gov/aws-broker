@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
@@ -109,7 +110,7 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.EngineVersion) {
 			return apiresponses.NewFailureResponse(
-				fmt.Errorf("%s is not a supported major version; major version must be one of: 7.1, 7.0, 6.2, 6.0, 5.0.6", options.EngineVersion),
+				fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.EngineVersion, strings.Join(plan.ApprovedMajorVersions, ", ")),
 				http.StatusBadRequest,
 				"checking Redis plan",
 			)
