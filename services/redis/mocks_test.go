@@ -1,0 +1,93 @@
+package redis
+
+import (
+	"context"
+	"os"
+
+	"code.cloudfoundry.org/lager"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	brokerAws "github.com/cloud-gov/aws-broker/aws"
+	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/config"
+	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/testutil"
+	"gorm.io/gorm"
+)
+
+func testDBInit() (*gorm.DB, error) {
+	db, err := testutil.TestDbInit()
+	// Automigrate!
+	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	return db, err
+}
+
+func NewTestDedicatedRedisAdapter(s *config.Settings, db *gorm.DB, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface) *dedicatedRedisAdapter {
+	logger := lager.NewLogger("aws-redis-test")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	return NewRedisDedicatedDBAdapter(s, db, elasticache, s3, logger)
+}
+
+type mockRedisClient struct {
+	modifyReplicationGroupErr        error
+	increaseReplicaCountErr          error
+	describeReplicationGroupsErrs    []error
+	describeReplicationGroupsCallNum int
+	describeReplicationGroupsResults []*elasticache.DescribeReplicationGroupsOutput
+	describeSnapshotsResults         []*elasticache.DescribeSnapshotsOutput
+	describeSnapshotsCallNum         int
+	describeSnapshotsErrors          []error
+	deleteReplicationGroupErr        error
+	copySnapshotErr                  error
+	deleteSnapshotErr                error
+}
+
+func (m *mockRedisClient) CopySnapshot(ctx context.Context, params *elasticache.CopySnapshotInput, optFns ...func(*elasticache.Options)) (*elasticache.CopySnapshotOutput, error) {
+	return nil, m.copySnapshotErr
+}
+
+func (m *mockRedisClient) CreateReplicationGroup(ctx context.Context, params *elasticache.CreateReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.CreateReplicationGroupOutput, error) {
+	return nil, nil
+}
+
+func (m *mockRedisClient) DeleteReplicationGroup(ctx context.Context, params *elasticache.DeleteReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.DeleteReplicationGroupOutput, error) {
+	return nil, m.deleteReplicationGroupErr
+}
+
+func (m *mockRedisClient) DeleteSnapshot(ctx context.Context, params *elasticache.DeleteSnapshotInput, optFns ...func(*elasticache.Options)) (*elasticache.DeleteSnapshotOutput, error) {
+	return nil, m.deleteSnapshotErr
+}
+
+func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params *elasticache.DescribeReplicationGroupsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeReplicationGroupsOutput, error) {
+	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum] != nil {
+		return nil, m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum]
+	}
+	output := m.describeReplicationGroupsResults[m.describeReplicationGroupsCallNum]
+	m.describeReplicationGroupsCallNum++
+	return output, nil
+}
+
+func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elasticache.DescribeSnapshotsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeSnapshotsOutput, error) {
+	if len(m.describeSnapshotsErrors) > 0 && m.describeSnapshotsErrors[m.describeSnapshotsCallNum] != nil {
+		return nil, m.describeSnapshotsErrors[m.describeSnapshotsCallNum]
+	}
+	output := m.describeSnapshotsResults[m.describeSnapshotsCallNum]
+	m.describeSnapshotsCallNum++
+	return output, nil
+}
+
+func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elasticache.IncreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.IncreaseReplicaCountOutput, error) {
+	return nil, m.increaseReplicaCountErr
+}
+
+func (m *mockRedisClient) ModifyReplicationGroup(ctx context.Context, params *elasticache.ModifyReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.ModifyReplicationGroupOutput, error) {
+	return nil, m.modifyReplicationGroupErr
+}
+
+type mockS3Client struct {
+	putObjectErr error
+}
+
+func (s *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	return nil, s.putObjectErr
+}

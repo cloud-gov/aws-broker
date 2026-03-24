@@ -35,7 +35,6 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions: &approved_rds_pg_versions
-        - "13"
         - "14"
         - "15"
         - "16"
@@ -1507,6 +1506,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 1
       automaticFailoverEnabled: false
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1544,6 +1544,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1581,6 +1582,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1618,6 +1620,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"
@@ -1655,6 +1658,7 @@ redis:
       snapshotWindow: 06:00-07:00
       snapshotRetentionLimit: 3
       automaticFailoverEnabled: true
+      plan_updateable: true
       tags:
         environment: (( grab meta.environment ))
         client: "paas-cf"

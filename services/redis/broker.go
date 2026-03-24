@@ -16,10 +16,11 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/jobs"
 )
 
 type RedisOptions struct {
-	EngineVersion string `json:"engineVersion"`
+	EngineVersion string `json:"engine_version"`
 }
 
 func (r RedisOptions) Validate(settings *config.Settings) error {
@@ -45,7 +46,7 @@ func InitRedisBroker(
 	logger := lager.NewLogger("aws-redis-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
-	adapter, err := initializeAdapter(settings, logger)
+	adapter, err := initializeAdapter(settings, brokerDB, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +58,11 @@ func InitRedisBroker(
 func (broker *redisBroker) AsyncOperationRequired(o base.Operation) bool {
 	switch o {
 	case base.DeleteOp:
-		return false
+		return true
 	case base.CreateOp:
 		return true
 	case base.ModifyOp:
-		return false
+		return true
 	case base.BindOp:
 		return false
 	default:
@@ -69,19 +70,29 @@ func (broker *redisBroker) AsyncOperationRequired(o base.Operation) bool {
 	}
 }
 
-func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
-	newInstance := RedisInstance{}
-
+func (broker *redisBroker) parseOptionsFromRequest(
+	rawParameters json.RawMessage,
+) (RedisOptions, error) {
 	options := RedisOptions{}
-	if len(details.RawParameters) > 0 {
-		err := json.Unmarshal(details.RawParameters, &options)
+	if len(rawParameters) > 0 {
+		err := json.Unmarshal(rawParameters, &options)
 		if err != nil {
-			return apiresponses.ErrRawParamsInvalid
+			return options, err
 		}
 		err = options.Validate(broker.settings)
 		if err != nil {
-			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
+			return options, err
 		}
+	}
+	return options, nil
+}
+
+func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
+	newInstance := RedisInstance{}
+
+	options, err := broker.parseOptionsFromRequest(details.RawParameters)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "invalid input parameters")
 	}
 
 	var count int64
@@ -144,7 +155,7 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 	}
 
 	// Create the redis instance.
-	status, err := broker.adapter.createRedis(&newInstance, newInstance.ClearPassword)
+	status, err := broker.adapter.createRedis(&newInstance)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,
@@ -181,12 +192,74 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 }
 
 func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetails) error {
-	// Note:  This is not currently supported for Redis instances.
-	return apiresponses.NewFailureResponse(
-		fmt.Errorf("updating Redis service instances is not supported at this time"),
-		http.StatusBadRequest,
-		"modifying Redis instance",
+	existingInstance := &RedisInstance{}
+
+	// Load the existing instance provided.
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
+	if count == 0 {
+		return apiresponses.ErrInstanceDoesNotExist
+	}
+
+	options, err := broker.parseOptionsFromRequest(details.RawParameters)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "invalid input parameters")
+	}
+
+	// Fetch the new plan that has been requested.
+	newPlan, err := broker.catalog.RedisService.FetchPlan(details.PlanID)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch Elasticache plan")
+	}
+
+	tags, err := broker.tagManager.GenerateTags(
+		brokertags.Update,
+		broker.catalog.RedisService.Name,
+		newPlan.Name,
+		brokertags.ResourceGUIDs{
+			InstanceGUID: id,
+		},
+		true,
 	)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusInternalServerError,
+			"generate tags",
+		)
+	}
+
+	modifiedInstance := existingInstance.modify(options, &newPlan, tags)
+
+	// Modify the database instance.
+	status, err := broker.adapter.modifyRedis(modifiedInstance)
+
+	switch status {
+	case base.InstanceNotModified:
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("error modifying the instance: %s", err),
+			http.StatusInternalServerError,
+			"modify Elasticache instance",
+		)
+	case base.InstanceInProgress:
+		// Update the existing instance in the broker.
+		modifiedInstance.State = status
+		err = broker.brokerDB.Save(modifiedInstance).Error
+		if err != nil {
+			return apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"modify Elasticache instance",
+			)
+		}
+		return nil
+	default:
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("encountered unexpected state %s, error: %s", status, err),
+			http.StatusInternalServerError,
+			"modify Elasticache instance",
+		)
+	}
 }
 
 func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {
@@ -199,19 +272,59 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 		return lastOperation, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	status, err := broker.adapter.checkRedisStatus(&existingInstance)
-	if err != nil {
-		broker.logger.Error("Error checking Redis status", err)
-		return lastOperation, apiresponses.NewFailureResponse(
-			err,
-			http.StatusInternalServerError,
-			"check Redis status",
-		)
+	// When asynchronous deletion has finished, the instance record no longer exists, so
+	// return a last operation status indicating that the deletion was successful.
+	if count == 0 && details.OperationData == base.DeleteOp.String() {
+		return domain.LastOperation{
+			State:       domain.Succeeded,
+			Description: "Successfully deleted instance",
+		}, nil
+	}
+
+	var state base.InstanceState
+	var needAsyncJobState bool
+	var instanceOperation base.Operation
+	var statusMessage string
+
+	switch details.OperationData {
+	case base.ModifyOp.String():
+		needAsyncJobState = broker.AsyncOperationRequired(base.ModifyOp)
+		instanceOperation = base.ModifyOp
+	case base.DeleteOp.String():
+		needAsyncJobState = broker.AsyncOperationRequired(base.DeleteOp)
+		instanceOperation = base.DeleteOp
+	default:
+		needAsyncJobState = false
+	}
+
+	if needAsyncJobState {
+		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		if err != nil {
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"get last async job message",
+			)
+		}
+		state = asyncJobMsg.JobState.State
+		statusMessage = asyncJobMsg.JobState.Message
+	} else {
+		redisState, err := broker.adapter.checkRedisStatus(&existingInstance)
+		if err != nil {
+			broker.logger.Error("Error checking Redis status", err)
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"check Redis status",
+			)
+		}
+		state = redisState
+		statusMessage = fmt.Sprintf("The status is %s", state)
 	}
 
 	return domain.LastOperation{
-		State:       status.ToLastOperationState(),
-		Description: fmt.Sprintf("The service instance status is %s", status),
+		State:       state.ToLastOperationState(),
+		Description: statusMessage,
 	}, nil
 }
 
@@ -284,11 +397,7 @@ func (broker *redisBroker) DeleteInstance(id string) error {
 	switch status {
 	case base.InstanceNotGone:
 		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
-	case base.InstanceGone:
-		err := broker.brokerDB.Unscoped().Delete(&existingInstance).Error
-		if err != nil {
-			return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete Redis instance")
-		}
+	case base.InstanceInProgress:
 		return nil
 	default:
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete Redis instance")

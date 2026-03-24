@@ -256,7 +256,6 @@ jobs:
           steps:
             - get: aws-broker-app
               resource: aws-broker-app-development
-            - get: aws-db-test
             - get: redis-app-development
               passed:
                 - deploy-aws-broker-development
@@ -272,11 +271,38 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_NAME: aws-elasticache-redis
                 SERVICE_PLAN: redis-dev
                 REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-redis-upgrade-dev-3node
+              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_SERVICE_PLAN: redis-3node
+
+            - task: smoke-tests-redis-upgrade-version
+              file: aws-broker-app/ci/run-smoke-tests-update-redis-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                OLD_VERSION: "7.0"
+                NEW_VERSION: "7.1"
     on_failure:
       put: slack
       params:
@@ -307,8 +333,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((development-aws-default-region))
@@ -321,8 +347,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((development-aws-default-region))
@@ -335,8 +361,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((development-aws-default-region))
@@ -369,8 +395,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -382,8 +408,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: small-psql
                 DB_TYPE: postgres
@@ -396,11 +422,11 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 14
+                DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-storage
               file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
@@ -410,8 +436,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -423,8 +449,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
@@ -436,8 +462,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 NEW_SERVICE_PLAN: medium-mysql
                 DB_TYPE: mysql
@@ -450,8 +476,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
                 DB_VERSION: "8.4"
@@ -464,8 +490,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
@@ -477,8 +503,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -490,8 +516,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-mysql
                 DB_TYPE: mysql
 
@@ -503,8 +529,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
 
@@ -516,8 +542,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
@@ -806,8 +832,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -819,8 +845,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: medium-psql
                 DB_TYPE: postgres
@@ -833,11 +859,11 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 14
+                DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-micro-to-small
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -847,8 +873,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: small-psql
                 DB_TYPE: postgres
@@ -861,8 +887,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
@@ -874,8 +900,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
@@ -887,8 +913,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
                 DB_VERSION: "8.4"
@@ -901,8 +927,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 NEW_SERVICE_PLAN: medium-mysql
                 DB_TYPE: mysql
@@ -915,8 +941,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -928,8 +954,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-mysql
                 DB_TYPE: mysql
     on_failure:
@@ -961,11 +987,38 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_NAME: aws-elasticache-redis
                 SERVICE_PLAN: redis-dev
                 REGION: ((staging-aws-default-region))
+
+            - task: smoke-tests-redis-upgrade-dev-3node
+              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_SERVICE_PLAN: redis-3node
+
+            - task: smoke-tests-redis-upgrade-version
+              file: aws-broker-app/ci/run-smoke-tests-update-redis-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                OLD_VERSION: "7.0"
+                NEW_VERSION: "7.1"
     on_failure:
       put: slack
       params:
@@ -995,8 +1048,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((staging-aws-default-region))
@@ -1009,8 +1062,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((staging-aws-default-region))
@@ -1023,8 +1076,8 @@ jobs:
                 CF_API_URL: ((staging-cf-api-url))
                 CF_USERNAME: ((staging-cf-deploy-username))
                 CF_PASSWORD: ((staging-cf-deploy-password))
-                CF_ORGANIZATION: ((staging-cf-organization))
-                CF_SPACE: ((staging-cf-space))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((staging-aws-default-region))
@@ -1341,8 +1394,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -1354,8 +1407,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -1367,11 +1420,11 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 14
+                DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-micro-to-small
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1381,8 +1434,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: small-psql
                 DB_TYPE: postgres
@@ -1395,8 +1448,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
@@ -1408,8 +1461,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
 
@@ -1421,8 +1474,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
                 DB_VERSION: "8.4"
@@ -1435,8 +1488,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 NEW_SERVICE_PLAN: medium-mysql
                 DB_TYPE: mysql
@@ -1449,8 +1502,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
 
@@ -1462,8 +1515,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-mysql
                 DB_TYPE: mysql
 
@@ -1475,11 +1528,38 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_NAME: aws-elasticache-redis
                 SERVICE_PLAN: redis-dev
                 REGION: ((prod-aws-default-region))
+
+            - task: smoke-tests-redis-upgrade-dev-3node
+              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                NEW_SERVICE_PLAN: redis-3node
+
+            - task: smoke-tests-redis-upgrade-version
+              file: aws-broker-app/ci/run-smoke-tests-update-redis-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_PLAN: redis-dev
+                OLD_VERSION: "7.0"
+                NEW_VERSION: "7.1"
 
             - task: smoke-tests-unbound-elasticsearch
               file: aws-broker-app/ci/run-smoke-test-unbound.yml
@@ -1489,8 +1569,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((prod-aws-default-region))
@@ -1503,8 +1583,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((prod-aws-default-region))
@@ -1517,8 +1597,8 @@ jobs:
                 CF_API_URL: ((prod-cf-api-url))
                 CF_USERNAME: ((prod-cf-deploy-username))
                 CF_PASSWORD: ((prod-cf-deploy-password))
-                CF_ORGANIZATION: ((prod-cf-organization))
-                CF_SPACE: ((prod-cf-space))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((prod-aws-default-region))
