@@ -48,6 +48,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				Engine:                     "redis",
 			},
 			tags: map[string]string{
 				"tag-1": "bar",
@@ -80,6 +81,7 @@ func TestInstanceInit(t *testing.T) {
 					"plan-tag-1": "foo",
 					"tag-1":      "bar",
 				},
+				Engine: "redis",
 			},
 		},
 		"sets engine version from plan": {
@@ -234,7 +236,9 @@ func TestInstanceModify(t *testing.T) {
 		expectUpdates    bool
 	}{
 		"sets plan properties": {
-			existingInstance: &RedisInstance{},
+			existingInstance: &RedisInstance{
+				Engine: "redis",
+			},
 			newPlan: catalog.RedisPlan{
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
@@ -251,6 +255,7 @@ func TestInstanceModify(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				Engine:                     "valkey",
 			},
 			expectedInstance: &RedisInstance{
 				Instance: base.Instance{
@@ -270,6 +275,7 @@ func TestInstanceModify(t *testing.T) {
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
 				},
+				Engine: "valkey",
 			},
 			expectUpdates: true,
 		},
@@ -441,6 +447,18 @@ func TestSetInstanceParameters(t *testing.T) {
 			expectedInstance: &RedisInstance{
 				NumCacheClusters: 5,
 				NewReplicaCount:  4,
+			},
+		},
+		"update engine": {
+			instance: &RedisInstance{
+				Engine: "redis",
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				Engine: "valkey",
+			},
+			expectedInstance: &RedisInstance{
+				Engine: "valkey",
 			},
 		},
 	}
