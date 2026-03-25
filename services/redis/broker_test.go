@@ -541,3 +541,45 @@ func TestLastOperation(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateEngineAndVersion(t *testing.T) {
+	testCases := map[string]struct {
+		redisInstance        *RedisInstance
+		expectedResponseCode int
+		options              RedisOptions
+		plan                 catalog.RedisPlan
+		expectErr            bool
+	}{
+		"no engine version": {
+			redisInstance: &RedisInstance{},
+			options:       RedisOptions{},
+			plan:          catalog.RedisPlan{},
+		},
+		"engine version for current engine not approved": {
+			redisInstance: &RedisInstance{
+				Engine: "redis",
+			},
+			options: RedisOptions{
+				EngineVersion: "5.0",
+			},
+			plan: catalog.RedisPlan{
+				ApprovedEngineVersions: map[string][]string{
+					"redis": {"7.1"},
+				},
+			},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateEngineAndVersion(test.redisInstance, test.plan, test.options)
+			if err != nil && !test.expectErr {
+				t.Fatal("unexpected error")
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
