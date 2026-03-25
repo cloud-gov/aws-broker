@@ -131,7 +131,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedResponseCode: http.StatusAccepted,
 		},
-		"invalid engine version": {
+		"invalid engine version for current engine": {
 			catalog: &catalog.Catalog{
 				RedisService: catalog.RedisService{
 					RedisPlans: []catalog.RedisPlan{
@@ -139,9 +139,91 @@ func TestModifyInstance(t *testing.T) {
 							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
-							Engine: "redis",
 							ApprovedEngineVersions: map[string][]string{
 								"redis": {"7.1"},
+							},
+						},
+					},
+				},
+			},
+			redisInstance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+				},
+				Engine: "redis",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"engine_version": "5.0"}`),
+			},
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		"invalid engine version for new engine from option": {
+			catalog: &catalog.Catalog{
+				RedisService: catalog.RedisService{
+					RedisPlans: []catalog.RedisPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "123",
+							},
+							ApprovedEngineVersions: map[string][]string{
+								"redis":  {"7.1"},
+								"valkey": {"8.2"},
+							},
+						},
+					},
+				},
+			},
+			redisInstance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+				},
+				Engine: "redis",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"engine": "valkey", "engine_version": "5.0"}`),
+			},
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		"invalid engine version for new engine from plan": {
+			catalog: &catalog.Catalog{
+				RedisService: catalog.RedisService{
+					RedisPlans: []catalog.RedisPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "123",
+							},
+							ApprovedEngineVersions: map[string][]string{
+								"redis": {"7.1"},
+							},
+						},
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "456",
+							},
+							Engine: "valkey",
+							ApprovedEngineVersions: map[string][]string{
+								"redis":  {"7.1"},
+								"valkey": {"8.2"},
 							},
 						},
 					},
@@ -162,8 +244,8 @@ func TestModifyInstance(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			updateDetails: domain.UpdateDetails{
-				PlanID:        "123",
-				RawParameters: json.RawMessage(`{"engine_version": "5.0"}`),
+				PlanID:        "456",
+				RawParameters: json.RawMessage(`{"engine_version": "7.1"}`),
 			},
 			expectedResponseCode: http.StatusBadRequest,
 		},

@@ -60,8 +60,11 @@ type RedisPlan struct {
 	ApprovedEngineVersions     map[string][]string `yaml:"approvedEngineVersions" json:"-"`
 }
 
-func (p RedisPlan) GetApprovedVersions() []string {
-	engineVersions, ok := p.ApprovedEngineVersions[p.Engine]
+func (p RedisPlan) GetApprovedVersions(engine string) []string {
+	if engine == "" {
+		engine = p.Engine
+	}
+	engineVersions, ok := p.ApprovedEngineVersions[engine]
 	if !ok {
 		return []string{}
 	}
@@ -70,8 +73,8 @@ func (p RedisPlan) GetApprovedVersions() []string {
 
 // CheckVersion verifies that a specific version chosen by the user for a new
 // redis instances is valid and supported in the chosen plan.
-func (p RedisPlan) CheckVersion(version string) bool {
-	engineVersions := p.GetApprovedVersions()
+func (p RedisPlan) CheckVersion(version string, engine string) bool {
+	engineVersions := p.GetApprovedVersions(engine)
 
 	// Return true if there are no valid major versions set in the plan; this
 	// lets the calls proceed and the AWS API will error out if an invalid

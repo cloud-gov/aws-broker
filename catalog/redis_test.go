@@ -80,14 +80,26 @@ func TestRedisCheckVersion(t *testing.T) {
 		t.Error("Could not fetch plan " + redisTestPlanID)
 	}
 
-	// Test that a valid version returns true.
-	validVersion := plan.CheckVersion("7.1")
+	// Test that a valid version for the current engine returns true.
+	validVersion := plan.CheckVersion("7.1", "")
 	if !validVersion {
 		t.Error("Valid version check failed.")
 	}
 
-	// Test that an invalid version returns false.
-	validVersion = plan.CheckVersion("8.2")
+	// Test that an invalid version for the current engine returns false.
+	validVersion = plan.CheckVersion("8.2", "")
+	if validVersion {
+		t.Error("Invalid version check failed.")
+	}
+
+	// Test that a valid version for a new engine returns true.
+	validVersion = plan.CheckVersion("8.2", "valkey")
+	if !validVersion {
+		t.Error("Valid version check failed.")
+	}
+
+	// Test that an invalid version for a new engine returns false.
+	validVersion = plan.CheckVersion("7.0", "valkey")
 	if validVersion {
 		t.Error("Invalid version check failed.")
 	}
