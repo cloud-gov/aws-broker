@@ -41,6 +41,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:             "4AM",
 				SnapshotRetentionLimit:     14,
 				ClearPassword:              "fake-password",
+				Engine:                     "valkey",
 			},
 
 			expectedParams: &elasticache.CreateReplicationGroupInput{
@@ -54,7 +55,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				CacheNodeType:               aws.String("node-type"),
 				CacheSubnetGroupName:        aws.String("db-group-1"),
 				SecurityGroupIds:            []string{"sec-group-1"},
-				Engine:                      aws.String("redis"),
+				Engine:                      aws.String("valkey"),
 				NumCacheClusters:            aws.Int32(int32(3)),
 				Port:                        aws.Int32(6379),
 				PreferredMaintenanceWindow:  aws.String("1AM"),
@@ -85,6 +86,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				SnapshotRetentionLimit:     14,
 				EngineVersion:              "7.0",
 				ClearPassword:              "fake-password",
+				Engine:                     "redis",
 			},
 			expectedParams: &elasticache.CreateReplicationGroupInput{
 				AtRestEncryptionEnabled:     aws.Bool(true),
@@ -151,6 +153,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:             "4AM",
 				SnapshotRetentionLimit:     14,
 				ClearPassword:              "fake-password",
+				Engine:                     "redis",
 			},
 			expectedParams: &elasticache.ModifyReplicationGroupInput{
 				ReplicationGroupDescription: aws.String("description"),
@@ -181,6 +184,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				SnapshotRetentionLimit:     14,
 				EngineVersion:              "7.0",
 				ClearPassword:              "fake-password",
+				Engine:                     "redis",
 			},
 			expectedParams: &elasticache.ModifyReplicationGroupInput{
 				ReplicationGroupDescription: aws.String("description"),
