@@ -110,7 +110,7 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.EngineVersion) {
 			return apiresponses.NewFailureResponse(
-				fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.EngineVersion, strings.Join(plan.ApprovedMajorVersions, ", ")),
+				fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.EngineVersion, strings.Join(plan.GetApprovedVersions(), ", ")),
 				http.StatusBadRequest,
 				"checking Redis plan",
 			)
@@ -211,6 +211,17 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 	newPlan, err := broker.catalog.RedisService.FetchPlan(details.PlanID)
 	if err != nil {
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch Elasticache plan")
+	}
+
+	if options.EngineVersion != "" {
+		// Check to make sure that the version specified is allowed by the plan.
+		if !newPlan.CheckVersion(options.EngineVersion) {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.EngineVersion, strings.Join(newPlan.GetApprovedVersions(), ", ")),
+				http.StatusBadRequest,
+				"checking Redis plan",
+			)
+		}
 	}
 
 	tags, err := broker.tagManager.GenerateTags(

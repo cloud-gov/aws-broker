@@ -46,31 +46,41 @@ func (s *RedisService) ToBrokerAPIService() domain.Service {
 // RedisPlan inherits from a plan and adds fields needed for AWS Redis.
 type RedisPlan struct {
 	domain.ServicePlan         `yaml:",inline" validate:"required"`
-	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required"`
-	Engine                     string            `yaml:"engine" json:"-"`
-	EngineVersion              string            `yaml:"engineVersion" json:"-"`
-	SubnetGroup                string            `yaml:"subnetGroup" json:"-" validate:"required"`
-	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
-	CacheNodeType              string            `yaml:"nodeType" json:"-" validate:"required"`
-	NumCacheClusters           int               `yaml:"numberCluster" json:"-" validate:"required"`
-	PreferredMaintenanceWindow string            `yaml:"preferredMaintenanceWindow" json:"-" validate:"required"`
-	SnapshotWindow             string            `yaml:"snapshotWindow" json:"-" validate:"required"`
-	SnapshotRetentionLimit     int               `yaml:"snapshotRetentionLimit" json:"-"`
-	AutomaticFailoverEnabled   bool              `yaml:"automaticFailoverEnabled" json:"-"`
-	ApprovedMajorVersions      []string          `yaml:"approvedMajorVersions" json:"-"`
+	Tags                       map[string]string   `yaml:"tags" json:"-" validate:"required"`
+	Engine                     string              `yaml:"engine" json:"-"`
+	EngineVersion              string              `yaml:"engineVersion" json:"-"`
+	SubnetGroup                string              `yaml:"subnetGroup" json:"-" validate:"required"`
+	SecurityGroup              string              `yaml:"securityGroup" json:"-" validate:"required"`
+	CacheNodeType              string              `yaml:"nodeType" json:"-" validate:"required"`
+	NumCacheClusters           int                 `yaml:"numberCluster" json:"-" validate:"required"`
+	PreferredMaintenanceWindow string              `yaml:"preferredMaintenanceWindow" json:"-" validate:"required"`
+	SnapshotWindow             string              `yaml:"snapshotWindow" json:"-" validate:"required"`
+	SnapshotRetentionLimit     int                 `yaml:"snapshotRetentionLimit" json:"-"`
+	AutomaticFailoverEnabled   bool                `yaml:"automaticFailoverEnabled" json:"-"`
+	ApprovedEngineVersions     map[string][]string `yaml:"approvedEngineVersions" json:"-"`
+}
+
+func (p RedisPlan) GetApprovedVersions() []string {
+	engineVersions, ok := p.ApprovedEngineVersions[p.Engine]
+	if !ok {
+		return []string{}
+	}
+	return engineVersions
 }
 
 // CheckVersion verifies that a specific version chosen by the user for a new
 // redis instances is valid and supported in the chosen plan.
 func (p RedisPlan) CheckVersion(version string) bool {
+	engineVersions := p.GetApprovedVersions()
+
 	// Return true if there are no valid major versions set in the plan; this
 	// lets the calls proceed and the AWS API will error out if an invalid
 	// version is provided.
-	if len(p.ApprovedMajorVersions) == 0 {
+	if len(engineVersions) == 0 {
 		return true
 	}
 
-	for _, approvedVersion := range p.ApprovedMajorVersions {
+	for _, approvedVersion := range engineVersions {
 		if version == approvedVersion {
 			return true
 		}

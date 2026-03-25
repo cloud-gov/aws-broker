@@ -106,7 +106,13 @@ redis:
       free: true
       securityGroup: sg-123456
       engine: redis
-      engineVersion: 5.0.3
+      engineVersion: "7.1"
+      approvedEngineVersions: &approved-elasticache-versions
+        redis:
+          - "7.1"
+          - "7.0"
+        valkey:
+          - "8.2"
       numberCluster: 5
       nodeType: cache.t3.micro
       parameterGroup: default.redis5.0
@@ -135,7 +141,8 @@ redis:
       free: true
       securityGroup: (( grab meta.redis.security_group ))
       engine: redis
-      engineVersion: 5.0.6
+      engineVersion: "7.1"
+      approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 5
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
