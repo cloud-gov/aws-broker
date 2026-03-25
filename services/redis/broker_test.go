@@ -1,10 +1,12 @@
 package redis
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -129,6 +131,42 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedResponseCode: http.StatusAccepted,
 		},
+		"invalid engine version": {
+			catalog: &catalog.Catalog{
+				RedisService: catalog.RedisService{
+					RedisPlans: []catalog.RedisPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "123",
+							},
+							Engine: "redis",
+							ApprovedEngineVersions: map[string][]string{
+								"redis": {"7.1"},
+							},
+						},
+					},
+				},
+			},
+			redisInstance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+				},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"engine_version": "5.0"}`),
+			},
+			expectedResponseCode: http.StatusBadRequest,
+		},
 	}
 
 	for name, test := range testCases {
@@ -153,7 +191,14 @@ func TestModifyInstance(t *testing.T) {
 
 			err = broker.ModifyInstance(test.redisInstance.Uuid, test.updateDetails)
 			if err != nil {
-				t.Fatal(err)
+				if apiErr, ok := err.(*apiresponses.FailureResponse); ok {
+					responseCode := apiErr.ValidatedStatusCode(nil)
+					if responseCode != test.expectedResponseCode {
+						t.Fatalf("response status code does not match, expected: %d, got %d", test.expectedResponseCode, responseCode)
+					}
+				} else {
+					t.Fatal(err)
+				}
 			}
 
 			updatedInstance := &RedisInstance{}
@@ -162,8 +207,10 @@ func TestModifyInstance(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := deep.Equal(updatedInstance, test.expectedDbInstance); diff != nil {
-				t.Error(diff)
+			if test.expectedDbInstance != nil {
+				if diff := deep.Equal(updatedInstance, test.expectedDbInstance); diff != nil {
+					t.Error(diff)
+				}
 			}
 		})
 	}
