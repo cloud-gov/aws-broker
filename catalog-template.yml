@@ -1553,7 +1553,7 @@ redis:
         displayName: "5 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engine: *defualt-elasticache-engine
+      engine: *default-elasticache-engine
       engineVersion: *default-elasticache-version
       approvedMajorVersions: *supported-elasticache-versions
       numberCluster: 5
@@ -1584,7 +1584,7 @@ redis:
         displayName: "3 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engine: *defualt-elasticache-engine
+      engine: *default-elasticache-engine
       engineVersion: *default-elasticache-version
       approvedMajorVersions: *supported-elasticache-versions
       numberCluster: 3
@@ -1615,7 +1615,7 @@ redis:
         displayName: "5 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engine: *defualt-elasticache-engine
+      engine: *default-elasticache-engine
       engineVersion: *default-elasticache-version
       approvedMajorVersions: *supported-elasticache-versions
       numberCluster: 5
