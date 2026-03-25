@@ -47,6 +47,7 @@ func (s *RedisService) ToBrokerAPIService() domain.Service {
 type RedisPlan struct {
 	domain.ServicePlan         `yaml:",inline" validate:"required"`
 	Tags                       map[string]string `yaml:"tags" json:"-" validate:"required"`
+	Engine                     string            `yaml:"engine" json:"-"`
 	EngineVersion              string            `yaml:"engineVersion" json:"-"`
 	SubnetGroup                string            `yaml:"subnetGroup" json:"-" validate:"required"`
 	SecurityGroup              string            `yaml:"securityGroup" json:"-" validate:"required"`
