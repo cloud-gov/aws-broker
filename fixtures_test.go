@@ -172,7 +172,19 @@ var modifyRedisEngineVersion = []byte(
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
-		"engine_version": "1.2.3"
+		"engine_version": "7.1"
+	}
+}`, redisServiceId, originalRedisPlanID))
+
+var modifyRedisEngineAndVersion = []byte(
+	fmt.Sprintf(`{
+	"service_id":"%s",
+	"plan_id":"%s",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
+		"engine": "valkey",
+		"engine_version": "8.2"
 	}
 }`, redisServiceId, originalRedisPlanID))
 

@@ -1005,8 +1005,56 @@ func TestModifyRedisEngineVersion(t *testing.T) {
 	// Reload the instance and check to see that the plan has been modified.
 	i = redis.RedisInstance{}
 	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
-	if i.EngineVersion != "1.2.3" {
-		t.Logf("The instance was not modified: %s != %s", i.EngineVersion, "1.2.3")
+	if i.EngineVersion != "7.1" {
+		t.Logf("The instance was not modified: %s != %s", i.EngineVersion, "7.1")
+		t.Error("The instance was not modified to have a new engine version")
+	}
+}
+
+func TestModifyRedisEngineAndVersion(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	// We need to create an instance first before we can try to modify it.
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRedisInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.PlanID != originalRedisPlanID {
+		t.Error("The instance should have the plan provided with the create request.")
+	}
+
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	resp := requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRedisEngineAndVersion))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 400 and it returned", resp.Code)
+	}
+
+	// Is it a valid JSON?
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	// Reload the instance and check to see that the plan has been modified.
+	i = redis.RedisInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Engine != "valkey" {
+		t.Logf("The instance was not modified: %s != %s", i.Engine, "valkey")
+		t.Error("The instance was not modified to have a new engine")
+	}
+	if i.EngineVersion != "8.2" {
+		t.Logf("The instance was not modified: %s != %s", i.EngineVersion, "8.2")
 		t.Error("The instance was not modified to have a new engine version")
 	}
 }
