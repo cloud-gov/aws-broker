@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"strconv"
@@ -10,6 +11,8 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/go-test/deep"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -21,8 +24,6 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
-	"github.com/go-test/deep"
-	"github.com/google/uuid"
 )
 
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
@@ -463,11 +464,19 @@ func TestCreateDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -542,6 +551,20 @@ func TestWaitForDbReady(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	client := mockRDSClient{
+		describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+			{
+				DBInstances: []rdsTypes.DBInstance{
+					{
+						DBInstanceStatus: aws.String("available"),
+					},
+				},
+			},
+		},
+	}
+	fmt.Println("TestWaitForDbReady TEST STARTED")
+	fmt.Println(&client)
+
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		dbAdapter             *dedicatedDBAdapter
@@ -556,17 +579,7 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-				},
+				&client,
 				&mockParameterGroupClient{},
 			),
 			dbInstance: &RDSInstance{
@@ -734,8 +747,8 @@ func TestCreateDBReadReplica(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 0,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{},
@@ -755,15 +768,11 @@ func TestCreateDBReadReplica(t *testing.T) {
 		"success on retry": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 1,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				brokerDB,
-				&mockRDSClient{
-					createDBInstanceReadReplicaErrs: []error{
-						&rdsTypes.InvalidDBInstanceStateFault{},
-					},
-				},
+				&mockRDSClient{},
 				&mockParameterGroupClient{},
 			),
 			dbInstance: &RDSInstance{
@@ -780,8 +789,8 @@ func TestCreateDBReadReplica(t *testing.T) {
 		"gives up after maximum retries": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 3,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -2360,7 +2369,8 @@ func TestDeleteDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
