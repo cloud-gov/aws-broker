@@ -151,7 +151,12 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 	i.SecGroup = plan.SecurityGroup
 
 	i.Description = plan.Description
-	i.Engine = plan.Engine
+
+	if options.Engine != "" {
+		i.Engine = options.Engine
+	} else {
+		i.Engine = plan.Engine
+	}
 
 	// Set the DB Version
 	if options.EngineVersion != "" {
