@@ -555,7 +555,7 @@ func TestValidateEngineAndVersion(t *testing.T) {
 			options:       RedisOptions{},
 			plan:          catalog.RedisPlan{},
 		},
-		"engine version for current engine not approved": {
+		"engine version is approved": {
 			redisInstance: &RedisInstance{
 				Engine: "redis",
 			},
@@ -565,6 +565,21 @@ func TestValidateEngineAndVersion(t *testing.T) {
 			plan: catalog.RedisPlan{
 				ApprovedEngineVersions: map[string][]string{
 					"redis": {"7.1"},
+				},
+			},
+			expectErr: true,
+		},
+		"engine version is not approved": {
+			redisInstance: &RedisInstance{
+				Engine: "valkey",
+			},
+			options: RedisOptions{
+				EngineVersion: "7.1",
+			},
+			plan: catalog.RedisPlan{
+				ApprovedEngineVersions: map[string][]string{
+					"redis":  {"7.1"},
+					"valkey": {"8.2"},
 				},
 			},
 			expectErr: true,
