@@ -35,7 +35,7 @@ else
   cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME"
 fi
 
-wait_for_service_bindable $APP_NAME $SERVICE_NAME
+wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
 cf push "$APP_NAME" --var rds-service="$SERVICE_NAME"
