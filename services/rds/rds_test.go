@@ -2,7 +2,7 @@ package rds
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"os"
 	"slices"
 	"strconv"
@@ -25,6 +25,22 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
+
+var brokerDB *gorm.DB
+
+func TestMain(m *testing.M) {
+	var err error
+
+	brokerDB, err = testDBInit()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	exitCode := m.Run()
+
+	os.Exit(exitCode)
+}
 
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
 	logger := lager.NewLogger("aws-rds-test")
@@ -212,11 +228,6 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 }
 
 func TestAsyncCreateDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
@@ -447,11 +458,6 @@ func TestAsyncCreateDb(t *testing.T) {
 }
 
 func TestCreateDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		dbAdapter              *dedicatedDBAdapter
@@ -546,25 +552,6 @@ func TestCreateDb(t *testing.T) {
 }
 
 func TestWaitForDbReady(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client := mockRDSClient{
-		describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-			{
-				DBInstances: []rdsTypes.DBInstance{
-					{
-						DBInstanceStatus: aws.String("available"),
-					},
-				},
-			},
-		},
-	}
-	fmt.Println("TestWaitForDbReady TEST STARTED")
-	fmt.Println(&client)
-
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		dbAdapter             *dedicatedDBAdapter
@@ -579,7 +566,17 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
-				&client,
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
 				&mockParameterGroupClient{},
 			),
 			dbInstance: &RDSInstance{
@@ -713,7 +710,7 @@ func TestWaitForDbReady(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err = test.dbAdapter.waitForDbReady(base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err := test.dbAdapter.waitForDbReady(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -733,11 +730,6 @@ func TestWaitForDbReady(t *testing.T) {
 }
 
 func TestCreateDBReadReplica(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance *RDSInstance
 		dbAdapter  *dedicatedDBAdapter
@@ -819,7 +811,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			_, err = test.dbAdapter.createDBReadReplica(test.dbInstance, test.plan)
+			_, err := test.dbAdapter.createDBReadReplica(test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -831,11 +823,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 }
 
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
@@ -995,7 +982,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance, test.plan)
+			err := test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -1013,11 +1000,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 }
 
 func TestAsyncModifyDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	modifyDbErr := errors.New("modify DB error")
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("operation failed"),
@@ -1438,11 +1420,6 @@ func TestAsyncModifyDb(t *testing.T) {
 }
 
 func TestModifyDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		dbAdapter              dbAdapter
@@ -1775,11 +1752,6 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 }
 
 func TestBindDBToApp(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbAdapter        dbAdapter
 		expectErr        bool
@@ -1900,7 +1872,7 @@ func TestBindDBToApp(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.rdsInstance).Error
+			err := brokerDB.Create(test.rdsInstance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1933,11 +1905,6 @@ func TestBindDBToApp(t *testing.T) {
 }
 
 func TestWaitForDbDeleted(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("operation failed"),
 	}
@@ -2086,7 +2053,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err = test.dbAdapter.waitForDbDeleted(base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err := test.dbAdapter.waitForDbDeleted(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -2106,11 +2073,6 @@ func TestWaitForDbDeleted(t *testing.T) {
 }
 
 func TestAsyncDeleteDB(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("not found"),
 	}
@@ -2317,7 +2279,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.dbInstance).Error
+			err := brokerDB.Create(test.dbInstance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2349,11 +2311,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 }
 
 func TestDeleteDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("operation failed"),
 	}
