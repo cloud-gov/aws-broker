@@ -80,7 +80,7 @@ func (i InstanceState) ToLastOperationState() domain.LastOperationState {
 }
 
 type Instance struct {
-	Uuid string `gorm:"primaryKey" sql:"type:varchar(255) PRIMARY KEY"`
+	Uuid string `gorm:"primaryKey" sql:"type:varchar(255) PRIMARY KEY" deep:"-"`
 
 	request.Request
 

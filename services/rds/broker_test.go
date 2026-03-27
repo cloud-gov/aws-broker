@@ -16,6 +16,7 @@ import (
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/go-test/deep"
+	"github.com/google/uuid"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -333,7 +334,7 @@ func TestModify(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "456",
@@ -342,7 +343,6 @@ func TestModify(t *testing.T) {
 			},
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -376,7 +376,7 @@ func TestModify(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -387,7 +387,6 @@ func TestModify(t *testing.T) {
 			},
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -430,7 +429,7 @@ func TestModify(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "456",
@@ -439,7 +438,6 @@ func TestModify(t *testing.T) {
 			},
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -488,7 +486,7 @@ func TestModify(t *testing.T) {
 			}
 
 			updatedInstance := &RDSInstance{}
-			err = broker.brokerDB.First(updatedInstance, test.dbInstance.Uuid).Error
+			err = broker.brokerDB.First(updatedInstance, "uuid = ?", test.dbInstance.Uuid).Error
 			if err != nil {
 				t.Fatal(err)
 			}
