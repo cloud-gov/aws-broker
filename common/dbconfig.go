@@ -73,7 +73,7 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			DSN: conn,
 		}), &gorm.Config{})
 	case "sqlite3":
-		DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+		DB, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	default:
 		errorString := "Cannot connect. Unsupported DB type: (" + dbConfig.DbType + ")"
 		log.Println(errorString)
