@@ -122,6 +122,17 @@ var modifyRDSInstanceEnableCloudwatchLogGroups = []byte(
 	"space_guid":"a-space"
 }`)
 
+var modifyRDSInstanceDbVersion = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"version": "16"
+	},
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
 // medium-psql plan
 var modifyRDSInstanceReq = []byte(
 	fmt.Sprintf(`{
