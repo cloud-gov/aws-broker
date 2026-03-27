@@ -11,6 +11,8 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/go-test/deep"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -22,8 +24,6 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
-	"github.com/go-test/deep"
-	"github.com/google/uuid"
 )
 
 var brokerDB *gorm.DB
@@ -227,11 +227,6 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 }
 
 func TestAsyncCreateDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
@@ -462,11 +457,6 @@ func TestAsyncCreateDb(t *testing.T) {
 }
 
 func TestCreateDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		dbAdapter              *dedicatedDBAdapter
@@ -479,11 +469,19 @@ func TestCreateDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -553,11 +551,6 @@ func TestCreateDb(t *testing.T) {
 }
 
 func TestWaitForDbReady(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance            *RDSInstance
 		dbAdapter             *dedicatedDBAdapter
@@ -716,7 +709,7 @@ func TestWaitForDbReady(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err = test.dbAdapter.waitForDbReady(base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err := test.dbAdapter.waitForDbReady(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -736,11 +729,6 @@ func TestWaitForDbReady(t *testing.T) {
 }
 
 func TestCreateDBReadReplica(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance *RDSInstance
 		dbAdapter  *dedicatedDBAdapter
@@ -750,8 +738,8 @@ func TestCreateDBReadReplica(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 0,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{},
@@ -771,15 +759,11 @@ func TestCreateDBReadReplica(t *testing.T) {
 		"success on retry": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 1,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				brokerDB,
-				&mockRDSClient{
-					createDBInstanceReadReplicaErrs: []error{
-						&rdsTypes.InvalidDBInstanceStateFault{},
-					},
-				},
+				&mockRDSClient{},
 				&mockParameterGroupClient{},
 			),
 			dbInstance: &RDSInstance{
@@ -796,8 +780,8 @@ func TestCreateDBReadReplica(t *testing.T) {
 		"gives up after maximum retries": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay:   1 * time.Millisecond,
-					PollAwsMaxRetries: 3,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{
@@ -826,7 +810,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			_, err = test.dbAdapter.createDBReadReplica(test.dbInstance, test.plan)
+			_, err := test.dbAdapter.createDBReadReplica(test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -838,11 +822,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 }
 
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance
 		dbAdapter     *dedicatedDBAdapter
@@ -1002,7 +981,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance, test.plan)
+			err := test.dbAdapter.waitAndCreateDBReadReplica(base.CreateOp, test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -1020,11 +999,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 }
 
 func TestAsyncModifyDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	modifyDbErr := errors.New("modify DB error")
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("operation failed"),
@@ -1497,11 +1471,6 @@ func TestAsyncModifyDb(t *testing.T) {
 }
 
 func TestModifyDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbInstance             *RDSInstance
 		dbAdapter              dbAdapter
@@ -1874,11 +1843,6 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 }
 
 func TestBindDBToApp(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		dbAdapter        dbAdapter
 		expectErr        bool
@@ -1999,7 +1963,7 @@ func TestBindDBToApp(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.rdsInstance).Error
+			err := brokerDB.Create(test.rdsInstance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2032,11 +1996,6 @@ func TestBindDBToApp(t *testing.T) {
 }
 
 func TestWaitForDbDeleted(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("operation failed"),
 	}
@@ -2185,7 +2144,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err = test.dbAdapter.waitForDbDeleted(base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err := test.dbAdapter.waitForDbDeleted(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
@@ -2205,11 +2164,6 @@ func TestWaitForDbDeleted(t *testing.T) {
 }
 
 func TestAsyncDeleteDB(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("not found"),
 	}
@@ -2416,7 +2370,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.dbInstance).Error
+			err := brokerDB.Create(test.dbInstance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2448,11 +2402,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 }
 
 func TestDeleteDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
 		Message: aws.String("operation failed"),
 	}
@@ -2468,7 +2417,8 @@ func TestDeleteDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{

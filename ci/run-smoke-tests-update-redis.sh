@@ -45,7 +45,7 @@ elif [ -n "$NEW_VERSION" ]; then
   update_service_args+=(-c '{"engine_version": "'"$NEW_VERSION"'"}')
 fi
 
-cf update-service "$SERVICE_NAME" "${update_service_args[@]}"
+cf update-service "${update_service_args[@]}"
 
 
 # Wait to make sure that the service instance has been successfully updated.

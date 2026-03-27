@@ -12,7 +12,9 @@ login() {
 wait_for_service_instance() {
   local service_name=$1
   local guid
-  guid=$(cf service --guid "$service_name")
+  # do not exit script if `cf service --guid "$service_name"` fails because
+  # instance does not exist
+  guid=$(cf service --guid "$service_name" || true)
   local status
   status=$(cf curl "/v2/service_instances/$guid" | jq -r '.entity.last_operation.state')
 

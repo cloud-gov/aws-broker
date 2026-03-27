@@ -234,11 +234,6 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 }
 
 func TestAsyncModifyRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		instance         *RedisInstance
 		adapter          *dedicatedRedisAdapter
@@ -495,11 +490,6 @@ func TestModifyRedis(t *testing.T) {
 }
 
 func TestAsyncDeleteRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}
@@ -785,7 +775,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.instance).Error
+			err := brokerDB.Create(test.instance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -817,11 +807,6 @@ func TestAsyncDeleteRedis(t *testing.T) {
 }
 
 func TestDeleteRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}
