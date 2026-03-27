@@ -2,6 +2,8 @@ package redis
 
 import (
 	"errors"
+	"log"
+	"os"
 	"slices"
 	"testing"
 	"time"
@@ -16,7 +18,24 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/go-test/deep"
+	"gorm.io/gorm"
 )
+
+var brokerDB *gorm.DB
+
+func TestMain(m *testing.M) {
+	var err error
+
+	brokerDB, err = testDBInit()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	exitCode := m.Run()
+
+	os.Exit(exitCode)
+}
 
 func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 	testCases := map[string]struct {
@@ -216,11 +235,6 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 }
 
 func TestAsyncModifyRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		instance         *RedisInstance
 		adapter          *dedicatedRedisAdapter
@@ -477,11 +491,6 @@ func TestModifyRedis(t *testing.T) {
 }
 
 func TestAsyncDeleteRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}
@@ -767,7 +776,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.instance).Error
+			err := brokerDB.Create(test.instance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -799,11 +808,6 @@ func TestAsyncDeleteRedis(t *testing.T) {
 }
 
 func TestDeleteRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}
