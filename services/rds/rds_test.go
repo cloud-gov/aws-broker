@@ -1,7 +1,6 @@
 package rds
 
 import (
-	"crypto/rand"
 	"errors"
 	"log"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-test/deep"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -1882,7 +1882,7 @@ func TestBindDBToApp(t *testing.T) {
 					},
 				},
 				Instance: base.Instance{
-					Uuid: rand.Text(),
+					Uuid: uuid.NewString(),
 				},
 			},
 			password: "fake-pw",
@@ -1922,7 +1922,7 @@ func TestBindDBToApp(t *testing.T) {
 			),
 			rdsInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: rand.Text(),
+					Uuid: uuid.NewString(),
 				},
 			},
 			expectedInstance: &RDSInstance{},
@@ -1948,7 +1948,7 @@ func TestBindDBToApp(t *testing.T) {
 			),
 			rdsInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: rand.Text(),
+					Uuid: uuid.NewString(),
 				},
 			},
 			password:         "fake-pw",
