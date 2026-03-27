@@ -1479,9 +1479,6 @@ redis:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis62"
-          - "redis70"
-          - "redis71"
           - "single node"
           - "non-prod"
         costs:
@@ -1492,13 +1489,14 @@ redis:
         displayName: "non-prod single Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 7.1
-      approvedMajorVersions:
-        - "7.1"
-        - "7.0"
-        - "6.2"
-        - "6.0"
-        - "5.0.6"
+      engine: &default-elasticache-engine redis
+      engineVersion: &default-elasticache-version 7.1
+      approvedEngineVersions: &approved-elasticache-versions
+        redis:
+          - "7.1"
+          - "7.0"
+        valkey:
+          - "8.2"
       numberCluster: 1
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1518,9 +1516,6 @@ redis:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis70"
-          - "redis71"
-          - "redis62"
           - "3node"
         costs:
           -
@@ -1530,13 +1525,9 @@ redis:
         displayName: "3 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 7.1
-      approvedMajorVersions:
-        - "7.1"
-        - "7.0"
-        - "6.2"
-        - "6.0"
-        - "5.0.6"
+      engine: *default-elasticache-engine
+      engineVersion: *default-elasticache-version
+      approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 3
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1556,9 +1547,6 @@ redis:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis71"
-          - "redis70"
-          - "redis62"
           - "5node"
         costs:
           -
@@ -1568,13 +1556,9 @@ redis:
         displayName: "5 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 7.1
-      approvedMajorVersions:
-        - "7.1"
-        - "7.0"
-        - "6.2"
-        - "6.0"
-        - "5.0.6"
+      engine: *default-elasticache-engine
+      engineVersion: *default-elasticache-version
+      approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 5
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1594,9 +1578,6 @@ redis:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis71"
-          - "redis70"
-          - "redis62"
           - "3node"
         costs:
           -
@@ -1606,13 +1587,9 @@ redis:
         displayName: "3 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 7.1
-      approvedMajorVersions:
-        - "7.1"
-        - "7.0"
-        - "6.2"
-        - "6.0"
-        - "5.0.6"
+      engine: *default-elasticache-engine
+      engineVersion: *default-elasticache-version
+      approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 3
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
@@ -1632,9 +1609,6 @@ redis:
         bullets:
           - "Elasticache"
           - "redis"
-          - "redis71"
-          - "redis70"
-          - "redis62"
           - "5node"
         costs:
           -
@@ -1644,13 +1618,9 @@ redis:
         displayName: "5 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 7.1
-      approvedMajorVersions:
-        - "7.1"
-        - "7.0"
-        - "6.2"
-        - "6.0"
-        - "5.0.6"
+      engine: *default-elasticache-engine
+      engineVersion: *default-elasticache-version
+      approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 5
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))

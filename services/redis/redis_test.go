@@ -2,6 +2,8 @@ package redis
 
 import (
 	"errors"
+	"log"
+	"os"
 	"slices"
 	"testing"
 	"time"
@@ -16,7 +18,24 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/go-test/deep"
+	"gorm.io/gorm"
 )
+
+var brokerDB *gorm.DB
+
+func TestMain(m *testing.M) {
+	var err error
+
+	brokerDB, err = testDBInit()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	exitCode := m.Run()
+
+	os.Exit(exitCode)
+}
 
 func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 	testCases := map[string]struct {
@@ -41,6 +60,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:             "4AM",
 				SnapshotRetentionLimit:     14,
 				ClearPassword:              "fake-password",
+				Engine:                     "valkey",
 			},
 
 			expectedParams: &elasticache.CreateReplicationGroupInput{
@@ -54,7 +74,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				CacheNodeType:               aws.String("node-type"),
 				CacheSubnetGroupName:        aws.String("db-group-1"),
 				SecurityGroupIds:            []string{"sec-group-1"},
-				Engine:                      aws.String("redis"),
+				Engine:                      aws.String("valkey"),
 				NumCacheClusters:            aws.Int32(int32(3)),
 				Port:                        aws.Int32(6379),
 				PreferredMaintenanceWindow:  aws.String("1AM"),
@@ -85,6 +105,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				SnapshotRetentionLimit:     14,
 				EngineVersion:              "7.0",
 				ClearPassword:              "fake-password",
+				Engine:                     "redis",
 			},
 			expectedParams: &elasticache.CreateReplicationGroupInput{
 				AtRestEncryptionEnabled:     aws.Bool(true),
@@ -151,6 +172,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:             "4AM",
 				SnapshotRetentionLimit:     14,
 				ClearPassword:              "fake-password",
+				Engine:                     "redis",
 			},
 			expectedParams: &elasticache.ModifyReplicationGroupInput{
 				ReplicationGroupDescription: aws.String("description"),
@@ -181,6 +203,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				SnapshotRetentionLimit:     14,
 				EngineVersion:              "7.0",
 				ClearPassword:              "fake-password",
+				Engine:                     "redis",
 			},
 			expectedParams: &elasticache.ModifyReplicationGroupInput{
 				ReplicationGroupDescription: aws.String("description"),
@@ -212,11 +235,6 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 }
 
 func TestAsyncModifyRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	testCases := map[string]struct {
 		instance         *RedisInstance
 		adapter          *dedicatedRedisAdapter
@@ -473,11 +491,6 @@ func TestModifyRedis(t *testing.T) {
 }
 
 func TestAsyncDeleteRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}
@@ -763,7 +776,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err = brokerDB.Create(test.instance).Error
+			err := brokerDB.Create(test.instance).Error
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -795,11 +808,6 @@ func TestAsyncDeleteRedis(t *testing.T) {
 }
 
 func TestDeleteRedis(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}

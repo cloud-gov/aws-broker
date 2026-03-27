@@ -25,6 +25,7 @@ type RedisInstance struct {
 
 	ClearPassword string `gorm:"-" deep:"-"`
 
+	Engine                     string `sql:"size(255)"`
 	EngineVersion              string `sql:"size(255)"`
 	ClusterID                  string `sql:"size(255)"`
 	CacheNodeType              string `sql:"size(255)"`
@@ -150,6 +151,12 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 	i.SecGroup = plan.SecurityGroup
 
 	i.Description = plan.Description
+
+	if options.Engine != "" {
+		i.Engine = options.Engine
+	} else {
+		i.Engine = plan.Engine
+	}
 
 	// Set the DB Version
 	if options.EngineVersion != "" {

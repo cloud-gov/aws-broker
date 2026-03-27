@@ -90,8 +90,7 @@ redis:
     documentationUrl:
     supportUrl:
   plans:
-    -
-      id: "475e36bf-387f-44c1-9b81-575fec2ee443"
+    - id: "475e36bf-387f-44c1-9b81-575fec2ee443"
       name: "test-aws-redis"
       description: "Redis Test"
       metadata:
@@ -106,7 +105,14 @@ redis:
         displayName: "Free redis"
       free: true
       securityGroup: sg-123456
-      engineVersion: 5.0.3
+      engine: redis
+      engineVersion: "7.0"
+      approvedEngineVersions: &approved-elasticache-versions
+        redis:
+          - "7.1"
+          - "7.0"
+        valkey:
+          - "8.2"
       numberCluster: 5
       nodeType: cache.t3.micro
       parameterGroup: default.redis5.0
@@ -118,8 +124,7 @@ redis:
         environment: "cf-env-dev"
         client: "the client"
         service: "aws-broker"
-    -
-      id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
+    - id: "5nd336bf-0k7f-44c1-9b81-575fp3k764r6"
       name: "BETA-redis-5node"
       description: "BETA AWS Elasticache Redis 5.0.6 Five node"
       metadata:
@@ -135,7 +140,9 @@ redis:
         displayName: "5 node redis5.0.6, persistent storage, 512Mb memory limit"
       free: true
       securityGroup: (( grab meta.redis.security_group ))
-      engineVersion: 5.0.6
+      engine: redis
+      engineVersion: "7.0"
+      approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 5
       nodeType: cache.t3.micro
       subnetGroup: (( grab meta.redis.subnet_group ))

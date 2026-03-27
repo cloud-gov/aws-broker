@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
@@ -20,6 +21,7 @@ import (
 )
 
 type RedisOptions struct {
+	Engine        string `json:"engine"`
 	EngineVersion string `json:"engine_version"`
 }
 
@@ -105,16 +107,6 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 	if planErr != nil {
 		return planErr
 	}
-	if options.EngineVersion != "" {
-		// Check to make sure that the version specified is allowed by the plan.
-		if !plan.CheckVersion(options.EngineVersion) {
-			return apiresponses.NewFailureResponse(
-				fmt.Errorf("%s is not a supported major version; major version must be one of: 7.1, 7.0, 6.2, 6.0, 5.0.6", options.EngineVersion),
-				http.StatusBadRequest,
-				"checking Redis plan",
-			)
-		}
-	}
 
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
@@ -151,6 +143,15 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 			fmt.Errorf("there was an error initializing the instance. Error: %s", err),
 			http.StatusInternalServerError,
 			"initializing instance",
+		)
+	}
+
+	err = validateEngineAndVersion(&newInstance, plan, options)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusBadRequest,
+			"checking Redis plan",
 		)
 	}
 
@@ -230,6 +231,15 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 	}
 
 	modifiedInstance := existingInstance.modify(options, &newPlan, tags)
+
+	err = validateEngineAndVersion(modifiedInstance, newPlan, options)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusBadRequest,
+			"checking Redis plan",
+		)
+	}
 
 	// Modify the database instance.
 	status, err := broker.adapter.modifyRedis(modifiedInstance)
@@ -402,4 +412,14 @@ func (broker *redisBroker) DeleteInstance(id string) error {
 	default:
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete Redis instance")
 	}
+}
+
+func validateEngineAndVersion(i *RedisInstance, plan catalog.RedisPlan, options RedisOptions) error {
+	if options.EngineVersion != "" {
+		// Check to make sure that the version specified is allowed for the engine
+		if !plan.CheckVersion(options.EngineVersion, i.Engine) {
+			return fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.EngineVersion, strings.Join(plan.GetApprovedVersions(i.Engine), ", "))
+		}
+	}
+	return nil
 }

@@ -48,6 +48,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				Engine:                     "redis",
 			},
 			tags: map[string]string{
 				"tag-1": "bar",
@@ -80,6 +81,7 @@ func TestInstanceInit(t *testing.T) {
 					"plan-tag-1": "foo",
 					"tag-1":      "bar",
 				},
+				Engine: "redis",
 			},
 		},
 		"sets engine version from plan": {
@@ -199,6 +201,67 @@ func TestInstanceInit(t *testing.T) {
 				},
 			},
 		},
+		"sets engine from options": {
+			uuid:      "uuid-1",
+			serviceID: "service-1",
+			orgID:     "org-1",
+			spaceID:   "space-1",
+			plan: catalog.RedisPlan{
+				Tags: map[string]string{
+					"plan-tag-1": "foo",
+				},
+				ServicePlan: domain.ServicePlan{
+					ID:          "plan-1",
+					Description: "test description",
+				},
+				SubnetGroup:                "subnet-1",
+				SecurityGroup:              "sec-group-1",
+				NumCacheClusters:           1,
+				CacheNodeType:              "type-1",
+				PreferredMaintenanceWindow: "12 AM",
+				SnapshotWindow:             "3 AM",
+				SnapshotRetentionLimit:     14,
+				AutomaticFailoverEnabled:   true,
+				EngineVersion:              "version-1",
+			},
+			tags: map[string]string{
+				"tag-1": "bar",
+			},
+			options: RedisOptions{
+				Engine: "valkey",
+			},
+			settings: config.Settings{
+				EncryptionKey:     helpers.RandStr(16),
+				DbShorthandPrefix: "prefix",
+			},
+			expectedInstance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+					},
+				},
+				Description:                "test description",
+				DbSubnetGroup:              "subnet-1",
+				SecGroup:                   "sec-group-1",
+				NumCacheClusters:           1,
+				CacheNodeType:              "type-1",
+				PreferredMaintenanceWindow: "12 AM",
+				SnapshotWindow:             "3 AM",
+				SnapshotRetentionLimit:     14,
+				AutomaticFailoverEnabled:   true,
+				ClusterID:                  "prefix-uuid-1",
+				Engine:                     "valkey",
+				EngineVersion:              "version-1",
+				Tags: map[string]string{
+					"plan-tag-1": "foo",
+					"tag-1":      "bar",
+				},
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -234,7 +297,9 @@ func TestInstanceModify(t *testing.T) {
 		expectUpdates    bool
 	}{
 		"sets plan properties": {
-			existingInstance: &RedisInstance{},
+			existingInstance: &RedisInstance{
+				Engine: "redis",
+			},
 			newPlan: catalog.RedisPlan{
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
@@ -251,6 +316,7 @@ func TestInstanceModify(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				Engine:                     "valkey",
 			},
 			expectedInstance: &RedisInstance{
 				Instance: base.Instance{
@@ -270,13 +336,12 @@ func TestInstanceModify(t *testing.T) {
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
 				},
+				Engine: "valkey",
 			},
 			expectUpdates: true,
 		},
 		"sets engine version from plan": {
-			existingInstance: &RedisInstance{
-				EngineVersion: "version-1",
-			},
+			existingInstance: &RedisInstance{},
 			newPlan: catalog.RedisPlan{
 				EngineVersion: "version-2",
 			},
@@ -297,6 +362,21 @@ func TestInstanceModify(t *testing.T) {
 			},
 			expectedInstance: &RedisInstance{
 				EngineVersion: "version-3",
+			},
+			expectUpdates: true,
+		},
+		"sets engine from options": {
+			existingInstance: &RedisInstance{
+				Engine: "redis",
+			},
+			newPlan: catalog.RedisPlan{
+				Engine: "redis",
+			},
+			options: RedisOptions{
+				Engine: "valkey",
+			},
+			expectedInstance: &RedisInstance{
+				Engine: "valkey",
 			},
 			expectUpdates: true,
 		},
@@ -441,6 +521,18 @@ func TestSetInstanceParameters(t *testing.T) {
 			expectedInstance: &RedisInstance{
 				NumCacheClusters: 5,
 				NewReplicaCount:  4,
+			},
+		},
+		"update engine": {
+			instance: &RedisInstance{
+				Engine: "redis",
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				Engine: "valkey",
+			},
+			expectedInstance: &RedisInstance{
+				Engine: "valkey",
 			},
 		},
 	}
