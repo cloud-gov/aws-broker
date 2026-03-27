@@ -1633,7 +1633,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
-				DbVersion:             "8.0",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
@@ -1656,7 +1655,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllowMajorVersionUpgrade: aws.Bool(false),
 				BackupRetentionPeriod:    aws.Int32(14),
 				MasterUserPassword:       aws.String("fake-pw"),
-				EngineVersion:            aws.String("8.0"),
 			},
 		},
 		"update storage type": {
@@ -1667,7 +1665,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
-				DbVersion:             "8.0",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
@@ -1690,7 +1687,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllowMajorVersionUpgrade: aws.Bool(false),
 				BackupRetentionPeriod:    aws.Int32(14),
 				StorageType:              aws.String("gp3"),
-				EngineVersion:            aws.String("8.0"),
 			},
 		},
 		"update engine version": {
