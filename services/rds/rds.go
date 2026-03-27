@@ -163,16 +163,12 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		},
 	}
 
-	fmt.Println(fmt.Sprintf("prepareCreateDbInput, instance version: %s", i.DbVersion))
-
 	if i.DbVersion != "" {
 		params.EngineVersion = aws.String(i.DbVersion)
 	}
 	if i.LicenseModel != "" {
 		params.LicenseModel = aws.String(i.LicenseModel)
 	}
-
-	fmt.Println(fmt.Sprintf("prepareCreateDbInput, params version: %s", *params.EngineVersion))
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
@@ -183,8 +179,6 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	if i.ParameterGroupName != "" {
 		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
 	}
-
-	fmt.Println(fmt.Sprintf("prepareCreateDbInput, params version 2: %s", *params.EngineVersion))
 
 	return params, nil
 }
