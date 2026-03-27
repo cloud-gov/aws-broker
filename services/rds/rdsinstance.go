@@ -6,7 +6,6 @@ import (
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/lib/pq"
-	"github.com/rs/zerolog/log"
 
 	"errors"
 
@@ -241,15 +240,15 @@ func (i *RDSInstance) init(
 func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
 	// Set the DB Version
 	// Currently only supported for MySQL and PostgreSQL instances.
-	log.Info(fmt.Sprintf("plan version: %s", plan.DbVersion))
-	log.Info(fmt.Sprintf("option version: %s", options.Version))
+	fmt.Println(fmt.Sprintf("plan version: %s", plan.DbVersion))
+	fmt.Println(fmt.Sprintf("option version: %s", options.Version))
 	if (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != "" {
 		i.DbVersion = options.Version
 	} else {
 		// Default to the version provided by the plan chosen in catalog.
 		i.DbVersion = plan.DbVersion
 	}
-	log.Info(fmt.Sprintf("instance version: %s", i.DbVersion))
+	fmt.Println(fmt.Sprintf("instance version: %s", i.DbVersion))
 }
 
 func (i *RDSInstance) setTags(

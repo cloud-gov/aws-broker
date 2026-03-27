@@ -8,7 +8,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/rs/zerolog/log"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -164,7 +163,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		},
 	}
 
-	log.Info(fmt.Sprintf("prepareCreateDbInput, instance version: %s", i.DbVersion))
+	fmt.Println(fmt.Sprintf("prepareCreateDbInput, instance version: %s", i.DbVersion))
 
 	if i.DbVersion != "" {
 		params.EngineVersion = aws.String(i.DbVersion)
@@ -173,7 +172,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		params.LicenseModel = aws.String(i.LicenseModel)
 	}
 
-	log.Info(fmt.Sprintf("prepareCreateDbInput, params version: %s", *params.EngineVersion))
+	fmt.Println(fmt.Sprintf("prepareCreateDbInput, params version: %s", *params.EngineVersion))
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
@@ -185,7 +184,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
 	}
 
-	log.Info(fmt.Sprintf("prepareCreateDbInput, params version 2: %s", *params.EngineVersion))
+	fmt.Println(fmt.Sprintf("prepareCreateDbInput, params version 2: %s", *params.EngineVersion))
 
 	return params, nil
 }
