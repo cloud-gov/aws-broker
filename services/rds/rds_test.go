@@ -1535,6 +1535,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
+				DbVersion:             "8.0",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
@@ -1559,6 +1560,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllowMajorVersionUpgrade: aws.Bool(false),
 				BackupRetentionPeriod:    aws.Int32(14),
 				DBParameterGroupName:     aws.String("foobar"),
+				EngineVersion:            aws.String("8.0"),
 			},
 		},
 		"expect error": {
@@ -1594,6 +1596,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
+				DbVersion:             "8.0",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
@@ -1616,6 +1619,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllowMajorVersionUpgrade: aws.Bool(false),
 				BackupRetentionPeriod:    aws.Int32(14),
 				MasterUserPassword:       aws.String("fake-pw"),
+				EngineVersion:            aws.String("8.0"),
 			},
 		},
 		"update storage type": {
@@ -1626,6 +1630,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
+				DbVersion:             "8.0",
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
@@ -1648,6 +1653,41 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				AllowMajorVersionUpgrade: aws.Bool(false),
 				BackupRetentionPeriod:    aws.Int32(14),
 				StorageType:              aws.String("gp3"),
+				EngineVersion:            aws.String("8.0"),
+			},
+		},
+		"update engine version": {
+			dbInstance: &RDSInstance{
+				dbUtils:               &RDSDatabaseUtils{},
+				DbType:                "mysql",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+				DbVersion:             "9.0",
+			},
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+				EngineVersion:            aws.String("9.0"),
 			},
 		},
 	}
