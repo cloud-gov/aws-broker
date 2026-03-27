@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"log"
 	"os"
 	"slices"
 	"strconv"
@@ -24,6 +25,21 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 )
+
+var brokerDB *gorm.DB
+
+func TestMain(m *testing.M) {
+	var err error
+
+	brokerDB, err = testDBInit()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	exitCode := m.Run()
+
+	os.Exit(exitCode)
+}
 
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
 	logger := lager.NewLogger("aws-rds-test")
@@ -1397,6 +1413,58 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
+		},
+		"success without read replica and updating version": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				brokerDB,
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:  "db-1",
+				dbUtils:   &RDSDatabaseUtils{},
+				DbVersion: "9.0",
+			},
+			expectedState: base.InstanceReady,
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:  "db-1",
+				dbUtils:   &RDSDatabaseUtils{},
+				DbVersion: "9.0",
+			},
 		},
 	}
 
