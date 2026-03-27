@@ -87,6 +87,8 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	// needed to create an RDS read replica
 	modifiedInstance.SecGroup = newPlan.SecurityGroup
 
+	modifiedInstance.setEngineVersion(*newPlan, options)
+
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
 		// Check that we are not decreasing the size of the instance.
@@ -188,14 +190,7 @@ func (i *RDSInstance) init(
 	// Load AWS values
 	i.DbType = plan.DbType
 
-	// Set the DB Version
-	// Currently only supported for MySQL and PostgreSQL instances.
-	if (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != "" {
-		i.DbVersion = options.Version
-	} else {
-		// Default to the version provided by the plan chosen in catalog.
-		i.DbVersion = plan.DbVersion
-	}
+	i.setEngineVersion(*plan, options)
 
 	if options.BackupRetentionPeriod != nil {
 		i.BackupRetentionPeriod = *options.BackupRetentionPeriod
@@ -239,6 +234,17 @@ func (i *RDSInstance) init(
 	}
 
 	return nil
+}
+
+func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
+	// Set the DB Version
+	// Currently only supported for MySQL and PostgreSQL instances.
+	if (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != "" {
+		i.DbVersion = options.Version
+	} else {
+		// Default to the version provided by the plan chosen in catalog.
+		i.DbVersion = plan.DbVersion
+	}
 }
 
 func (i *RDSInstance) setTags(

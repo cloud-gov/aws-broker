@@ -165,8 +165,6 @@ rds:
     - "RDS"
     - "postgresql"
     - "mysql"
-    - "oracle-se2"
-    - "sqlserver-se"
   metadata:
     displayName: RDS Database Broker
     imageUrl:
@@ -191,11 +189,11 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
+      approvedMajorVersions: &rds-postgres-approved-major-versions
         - "14"
         - "15"
+        - "16"
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -224,12 +222,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
+      approvedMajorVersions: *rds-postgres-approved-major-versions
       dbType: postgres
+      dbVersion: "16"
       plan_updateable: true
       redundant: false
       encrypted: true
@@ -257,12 +252,9 @@ rds:
       adapter: dedicated
       instanceClass: db.m3.medium
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "12"
-        - "13"
-        - "14"
-        - "15"
+      approvedMajorVersions: *rds-postgres-approved-major-versions
       dbType: postgres
+      dbVersion: "16"
       redundant: true
       encrypted: true
       storage_type: gp3
@@ -289,9 +281,10 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       dbType: mysql
+      dbVersion: "8.4"
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "8.0"
+      approvedMajorVersions: &rds-mysql-approved-major-versions
+        - "8.4"
       plan_updateable: true
       securityGroup: sg-123456
       storage_type: gp3
@@ -317,38 +310,13 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
+      dbVersion: "8.4"
       allocatedStorage: 20
-      approvedMajorVersions:
-        - "8.0"
+      approvedMajorVersions: *rds-mysql-approved-major-versions
       plan_updateable: true
       securityGroup: sg-123456
       storage_type: gp3
       backup_retention_period: 14
-      subnetGroup: subnet-group
-      tags:
-        environment: "cf-env"
-        client: "the client"
-        service: "aws-broker"
-    - id: "332e0168-6969-4bd7-b07f-29f08c4bf78f"
-      name: "medium-oracle-se2"
-      description: "Dedicated Medium RDS Oracle Standard Edition 2 DB Instance"
-      metadata:
-        bullets:
-          - "Dedicated Redundant RDS Instance"
-          - "Oracle DB instance"
-          - "Oracle Standard Edition 2"
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
-        displayName: "Dedicated Medium Oracle SE2"
-      free: false
-      backup_retention_period: 14
-      adapter: dedicated
-      instanceClass: db.t3.medium
-      dbType: oracle-se2
-      licenseModel: license-included
-      securityGroup: sg-123456
       subnetGroup: subnet-group
       tags:
         environment: "cf-env"

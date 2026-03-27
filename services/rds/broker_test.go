@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"encoding/json"
 	"net/http"
 	"reflect"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/go-test/deep"
+	"github.com/google/uuid"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -332,7 +334,7 @@ func TestModify(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "456",
@@ -341,7 +343,6 @@ func TestModify(t *testing.T) {
 			},
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -356,6 +357,53 @@ func TestModify(t *testing.T) {
 			},
 			updateDetails: domain.UpdateDetails{
 				PlanID: "123",
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+		"success with version update": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					RDSPlans: []catalog.RDSPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID:            "123",
+								PlanUpdatable: aws.Bool(true),
+							},
+							DbType: "mysql",
+						},
+					},
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+				},
+				DbType:    "mysql",
+				DbVersion: "8.0",
+			},
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceInProgress,
+				},
+				DbType:    "mysql",
+				DbVersion: "9.0",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"version": "9.0"}`),
 			},
 			expectedResponseCode: http.StatusAccepted,
 		},
@@ -381,7 +429,7 @@ func TestModify(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "456",
@@ -390,7 +438,6 @@ func TestModify(t *testing.T) {
 			},
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -439,7 +486,7 @@ func TestModify(t *testing.T) {
 			}
 
 			updatedInstance := &RDSInstance{}
-			err = broker.brokerDB.First(updatedInstance, test.dbInstance.Uuid).Error
+			err = broker.brokerDB.First(updatedInstance, "uuid = ?", test.dbInstance.Uuid).Error
 			if err != nil {
 				t.Fatal(err)
 			}

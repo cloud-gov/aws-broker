@@ -745,6 +745,56 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 	}
 }
 
+func TestModifyRDSDbVersion(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	// We need to create an instance first before we can try to modify it.
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSPGWithVersionInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	// Check to make sure the instance has the original plan set on it.
+	if i.DbVersion != "15" {
+		t.Error("The instance has the wrong database version.")
+	}
+
+	// Update the engine version
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	resp := requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceDbVersion))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
+		t.Error(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+	}
+
+	// Check to make sure storage size actually increased
+	// Is it a valid JSON?
+	validJSON(res.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+
+	// Is it in the database and does it have correct storage?
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Uuid == "0" {
+		t.Error("The instance should be saved in the DB")
+	}
+
+	if i.DbVersion != "16" {
+		t.Error("The instance database version was not updated")
+	}
+}
+
 func TestRDSLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/last_operation?service_id=%s&plan_id=%s", instanceUUID, rdsServiceId, originalRDSPlanID)

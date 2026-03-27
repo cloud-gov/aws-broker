@@ -162,6 +162,7 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 			i.SecGroup,
 		},
 	}
+
 	if i.DbVersion != "" {
 		params.EngineVersion = aws.String(i.DbVersion)
 	}
@@ -203,6 +204,10 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan *
 		DBInstanceIdentifier:     &database,
 		AllowMajorVersionUpgrade: aws.Bool(false),
 		BackupRetentionPeriod:    backupRetentionPeriod,
+	}
+
+	if i.DbVersion != "" {
+		params.EngineVersion = aws.String(i.DbVersion)
 	}
 
 	if i.StorageType != "" {
