@@ -193,6 +193,7 @@ rds:
         - "14"
         - "15"
         - "16"
+      dbVersion: "16"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -223,6 +224,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions: *rds-postgres-approved-major-versions
       dbType: postgres
+      dbVersion: "16"
       plan_updateable: true
       redundant: false
       encrypted: true
@@ -252,6 +254,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions: *rds-postgres-approved-major-versions
       dbType: postgres
+      dbVersion: "16"
       redundant: true
       encrypted: true
       storage_type: gp3
@@ -278,6 +281,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       dbType: mysql
+      dbVersion: "8.4"
       allocatedStorage: 20
       approvedMajorVersions: &rds-mysql-approved-major-versions
         - "8.4"
@@ -306,6 +310,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
+      dbVersion: "8.4"
       allocatedStorage: 20
       approvedMajorVersions: *rds-mysql-approved-major-versions
       plan_updateable: true
