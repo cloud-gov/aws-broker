@@ -204,7 +204,7 @@ func TestModifyInstance(t *testing.T) {
 		catalog              *catalog.Catalog
 		modifyRequest        request.Request
 		updateDetails        domain.UpdateDetails
-		expectedDbInstance   *RedisInstance
+		expectedInstance     *RedisInstance
 	}{
 		"success": {
 			catalog: &catalog.Catalog{
@@ -232,7 +232,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 				},
 			},
-			expectedDbInstance: &RedisInstance{
+			expectedInstance: &RedisInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: "service-1",
@@ -491,8 +491,9 @@ func TestModifyInstance(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if test.expectedDbInstance != nil {
-				if diff := deep.Equal(updatedInstance, test.expectedDbInstance); diff != nil {
+			if test.expectedInstance != nil {
+				test.expectedInstance.Uuid = test.redisInstance.Uuid
+				if diff := deep.Equal(updatedInstance, test.expectedInstance); diff != nil {
 					t.Error(diff)
 				}
 			}

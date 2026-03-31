@@ -491,6 +491,7 @@ func TestModify(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			test.expectedDbInstance.Uuid = test.dbInstance.Uuid
 			if diff := deep.Equal(updatedInstance, test.expectedDbInstance); diff != nil {
 				t.Error(diff)
 			}
