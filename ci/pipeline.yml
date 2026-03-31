@@ -445,7 +445,7 @@ jobs:
                 DB_VERSION: 15
 
             - task: smoke-tests-postgres-update-storage
-              file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((development-broker-name))
@@ -456,6 +456,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
+                NEW_STORAGE: 25
 
             - task: smoke-tests-mysql
               file: aws-broker-app/ci/run-smoke-tests.yml
@@ -499,7 +500,7 @@ jobs:
                 DB_VERSION: "8.4"
 
             - task: smoke-tests-mysql-update-storage
-              file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((development-broker-name))
@@ -510,6 +511,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
+                NEW_STORAGE: 25
 
             - task: smoke-tests-postgres-rotate-creds
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -563,6 +565,21 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+
+            - task: smoke-tests-postgres-update-version
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: micro-psql
+                DB_TYPE: postgres
+                OLD_VERSION: 14
+                NEW_VERSION:: 16
     on_failure:
       put: slack
       params:
