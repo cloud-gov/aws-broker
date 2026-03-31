@@ -871,7 +871,7 @@ jobs:
                 DB_TYPE: postgres
 
             - task: smoke-tests-postgres-update-storage
-              file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((staging-broker-name))
@@ -926,7 +926,7 @@ jobs:
                 DB_TYPE: mysql
 
             - task: smoke-tests-mysql-update-storage
-              file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((staging-broker-name))
@@ -1449,7 +1449,7 @@ jobs:
                 DB_TYPE: postgres
 
             - task: smoke-tests-postgres-update-storage
-              file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((prod-broker-name))
@@ -1503,7 +1503,7 @@ jobs:
                 DB_TYPE: mysql
 
             - task: smoke-tests-mysql-update-storage
-              file: aws-broker-app/ci/run-smoke-tests-update-storage.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((prod-broker-name))
