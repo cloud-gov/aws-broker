@@ -53,7 +53,7 @@ if [ -n "$NEW_VERSION" ]; then
 fi
 
 if [ -n "$NEW_STORAGE" ]; then
-  update_service_args+=(-c "{\"version\": $NEW_STORAGE}")
+  update_service_args+=(-c "{\"storage\": $NEW_STORAGE}")
 fi
 
 cf update-service "${update_service_args[@]}"
