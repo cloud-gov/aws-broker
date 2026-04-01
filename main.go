@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,7 @@ import (
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
-func run(out io.Writer) error {
+func run(ctx context.Context, out io.Writer) error {
 	var settings config.Settings
 
 	// Load settings from environment
@@ -38,6 +39,17 @@ func run(out io.Writer) error {
 	db, err := db.InternalDBInit(settings.DbConfig)
 	if err != nil {
 		return fmt.Errorf("error initializing database: %s", err)
+	}
+
+	logger.Debug("run: initializing River workers and client")
+	riverc, err := jobs.NewClient(db, logger)
+	if err != nil {
+		return fmt.Errorf("error creating river client: %w", err)
+	}
+
+	logger.Debug("run: starting River server")
+	if err = riverc.Start(ctx); err != nil {
+		return fmt.Errorf("error starting river client: %w", err)
 	}
 
 	asyncJobManager := jobs.NewAsyncJobManager()
@@ -84,7 +96,8 @@ func run(out io.Writer) error {
 }
 
 func main() {
-	err := run(os.Stdout)
+	ctx := context.Background()
+	err := run(ctx, os.Stdout)
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
