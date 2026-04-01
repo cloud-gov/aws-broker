@@ -881,8 +881,8 @@ jobs:
                 CF_ORGANIZATION: ((staging-tests-cf-organization))
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
-                NEW_SERVICE_PLAN: medium-psql
                 DB_TYPE: postgres
+                NEW_STORAGE: 25
 
             - task: smoke-tests-postgres-version
               file: aws-broker-app/ci/run-smoke-tests-db-version.yml
@@ -937,6 +937,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
+                NEW_STORAGE: 25
 
             - task: smoke-tests-mysql-version
               file: aws-broker-app/ci/run-smoke-tests-db-version.yml
@@ -1475,6 +1476,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
+                NEW_STORAGE: 25
 
             - task: smoke-tests-postgres-version
               file: aws-broker-app/ci/run-smoke-tests-db-version.yml
@@ -1529,6 +1531,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
+                NEW_STORAGE: 25
 
             - task: smoke-tests-mysql-version
               file: aws-broker-app/ci/run-smoke-tests-db-version.yml
