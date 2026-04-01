@@ -743,6 +743,78 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectUpdates: true,
 		},
+		"update MySQL database version from options": {
+			options: Options{
+				Version: "9.0",
+			},
+			existingInstance: &RDSInstance{
+				DbType:    "mysql",
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:    "mysql",
+				DbVersion: "9.0",
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectedTags:  map[string]string{},
+			expectUpdates: true,
+		},
+		"update PostgreSQL database version from options": {
+			options: Options{
+				Version: "9.0",
+			},
+			existingInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "9.0",
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectedTags:  map[string]string{},
+			expectUpdates: true,
+		},
+		"update PostgreSQL database version from plan": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "9.0",
+			},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan: &catalog.RDSPlan{
+				DbVersion: "9.0",
+			},
+			settings:      &config.Settings{},
+			expectedTags:  map[string]string{},
+			expectUpdates: true,
+		},
+		"update MySQL database version from plan": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				DbType:    "mysql",
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:    "mysql",
+				DbVersion: "9.0",
+			},
+			currentPlan: &catalog.RDSPlan{},
+			newPlan: &catalog.RDSPlan{
+				DbVersion: "9.0",
+			},
+			settings:      &config.Settings{},
+			expectedTags:  map[string]string{},
+			expectUpdates: true,
+		},
 	}
 
 	for name, test := range testCases {

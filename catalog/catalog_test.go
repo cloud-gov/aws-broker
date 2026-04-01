@@ -11,7 +11,7 @@ var rdsPGValidVersion = "15"
 var rdsPGInvalidVersion = "9.6"
 
 var rdsMySQLTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c7"
-var rdsMySQLValidVersion = "8.0"
+var rdsMySQLValidVersion = "8.4"
 var rdsMySQLInvalidVersion = "5.6"
 
 // Helper function to call os.Getwd with error checking

@@ -29,7 +29,6 @@ func TestMain(m *testing.M) {
 	brokerDB, err = testDBInit()
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 
 	exitCode := m.Run()

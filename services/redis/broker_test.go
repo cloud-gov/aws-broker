@@ -16,6 +16,7 @@ import (
 	"github.com/cloud-gov/aws-broker/mocks"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-test/deep"
+	"github.com/google/uuid"
 )
 
 func TestCreateInstance(t *testing.T) {
@@ -203,7 +204,7 @@ func TestModifyInstance(t *testing.T) {
 		catalog              *catalog.Catalog
 		modifyRequest        request.Request
 		updateDetails        domain.UpdateDetails
-		expectedDbInstance   *RedisInstance
+		expectedInstance     *RedisInstance
 	}{
 		"success": {
 			catalog: &catalog.Catalog{
@@ -224,16 +225,15 @@ func TestModifyInstance(t *testing.T) {
 			},
 			redisInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "456",
 					},
 				},
 			},
-			expectedDbInstance: &RedisInstance{
+			expectedInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -268,7 +268,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			redisInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -305,7 +305,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			redisInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -351,7 +351,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			redisInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -387,7 +387,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			redisInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -433,7 +433,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			redisInstance: &RedisInstance{
 				Instance: base.Instance{
-					Uuid: "uuid-1",
+					Uuid: uuid.NewString(),
 					Request: request.Request{
 						ServiceID: "service-1",
 						PlanID:    "123",
@@ -486,13 +486,14 @@ func TestModifyInstance(t *testing.T) {
 			}
 
 			updatedInstance := &RedisInstance{}
-			err = broker.brokerDB.First(updatedInstance, test.redisInstance.Uuid).Error
+			err = broker.brokerDB.First(updatedInstance, "uuid = ?", test.redisInstance.Uuid).Error
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if test.expectedDbInstance != nil {
-				if diff := deep.Equal(updatedInstance, test.expectedDbInstance); diff != nil {
+			if test.expectedInstance != nil {
+				test.expectedInstance.Uuid = test.redisInstance.Uuid
+				if diff := deep.Equal(updatedInstance, test.expectedInstance); diff != nil {
 					t.Error(diff)
 				}
 			}
