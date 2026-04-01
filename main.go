@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/signal"
 
 	"code.cloudfoundry.org/brokerapi/v13"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -20,6 +21,9 @@ import (
 )
 
 func run(ctx context.Context, out io.Writer) error {
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	defer cancel()
+
 	var settings config.Settings
 
 	// Load settings from environment
