@@ -1007,6 +1007,33 @@ jobs:
                 DB_TYPE: postgres
                 OLD_VERSION: 14
                 NEW_VERSION: 16
+
+            - task: smoke-tests-postgres-replica
+              file: aws-broker-app/ci/run-smoke-tests.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_PLAN: micro-psql-replica
+                DB_TYPE: postgres
+
+            - task: smoke-tests-postgresql-update-replica
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_PLAN: micro-psql
+                NEW_SERVICE_PLAN: micro-psql-replica
+                DB_TYPE: postgres
     on_failure:
       put: slack
       params:
@@ -1700,6 +1727,33 @@ jobs:
                 DB_TYPE: postgres
                 OLD_VERSION: 14
                 NEW_VERSION: 16
+
+            - task: smoke-tests-postgres-replica
+              file: aws-broker-app/ci/run-smoke-tests.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_PLAN: micro-psql-replica
+                DB_TYPE: postgres
+
+            - task: smoke-tests-postgresql-update-replica
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_PLAN: micro-psql
+                NEW_SERVICE_PLAN: micro-psql-replica
+                DB_TYPE: postgres
 
     on_failure:
       put: slack
