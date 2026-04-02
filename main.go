@@ -10,7 +10,9 @@ import (
 	"code.cloudfoundry.org/brokerapi/v13"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/services/rds"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/riverqueue/river"
 
 	"log/slog"
 	"os"
@@ -46,7 +48,10 @@ func run(ctx context.Context, out io.Writer) error {
 	}
 
 	logger.Debug("run: initializing River workers and client")
-	riverClient, err := jobs.NewClient(db, logger)
+	workers := river.NewWorkers()
+	river.AddWorker(workers, &rds.CreateWorker{})
+
+	riverClient, err := jobs.NewClient(db, logger, workers)
 	if err != nil {
 		return fmt.Errorf("error creating river client: %w", err)
 	}

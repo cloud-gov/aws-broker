@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
 	logger := lager.NewLogger("aws-rds-test")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger)
+	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger, nil)
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {

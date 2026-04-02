@@ -80,7 +80,7 @@ type rdsBroker struct {
 func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager, riverClient *river.Client[*sql.Tx]) (base.Broker, error) {
 	logger := lager.NewLogger("aws-rds-broker")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
+	dbAdapter, err := initializeAdapter(settings, brokerDB, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}

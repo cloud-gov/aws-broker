@@ -11,9 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewClient(db *gorm.DB, logger *slog.Logger) (*river.Client[*sql.Tx], error) {
-	workers := river.NewWorkers()
-
+func NewClient(db *gorm.DB, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err

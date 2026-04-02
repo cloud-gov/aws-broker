@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"database/sql"
 	"math"
 	"time"
 
@@ -35,7 +36,7 @@ type dbAdapter interface {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (dbAdapter, error) {
+func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger, riverClient *river.Client[*sql.Tx]) (dbAdapter, error) {
 	// For test environments, use a mock broker.dbAdapter.
 	if s.Environment == "test" {
 		return &mockDBAdapter{
@@ -54,17 +55,25 @@ func initializeAdapter(s *config.Settings, db *gorm.DB, logger lager.Logger) (db
 	rdsClient := rds.NewFromConfig(cfg)
 	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
 
-	dbAdapter := NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger)
+	dbAdapter := NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger, riverClient)
 	return dbAdapter, nil
 }
 
-func NewRdsDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient, logger lager.Logger) *dedicatedDBAdapter {
+func NewRdsDedicatedDBAdapter(
+	s *config.Settings,
+	db *gorm.DB,
+	rdsClient RDSClientInterface,
+	parameterGroupClient parameterGroupClient,
+	logger lager.Logger,
+	riverClient *river.Client[*sql.Tx],
+) *dedicatedDBAdapter {
 	return &dedicatedDBAdapter{
 		settings:             *s,
 		rds:                  rdsClient,
 		parameterGroupClient: parameterGroupClient,
 		db:                   db,
 		logger:               logger,
+		riverClient:          riverClient,
 	}
 }
 
@@ -122,6 +131,7 @@ type dedicatedDBAdapter struct {
 	parameterGroupClient parameterGroupClient
 	db                   *gorm.DB
 	logger               lager.Logger
+	riverClient          *river.Client[*sql.Tx]
 }
 
 func (d *dedicatedDBAdapter) prepareCreateDbInput(
@@ -384,7 +394,25 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, pas
 		return base.InstanceNotCreated, err
 	}
 
-	go d.asyncCreateDB(i, plan, password)
+	tx := d.db.Begin()
+	if err := tx.Error; err != nil {
+		return base.InstanceNotCreated, err
+	}
+
+	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+	_, err = d.riverClient.InsertTx(context.Background(), sqlTx, CreateArgs{
+		i:        i,
+		plan:     plan,
+		password: password,
+	}, nil)
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return base.InstanceNotCreated, err
+	}
 
 	return base.InstanceInProgress, nil
 }
