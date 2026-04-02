@@ -1,18 +1,21 @@
 package rds
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"slices"
 	"strconv"
 	"testing"
 	"time"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -20,6 +23,7 @@ import (
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
@@ -42,9 +46,30 @@ func TestMain(m *testing.M) {
 }
 
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
-	logger := lager.NewLogger("aws-rds-test")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger)
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	logger := slog.New(handler)
+
+	workers := river.NewWorkers()
+	river.AddWorker(workers, &CreateWorker{})
+
+	if s.DbConfig == nil {
+		s.DbConfig = &common.DBConfig{
+			DbType: "sqlite3",
+		}
+	}
+
+	riverClient, err := jobs.NewClient(db, s.DbConfig, logger, workers)
+	if err != nil {
+		log.Fatal(fmt.Errorf("error creating river client: %w", err))
+	}
+
+	if err = riverClient.Start(context.Background()); err != nil {
+		log.Fatal(fmt.Errorf("error starting river client: %w", err))
+	}
+
+	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger, riverClient)
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {

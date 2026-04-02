@@ -60,21 +60,23 @@ func setup() http.Handler {
 	path, _ := os.Getwd()
 	c := catalog.InitCatalog(path)
 
+	handler := slog.NewTextHandler(os.Stdout, nil)
+	logger := slog.New(handler)
+
 	serviceBroker := broker.New(
 		&s,
 		brokerDB,
 		c,
 		tq,
 		&mocks.MockTagGenerator{},
+		nil,
+		logger,
 	)
 
 	credentials := brokerapi.BrokerCredentials{
 		Username: "default",
 		Password: "default",
 	}
-
-	handler := slog.NewTextHandler(os.Stdout, nil)
-	logger := slog.New(handler)
 
 	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
 

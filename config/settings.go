@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -36,6 +37,7 @@ type Settings struct {
 	PollAwsMinDelay           time.Duration
 	PollAwsMaxRetries         int64
 	Port                      string
+	LogLevel                  slog.Level
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -216,6 +218,12 @@ func (s *Settings) LoadFromEnv() error {
 
 	if s.Port == "" {
 		s.Port = "3000"
+	}
+
+	levelString := os.Getenv("LOG_LEVEL")
+	err = s.LogLevel.UnmarshalText([]byte(levelString))
+	if err != nil {
+		s.LogLevel = slog.LevelInfo
 	}
 
 	return nil
