@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 
@@ -16,15 +17,17 @@ import (
 	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/cloud-gov/aws-broker/services/redis"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 )
 
 type AWSBroker struct {
-	db         *gorm.DB
-	catalog    *catalog.Catalog
-	settings   *config.Settings
-	jobManager *jobs.AsyncJobManager
-	tagManager brokertags.TagManager
+	db          *gorm.DB
+	catalog     *catalog.Catalog
+	settings    *config.Settings
+	jobManager  *jobs.AsyncJobManager
+	tagManager  brokertags.TagManager
+	riverClient *river.Client[*sql.Tx]
 }
 
 func New(
@@ -33,6 +36,7 @@ func New(
 	catalog *catalog.Catalog,
 	jobManager *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
+	riverClient *river.Client[*sql.Tx],
 ) *AWSBroker {
 	return &AWSBroker{
 		db,
@@ -40,6 +44,7 @@ func New(
 		settings,
 		jobManager,
 		tagManager,
+		riverClient,
 	}
 }
 
@@ -132,7 +137,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 	switch serviceID {
 	// RDS Service
 	case b.catalog.RdsService.ID:
-		broker, err := rds.InitRDSBroker(b.catalog, b.db, b.settings, b.tagManager)
+		broker, err := rds.InitRDSBroker(b.catalog, b.db, b.settings, b.tagManager, b.riverClient)
 		if err != nil {
 			return nil, err
 		}

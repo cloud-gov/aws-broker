@@ -21,7 +21,7 @@ func NewClient(db *gorm.DB, logger *slog.Logger) (*river.Client[*sql.Tx], error)
 
 	driver := riverdatabasesql.New(sqlDB)
 	return river.NewClient(driver, &river.Config{
-		JobTimeout: 2 * time.Hour,
+		JobTimeout: 4 * time.Hour,
 		Logger:     logger,
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: runtime.GOMAXPROCS(0)}, // Run as many workers as we have CPU cores available.

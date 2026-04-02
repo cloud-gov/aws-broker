@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/riverqueue/river"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -344,40 +345,37 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 	return nil
 }
 
-func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan *catalog.RDSPlan, password string) {
+func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan *catalog.RDSPlan, password string) error {
 	operation := base.CreateOp
 
 	createDbInputParams, err := d.prepareCreateDbInput(i, plan, password)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
-		d.logger.Error("asyncCreateDB: prepareCreateDbInput error", err)
-		return
+		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
 	}
 
 	_, err = d.rds.CreateDBInstance(context.TODO(), createDbInputParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
-		d.logger.Error("asyncCreateDB: CreateDBInstance error", err)
-		return
+		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
 	}
 
 	err = d.waitForDbReady(operation, i, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		d.logger.Error("asyncCreateDB: waitForDbReady error", err)
-		return
+		return river.JobCancel(fmt.Errorf("asyncCreateDB: waitForDbReady error: %w ", err))
 	}
 
 	if i.AddReadReplica {
 		err := d.waitAndCreateDBReadReplica(operation, i, plan)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
-			d.logger.Error("asyncCreateDB: waitAndCreateDBReadReplica error", err)
-			return
+			return river.JobCancel(fmt.Errorf("asyncCreateDB: waitAndCreateDBReadReplica error: %w ", err))
 		}
 	}
 
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
+	return nil
 }
 
 func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, password string) (base.InstanceState, error) {

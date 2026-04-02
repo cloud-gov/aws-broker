@@ -46,13 +46,13 @@ func run(ctx context.Context, out io.Writer) error {
 	}
 
 	logger.Debug("run: initializing River workers and client")
-	riverc, err := jobs.NewClient(db, logger)
+	riverClient, err := jobs.NewClient(db, logger)
 	if err != nil {
 		return fmt.Errorf("error creating river client: %w", err)
 	}
 
 	logger.Debug("run: starting River server")
-	if err = riverc.Start(ctx); err != nil {
+	if err = riverClient.Start(ctx); err != nil {
 		return fmt.Errorf("error starting river client: %w", err)
 	}
 
@@ -89,6 +89,7 @@ func run(ctx context.Context, out io.Writer) error {
 		c,
 		asyncJobManager,
 		tagManager,
+		riverClient,
 	)
 	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
 

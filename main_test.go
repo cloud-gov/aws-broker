@@ -66,6 +66,7 @@ func setup() http.Handler {
 		c,
 		tq,
 		&mocks.MockTagGenerator{},
+		nil,
 	)
 
 	credentials := brokerapi.BrokerCredentials{
