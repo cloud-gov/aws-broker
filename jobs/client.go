@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
+	"github.com/riverqueue/river/rivermigrate"
 	"gorm.io/gorm"
 )
 
@@ -34,13 +36,42 @@ func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, work
 	case "mysql":
 	case "postgres":
 		driver := riverdatabasesql.New(sqlDB)
-		return river.NewClient(driver, riverConfig)
+		client, err := river.NewClient(driver, riverConfig)
+		if err != nil {
+			return nil, err
+		}
+		migrator, err := rivermigrate.New(driver, nil)
+		if err != nil {
+			return nil, err
+		}
+		err = runRiverMigration(migrator)
+		if err != nil {
+			return nil, err
+		}
+		return client, nil
 	case "sqlite3":
 		driver := riversqlite.New(sqlDB)
-		return river.NewClient(driver, riverConfig)
+		client, err := river.NewClient(driver, riverConfig)
+		if err != nil {
+			return nil, err
+		}
+		migrator, err := rivermigrate.New(driver, nil)
+		if err != nil {
+			return nil, err
+		}
+		err = runRiverMigration(migrator)
+		if err != nil {
+			return nil, err
+		}
+		return client, nil
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbConfig.DbType)
 	}
 
 	return nil, errors.New("did not create river client")
+}
+
+func runRiverMigration(migrator *rivermigrate.Migrator[*sql.Tx]) error {
+	_, err := migrator.Migrate(context.Background(), rivermigrate.DirectionUp, &rivermigrate.MigrateOpts{})
+	return err
 }
