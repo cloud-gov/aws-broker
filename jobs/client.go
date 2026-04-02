@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"runtime"
@@ -41,5 +42,5 @@ func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, work
 		return nil, fmt.Errorf("unsupported database type: %s", dbConfig.DbType)
 	}
 
-	return nil, nil
+	return nil, errors.New("did not create river client")
 }
