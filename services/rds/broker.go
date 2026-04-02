@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
-	"code.cloudfoundry.org/lager"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/riverqueue/river"
@@ -77,9 +76,14 @@ type rdsBroker struct {
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager, riverClient *river.Client[*sql.Tx]) (base.Broker, error) {
-	logger := lager.NewLogger("aws-rds-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+func InitRDSBroker(
+	catalog *catalog.Catalog,
+	brokerDB *gorm.DB,
+	settings *config.Settings,
+	tagManager brokertags.TagManager,
+	riverClient *river.Client[*sql.Tx],
+	logger *slog.Logger,
+) (base.Broker, error) {
 	dbAdapter, err := initializeAdapter(settings, brokerDB, logger, riverClient)
 	if err != nil {
 		return nil, err

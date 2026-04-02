@@ -65,6 +65,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.32.0 // indirect
+	github.com/riverqueue/river/riverdriver/riversqlite v0.32.0 // indirect
 	github.com/riverqueue/river/rivershared v0.32.0 // indirect
 	github.com/riverqueue/river/rivertype v0.32.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect

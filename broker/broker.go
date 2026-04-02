@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
@@ -28,6 +29,7 @@ type AWSBroker struct {
 	jobManager  *jobs.AsyncJobManager
 	tagManager  brokertags.TagManager
 	riverClient *river.Client[*sql.Tx]
+	logger      *slog.Logger
 }
 
 func New(
@@ -37,6 +39,7 @@ func New(
 	jobManager *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
 	riverClient *river.Client[*sql.Tx],
+	logger *slog.Logger,
 ) *AWSBroker {
 	return &AWSBroker{
 		db,
@@ -45,6 +48,7 @@ func New(
 		jobManager,
 		tagManager,
 		riverClient,
+		logger,
 	}
 }
 
@@ -137,7 +141,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 	switch serviceID {
 	// RDS Service
 	case b.catalog.RdsService.ID:
-		broker, err := rds.InitRDSBroker(b.catalog, b.db, b.settings, b.tagManager, b.riverClient)
+		broker, err := rds.InitRDSBroker(b.catalog, b.db, b.settings, b.tagManager, b.riverClient, b.logger)
 		if err != nil {
 			return nil, err
 		}
