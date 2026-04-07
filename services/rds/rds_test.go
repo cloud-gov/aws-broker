@@ -92,7 +92,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
+				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					returnErr: testErr,
@@ -125,7 +125,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				&config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
-				nil,
+				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds:              &mockRDSClient{},
@@ -190,7 +190,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				&config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
-				nil,
+				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds:              &mockRDSClient{},
