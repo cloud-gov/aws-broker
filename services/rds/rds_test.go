@@ -2027,7 +2027,7 @@ func TestBindDBToApp(t *testing.T) {
 				tx.Rollback()
 				t.Fatal(err)
 			}
-			tx.Commit()
+			defer tx.Commit()
 
 			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password)
 			if err != nil && !test.expectErr {
