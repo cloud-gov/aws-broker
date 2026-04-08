@@ -475,10 +475,13 @@ func TestModify(t *testing.T) {
 				},
 			}
 
-			err = brokerDB.Create(test.dbInstance).Error
+			tx := brokerDB.Begin()
+			err = tx.Create(test.dbInstance).Error
 			if err != nil {
+				tx.Rollback()
 				t.Fatal(err)
 			}
+			tx.Commit()
 
 			err = broker.ModifyInstance(test.dbInstance.Uuid, test.updateDetails)
 			if err != nil {
@@ -641,15 +644,26 @@ func TestLastOperation(t *testing.T) {
 				dbAdapter:  &mockDBAdapter{},
 			}
 
-			err = brokerDB.Create(test.dbInstance).Error
+			tx := brokerDB.Begin()
+			err = tx.Create(test.dbInstance).Error
 			if err != nil {
+				tx.Rollback()
 				t.Fatal(err)
 			}
+			tx.Commit()
 
 			if test.asyncJobMsg != nil {
 				test.asyncJobMsg.BrokerId = test.dbInstance.ServiceID
 				test.asyncJobMsg.InstanceId = test.dbInstance.Uuid
-				err := brokerDB.Create(test.asyncJobMsg).Error
+
+				tx := brokerDB.Begin()
+				err = tx.Create(test.asyncJobMsg).Error
+				if err != nil {
+					tx.Rollback()
+					t.Fatal(err)
+				}
+				tx.Commit()
+
 				if err != nil {
 					t.Fatal(err)
 				}

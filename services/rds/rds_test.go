@@ -2021,10 +2021,13 @@ func TestBindDBToApp(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := brokerDB.Create(test.rdsInstance).Error
+			tx := brokerDB.Begin()
+			err := tx.Create(test.rdsInstance).Error
 			if err != nil {
+				tx.Rollback()
 				t.Fatal(err)
 			}
+			tx.Commit()
 
 			creds, err := test.dbAdapter.bindDBToApp(test.rdsInstance, test.password)
 			if err != nil && !test.expectErr {
