@@ -1549,6 +1549,20 @@ func TestModifyDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				&mockParameterGroupClient{},
