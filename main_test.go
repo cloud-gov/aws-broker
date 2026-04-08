@@ -62,8 +62,10 @@ func setup() http.Handler {
 
 	handler := slog.NewTextHandler(os.Stdout, nil)
 	logger := slog.New(handler)
+	ctx := context.Background()
 
 	serviceBroker := broker.New(
+		ctx,
 		&s,
 		brokerDB,
 		c,

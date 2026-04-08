@@ -89,6 +89,7 @@ func run(ctx context.Context, out io.Writer) error {
 
 	logger.Debug("run: initializing broker")
 	serviceBroker := broker.New(
+		ctx,
 		&settings,
 		db,
 		c,

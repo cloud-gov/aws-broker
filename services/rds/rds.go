@@ -37,6 +37,7 @@ type dbAdapter interface {
 
 // initializeAdapter is the main function to create database instances
 func initializeAdapter(
+	ctx context.Context,
 	s *config.Settings,
 	db *gorm.DB,
 	logger *slog.Logger,
@@ -50,7 +51,7 @@ func initializeAdapter(
 	}
 
 	cfg, err := awsConfig.LoadDefaultConfig(
-		context.TODO(),
+		ctx,
 		awsConfig.WithRegion(s.Region),
 	)
 	if err != nil {
@@ -60,11 +61,12 @@ func initializeAdapter(
 	rdsClient := rds.NewFromConfig(cfg)
 	parameterGroupClient := NewAwsParameterGroupClient(rdsClient, *s)
 
-	dbAdapter := NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger, riverClient)
+	dbAdapter := NewRdsDedicatedDBAdapter(ctx, s, db, rdsClient, parameterGroupClient, logger, riverClient)
 	return dbAdapter, nil
 }
 
 func NewRdsDedicatedDBAdapter(
+	ctx context.Context,
 	s *config.Settings,
 	db *gorm.DB,
 	rdsClient RDSClientInterface,
@@ -73,6 +75,7 @@ func NewRdsDedicatedDBAdapter(
 	riverClient *river.Client[*sql.Tx],
 ) *dedicatedDBAdapter {
 	return &dedicatedDBAdapter{
+		ctx:                  ctx,
 		settings:             *s,
 		rds:                  rdsClient,
 		parameterGroupClient: parameterGroupClient,
@@ -131,6 +134,7 @@ type DBEndpointDetails struct {
 }
 
 type dedicatedDBAdapter struct {
+	ctx                  context.Context
 	settings             config.Settings
 	rds                  RDSClientInterface
 	parameterGroupClient parameterGroupClient
@@ -275,7 +279,7 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 
 	for !createDbInstanceReplicaSuccess && attempts <= maxAttempts {
 		d.logger.Info(fmt.Sprintf("attempting replica creation. attempt %d of %d", attempts, maxAttempts))
-		createDbInstanceReadReplicaOutput, err = d.rds.CreateDBInstanceReadReplica(context.TODO(), createReadReplicaParams)
+		createDbInstanceReadReplicaOutput, err = d.rds.CreateDBInstanceReadReplica(d.ctx, createReadReplicaParams)
 		if err != nil {
 			var invalidDbInstanceStateErr *rdsTypes.InvalidDBInstanceStateFault
 			if errors.As(err, &invalidDbInstanceStateErr) {
@@ -307,7 +311,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
 	}
-	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
+	err := waiter.Wait(d.ctx, waiterInput, maxWaitTime)
 
 	if err != nil {
 		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
@@ -321,7 +325,7 @@ func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInst
 }
 
 func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) error {
-	_, err := d.rds.AddTagsToResource(context.TODO(), &rds.AddTagsToResourceInput{
+	_, err := d.rds.AddTagsToResource(d.ctx, &rds.AddTagsToResourceInput{
 		ResourceName: aws.String(dbInstanceARN),
 		Tags:         ConvertTagsToRDSTags(i.getTags()),
 	})
@@ -369,7 +373,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan *catalog.RDSPlan
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
 	}
 
-	_, err = d.rds.CreateDBInstance(context.TODO(), createDbInputParams)
+	_, err = d.rds.CreateDBInstance(d.ctx, createDbInputParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
@@ -403,10 +407,11 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, pas
 	if err := tx.Error; err != nil {
 		return base.InstanceNotCreated, err
 	}
+	defer tx.Rollback()
 
 	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
-	_, err = d.riverClient.InsertTx(context.Background(), sqlTx, CreateArgs{
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, CreateArgs{
 		i:        i,
 		plan:     plan,
 		password: password,
@@ -435,7 +440,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
 	}
 
-	modifyReplicaOutput, err := d.rds.ModifyDBInstance(context.TODO(), modifyParams)
+	modifyReplicaOutput, err := d.rds.ModifyDBInstance(d.ctx, modifyParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
@@ -520,7 +525,7 @@ func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rdsType
 		DBInstanceIdentifier: aws.String(database),
 	}
 
-	resp, err := d.rds.DescribeDBInstances(context.TODO(), params)
+	resp, err := d.rds.DescribeDBInstances(d.ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -627,7 +632,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 	waiterInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: &database,
 	}
-	err := waiter.Wait(context.TODO(), waiterInput, maxWaitTime)
+	err := waiter.Wait(d.ctx, waiterInput, maxWaitTime)
 
 	if err != nil {
 		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
@@ -642,7 +647,7 @@ func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSIn
 
 func (d *dedicatedDBAdapter) deleteDatabaseInstance(i *RDSInstance, operation base.Operation, database string) error {
 	params := prepareDeleteDbInput(database)
-	_, err := d.rds.DeleteDBInstance(context.TODO(), params)
+	_, err := d.rds.DeleteDBInstance(d.ctx, params)
 	if err != nil {
 		if isDatabaseInstanceNotFoundError(err) {
 			d.logger.Debug(fmt.Sprintf("database %s was already deleted, continuing", database))

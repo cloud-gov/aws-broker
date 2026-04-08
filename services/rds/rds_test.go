@@ -33,6 +33,7 @@ import (
 
 var brokerDB *gorm.DB
 var riverClient *river.Client[*sql.Tx]
+var ctx context.Context
 
 func TestMain(m *testing.M) {
 	var err error
@@ -45,6 +46,10 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 
 	os.Exit(exitCode)
+
+	if err := riverClient.Stop(ctx); err != nil {
+		panic(err)
+	}
 }
 
 func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
@@ -64,7 +69,6 @@ func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSCli
 
 	if riverClient == nil {
 		var err error
-		logger.Info("initializing river client for tests")
 		riverClient, err = jobs.NewClient(db, s.DbConfig, logger, workers)
 		if err != nil {
 			log.Fatal(fmt.Errorf("error creating river client: %w", err))
@@ -75,7 +79,11 @@ func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSCli
 		}
 	}
 
-	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger, riverClient)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	return NewRdsDedicatedDBAdapter(ctx, s, db, rdsClient, parameterGroupClient, logger, riverClient)
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
@@ -265,6 +273,7 @@ func TestAsyncCreateDb(t *testing.T) {
 		expectedState base.InstanceState
 		password      string
 		plan          *catalog.RDSPlan
+		expectErr     bool
 	}{
 		"error provisioning custom parameter group": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -288,6 +297,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 		"create DB error": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -311,6 +321,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 		"error waiting for database creation": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -333,6 +344,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 		"success without replica": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -468,12 +480,16 @@ func TestAsyncCreateDb(t *testing.T) {
 				dbUtils:         &RDSDatabaseUtils{},
 			},
 			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.dbAdapter.asyncCreateDB(test.dbInstance, test.plan, test.password)
+			err := test.dbAdapter.asyncCreateDB(test.dbInstance, test.plan, test.password)
+			if err != nil && !test.expectErr {
+				t.Fatal(err)
+			}
 
 			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
 			if err != nil {
@@ -1513,7 +1529,8 @@ func TestModifyDb(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
-					PollAwsMinDelay: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				brokerDB,
 				&mockRDSClient{

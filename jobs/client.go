@@ -18,6 +18,8 @@ import (
 )
 
 func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
+	logger.Info("initializing river client")
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -44,7 +46,7 @@ func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, work
 		if err != nil {
 			return nil, err
 		}
-		err = runRiverMigration(migrator)
+		err = runRiverMigration(migrator, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +61,7 @@ func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, work
 		if err != nil {
 			return nil, err
 		}
-		err = runRiverMigration(migrator)
+		err = runRiverMigration(migrator, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +73,8 @@ func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, work
 	return nil, errors.New("did not create river client")
 }
 
-func runRiverMigration(migrator *rivermigrate.Migrator[*sql.Tx]) error {
+func runRiverMigration(migrator *rivermigrate.Migrator[*sql.Tx], logger *slog.Logger) error {
+	logger.Info("running migrations for River")
 	_, err := migrator.Migrate(context.Background(), rivermigrate.DirectionUp, &rivermigrate.MigrateOpts{})
 	return err
 }

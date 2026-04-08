@@ -23,6 +23,7 @@ import (
 )
 
 type AWSBroker struct {
+	ctx         context.Context
 	db          *gorm.DB
 	catalog     *catalog.Catalog
 	settings    *config.Settings
@@ -33,6 +34,7 @@ type AWSBroker struct {
 }
 
 func New(
+	ctx context.Context,
 	settings *config.Settings,
 	db *gorm.DB,
 	catalog *catalog.Catalog,
@@ -42,6 +44,7 @@ func New(
 	logger *slog.Logger,
 ) *AWSBroker {
 	return &AWSBroker{
+		ctx,
 		db,
 		catalog,
 		settings,
@@ -141,7 +144,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 	switch serviceID {
 	// RDS Service
 	case b.catalog.RdsService.ID:
-		broker, err := rds.InitRDSBroker(b.catalog, b.db, b.settings, b.tagManager, b.riverClient, b.logger)
+		broker, err := rds.InitRDSBroker(b.ctx, b.catalog, b.db, b.settings, b.tagManager, b.riverClient, b.logger)
 		if err != nil {
 			return nil, err
 		}

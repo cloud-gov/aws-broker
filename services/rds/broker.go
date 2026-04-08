@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -67,6 +68,7 @@ func (o Options) Validate(settings *config.Settings) error {
 }
 
 type rdsBroker struct {
+	ctx         context.Context
 	brokerDB    *gorm.DB
 	catalog     *catalog.Catalog
 	settings    *config.Settings
@@ -77,6 +79,7 @@ type rdsBroker struct {
 
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(
+	ctx context.Context,
 	catalog *catalog.Catalog,
 	brokerDB *gorm.DB,
 	settings *config.Settings,
@@ -84,11 +87,12 @@ func InitRDSBroker(
 	riverClient *river.Client[*sql.Tx],
 	logger *slog.Logger,
 ) (base.Broker, error) {
-	dbAdapter, err := initializeAdapter(settings, brokerDB, logger, riverClient)
+	dbAdapter, err := initializeAdapter(ctx, settings, brokerDB, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}
 	return &rdsBroker{
+		ctx,
 		brokerDB,
 		catalog,
 		settings,
