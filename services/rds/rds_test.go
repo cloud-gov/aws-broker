@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -31,6 +32,7 @@ import (
 )
 
 var brokerDB *gorm.DB
+var riverClient *river.Client[*sql.Tx]
 
 func TestMain(m *testing.M) {
 	var err error
@@ -60,13 +62,17 @@ func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSCli
 		}
 	}
 
-	riverClient, err := jobs.NewClient(db, s.DbConfig, logger, workers)
-	if err != nil {
-		log.Fatal(fmt.Errorf("error creating river client: %w", err))
-	}
+	if riverClient == nil {
+		var err error
+		logger.Info("initializing river client for tests")
+		riverClient, err = jobs.NewClient(db, s.DbConfig, logger, workers)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error creating river client: %w", err))
+		}
 
-	if err = riverClient.Start(context.Background()); err != nil {
-		log.Fatal(fmt.Errorf("error starting river client: %w", err))
+		if err = riverClient.Start(context.Background()); err != nil {
+			log.Fatal(fmt.Errorf("error starting river client: %w", err))
+		}
 	}
 
 	return NewRdsDedicatedDBAdapter(s, db, rdsClient, parameterGroupClient, logger, riverClient)
