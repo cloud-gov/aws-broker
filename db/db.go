@@ -12,8 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const maxDbConnections = 10
-
 // InternalDBInit initializes the internal database connection that the service broker will use.
 // In addition to calling DBInit(), it also makes sure that the tables are setup for Instance and DBConfig structs.
 func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
@@ -21,12 +19,6 @@ func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
-	sqlDB.SetMaxOpenConns(maxDbConnections)
 
 	log.Println("Migrating")
 	// Automigrate!

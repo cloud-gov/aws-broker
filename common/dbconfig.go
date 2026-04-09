@@ -9,6 +9,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // DBConfig holds configuration information to connect to a database.
@@ -34,6 +35,8 @@ type DBConfig struct {
 	Port     int64  `yaml:"port" validate:"required"` // Is int64 to match the type that rds.Endpoint.Port is in the AWS RDS SDK.
 }
 
+const defaultMaxDbConnections = 10
+
 // DBInit is a generic helper function that will try to connect to a database with the config in the input.
 // Supported DB types:
 // * postgres
@@ -42,13 +45,10 @@ type DBConfig struct {
 func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 	var DB *gorm.DB
 	var err error
-	/*
-		log.Printf("Attempting to login as %s with password length %d and url %s to db name %s\n",
-			dbConfig.Username,
-			len(dbConfig.Password),
-			dbConfig.URL,
-			dbConfig.DbName)
-	*/
+
+	var maxDbConnections int
+	maxDbConnections = defaultMaxDbConnections
+
 	switch dbConfig.DbType {
 	case "postgres":
 		conn := "dbname=%s user=%s password=%s host=%s sslmode=%s port=%d"
@@ -75,7 +75,10 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 	case "sqlite3":
 		// see
 		// https://github.com/mattn/go-sqlite3/issues/677#issuecomment-450203752
-		DB, err = gorm.Open(sqlite.Open("file::memory:?cache=shared&_journal_mode=WAL"), &gorm.Config{})
+		DB, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		maxDbConnections = 1
 	default:
 		errorString := "Cannot connect. Unsupported DB type: (" + dbConfig.DbType + ")"
 		log.Println(errorString)
@@ -95,6 +98,8 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 		log.Println("Unable to verify connection to database")
 		return nil, err
 	}
+
+	sqlDB.SetMaxOpenConns(maxDbConnections)
 
 	return DB, nil
 }
