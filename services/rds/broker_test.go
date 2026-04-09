@@ -663,10 +663,6 @@ func TestLastOperation(t *testing.T) {
 					t.Fatal(err)
 				}
 				tx.Commit()
-
-				if err != nil {
-					t.Fatal(err)
-				}
 			}
 
 			lastOperation, err := broker.LastOperation(test.dbInstance.Uuid, test.pollDetails)
