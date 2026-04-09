@@ -45,14 +45,14 @@ func TestMain(m *testing.M) {
 
 	exitCode := m.Run()
 
-	os.Exit(exitCode)
-
 	if err := riverClient.Stop(ctx); err != nil {
 		panic(err)
 	}
+
+	os.Exit(exitCode)
 }
 
-func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
+func NewTestDedicatedDBAdapter(s *config.Settings, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	})
@@ -73,7 +73,7 @@ func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSCli
 
 	if riverClient == nil {
 		var err error
-		riverClient, err = jobs.NewClient(db, s.DbConfig, logger, workers)
+		riverClient, err = jobs.NewClient(brokerDB, s.DbConfig, logger, workers)
 		if err != nil {
 			log.Fatal(fmt.Errorf("error creating river client: %w", err))
 		}
@@ -83,7 +83,7 @@ func NewTestDedicatedDBAdapter(s *config.Settings, db *gorm.DB, rdsClient RDSCli
 		}
 	}
 
-	return NewRdsDedicatedDBAdapter(ctx, s, db, rdsClient, parameterGroupClient, logger, riverClient)
+	return NewRdsDedicatedDBAdapter(ctx, s, brokerDB, rdsClient, parameterGroupClient, logger, riverClient)
 }
 
 func TestPrepareCreateDbInstanceInput(t *testing.T) {
@@ -106,7 +106,6 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					returnErr: testErr,
@@ -139,7 +138,6 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				&config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds:              &mockRDSClient{},
@@ -204,7 +202,6 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				&config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds:              &mockRDSClient{},
@@ -278,7 +275,6 @@ func TestAsyncCreateDb(t *testing.T) {
 		"error provisioning custom parameter group": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					returnErr: errors.New("failed"),
@@ -302,7 +298,6 @@ func TestAsyncCreateDb(t *testing.T) {
 		"create DB error": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{
 					createDbErr: createDbErr,
 				},
@@ -325,8 +320,7 @@ func TestAsyncCreateDb(t *testing.T) {
 		},
 		"error waiting for database creation": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				&config.Settings{},
-				brokerDB, &mockRDSClient{
+				&config.Settings{}, &mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
 				&mockParameterGroupClient{},
@@ -352,7 +346,6 @@ func TestAsyncCreateDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -393,7 +386,6 @@ func TestAsyncCreateDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -443,7 +435,6 @@ func TestAsyncCreateDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -519,7 +510,6 @@ func TestCreateDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -611,7 +601,6 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -641,7 +630,6 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -685,7 +673,6 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -732,7 +719,6 @@ func TestWaitForDbReady(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
@@ -788,7 +774,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{},
 			),
@@ -809,7 +794,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{},
 			),
@@ -830,7 +814,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					createDBInstanceReadReplicaErrs: []error{
 						&rdsTypes.InvalidDBInstanceStateFault{},
@@ -882,7 +865,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -921,7 +903,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -955,7 +936,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					createDBInstanceReadReplicaErrs: []error{errors.New("error creating database instance read replica")},
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -989,7 +969,6 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					addTagsToResourceErr: errors.New("error adding tags to read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -1061,7 +1040,6 @@ func TestAsyncModifyDb(t *testing.T) {
 		"error preparing modify input": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					returnErr: errors.New("fail"),
@@ -1083,7 +1061,6 @@ func TestAsyncModifyDb(t *testing.T) {
 		"modify primary DB error": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{
 					modifyDbErrs: []error{modifyDbErr},
 				},
@@ -1105,7 +1082,6 @@ func TestAsyncModifyDb(t *testing.T) {
 		"error waiting for database to be ready": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
@@ -1130,7 +1106,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1180,7 +1155,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1247,7 +1221,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1296,7 +1269,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1346,7 +1318,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1399,7 +1370,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1441,7 +1411,6 @@ func TestAsyncModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1532,7 +1501,6 @@ func TestModifyDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1638,7 +1606,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					customPgroupName: "foobar",
@@ -1673,7 +1640,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds:       &mockRDSClient{},
@@ -1698,7 +1664,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
@@ -1730,7 +1695,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
@@ -1763,7 +1727,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
@@ -1812,7 +1775,6 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1834,7 +1796,6 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"error describing database": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database")},
 				},
@@ -1846,7 +1807,6 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"no databases found": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1862,7 +1822,6 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		"multiple databases found": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1912,7 +1871,6 @@ func TestBindDBToApp(t *testing.T) {
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1968,7 +1926,6 @@ func TestBindDBToApp(t *testing.T) {
 		"database not available": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1994,7 +1951,6 @@ func TestBindDBToApp(t *testing.T) {
 		"database has no endpoint": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -2074,7 +2030,6 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
@@ -2096,7 +2051,6 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -2134,7 +2088,6 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -2181,7 +2134,6 @@ func TestWaitForDbDeleted(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
@@ -2241,7 +2193,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
@@ -2264,7 +2215,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
 				},
@@ -2288,7 +2238,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
@@ -2312,7 +2261,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
@@ -2337,7 +2285,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
 				},
@@ -2361,7 +2308,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
 				},
@@ -2386,7 +2332,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
@@ -2409,7 +2354,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
 				},
@@ -2481,7 +2425,6 @@ func TestDeleteDb(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				brokerDB,
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
