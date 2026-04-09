@@ -17,7 +17,7 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	err = db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
 	return db, err
 }
 
