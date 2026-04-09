@@ -481,7 +481,7 @@ func TestModify(t *testing.T) {
 				tx.Rollback()
 				t.Fatal(err)
 			}
-			defer tx.Commit()
+			tx.Commit()
 
 			err = broker.ModifyInstance(test.dbInstance.Uuid, test.updateDetails)
 			if err != nil {
@@ -650,7 +650,7 @@ func TestLastOperation(t *testing.T) {
 				tx.Rollback()
 				t.Fatal(err)
 			}
-			defer tx.Commit()
+			tx.Commit()
 
 			if test.asyncJobMsg != nil {
 				test.asyncJobMsg.BrokerId = test.dbInstance.ServiceID
@@ -662,7 +662,7 @@ func TestLastOperation(t *testing.T) {
 					tx.Rollback()
 					t.Fatal(err)
 				}
-				defer tx.Commit()
+				tx.Commit()
 
 				if err != nil {
 					t.Fatal(err)
