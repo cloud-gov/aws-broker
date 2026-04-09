@@ -580,6 +580,19 @@ jobs:
                 DB_TYPE: postgres
                 OLD_VERSION: 14
                 NEW_VERSION: 16
+
+            - task: smoke-tests-postgres-rotate-creds-replica
+              file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: micro-psql-replica
+                DB_TYPE: postgres
     on_failure:
       put: slack
       params:
