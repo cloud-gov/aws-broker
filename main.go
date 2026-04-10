@@ -62,7 +62,7 @@ func run(ctx context.Context, out io.Writer) error {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &rds.CreateWorker{})
 
-	riverClient, err := jobs.NewClient(db, settings.DbConfig, logger, workers)
+	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
 	if err != nil {
 		return fmt.Errorf("error creating river client: %w", err)
 	}

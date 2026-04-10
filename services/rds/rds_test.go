@@ -17,6 +17,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riversqlite"
+	"github.com/riverqueue/river/rivertest"
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -46,13 +48,6 @@ func TestMain(m *testing.M) {
 	ctx = context.Background()
 
 	exitCode := m.Run()
-
-	if riverClient != nil {
-		if err := riverClient.Stop(ctx); err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	os.Exit(exitCode)
 }
 
@@ -63,7 +58,13 @@ func NewTestDedicatedDBAdapter(s *config.Settings, rdsClient RDSClientInterface,
 	logger := slog.New(handler)
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &CreateWorker{})
+	river.AddWorker(workers, &CreateWorker{
+		db:                   brokerDB,
+		settings:             s,
+		rds:                  rdsClient,
+		logger:               logger,
+		parameterGroupClient: parameterGroupClient,
+	})
 
 	if s.DbConfig == nil {
 		s.DbConfig = &db.DBConfig{
@@ -73,13 +74,9 @@ func NewTestDedicatedDBAdapter(s *config.Settings, rdsClient RDSClientInterface,
 
 	if riverClient == nil {
 		var err error
-		riverClient, err = jobs.NewClient(brokerDB, s.DbConfig, logger, workers)
+		riverClient, err = jobs.NewClient(ctx, brokerDB, s.DbConfig, logger, workers)
 		if err != nil {
 			log.Fatal(fmt.Errorf("error creating river client: %w", err))
-		}
-
-		if err = riverClient.Start(ctx); err != nil {
-			log.Fatal(fmt.Errorf("error starting river client: %w", err))
 		}
 	}
 
@@ -567,18 +564,28 @@ func TestCreateDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				// The exact database state at this point in the test is non-deterministic, since the database updates
-				// are being done in a goroutine. So we test against a set of possible job states
-				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
-					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
-				}
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
 			}
+
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+			job := rivertest.RequireInsertedTx[*riversqlite.Driver](ctx, t, sqlTx, &CreateArgs{}, nil)
+			fmt.Printf("Test passed with message: %+v\n", job.Args)
+
+			// if len(test.expectedAsyncJobStates) > 0 {
+			// 	asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			// 	if err != nil {
+			// 		t.Fatal(err)
+			// 	}
+
+			// 	// The exact database state at this point in the test is non-deterministic, since the database updates
+			// 	// are being done in a goroutine. So we test against a set of possible job states
+			// 	if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
+			// 		t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
+			// 	}
+			// }
 
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
