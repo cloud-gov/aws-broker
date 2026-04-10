@@ -1,9 +1,11 @@
 package elasticsearch
 
 import (
+	"errors"
 	"testing"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/config"
 
@@ -13,8 +15,9 @@ import (
 )
 
 type mockEsApiClient struct {
-	getSnapshotStatusCalls     int
+	getSnapshotStatusCallNum   int
 	getSnapshotStatusResponses []string
+	getSnapshotStatusErrs      []error
 }
 
 func (m *mockEsApiClient) CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error) {
@@ -26,9 +29,13 @@ func (m *mockEsApiClient) CreateSnapshot(repositoryName string, snapshotName str
 }
 
 func (m *mockEsApiClient) GetSnapshotStatus(repositoryName string, snapshotName string) (string, error) {
-	resp := m.getSnapshotStatusResponses[m.getSnapshotStatusCalls]
-	m.getSnapshotStatusCalls += 1
-	return resp, nil
+	currentCallNum := m.getSnapshotStatusCallNum
+	m.getSnapshotStatusCallNum++
+	if len(m.getSnapshotStatusErrs) > 0 && m.getSnapshotStatusErrs[currentCallNum] != nil {
+		return "", m.getSnapshotStatusErrs[currentCallNum]
+	}
+	status := m.getSnapshotStatusResponses[currentCallNum]
+	return status, nil
 }
 
 func TestIsInvalidTypeException(t *testing.T) {
@@ -275,6 +282,20 @@ func TestPollForSnapshotCreation(t *testing.T) {
 			expectedGetSnapshotCalls: 3,
 			expectErr:                true,
 		},
+		"error getting snapshot status": {
+			esApiClient: &mockEsApiClient{
+				getSnapshotStatusErrs: []error{errors.New("error getting snapshot status")},
+			},
+			esAdapter: &dedicatedElasticsearchAdapter{
+				settings: config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 1,
+				},
+				logger: lager.NewLogger("es-tests"),
+			},
+			expectedGetSnapshotCalls: 1,
+			expectErr:                true,
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -286,8 +307,8 @@ func TestPollForSnapshotCreation(t *testing.T) {
 				t.Fatal("expected error")
 			}
 			if mockEsApiClient, ok := test.esApiClient.(*mockEsApiClient); ok {
-				if mockEsApiClient.getSnapshotStatusCalls != test.expectedGetSnapshotCalls {
-					t.Fatalf("expected %d GetSnapshotStatus calls, got %d", test.expectedGetSnapshotCalls, mockEsApiClient.getSnapshotStatusCalls)
+				if mockEsApiClient.getSnapshotStatusCallNum != test.expectedGetSnapshotCalls {
+					t.Fatalf("expected %d GetSnapshotStatus calls, got %d", test.expectedGetSnapshotCalls, mockEsApiClient.getSnapshotStatusCallNum)
 				}
 			}
 		})

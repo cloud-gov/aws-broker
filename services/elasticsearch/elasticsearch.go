@@ -547,9 +547,9 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 func (d *dedicatedElasticsearchAdapter) pollForSnapshotCreation(esApi EsApiClient, snapshotName string) error {
 	var snapshotState string
 	var err error
-	attempts := 0
+	attempts := 1
 
-	for attempts < int(d.settings.PollAwsMaxRetries) {
+	for attempts <= int(d.settings.PollAwsMaxRetries) {
 		snapshotState, err = esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
 			d.logger.Error("GetSnapShotStatus failed", err)
