@@ -73,8 +73,7 @@ func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
 			DSN: conn,
 		}), &gorm.Config{})
 	case "sqlite3":
-		// see
-		// https://github.com/mattn/go-sqlite3/issues/677#issuecomment-450203752
+		// see https://github.com/mattn/go-sqlite3/issues/677#issuecomment-450203752
 		DB, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
 			// TODO make logger level configurable
 			Logger: logger.Default.LogMode(logger.Silent),
