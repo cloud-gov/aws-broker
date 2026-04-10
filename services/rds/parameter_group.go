@@ -26,6 +26,7 @@ type parameterGroupClient interface {
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
 type awsParameterGroupClient struct {
+	ctx                  context.Context
 	rds                  RDSClientInterface
 	settings             config.Settings
 	parameterGroupPrefix string
@@ -36,7 +37,7 @@ type paramDetails struct {
 	applyMethod string
 }
 
-func NewAwsParameterGroupClient(rds RDSClientInterface, settings config.Settings) *awsParameterGroupClient {
+func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, settings config.Settings) *awsParameterGroupClient {
 	return &awsParameterGroupClient{
 		rds:                  rds,
 		settings:             settings,
@@ -74,7 +75,7 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
 	input := &rds.DescribeDBParameterGroupsInput{}
 	paginator := rds.NewDescribeDBParameterGroupsPaginator(p.rds, input)
 	for paginator.HasMorePages() {
-		output, err := paginator.NextPage(context.TODO())
+		output, err := paginator.NextPage(p.ctx)
 		if err != nil {
 			return fmt.Errorf("CleanupCustomParameterGroups: error handling next page: %w", err)
 		}
@@ -90,7 +91,7 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
 				deleteinput := &rds.DeleteDBParameterGroupInput{
 					DBParameterGroupName: aws.String(*pgroup.DBParameterGroupName),
 				}
-				_, err := p.rds.DeleteDBParameterGroup(context.TODO(), deleteinput)
+				_, err := p.rds.DeleteDBParameterGroup(p.ctx, deleteinput)
 				if err != nil {
 					var exception *rdsTypes.InvalidDBParameterGroupStateFault
 					if errors.As(err, &exception) {
@@ -118,7 +119,7 @@ func (p *awsParameterGroupClient) getDatabaseEngineVersion(i *RDSInstance) (stri
 		return "", errors.New("database name is required to get database engine version")
 	}
 
-	dbInstanceInfo, err := p.rds.DescribeDBInstances(context.TODO(), &rds.DescribeDBInstancesInput{
+	dbInstanceInfo, err := p.rds.DescribeDBInstances(p.ctx, &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(i.Database),
 	})
 	if err != nil {
@@ -154,7 +155,7 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	}
 
 	// This call requires that the broker have permissions to make it.
-	defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(context.TODO(), dbEngineVersionsInput)
+	defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(p.ctx, dbEngineVersionsInput)
 	if err != nil {
 		return err
 	}
@@ -176,7 +177,7 @@ func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName
 	}
 
 	// If the db parameter group has already been created, we can return.
-	_, err := p.rds.DescribeDBParameters(context.TODO(), dbParametersInput)
+	_, err := p.rds.DescribeDBParameters(p.ctx, dbParametersInput)
 	if err == nil {
 		log.Printf("%s parameter group already exists", parameterGroupName)
 		return true, nil
@@ -216,7 +217,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 			Tags:                   rdsTags,
 		}
 
-		_, err = p.rds.CreateDBParameterGroup(context.TODO(), createInput)
+		_, err = p.rds.CreateDBParameterGroup(p.ctx, createInput)
 		if err != nil {
 			return fmt.Errorf("createOrModifyCustomParameterGroup: encountered error when creating parameter group: %w", err)
 		}
@@ -243,7 +244,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		Parameters:           parameters,
 	}
 
-	_, err = p.rds.ModifyDBParameterGroup(context.TODO(), modifyinput)
+	_, err = p.rds.ModifyDBParameterGroup(p.ctx, modifyinput)
 	if err != nil {
 		return err
 	}
@@ -280,7 +281,7 @@ func (p *awsParameterGroupClient) getDefaultEngineParameterValue(i *RDSInstance,
 
 	paginator := rds.NewDescribeEngineDefaultParametersPaginator(p.rds, describeEngDefaultParamsInput)
 	for paginator.HasMorePages() {
-		result, err := paginator.NextPage(context.TODO())
+		result, err := paginator.NextPage(p.ctx)
 		if err != nil {
 			return "", fmt.Errorf("getDefaultEngineParameterValue: error handling next page: %w", err)
 		}
@@ -302,7 +303,7 @@ func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parame
 	// because the code is executed asychronously
 	paginator := rds.NewDescribeDBParametersPaginator(p.rds, dbParametersInput)
 	for paginator.HasMorePages() {
-		result, err := paginator.NextPage(context.TODO())
+		result, err := paginator.NextPage(p.ctx)
 		if err != nil {
 			return "", fmt.Errorf("getCustomParameterValue: error handling next page: %w", err)
 		}
