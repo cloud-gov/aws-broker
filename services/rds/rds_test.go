@@ -47,8 +47,10 @@ func TestMain(m *testing.M) {
 
 	exitCode := m.Run()
 
-	if err := riverClient.Stop(ctx); err != nil {
-		panic(err)
+	if riverClient != nil {
+		if err := riverClient.Stop(ctx); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	os.Exit(exitCode)
