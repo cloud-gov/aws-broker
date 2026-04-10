@@ -130,6 +130,34 @@ func TestGetSnapshotStatus(t *testing.T) {
 	}
 }
 
+func TestGetSnapshotStatusNotFound(t *testing.T) {
+	mockResponse := &http.Response{
+		StatusCode: http.StatusNotFound,
+		Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+		Header:     make(http.Header),
+	}
+	mockResponse.Header.Set("Content-Type", "application/json")
+
+	client, err := opensearch.NewClient(opensearch.Config{
+		Addresses: []string{"fake://url"},
+		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	es := NewTestEsAPIHandler(client)
+
+	resp, err := es.GetSnapshotStatus(repoName, snapshotName)
+	if err != nil {
+		t.Errorf("Err is not nil: %v", err)
+	}
+
+	if resp != "" {
+		t.Errorf("Expected empty status, got %s", resp)
+	}
+}
+
 func TestGetSnapshotStatusNoSnapshots(t *testing.T) {
 	mockResponse := &http.Response{
 		StatusCode: http.StatusOK,

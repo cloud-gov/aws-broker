@@ -480,8 +480,6 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 // in which we make the ES API call to take a snapshot
 // then poll for snapshot completetion, may block for a considerable time
 func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstance, password string) error {
-
-	var sleep = 10 * time.Second
 	var creds map[string]string
 	var err error
 
@@ -543,9 +541,16 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		return err
 	}
 
-	// poll for snapshot completion and continue once no longer "IN_PROGRESS"
-	for {
-		snapshotState, err := esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
+	return d.pollForSnapshotCreation(esApi, snapshotName)
+}
+
+func (d *dedicatedElasticsearchAdapter) pollForSnapshotCreation(esApi EsApiClient, snapshotName string) error {
+	var snapshotState string
+	var err error
+	attempts := 1
+
+	for attempts <= int(d.settings.PollAwsMaxRetries) {
+		snapshotState, err = esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
 			d.logger.Error("GetSnapShotStatus failed", err)
 			return err
@@ -553,8 +558,14 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		if snapshotState == "SUCCESS" {
 			break
 		}
-		time.Sleep(sleep)
+		attempts += 1
+		time.Sleep(d.settings.PollAwsMinDelay)
 	}
+
+	if snapshotState != "SUCCESS" {
+		return errors.New("Could not verify creation of snapshot")
+	}
+
 	return nil
 }
 

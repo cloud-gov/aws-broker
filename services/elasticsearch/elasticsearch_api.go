@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"code.cloudfoundry.org/lager"
@@ -17,6 +18,12 @@ import (
 	opensearchapi "github.com/opensearch-project/opensearch-go/v2/opensearchapi"
 	requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
 )
+
+type EsApiClient interface {
+	CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error)
+	CreateSnapshot(repositoryName string, snapshotName string) (string, error)
+	GetSnapshotStatus(repositoryName string, snapshotName string) (string, error)
+}
 
 type EsApiHandler struct {
 	opensearchClient *opensearch.Client
@@ -155,6 +162,12 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 	}
 
 	defer res.Body.Close()
+
+	// A 404 response may indicate that the snapshot is not ready yet, not that
+	// anything has necessarily failed
+	if res.StatusCode == http.StatusNotFound {
+		return "", nil
+	}
 
 	if res.IsError() {
 		return "", fmt.Errorf("failed to get snapshot %s: %s", repositoryName, res.String())
