@@ -2,13 +2,34 @@ package elasticsearch
 
 import (
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/cloud-gov/aws-broker/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/go-test/deep"
 )
+
+type mockEsApiClient struct {
+	getSnapshotStatusCalls     int
+	getSnapshotStatusResponses []string
+}
+
+func (m *mockEsApiClient) CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error) {
+	return "", nil
+}
+
+func (m *mockEsApiClient) CreateSnapshot(repositoryName string, snapshotName string) (string, error) {
+	return "", nil
+}
+
+func (m *mockEsApiClient) GetSnapshotStatus(repositoryName string, snapshotName string) (string, error) {
+	resp := m.getSnapshotStatusResponses[m.getSnapshotStatusCalls]
+	m.getSnapshotStatusCalls += 1
+	return resp, nil
+}
 
 func TestIsInvalidTypeException(t *testing.T) {
 	isInvalidType := isInvalidTypeException(&opensearchTypes.InvalidTypeException{})
@@ -205,6 +226,69 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestPollForSnapshotCreation(t *testing.T) {
+	testCases := map[string]struct {
+		esApiClient              EsApiClient
+		esAdapter                *dedicatedElasticsearchAdapter
+		expectedGetSnapshotCalls int
+		expectErr                bool
+	}{
+		"success": {
+			esApiClient: &mockEsApiClient{
+				getSnapshotStatusResponses: []string{"SUCCESS"},
+			},
+			esAdapter: &dedicatedElasticsearchAdapter{
+				settings: config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 1,
+				},
+			},
+			expectedGetSnapshotCalls: 1,
+		},
+		"success with retries": {
+			esApiClient: &mockEsApiClient{
+				getSnapshotStatusResponses: []string{"IN PROGRESS", "IN PROGRESS", "SUCCESS"},
+			},
+			esAdapter: &dedicatedElasticsearchAdapter{
+				settings: config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 3,
+				},
+			},
+			expectedGetSnapshotCalls: 3,
+		},
+		"gives up after maximum retries": {
+			esApiClient: &mockEsApiClient{
+				getSnapshotStatusResponses: []string{"IN PROGRESS", "IN PROGRESS", "IN PROGRESS"},
+			},
+			esAdapter: &dedicatedElasticsearchAdapter{
+				settings: config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 3,
+				},
+			},
+			expectedGetSnapshotCalls: 3,
+			expectErr:                true,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := test.esAdapter.pollForSnapshotCreation(test.esApiClient, "foobar")
+			if err != nil && !test.expectErr {
+				t.Fatal(err)
+			}
+			if test.expectErr && err == nil {
+				t.Fatal("expected error")
+			}
+			if mockEsApiClient, ok := test.esApiClient.(*mockEsApiClient); ok {
+				if mockEsApiClient.getSnapshotStatusCalls != test.expectedGetSnapshotCalls {
+					t.Fatalf("expected %d GetSnapshotStatus calls, got %d", test.expectedGetSnapshotCalls, mockEsApiClient.getSnapshotStatusCalls)
+				}
 			}
 		})
 	}
