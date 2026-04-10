@@ -183,7 +183,12 @@ func (d *dedicatedDBAdapter) prepareCreateDbInput(
 	return params, nil
 }
 
-func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan *catalog.RDSPlan, database string) (*rds.ModifyDBInstanceInput, error) {
+func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
+	i *RDSInstance,
+	plan *catalog.RDSPlan,
+	database string,
+	isReplica bool,
+) (*rds.ModifyDBInstanceInput, error) {
 	// Standard parameters (https://docs.aws.amazon.com/sdk-for-go/api/service/rds/#RDS.ModifyDBInstance)
 	// These actions are applied immediately.
 	allocatedStorage, err := common.ConvertInt64ToInt32Safely(i.AllocatedStorage)
@@ -214,7 +219,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(i *RDSInstance, plan *
 		params.StorageType = aws.String(i.StorageType)
 	}
 
-	if i.ClearPassword != "" {
+	if i.ClearPassword != "" && !isReplica {
 		params.MasterUserPassword = aws.String(i.ClearPassword)
 	}
 
@@ -391,8 +396,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, pas
 	return base.InstanceInProgress, nil
 }
 
-func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string) error {
-	modifyParams, err := d.prepareModifyDbInstanceInput(i, plan, database)
+func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
+	modifyParams, err := d.prepareModifyDbInstanceInput(i, plan, database, isReplica)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
@@ -401,10 +406,10 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 	err = d.waitForDbReady(operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
+		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
-	modifyReplicaOutput, err := d.rds.ModifyDBInstance(context.TODO(), modifyParams)
+	modifyOutput, err := d.rds.ModifyDBInstance(context.TODO(), modifyParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
@@ -413,10 +418,10 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 	err = d.waitForDbReady(operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
+		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
-	err = d.updateDBTags(i, *modifyReplicaOutput.DBInstance.DBInstanceArn)
+	err = d.updateDBTags(i, *modifyOutput.DBInstance.DBInstanceArn)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("asyncModifyDb, error updating replica tags: %w", err)
@@ -428,7 +433,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan *catalog.RDSPlan) {
 	operation := base.ModifyOp
 
-	err := d.asyncModifyDbInstance(operation, i, plan, i.Database)
+	err := d.asyncModifyDbInstance(operation, i, plan, i.Database, false)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		d.logger.Error("asyncModifyDb: asyncModifyDbInstance error", err)
@@ -444,7 +449,7 @@ func (d *dedicatedDBAdapter) asyncModifyDb(i *RDSInstance, plan *catalog.RDSPlan
 			return
 		}
 	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
-		err := d.asyncModifyDbInstance(operation, i, plan, i.ReplicaDatabase)
+		err := d.asyncModifyDbInstance(operation, i, plan, i.ReplicaDatabase, true)
 		if err != nil {
 			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
 			d.logger.Error("asyncModifyDb: asyncModifyDbInstance read replica error", err)
