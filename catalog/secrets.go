@@ -5,7 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/goccy/go-yaml"
 	"gopkg.in/go-playground/validator.v8"
 )
@@ -25,8 +25,8 @@ type RDSSecret struct {
 
 // RDSDBSecret contains the config to connect to a database and the corresponding plan id.
 type RDSDBSecret struct {
-	common.DBConfig `yaml:",inline" validate:"required,dive,required"`
-	PlanID          string `yaml:"plan_id" validate:"required"`
+	db.DBConfig `yaml:",inline" validate:"required,dive,required"`
+	PlanID      string `yaml:"plan_id" validate:"required"`
 }
 
 // RedisSecret is a wrapper for all the Redis Secrets.
@@ -38,8 +38,8 @@ type RedisSecret struct {
 
 // RedisDBSecret contains the config to connect to a database and the corresponding plan id.
 type RedisDBSecret struct {
-	common.DBConfig `yaml:",inline" validate:"required,dive,required"`
-	PlanID          string `yaml:"plan_id" validate:"required"`
+	db.DBConfig `yaml:",inline" validate:"required,dive,required"`
+	PlanID      string `yaml:"plan_id" validate:"required"`
 }
 
 // ElasticsearchSecret is a wrapper for all the Elasticsearch Secrets.
@@ -51,8 +51,8 @@ type ElasticsearchSecret struct {
 
 // ElasticsearchDBSecret contains the config to connect to a database and the corresponding plan id.
 type ElasticsearchDBSecret struct {
-	common.DBConfig `yaml:",inline" validate:"required,dive,required"`
-	PlanID          string `yaml:"plan_id" validate:"required"`
+	db.DBConfig `yaml:",inline" validate:"required,dive,required"`
+	PlanID      string `yaml:"plan_id" validate:"required"`
 }
 
 // InitSecrets initializes the secrets struct based on the yaml file.

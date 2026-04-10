@@ -24,8 +24,8 @@ import (
 
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
-	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
@@ -42,6 +42,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ctx = context.Background()
 
 	exitCode := m.Run()
 
@@ -62,13 +64,9 @@ func NewTestDedicatedDBAdapter(s *config.Settings, rdsClient RDSClientInterface,
 	river.AddWorker(workers, &CreateWorker{})
 
 	if s.DbConfig == nil {
-		s.DbConfig = &common.DBConfig{
+		s.DbConfig = &db.DBConfig{
 			DbType: "sqlite3",
 		}
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
 	}
 
 	if riverClient == nil {

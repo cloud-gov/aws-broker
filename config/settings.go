@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 )
 
 // Settings stores settings used to run the application
@@ -18,7 +18,7 @@ type Settings struct {
 	DbNamePrefix              string
 	DbShorthandPrefix         string
 	MaxAllocatedStorage       int64
-	DbConfig                  *common.DBConfig
+	DbConfig                  *db.DBConfig
 	Environment               string
 	Region                    string
 	PubliclyAccessibleFeature bool
@@ -46,7 +46,7 @@ func (s *Settings) LoadFromEnv() error {
 	var err error
 
 	// Load DB Settings
-	dbConfig := common.DBConfig{}
+	dbConfig := db.DBConfig{}
 	dbConfig.DbType = os.Getenv("DB_TYPE")
 	dbConfig.URL = os.Getenv("DB_URL")
 	dbConfig.Username = os.Getenv("DB_USER")

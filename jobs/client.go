@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewClient(db *gorm.DB, dbConfig *common.DBConfig, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
+func NewClient(db *gorm.DB, dbConfig *db.DBConfig, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
 	logger.Info("initializing river client")
 
 	sqlDB, err := db.DB()
