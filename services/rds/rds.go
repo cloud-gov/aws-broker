@@ -417,9 +417,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, pas
 	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
 	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &CreateArgs{
-		i:        i,
-		plan:     plan,
-		password: password,
+		Instance: i,
+		Plan:     plan,
 	}, nil)
 	if err != nil {
 		return base.InstanceNotCreated, err

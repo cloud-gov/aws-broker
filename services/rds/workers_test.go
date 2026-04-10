@@ -20,6 +20,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
 	"github.com/riverqueue/river/rivertest"
@@ -125,13 +126,15 @@ func TestCreateWorker(t *testing.T) {
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
 			result, err := testWorker.Work(ctx, t, sqlTx, CreateArgs{
-				i: &RDSInstance{
+				Instance: &RDSInstance{
 					Instance: base.Instance{
-						Uuid: "test-1234",
+						Uuid: uuid.NewString(),
 					},
+					DbType:   "postgres",
+					Database: helpers.RandStr(10),
+					dbUtils:  &RDSDatabaseUtils{},
 				},
-				plan:     &catalog.RDSPlan{},
-				password: "fake",
+				Plan: &catalog.RDSPlan{},
 			}, nil)
 
 			if err != nil {

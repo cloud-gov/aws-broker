@@ -24,9 +24,8 @@ const (
 )
 
 type CreateArgs struct {
-	i        *RDSInstance
-	plan     *catalog.RDSPlan
-	password string
+	Instance *RDSInstance
+	Plan     *catalog.RDSPlan
 }
 
 func (CreateArgs) Kind() string { return CreateKind }
@@ -41,9 +40,8 @@ type CreateWorker struct {
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	fmt.Printf("got job args: %+v\n", job.Args)
-	err := w.asyncCreateDB(ctx, job.Args.i, job.Args.plan, job.Args.password)
-	fmt.Printf("finished job\n")
+	// TODO: figure out how to handle password
+	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan, "")
 	return err
 }
 
