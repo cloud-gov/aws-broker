@@ -1591,6 +1591,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		expectedErr       error
 		expectedParams    *rds.ModifyDBInstanceInput
 		plan              *catalog.RDSPlan
+		isReplica         bool
 	}{
 		"expect returned group name": {
 			dbInstance: &RDSInstance{
@@ -1746,11 +1747,44 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				EngineVersion:            aws.String("9.0"),
 			},
 		},
+		"does not update password for replica": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
+				ClearPassword:         "fake-pw",
+				dbUtils:               &RDSDatabaseUtils{},
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+			},
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			isReplica: true,
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+			},
+		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.plan, test.dbInstance.Database)
+			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.plan, test.dbInstance.Database, test.isReplica)
 			if !errors.Is(test.expectedErr, err) {
 				t.Errorf("unexpected error: %s", err)
 			}
