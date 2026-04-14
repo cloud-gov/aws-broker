@@ -59,7 +59,7 @@ fi
 cf update-service "${update_service_args[@]}"
 
 # Wait to make sure that the service instance has been successfully updated.
-wait_for_service_instance "$SERVICE_NAME"
+wait_for_service_instance_success "$SERVICE_NAME"
 
 # Clean up app and service
 cf delete -f "$APP_NAME"

@@ -24,6 +24,16 @@ wait_for_service_instance() {
   done
 }
 
+wait_for_service_instance_success() {
+  local status
+  status=$(wait_for_service_instance "$1")
+
+  if [ "$status" == "failed" ]; then
+    echo "failed to create $1"
+    exit 1
+  fi
+}
+
 function wait_for_deletion {
   while true; do
     if ! cf service "$1"; then
