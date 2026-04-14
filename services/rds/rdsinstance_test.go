@@ -815,6 +815,26 @@ func TestModifyInstance(t *testing.T) {
 			expectedTags:  map[string]string{},
 			expectUpdates: false,
 		},
+		"update allows major version upgrade": {
+			options: Options{
+				Version:                  "9.0",
+				AllowMajorVersionUpgrade: aws.Bool(true),
+			},
+			existingInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:                   "postgres",
+				DbVersion:                "9.0",
+				AllowMajorVersionUpgrade: true,
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectedTags:  map[string]string{},
+			expectUpdates: true,
+		},
 	}
 
 	for name, test := range testCases {

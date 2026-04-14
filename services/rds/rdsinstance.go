@@ -48,10 +48,11 @@ type RDSInstance struct {
 
 	StorageType string `sql:"size(255)"`
 
-	AddReadReplica      bool   `gorm:"-"`
-	ReplicaDatabase     string `sql:"size(255)"`
-	ReplicaDatabaseHost string `sql:"size(255)"`
-	DeleteReadReplica   bool   `gorm:"-"`
+	AddReadReplica           bool   `gorm:"-"`
+	ReplicaDatabase          string `sql:"size(255)"`
+	ReplicaDatabaseHost      string `sql:"size(255)"`
+	DeleteReadReplica        bool   `gorm:"-"`
+	AllowMajorVersionUpgrade bool   `gorm:"-"`
 }
 
 func NewRDSInstance() *RDSInstance {
@@ -89,6 +90,10 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 
 	if modifiedInstance.hasEngineVersionUpdate(options) {
 		modifiedInstance.DbVersion = options.Version
+	}
+
+	if options.AllowMajorVersionUpgrade != nil && *options.AllowMajorVersionUpgrade {
+		modifiedInstance.AllowMajorVersionUpgrade = *options.AllowMajorVersionUpgrade
 	}
 
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
