@@ -87,7 +87,9 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	// needed to create an RDS read replica
 	modifiedInstance.SecGroup = newPlan.SecurityGroup
 
-	modifiedInstance.setEngineVersion(*newPlan, options)
+	if modifiedInstance.hasEngineVersionUpdate(options) {
+		modifiedInstance.DbVersion = options.Version
+	}
 
 	// Check to see if there is a storage size change and if so, check to make sure it's a valid change.
 	if options.AllocatedStorage > 0 {
@@ -236,10 +238,15 @@ func (i *RDSInstance) init(
 	return nil
 }
 
+func (i *RDSInstance) hasEngineVersionUpdate(options Options) bool {
+	// Currently only supported for MySQL and PostgreSQL instances.
+	return (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != ""
+}
+
 func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
 	// Set the DB Version
 	// Currently only supported for MySQL and PostgreSQL instances.
-	if (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != "" {
+	if i.hasEngineVersionUpdate(options) {
 		i.DbVersion = options.Version
 	} else {
 		// Default to the version provided by the plan chosen in catalog.
