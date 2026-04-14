@@ -1695,7 +1695,7 @@ jobs:
                 OLD_ENGINE: "redis"
                 OLD_VERSION: "7.0"
                 NEW_ENGINE: "valkey"
-                NEW_VERSION: "7.1"
+                NEW_VERSION: "8.2"
 
             - task: smoke-tests-unbound-elasticsearch
               file: aws-broker-app/ci/run-smoke-test-unbound.yml
