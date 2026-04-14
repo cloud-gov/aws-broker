@@ -35,6 +35,7 @@ type Options struct {
 	RotateCredentials               *bool    `json:"rotate_credentials"`
 	StorageType                     string   `json:"storage_type"`
 	EnableCloudWatchLogGroupExports []string `json:"enable_cloudwatch_log_groups_exports"`
+	AllowMajorVersionUpgrade        *bool    `json:"allow_major_version_upgrade"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
