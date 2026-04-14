@@ -580,6 +580,7 @@ jobs:
                 DB_TYPE: postgres
                 OLD_VERSION: 14
                 NEW_VERSION: 16
+                ALLOW_MAJOR_VERSION_UPGRADE: true
 
             - task: smoke-tests-postgres-rotate-creds-replica
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml

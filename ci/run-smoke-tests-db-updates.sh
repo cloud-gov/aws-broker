@@ -14,6 +14,7 @@ OLD_VERSION=${OLD_VERSION:-""}
 NEW_VERSION=${NEW_VERSION:-""}
 NEW_SERVICE_PLAN=${NEW_SERVICE_PLAN:-""}
 NEW_STORAGE=${NEW_STORAGE:-""}
+ALLOW_MAJOR_VERSION_UPGRADE=${ALLOW_MAJOR_VERSION_UPGRADE:-""}
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
@@ -49,7 +50,11 @@ if [ -n "$NEW_SERVICE_PLAN" ]; then
 fi
 
 if [ -n "$NEW_VERSION" ]; then
-  update_service_args+=(-c '{"version": "'"$NEW_VERSION"'"}')
+  if [ -n "$ALLOW_MAJOR_VERSION_UPGRADE" ]; then
+    update_service_args+=(-c '{"version": "'"$NEW_VERSION"'", "allow_major_version_upgrade": true}')
+  else
+    update_service_args+=(-c '{"version": "'"$NEW_VERSION"'"}')
+  fi
 fi
 
 if [ -n "$NEW_STORAGE" ]; then
