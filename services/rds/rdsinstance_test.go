@@ -910,7 +910,7 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if test.shouldRotateCredentials != modifiedInstance.RotateCredentials {
-				t.Fatalf("mismatch of instance RotateCredentials value, expected: %d, got: %d", test.shouldRotateCredentials, modifiedInstance.RotateCredentials)
+				t.Fatalf("mismatch of instance RotateCredentials value, expected: %t, got: %t", test.shouldRotateCredentials, modifiedInstance.RotateCredentials)
 			}
 			if test.shouldRotateCredentials && modifiedInstance.Password == test.existingInstance.Password {
 				t.Fatal("instance password should have been updated")
