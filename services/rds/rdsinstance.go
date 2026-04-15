@@ -23,8 +23,6 @@ type RDSInstance struct {
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	ClearPassword string `gorm:"-"`
-
 	Tags                  *sync.Map `gorm:"-" deep:"-"`
 	BackupRetentionPeriod int64     `sql:"size(255)"`
 	DbSubnetGroup         string    `gorm:"-"`
@@ -52,6 +50,8 @@ type RDSInstance struct {
 	ReplicaDatabase     string `sql:"size(255)"`
 	ReplicaDatabaseHost string `sql:"size(255)"`
 	DeleteReadReplica   bool   `gorm:"-"`
+
+	RotateCredentials bool `gorm:"-"`
 }
 
 func NewRDSInstance() *RDSInstance {
@@ -69,13 +69,12 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 }
 
 func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
-	salt, encrypted, password, err := i.dbUtils.generateCredentials(settings)
+	salt, encrypted, err := i.dbUtils.generateCredentials(settings)
 	if err != nil {
 		return err
 	}
 	i.Salt = salt
 	i.Password = encrypted
-	i.ClearPassword = password
 	return nil
 }
 
@@ -139,6 +138,7 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	}
 
 	if options.RotateCredentials != nil && *options.RotateCredentials {
+		modifiedInstance.RotateCredentials = *options.RotateCredentials
 		err := modifiedInstance.generateCredentials(settings)
 		if err != nil {
 			return nil, err

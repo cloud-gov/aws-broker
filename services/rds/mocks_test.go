@@ -57,12 +57,12 @@ func (m *MockDbUtils) getCredentials(i *RDSInstance, password string) (map[strin
 	return m.mockCreds, nil
 }
 
-func (m *MockDbUtils) generateCredentials(settings *config.Settings) (string, string, string, error) {
-	return m.mockSalt, m.mockEncryptedPassword, m.mockClearPassword, nil
+func (m *MockDbUtils) generateCredentials(settings *config.Settings) (string, string, error) {
+	return m.mockSalt, m.mockEncryptedPassword, nil
 }
 
-func (m *MockDbUtils) generatePassword(salt string, password string, key string) (string, string, error) {
-	return m.mockEncryptedPassword, m.mockClearPassword, nil
+func (m *MockDbUtils) generatePassword(salt string, password string, key string) (string, error) {
+	return m.mockEncryptedPassword, nil
 }
 
 func (m *MockDbUtils) getPassword(salt string, password string, key string) (string, error) {

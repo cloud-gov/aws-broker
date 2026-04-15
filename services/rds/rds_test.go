@@ -555,7 +555,7 @@ func TestCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.plan, test.password)
+			responseCode, err := test.dbAdapter.createDB(test.dbInstance, test.plan)
 
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -1664,7 +1664,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				ClearPassword:         "fake-pw",
 				dbUtils:               &RDSDatabaseUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
@@ -1760,7 +1759,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				ClearPassword:         "fake-pw",
 				dbUtils:               &RDSDatabaseUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",

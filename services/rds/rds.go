@@ -27,7 +27,7 @@ import (
 )
 
 type dbAdapter interface {
-	createDB(i *RDSInstance, plan *catalog.RDSPlan, password string) (base.InstanceState, error)
+	createDB(i *RDSInstance, plan *catalog.RDSPlan) (base.InstanceState, error)
 	modifyDB(i *RDSInstance, plan *catalog.RDSPlan) (base.InstanceState, error)
 	checkDBStatus(database string) (base.InstanceState, error)
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
@@ -94,8 +94,7 @@ type mockDBAdapter struct {
 	createDBState *base.InstanceState
 }
 
-func (d *mockDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, password string) (base.InstanceState, error) {
-	// TODO
+func (d *mockDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan) (base.InstanceState, error) {
 	if d.createDBState != nil {
 		return *d.createDBState, nil
 	}
@@ -239,8 +238,12 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 		params.StorageType = aws.String(i.StorageType)
 	}
 
-	if i.ClearPassword != "" && !isReplica {
-		params.MasterUserPassword = aws.String(i.ClearPassword)
+	if i.RotateCredentials && !isReplica {
+		password, err := i.dbUtils.getPassword(i.Salt, i.Password, d.settings.EncryptionKey)
+		if err != nil {
+			return nil, err
+		}
+		params.MasterUserPassword = aws.String(password)
 	}
 
 	rdsTags := ConvertTagsToRDSTags(i.getTags())
@@ -402,7 +405,7 @@ func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan *catalog.RDSPlan
 	return nil
 }
 
-func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan, password string) (base.InstanceState, error) {
+func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan) (base.InstanceState, error) {
 	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Database creation in progress")
 	if err != nil {
 		return base.InstanceNotCreated, err

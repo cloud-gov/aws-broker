@@ -195,7 +195,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 	}
 
 	// Create the database instance.
-	status, err := broker.dbAdapter.createDB(newInstance, plan, newInstance.ClearPassword)
+	status, err := broker.dbAdapter.createDB(newInstance, plan)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,

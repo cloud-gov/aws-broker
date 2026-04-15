@@ -14,10 +14,10 @@ import (
 
 type DatabaseUtils interface {
 	formatDBName(dbType string, database string) string
-	generatePassword(salt string, password string, key string) (string, string, error)
+	generatePassword(salt string, password string, key string) (string, error)
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
-	generateCredentials(settings *config.Settings) (string, string, string, error)
+	generateCredentials(settings *config.Settings) (string, string, error)
 	generateDatabaseName(settings *config.Settings) string
 	buildUsername() string
 }
@@ -35,24 +35,24 @@ func (u *RDSDatabaseUtils) formatDBName(dbType string, database string) string {
 	}
 }
 
-func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, string, error) {
+func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, error) {
 	if salt == "" {
-		return "", "", errors.New("salt has to be set before writing the password")
+		return "", errors.New("salt has to be set before writing the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
 
 	encrypted, err := helpers.Encrypt(password, key, iv)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return encrypted, password, nil
+	return encrypted, nil
 }
 
 func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string) (string, error) {
 	if salt == "" || password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
+		return "", errors.New("salt and password has to be set before getting the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
@@ -117,14 +117,14 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 
 func (u *RDSDatabaseUtils) generateCredentials(
 	settings *config.Settings,
-) (string, string, string, error) {
+) (string, string, error) {
 	salt := helpers.GenerateSalt(aes.BlockSize)
 	password := helpers.RandStrNoCaps(25)
-	encrypted, password, err := u.generatePassword(salt, password, settings.EncryptionKey)
+	encrypted, err := u.generatePassword(salt, password, settings.EncryptionKey)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	return salt, encrypted, password, err
+	return salt, encrypted, err
 }
 
 func (u *RDSDatabaseUtils) generateDatabaseName(

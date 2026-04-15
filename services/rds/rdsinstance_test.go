@@ -108,7 +108,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ClearPassword:         "clear-pw",
 			},
 			expectedTags: map[string]string{},
 		},
@@ -325,7 +324,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ClearPassword:         "clear-pw",
 			},
 			expectedTags: map[string]string{
 				"plan-tag": "random-value",
@@ -393,7 +391,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ClearPassword:         "clear-pw",
 				ReplicaDatabase:       "db-replica",
 				AddReadReplica:        true,
 			},
@@ -853,11 +850,9 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 		currentPlan             *catalog.RDSPlan
 		newPlan                 *catalog.RDSPlan
 		settings                *config.Settings
-		originalPassword        string
-		originalSalt            string
-		username                string
 		shouldRotateCredentials bool
 		tags                    map[string]string
+		existingInstance        *RDSInstance
 	}{
 		"rotate credentials": {
 			options: Options{
@@ -868,10 +863,13 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
-			originalPassword:        helpers.RandStr(20),
-			originalSalt:            helpers.RandStr(10),
-			username:                helpers.RandStr(10),
 			shouldRotateCredentials: true,
+			existingInstance: &RDSInstance{
+				Username: helpers.RandStr(10),
+				Salt:     helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+				Password: helpers.RandStr(10),
+			},
 		},
 		"do not rotate credentials": {
 			options: Options{
@@ -882,10 +880,12 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
-			originalPassword:        helpers.RandStr(20),
-			originalSalt:            helpers.RandStr(10),
-			username:                helpers.RandStr(10),
 			shouldRotateCredentials: false,
+			existingInstance: &RDSInstance{
+				Salt:     helpers.RandStr(10),
+				Username: helpers.RandStr(10),
+				Password: helpers.RandStr(10),
+			},
 		},
 		"rotate credentials not specified": {
 			options:     Options{},
@@ -894,29 +894,28 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
-			originalPassword:        helpers.RandStr(20),
-			originalSalt:            helpers.RandStr(10),
-			username:                helpers.RandStr(10),
+			existingInstance: &RDSInstance{
+				Salt:     helpers.RandStr(10),
+				Username: helpers.RandStr(10),
+				Password: helpers.RandStr(10),
+			},
 			shouldRotateCredentials: false,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			existingInstance := &RDSInstance{
-				Username:      test.username,
-				ClearPassword: test.originalPassword,
-				Salt:          test.originalSalt,
-				dbUtils:       &RDSDatabaseUtils{},
-			}
-			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
+			modifiedInstance, err := test.existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
-			if test.shouldRotateCredentials && modifiedInstance.ClearPassword == test.originalPassword {
+			if test.shouldRotateCredentials != modifiedInstance.RotateCredentials {
+				t.Fatalf("mismatch of instance RotateCredentials value, expected: %d, got: %d", test.shouldRotateCredentials, modifiedInstance.RotateCredentials)
+			}
+			if test.shouldRotateCredentials && modifiedInstance.Password == test.existingInstance.Password {
 				t.Fatal("instance password should have been updated")
 			}
-			if test.shouldRotateCredentials && modifiedInstance.Salt == test.originalSalt {
+			if test.shouldRotateCredentials && modifiedInstance.Salt == test.existingInstance.Salt {
 				t.Fatal("instance salt should have been updated")
 			}
 		})
