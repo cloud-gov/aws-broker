@@ -1799,7 +1799,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
-				nil,
 				&mockRDSClient{},
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
