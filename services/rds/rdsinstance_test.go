@@ -14,23 +14,6 @@ import (
 	"github.com/go-test/deep"
 )
 
-func TestFormatDBName(t *testing.T) {
-	i := &RDSInstance{
-		dbUtils: &MockDbUtils{
-			mockFormattedDbName: "foobar",
-		},
-		Database: "db" + helpers.RandStrNoCaps(15),
-	}
-	dbName1 := i.FormatDBName()
-	if dbName1 != "foobar" {
-		t.Fatalf("database name should be foobar")
-	}
-	dbName2 := i.FormatDBName()
-	if dbName1 != dbName2 {
-		t.Fatalf("database names should be the same")
-	}
-}
-
 func TestInit(t *testing.T) {
 	testCases := map[string]struct {
 		options          Options

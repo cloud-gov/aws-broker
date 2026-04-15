@@ -5,8 +5,24 @@ import (
 	"testing"
 
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/go-test/deep"
 )
+
+func TestFormatDBName(t *testing.T) {
+	dbIdentifier := "db" + helpers.RandStrNoCaps(15)
+	i := &RDSInstance{
+		Database: dbIdentifier,
+	}
+	dbName1 := formatDBName(i.Database)
+	if dbName1 != dbIdentifier {
+		t.Fatalf("database name should be %s", dbIdentifier)
+	}
+	dbName2 := formatDBName(i.Database)
+	if dbName1 != dbName2 {
+		t.Fatalf("database names should be the same")
+	}
+}
 
 func TestGetCredentials(t *testing.T) {
 	testCases := map[string]struct {

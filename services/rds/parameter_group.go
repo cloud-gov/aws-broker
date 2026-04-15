@@ -213,7 +213,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(i.ParameterGroupName),
-			Description:            aws.String("aws broker parameter group for " + i.FormatDBName()),
+			Description:            aws.String("aws broker parameter group for " + formatDBName(i.Database)),
 			Tags:                   rdsTags,
 		}
 
@@ -380,9 +380,9 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 
 // getParameterGroupName gets a parameter group name for the instance
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
-	// i.FormatDBName() should always return the same value for the same database name,
+	// formatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
-	return p.parameterGroupPrefix + i.FormatDBName()
+	return p.parameterGroupPrefix + formatDBName(i.Database)
 }
 
 // setParameterGroupName sets the parameter group name on the instance struct

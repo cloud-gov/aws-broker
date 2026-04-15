@@ -30,44 +30,22 @@ import (
 )
 
 func TestCreateWorker(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	testCases := map[string]struct {
-		dbInstance           *RDSInstance
-		settings             *config.Settings
-		rds                  RDSClientInterface
-		parameterGroupClient parameterGroupClient
-		expectedState        base.InstanceState
-		password             string
-		plan                 *catalog.RDSPlan
-		expectErr            bool
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		expectedState base.InstanceState
+		password      string
+		plan          *catalog.RDSPlan
+		expectErr     bool
+		worker        *CreateWorker
 	}{
 		"success without replica": {
-			settings: &config.Settings{
-				PollAwsMinDelay:    1 * time.Millisecond,
-				PollAwsMaxDuration: 1 * time.Millisecond,
-				DbConfig: &db.DBConfig{
-					DbType: "sqlite3",
-				},
-			},
-			rds: &mockRDSClient{
-				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
-							},
-						},
-					},
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
-							},
-						},
-					},
-				},
-			},
-			parameterGroupClient: &mockParameterGroupClient{},
-			password:             helpers.RandStr(10),
+			ctx:      context.Background(),
+			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -77,6 +55,37 @@ func TestCreateWorker(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
+				DbType:   "postgres",
+			},
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				logger:               logger,
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
@@ -95,30 +104,14 @@ func TestCreateWorker(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			var (
-				config = &river.Config{}
-				driver = riversqlite.New(sqlDB)
-				logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-					Level: slog.LevelInfo,
-				}))
-				worker = &CreateWorker{
-					db:                   brokerDB,
-					settings:             test.settings,
-					rds:                  test.rds,
-					parameterGroupClient: test.parameterGroupClient,
-					logger:               logger,
-				}
-				ctx = context.Background()
-			)
-
 			workers := river.NewWorkers()
-			river.AddWorker(workers, worker)
-			riverClient, err = jobs.NewClient(ctx, brokerDB, test.settings.DbConfig, logger, workers)
+			river.AddWorker(workers, test.worker)
+			riverClient, err = jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
 			if err != nil {
 				log.Fatal(fmt.Errorf("error creating river client: %w", err))
 			}
 
-			testWorker := rivertest.NewWorker(t, driver, config, worker)
+			testWorker := rivertest.NewWorker(t, riversqlite.New(sqlDB), &river.Config{}, test.worker)
 
 			tx := brokerDB.Begin()
 			if err := tx.Error; err != nil {

@@ -16,7 +16,7 @@ import (
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils DatabaseUtils `gorm:"-"`
+	dbUtils DatabaseUtils `gorm:"-" json:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
@@ -59,10 +59,6 @@ func NewRDSInstance() *RDSInstance {
 	return &RDSInstance{
 		dbUtils: &RDSDatabaseUtils{},
 	}
-}
-
-func (i *RDSInstance) FormatDBName() string {
-	return i.dbUtils.formatDBName(i.DbType, i.Database)
 }
 
 func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {

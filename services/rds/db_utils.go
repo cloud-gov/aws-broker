@@ -22,6 +22,11 @@ type DatabaseUtils interface {
 	buildUsername() string
 }
 
+func formatDBName(database string) string {
+	re, _ := regexp.Compile("(i?)[^a-z0-9]")
+	return re.ReplaceAllString(database, "")
+}
+
 type RDSDatabaseUtils struct {
 }
 
@@ -78,7 +83,7 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
 
-	dbName := i.FormatDBName()
+	dbName := formatDBName(i.Database)
 	uri := fmt.Sprintf(
 		"%s://%s:%s@%s:%d/%s",
 		dbScheme,
