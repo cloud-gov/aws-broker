@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
@@ -493,13 +494,12 @@ func TestAsyncCreateDb(t *testing.T) {
 
 func TestCreateDb(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		dbAdapter              *dedicatedDBAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		password               string
-		expectedAsyncJobStates []base.InstanceState
-		plan                   *catalog.RDSPlan
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedErr   error
+		expectedState base.InstanceState
+		password      string
+		plan          *catalog.RDSPlan
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
@@ -547,9 +547,12 @@ func TestCreateDb(t *testing.T) {
 				AddReadReplica:  true,
 				dbUtils:         &RDSDatabaseUtils{},
 			},
-			expectedState:          base.InstanceInProgress,
-			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceReady},
-			plan:                   &catalog.RDSPlan{},
+			expectedState: base.InstanceInProgress,
+			plan: &catalog.RDSPlan{
+				ServicePlan: domain.ServicePlan{
+					ID: uuid.NewString(),
+				},
+			},
 		},
 	}
 
@@ -570,22 +573,17 @@ func TestCreateDb(t *testing.T) {
 			}
 
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+			defer tx.Rollback()
 
 			job := rivertest.RequireInsertedTx[*riversqlite.Driver](ctx, t, sqlTx, &CreateArgs{}, nil)
-			fmt.Printf("Test passed with message: %+v\n", job.Args)
 
-			// if len(test.expectedAsyncJobStates) > 0 {
-			// 	asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
-			// 	if err != nil {
-			// 		t.Fatal(err)
-			// 	}
+			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
+				t.Fatal("Did not receive expected RDS instance as create worker argument")
+			}
 
-			// 	// The exact database state at this point in the test is non-deterministic, since the database updates
-			// 	// are being done in a goroutine. So we test against a set of possible job states
-			// 	if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
-			// 		t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
-			// 	}
-			// }
+			if job.Args.Plan.ID != test.plan.ID {
+				t.Fatal("Did not receive expected RDS plan as create worker argument")
+			}
 
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
@@ -635,7 +633,7 @@ func TestWaitForDbReady(t *testing.T) {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 3 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -748,7 +746,6 @@ func TestWaitForDbReady(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
 			err := test.dbAdapter.waitForDbReady(base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
@@ -1662,12 +1659,15 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"update password": {
 			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				dbUtils:               &RDSDatabaseUtils{},
+				BinaryLogFormat: "ROW",
+				DbType:          "mysql",
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
+				RotateCredentials:     true,
 			},
 			dbAdapter: NewTestDedicatedDBAdapter(
 				&config.Settings{},
