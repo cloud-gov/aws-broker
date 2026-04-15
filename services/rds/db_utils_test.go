@@ -41,9 +41,8 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				dbUtils: &MockDbUtils{
-					mockFormattedDbName: "db1",
-				},
+				Database: "db-1",
+				dbUtils:  &RDSDatabaseUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
@@ -65,9 +64,7 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				dbUtils: &MockDbUtils{
-					mockFormattedDbName: "db1",
-				},
+				dbUtils: &RDSDatabaseUtils{},
 			},
 			password:  "fake-pw",
 			expectErr: true,
@@ -82,9 +79,8 @@ func TestGetCredentials(t *testing.T) {
 					Port: 5432,
 				},
 				ReplicaDatabaseHost: "replica-host",
-				dbUtils: &MockDbUtils{
-					mockFormattedDbName: "db1",
-				},
+				Database:            "db-1",
+				dbUtils:             &RDSDatabaseUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{

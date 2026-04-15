@@ -13,7 +13,6 @@ import (
 )
 
 type DatabaseUtils interface {
-	formatDBName(dbType string, database string) string
 	generatePassword(salt string, password string, key string) (string, error)
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
@@ -28,16 +27,6 @@ func formatDBName(database string) string {
 }
 
 type RDSDatabaseUtils struct {
-}
-
-func (u *RDSDatabaseUtils) formatDBName(dbType string, database string) string {
-	switch dbType {
-	case "oracle-se1", "oracle-se2":
-		return "ORCL"
-	default:
-		re, _ := regexp.Compile("(i?)[^a-z0-9]")
-		return re.ReplaceAllString(database, "")
-	}
 }
 
 func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, error) {
