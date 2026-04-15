@@ -226,7 +226,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 		DBInstanceClass:          &plan.InstanceClass,
 		MultiAZ:                  &plan.Redundant,
 		DBInstanceIdentifier:     &database,
-		AllowMajorVersionUpgrade: aws.Bool(false),
+		AllowMajorVersionUpgrade: aws.Bool(i.AllowMajorVersionUpgrade),
 		BackupRetentionPeriod:    backupRetentionPeriod,
 	}
 

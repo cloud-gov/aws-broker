@@ -1786,6 +1786,41 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BackupRetentionPeriod:    aws.Int32(14),
 			},
 		},
+		"allow major version upgrade": {
+			dbInstance: &RDSInstance{
+				dbUtils:                  &RDSDatabaseUtils{},
+				DbType:                   "mysql",
+				StorageType:              "gp3",
+				AllocatedStorage:         20,
+				Database:                 "db-name",
+				BackupRetentionPeriod:    14,
+				DbVersion:                "9.0",
+				AllowMajorVersionUpgrade: true,
+			},
+			dbAdapter: NewTestDedicatedDBAdapter(
+				&config.Settings{},
+				nil,
+				&mockRDSClient{},
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(true),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+				EngineVersion:            aws.String("9.0"),
+			},
+		},
 	}
 
 	for name, test := range testCases {

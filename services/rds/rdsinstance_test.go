@@ -784,7 +784,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				DbType:    "postgres",
-				DbVersion: "9.0",
+				DbVersion: "8.0",
 			},
 			currentPlan: &catalog.RDSPlan{},
 			newPlan: &catalog.RDSPlan{
@@ -792,7 +792,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			settings:      &config.Settings{},
 			expectedTags:  map[string]string{},
-			expectUpdates: true,
+			expectUpdates: false,
 		},
 		"update MySQL database version from plan": {
 			options: Options{},
@@ -802,12 +802,32 @@ func TestModifyInstance(t *testing.T) {
 			},
 			expectedInstance: &RDSInstance{
 				DbType:    "mysql",
-				DbVersion: "9.0",
+				DbVersion: "8.0",
 			},
 			currentPlan: &catalog.RDSPlan{},
 			newPlan: &catalog.RDSPlan{
 				DbVersion: "9.0",
 			},
+			settings:      &config.Settings{},
+			expectedTags:  map[string]string{},
+			expectUpdates: false,
+		},
+		"update allows major version upgrade": {
+			options: Options{
+				Version:                  "9.0",
+				AllowMajorVersionUpgrade: aws.Bool(true),
+			},
+			existingInstance: &RDSInstance{
+				DbType:    "postgres",
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:                   "postgres",
+				DbVersion:                "9.0",
+				AllowMajorVersionUpgrade: true,
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
 			settings:      &config.Settings{},
 			expectedTags:  map[string]string{},
 			expectUpdates: true,
