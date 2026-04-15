@@ -49,10 +49,6 @@ type MockDbUtils struct {
 	mockCreds             map[string]string
 }
 
-func (m *MockDbUtils) formatDBName(string, string) string {
-	return m.mockFormattedDbName
-}
-
 func (m *MockDbUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
 	return m.mockCreds, nil
 }
