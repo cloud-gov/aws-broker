@@ -22,6 +22,8 @@ wait_for_service_instance() {
     sleep 60
     status=$(cf curl "/v2/service_instances/$guid" | jq -r '.entity.last_operation.state')
   done
+
+  echo "$status"
 }
 
 wait_for_service_instance_success() {
