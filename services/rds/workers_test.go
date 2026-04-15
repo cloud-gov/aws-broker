@@ -122,6 +122,7 @@ func TestCreateWorker(t *testing.T) {
 			if err := tx.Error; err != nil {
 				t.Fatal(err)
 			}
+			defer tx.Rollback()
 
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
