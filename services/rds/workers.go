@@ -105,39 +105,6 @@ func (w *CreateWorker) prepareCreateDbInput(
 	return params, nil
 }
 
-func (w *CreateWorker) waitForDbReady(
-	ctx context.Context,
-	operation base.Operation,
-	i *RDSInstance,
-	database string,
-) error {
-	w.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
-
-	// Create a waiter
-	waiter := rds.NewDBInstanceAvailableWaiter(w.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
-		dawo.MinDelay = w.settings.PollAwsMinDelay
-		dawo.LogWaitAttempts = true
-	})
-
-	// Define the waiting strategy
-	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, w.settings.PollAwsMaxDuration)
-
-	waiterInput := &rds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: &database,
-	}
-	err := waiter.Wait(ctx, waiterInput, maxWaitTime)
-
-	if err != nil {
-		updateErr := jobs.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
-		if updateErr != nil {
-			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
-		}
-		return fmt.Errorf("waitForDbReady: %w", err)
-	}
-
-	return nil
-}
-
 func (w *CreateWorker) createDBReadReplica(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) (*rds.CreateDBInstanceReadReplicaOutput, error) {
 	var err error
 
@@ -188,7 +155,8 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 	i *RDSInstance,
 	plan *catalog.RDSPlan,
 ) error {
-	err := w.waitForDbReady(ctx, operation, i, i.Database)
+	err := waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
+
 	if err != nil {
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
 	}
@@ -200,14 +168,14 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	err = w.waitForDbReady(ctx, operation, i, i.ReplicaDatabase)
+	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		w.logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
 		jobs.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	err = w.updateDBTags(ctx, i, *createReplicaOutput.DBInstance.DBInstanceArn)
+	err = updateDBTags(ctx, w.rds, i, *createReplicaOutput.DBInstance.DBInstanceArn)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
@@ -229,7 +197,8 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
 	}
 
-	err = w.waitForDbReady(ctx, operation, i, i.Database)
+	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
+
 	if err != nil {
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: waitForDbReady error: %w ", err))
 	}
@@ -242,12 +211,4 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 	}
 
 	return nil
-}
-
-func (w *CreateWorker) updateDBTags(ctx context.Context, i *RDSInstance, dbInstanceARN string) error {
-	_, err := w.rds.AddTagsToResource(ctx, &rds.AddTagsToResourceInput{
-		ResourceName: aws.String(dbInstanceARN),
-		Tags:         ConvertTagsToRDSTags(i.getTags()),
-	})
-	return err
 }
