@@ -156,10 +156,12 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 	plan *catalog.RDSPlan,
 ) error {
 	err := waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
-
 	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
 	}
+
+	jobs.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	createReplicaOutput, err := w.createDBReadReplica(ctx, i, plan)
 	if err != nil {
