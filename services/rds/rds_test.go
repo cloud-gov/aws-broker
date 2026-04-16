@@ -84,23 +84,7 @@ func NewTestDedicatedDBAdapter(s *config.Settings, rdsClient RDSClientInterface,
 	return NewRdsDedicatedDBAdapter(ctx, s, brokerDB, rdsClient, parameterGroupClient, logger, riverClient)
 }
 
-// 		t.Run(name, func(t *testing.T) {
-// 			test.dbInstance.setTags(test.plan, test.tags)
-// 			params, err := test.dbAdapter.prepareCreateDbInput(test.dbInstance, test.plan, test.password)
-// 			if err != nil && test.expectedErr == nil {
-// 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
-// 			}
-// 			if test.expectedErr != nil && (err == nil || err.Error() != test.expectedErr.Error()) {
-// 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
-// 			}
-// 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
-// 				t.Error(diff)
-// 			}
-// 		})
-// 	}
-// }
-
-func TestAsyncCreateDb(t *testing.T) {
+func TestAsyncCreateDb2(t *testing.T) {
 	createDbErr := errors.New("create DB error")
 	testCases := map[string]struct {
 		dbInstance    *RDSInstance

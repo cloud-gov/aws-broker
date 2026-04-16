@@ -189,26 +189,30 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 
 	createDbInputParams, err := w.prepareCreateDbInput(i, plan, password)
 	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
 	}
 
 	_, err = w.rds.CreateDBInstance(ctx, createDbInputParams)
 	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
 	}
 
 	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
-
 	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: waitForDbReady error: %w ", err))
 	}
 
 	if i.AddReadReplica {
 		err := w.waitAndCreateDBReadReplica(ctx, operation, i, plan)
 		if err != nil {
+			jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
 			return river.JobCancel(fmt.Errorf("asyncCreateDB: waitAndCreateDBReadReplica error: %w ", err))
 		}
 	}
 
+	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
 	return nil
 }
