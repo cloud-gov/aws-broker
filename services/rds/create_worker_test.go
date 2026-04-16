@@ -35,13 +35,15 @@ func TestCreateWorker(t *testing.T) {
 	}))
 
 	testCases := map[string]struct {
-		ctx           context.Context
-		dbInstance    *RDSInstance
-		expectedState base.InstanceState
-		password      string
-		plan          *catalog.RDSPlan
-		expectErr     bool
-		worker        *CreateWorker
+		ctx               context.Context
+		dbInstance        *RDSInstance
+		expectedState     base.InstanceState
+		password          string
+		plan              *catalog.RDSPlan
+		expectErr         bool
+		worker            *CreateWorker
+		expectedEventKind river.EventKind
+		expectedJobState  rivertype.JobState
 	}{
 		"success without replica": {
 			ctx:      context.Background(),
@@ -87,8 +89,171 @@ func TestCreateWorker(t *testing.T) {
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceReady,
+			plan:              &catalog.RDSPlan{},
+			expectedState:     base.InstanceReady,
+			expectedEventKind: river.EventKindJobCompleted,
+			expectedJobState:  rivertype.JobStateCompleted,
+		},
+		"success with replica": {
+			ctx:      context.Background(),
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: uuid.NewString(),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: helpers.RandStr(10),
+				dbUtils:         &RDSDatabaseUtils{},
+				DbType:          "postgres",
+				AddReadReplica:  true,
+			},
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				logger:               logger,
+			},
+			plan:              &catalog.RDSPlan{},
+			expectedState:     base.InstanceReady,
+			expectedEventKind: river.EventKindJobCompleted,
+			expectedJobState:  rivertype.JobStateCompleted,
+		},
+		"error provisioning custom parameter group": {
+			ctx: context.Background(),
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				rds: &mockRDSClient{},
+				parameterGroupClient: &mockParameterGroupClient{
+					returnErr: errors.New("failed"),
+				},
+				logger: logger,
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			plan:              &catalog.RDSPlan{},
+			password:          helpers.RandStr(10),
+			expectedState:     base.InstanceNotCreated,
+			expectErr:         true,
+			expectedEventKind: river.EventKindJobCancelled,
+			expectedJobState:  rivertype.JobStateCancelled,
+		},
+		"create DB error": {
+			ctx: context.Background(),
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				rds: &mockRDSClient{
+					createDbErr: errors.New("create database error"),
+				},
+				logger:               logger,
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			plan:              &catalog.RDSPlan{},
+			password:          helpers.RandStr(10),
+			expectedState:     base.InstanceNotCreated,
+			expectErr:         true,
+			expectedEventKind: river.EventKindJobCancelled,
+			expectedJobState:  rivertype.JobStateCancelled,
+		},
+		"error waiting for database creation": {
+			ctx: context.Background(),
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("fail")},
+				},
+				logger:               logger,
+				parameterGroupClient: &mockParameterGroupClient{},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			plan:              &catalog.RDSPlan{},
+			password:          helpers.RandStr(10),
+			expectedState:     base.InstanceNotCreated,
+			expectErr:         true,
+			expectedEventKind: river.EventKindJobCancelled,
+			expectedJobState:  rivertype.JobStateCancelled,
 		},
 	}
 
@@ -137,12 +302,12 @@ func TestCreateWorker(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if result.EventKind != river.EventKindJobCompleted {
-				t.Fatal("not completed")
+			if result.EventKind != test.expectedEventKind {
+				t.Fatalf("expected event kind: %s, got: %s", test.expectedEventKind, result.EventKind)
 			}
 
-			if result.Job.State != rivertype.JobStateCompleted {
-				t.Fatal("not completed")
+			if result.Job.State != test.expectedJobState {
+				t.Fatalf("expected job state: %s, got: %s", test.expectedJobState, result.Job.State)
 			}
 		})
 	}
