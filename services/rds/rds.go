@@ -142,66 +142,6 @@ type dedicatedDBAdapter struct {
 	riverClient          *river.Client[*sql.Tx]
 }
 
-func (d *dedicatedDBAdapter) prepareCreateDbInput(
-	i *RDSInstance,
-	plan *catalog.RDSPlan,
-	password string,
-) (*rds.CreateDBInstanceInput, error) {
-	rdsTags := ConvertTagsToRDSTags(i.getTags())
-
-	allocatedStorage, err := common.ConvertInt64ToInt32Safely(i.AllocatedStorage)
-	if err != nil {
-		return nil, err
-	}
-
-	backupRetentionPeriod, err := common.ConvertInt64ToInt32Safely(i.BackupRetentionPeriod)
-	if err != nil {
-		return nil, err
-	}
-
-	// Standard parameters
-	params := &rds.CreateDBInstanceInput{
-		AllocatedStorage: allocatedStorage,
-		// Instance class is defined by the plan
-		DBInstanceClass:         &plan.InstanceClass,
-		DBInstanceIdentifier:    &i.Database,
-		DBName:                  aws.String(formatDBName(i.Database)),
-		Engine:                  aws.String(i.DbType),
-		MasterUserPassword:      &password,
-		MasterUsername:          &i.Username,
-		AutoMinorVersionUpgrade: aws.Bool(true),
-		MultiAZ:                 aws.Bool(plan.Redundant),
-		StorageEncrypted:        aws.Bool(plan.Encrypted),
-		StorageType:             aws.String(i.StorageType),
-		Tags:                    rdsTags,
-		PubliclyAccessible:      aws.Bool(d.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
-		BackupRetentionPeriod:   backupRetentionPeriod,
-		DBSubnetGroupName:       &i.DbSubnetGroup,
-		VpcSecurityGroupIds: []string{
-			i.SecGroup,
-		},
-	}
-
-	if i.DbVersion != "" {
-		params.EngineVersion = aws.String(i.DbVersion)
-	}
-	if i.LicenseModel != "" {
-		params.LicenseModel = aws.String(i.LicenseModel)
-	}
-
-	// If a custom parameter has been requested, and the feature is enabled,
-	// create/update a custom parameter group for our custom parameters.
-	err = d.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
-	if err != nil {
-		return nil, err
-	}
-	if i.ParameterGroupName != "" {
-		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
-	}
-
-	return params, nil
-}
-
 func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 	i *RDSInstance,
 	plan *catalog.RDSPlan,
@@ -369,39 +309,6 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	return nil
-}
-
-func (d *dedicatedDBAdapter) asyncCreateDB(i *RDSInstance, plan *catalog.RDSPlan, password string) error {
-	operation := base.CreateOp
-
-	createDbInputParams, err := d.prepareCreateDbInput(i, plan, password)
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
-	}
-
-	_, err = d.rds.CreateDBInstance(d.ctx, createDbInputParams)
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
-	}
-
-	err = d.waitForDbReady(operation, i, i.Database)
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: waitForDbReady error: %w ", err))
-	}
-
-	if i.AddReadReplica {
-		err := d.waitAndCreateDBReadReplica(operation, i, plan)
-		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
-			return river.JobCancel(fmt.Errorf("asyncCreateDB: waitAndCreateDBReadReplica error: %w ", err))
-		}
-	}
-
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
 	return nil
 }
 
