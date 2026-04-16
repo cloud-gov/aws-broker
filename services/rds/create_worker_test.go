@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"testing"
@@ -264,25 +263,13 @@ func TestCreateWorker(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			sqlDB, err := brokerDB.DB()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			workers := river.NewWorkers()
-			river.AddWorker(workers, test.worker)
-			// create client and run migrations
-			_, err = jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
-			if err != nil {
-				log.Fatal(fmt.Errorf("error creating river client: %w", err))
-			}
 
-			testWorker := rivertest.NewWorker(t, riversqlite.New(sqlDB), &river.Config{}, test.worker)
+			// create client and run migrations
+			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
+			if err != nil {
+				t.Fatal(fmt.Errorf("error creating river client: %w", err))
+			}
 
 			tx := brokerDB.Begin()
 			if err := tx.Error; err != nil {
@@ -292,18 +279,12 @@ func TestCreateWorker(t *testing.T) {
 
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
-			result, err := testWorker.Work(test.ctx, t, sqlTx, CreateArgs{
-				Instance: &RDSInstance{
-					Instance: base.Instance{
-						Uuid: uuid.NewString(),
-					},
-					DbType:   "postgres",
-					Database: helpers.RandStr(10),
-					dbUtils:  &RDSDatabaseUtils{},
-				},
-				Plan: &catalog.RDSPlan{},
-			}, nil)
+			testWorker := rivertest.NewWorker(t, riversqlite.New(nil), &river.Config{}, test.worker)
 
+			result, err := testWorker.Work(test.ctx, t, sqlTx, CreateArgs{
+				Instance: test.dbInstance,
+				Plan:     test.plan,
+			}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -40,7 +40,6 @@ type CreateWorker struct {
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	// TODO: figure out how to handle password
 	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan, "")
 	return err
 }
