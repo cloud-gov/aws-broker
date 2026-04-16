@@ -739,7 +739,7 @@ func TestAsyncCreateDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.worker.asyncCreateDB(test.ctx, test.dbInstance, test.plan, test.password)
+			err := test.worker.asyncCreateDB(test.ctx, test.dbInstance, test.plan)
 			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}

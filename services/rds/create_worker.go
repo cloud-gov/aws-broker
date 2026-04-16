@@ -40,7 +40,7 @@ type CreateWorker struct {
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan, "")
+	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan)
 	return err
 }
 
@@ -185,8 +185,14 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 	return nil
 }
 
-func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan, password string) error {
+func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
 	operation := base.CreateOp
+
+	password, err := i.dbUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
+	if err != nil {
+		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
+		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
+	}
 
 	createDbInputParams, err := w.prepareCreateDbInput(i, plan, password)
 	if err != nil {
