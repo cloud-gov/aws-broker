@@ -244,34 +244,6 @@ func (d *dedicatedDBAdapter) createDBReadReplica(i *RDSInstance, plan *catalog.R
 	return createDbInstanceReadReplicaOutput, err
 }
 
-func (d *dedicatedDBAdapter) waitForDbReady(operation base.Operation, i *RDSInstance, database string) error {
-	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be available", database))
-
-	// Create a waiter
-	waiter := rds.NewDBInstanceAvailableWaiter(d.rds, func(dawo *rds.DBInstanceAvailableWaiterOptions) {
-		dawo.MinDelay = d.settings.PollAwsMinDelay
-		dawo.LogWaitAttempts = true
-	})
-
-	// Define the waiting strategy
-	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, d.settings.PollAwsMaxDuration)
-
-	waiterInput := &rds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: &database,
-	}
-	err := waiter.Wait(d.ctx, waiterInput, maxWaitTime)
-
-	if err != nil {
-		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
-		if updateErr != nil {
-			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
-		}
-		return fmt.Errorf("waitForDbReady: %w", err)
-	}
-
-	return nil
-}
-
 func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) error {
 	_, err := d.rds.AddTagsToResource(d.ctx, &rds.AddTagsToResourceInput{
 		ResourceName: aws.String(dbInstanceARN),

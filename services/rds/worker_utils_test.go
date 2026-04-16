@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestWaitForDbReady2(t *testing.T) {
+func TestWaitForDbReady(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
