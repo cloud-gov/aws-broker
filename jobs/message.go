@@ -36,6 +36,6 @@ func GetLastAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, ope
 func ShouldWriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) {
 	err := WriteAsyncJobMessage(db, brokerId, instanceId, operation, state, message)
 	if err != nil {
-		fmt.Println(fmt.Errorf("ShouldWriteAsyncJobMessage: %w", err))
+		fmt.Println(fmt.Errorf("ShouldWriteAsyncJobMessage error: %w", err))
 	}
 }
