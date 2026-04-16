@@ -34,6 +34,11 @@ func TestCreateWorker(t *testing.T) {
 		Level: slog.LevelInfo,
 	}))
 
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		ctx               context.Context
 		dbInstance        *RDSInstance
@@ -271,7 +276,8 @@ func TestCreateWorker(t *testing.T) {
 
 			workers := river.NewWorkers()
 			river.AddWorker(workers, test.worker)
-			riverClient, err = jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
+			// create client and run migrations
+			_, err = jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
 			if err != nil {
 				log.Fatal(fmt.Errorf("error creating river client: %w", err))
 			}
@@ -286,7 +292,7 @@ func TestCreateWorker(t *testing.T) {
 
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
-			result, err := testWorker.Work(ctx, t, sqlTx, CreateArgs{
+			result, err := testWorker.Work(test.ctx, t, sqlTx, CreateArgs{
 				Instance: &RDSInstance{
 					Instance: base.Instance{
 						Uuid: uuid.NewString(),
@@ -490,6 +496,11 @@ func TestAsyncCreateDb(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
+
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testCases := map[string]struct {
 		ctx           context.Context
@@ -773,6 +784,11 @@ func TestCreateDBReadReplica(t *testing.T) {
 		Level: slog.LevelInfo,
 	}))
 
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		ctx        context.Context
 		worker     *CreateWorker
@@ -885,6 +901,11 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
+
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testCases := map[string]struct {
 		ctx           context.Context

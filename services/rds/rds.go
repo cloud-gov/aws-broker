@@ -281,7 +281,7 @@ func (d *dedicatedDBAdapter) updateDBTags(i *RDSInstance, dbInstanceARN string) 
 }
 
 func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan) error {
-	err := d.waitForDbReady(operation, i, i.Database)
+	err := waitForDbReady(d.ctx, d.rds, d.db, d.logger, &d.settings, operation, i, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
@@ -296,7 +296,7 @@ func (d *dedicatedDBAdapter) waitAndCreateDBReadReplica(operation base.Operation
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	err = d.waitForDbReady(operation, i, i.ReplicaDatabase)
+	err = waitForDbReady(d.ctx, d.rds, d.db, d.logger, &d.settings, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		d.logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
 		jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
@@ -348,7 +348,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
 	}
 
-	err = d.waitForDbReady(operation, i, database)
+	err = waitForDbReady(d.ctx, d.rds, d.db, d.logger, &d.settings, operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
@@ -360,7 +360,7 @@ func (d *dedicatedDBAdapter) asyncModifyDbInstance(operation base.Operation, i *
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
-	err = d.waitForDbReady(operation, i, database)
+	err = waitForDbReady(d.ctx, d.rds, d.db, d.logger, &d.settings, operation, i, database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
