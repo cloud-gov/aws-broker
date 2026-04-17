@@ -8,6 +8,8 @@ import (
 	"os/signal"
 
 	"code.cloudfoundry.org/brokerapi/v13"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -58,11 +60,22 @@ func run(ctx context.Context, out io.Writer) error {
 	}
 	logger.Debug("run: Migrated GORM models")
 
+	cfg, err := awsConfig.LoadDefaultConfig(
+		ctx,
+		awsConfig.WithRegion(settings.Region),
+	)
+	if err != nil {
+		return fmt.Errorf("error loading AWS config: %s", err)
+	}
+
+	rdsClient := awsRds.NewFromConfig(cfg)
+	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, settings)
+
 	logger.Debug("run: initializing River workers and client")
 	workers := river.NewWorkers()
-	// river.AddWorker(workers, rds.NewCreateWorker(
-	// 	db, settings, rds, logger, rds.NewAwsParameterGroupClient(), &rds.RDSDatabaseUtils{},
-	// ))
+	river.AddWorker(workers, rds.NewCreateWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSDatabaseUtils{},
+	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
 	if err != nil {
