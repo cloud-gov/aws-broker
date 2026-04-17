@@ -12,7 +12,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 )
 
-type DatabaseUtils interface {
+type CredentialUtils interface {
 	generatePassword(salt string, password string, key string) (string, error)
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
@@ -26,10 +26,10 @@ func formatDBName(database string) string {
 	return re.ReplaceAllString(database, "")
 }
 
-type RDSDatabaseUtils struct {
+type RDSCredentialUtils struct {
 }
 
-func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, error) {
+func (u *RDSCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
 	if salt == "" {
 		return "", errors.New("salt has to be set before writing the password")
 	}
@@ -44,7 +44,7 @@ func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key st
 	return encrypted, nil
 }
 
-func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string) (string, error) {
+func (u *RDSCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
 	if salt == "" || password == "" {
 		return "", errors.New("salt and password has to be set before getting the password")
 	}
@@ -59,7 +59,7 @@ func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string)
 	return decrypted, nil
 }
 
-func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
+func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
 	var dbScheme string
 	var credentials map[string]string
 
@@ -109,7 +109,7 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 	return credentials, nil
 }
 
-func (u *RDSDatabaseUtils) generateCredentials(
+func (u *RDSCredentialUtils) generateCredentials(
 	settings *config.Settings,
 ) (string, string, error) {
 	salt := helpers.GenerateSalt(aes.BlockSize)
@@ -121,12 +121,12 @@ func (u *RDSDatabaseUtils) generateCredentials(
 	return salt, encrypted, err
 }
 
-func (u *RDSDatabaseUtils) generateDatabaseName(
+func (u *RDSCredentialUtils) generateDatabaseName(
 	settings *config.Settings,
 ) string {
 	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
 }
 
-func (u *RDSDatabaseUtils) buildUsername() string {
+func (u *RDSCredentialUtils) buildUsername() string {
 	return "u" + helpers.RandStrNoCaps(15)
 }

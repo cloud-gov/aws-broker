@@ -39,7 +39,7 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 	return nil
 }
 
-type MockDbUtils struct {
+type MockCredentialUtils struct {
 	mockFormattedDbName   string
 	mockDbName            string
 	mockUsername          string
@@ -50,27 +50,27 @@ type MockDbUtils struct {
 	mockCreds             map[string]string
 }
 
-func (m *MockDbUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
+func (m *MockCredentialUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
 	return m.mockCreds, nil
 }
 
-func (m *MockDbUtils) generateCredentials(settings *config.Settings) (string, string, error) {
+func (m *MockCredentialUtils) generateCredentials(settings *config.Settings) (string, string, error) {
 	return m.mockSalt, m.mockEncryptedPassword, nil
 }
 
-func (m *MockDbUtils) generatePassword(salt string, password string, key string) (string, error) {
+func (m *MockCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
 	return m.mockEncryptedPassword, nil
 }
 
-func (m *MockDbUtils) getPassword(salt string, password string, key string) (string, error) {
+func (m *MockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
 	return m.mockClearPassword, m.mockGetPassworrdErr
 }
 
-func (m *MockDbUtils) generateDatabaseName(settings *config.Settings) string {
+func (m *MockCredentialUtils) generateDatabaseName(settings *config.Settings) string {
 	return m.mockDbName
 }
 
-func (m *MockDbUtils) buildUsername() string {
+func (m *MockCredentialUtils) buildUsername() string {
 	return m.mockUsername
 }
 

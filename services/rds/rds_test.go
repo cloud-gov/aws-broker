@@ -125,7 +125,7 @@ func TestCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceInProgress,
 			plan: &catalog.RDSPlan{
@@ -208,7 +208,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
@@ -231,7 +231,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
@@ -254,7 +254,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
@@ -296,7 +296,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: "uuid-1",
 				},
 				Database: "db-1",
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
@@ -307,7 +307,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: "uuid-1",
 				},
 				Database: "db-1",
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 		},
 		"success with adding read replica": {
@@ -362,7 +362,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        "db-2",
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
@@ -374,7 +374,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				Database:        "db-2",
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			plan: &catalog.RDSPlan{},
 		},
@@ -423,7 +423,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
@@ -474,7 +474,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
@@ -518,7 +518,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:          "db-3",
 				DeleteReadReplica: true,
 				ReplicaDatabase:   "db-replica",
-				dbUtils:           &RDSDatabaseUtils{},
+				dbUtils:           &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
@@ -529,7 +529,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: "uuid-3",
 				},
 				Database: "db-3",
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan: &catalog.RDSPlan{},
 		},
@@ -571,7 +571,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
@@ -613,7 +613,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: "uuid-1",
 				},
 				Database:  "db-1",
-				dbUtils:   &RDSDatabaseUtils{},
+				dbUtils:   &RDSCredentialUtils{},
 				DbVersion: "9.0",
 			},
 			expectedState: base.InstanceReady,
@@ -625,7 +625,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					Uuid: "uuid-1",
 				},
 				Database:  "db-1",
-				dbUtils:   &RDSDatabaseUtils{},
+				dbUtils:   &RDSCredentialUtils{},
 				DbVersion: "9.0",
 			},
 		},
@@ -725,7 +725,7 @@ func TestModifyDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			expectedState:          base.InstanceInProgress,
 			expectedAsyncJobStates: []base.InstanceState{base.InstanceReady, base.InstanceInProgress},
@@ -784,7 +784,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
@@ -821,7 +821,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
@@ -846,7 +846,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 				AllocatedStorage:      20,
@@ -880,7 +880,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"update storage type": {
 			dbInstance: &RDSInstance{
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				DbType:                "mysql",
 				StorageType:           "gp3",
 				AllocatedStorage:      20,
@@ -913,7 +913,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"update engine version": {
 			dbInstance: &RDSInstance{
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				DbType:                "mysql",
 				StorageType:           "gp3",
 				AllocatedStorage:      20,
@@ -950,7 +950,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
@@ -981,7 +981,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"allow major version upgrade": {
 			dbInstance: &RDSInstance{
-				dbUtils:                  &RDSDatabaseUtils{},
+				dbUtils:                  &RDSCredentialUtils{},
 				DbType:                   "mysql",
 				StorageType:              "gp3",
 				AllocatedStorage:         20,
@@ -1176,7 +1176,7 @@ func TestBindDBToApp(t *testing.T) {
 				&mockParameterGroupClient{},
 			),
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName: "db1",
 					mockCreds: map[string]string{
 						"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
@@ -1766,7 +1766,7 @@ func TestDeleteDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			expectedState:          base.InstanceInProgress,
 			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceGone},

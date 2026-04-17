@@ -57,7 +57,7 @@ func TestInit(t *testing.T) {
 			spaceGUID: "space-1",
 			serviceID: "service-1",
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName:   "test-db",
 					mockDbName:            "db",
 					mockUsername:          "fake-user",
@@ -106,7 +106,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -144,7 +144,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -182,7 +182,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -218,7 +218,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -272,7 +272,7 @@ func TestInit(t *testing.T) {
 				"foo": "bar",
 			},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName:   "test-db",
 					mockDbName:            "db",
 					mockUsername:          "fake-user",
@@ -338,7 +338,7 @@ func TestInit(t *testing.T) {
 			spaceGUID: "space-1",
 			serviceID: "service-1",
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName:   "test-db",
 					mockDbName:            "db",
 					mockUsername:          "fake-user",
@@ -867,7 +867,7 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			existingInstance: &RDSInstance{
 				Username: helpers.RandStr(10),
 				Salt:     helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 				Password: helpers.RandStr(10),
 			},
 		},

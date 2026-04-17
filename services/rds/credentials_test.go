@@ -26,14 +26,14 @@ func TestFormatDBName(t *testing.T) {
 
 func TestGetCredentials(t *testing.T) {
 	testCases := map[string]struct {
-		dbUtils       DatabaseUtils
+		dbUtils       CredentialUtils
 		rdsInstance   *RDSInstance
 		password      string
 		expectErr     bool
 		expectedCreds map[string]string
 	}{
 		"postgres": {
-			dbUtils: &RDSDatabaseUtils{},
+			dbUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "postgres",
 				Username: "user-1",
@@ -42,7 +42,7 @@ func TestGetCredentials(t *testing.T) {
 					Port: 5432,
 				},
 				Database: "db-1",
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
@@ -56,7 +56,7 @@ func TestGetCredentials(t *testing.T) {
 			},
 		},
 		"unknown databse type": {
-			dbUtils: &RDSDatabaseUtils{},
+			dbUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "foobar",
 				Username: "user-1",
@@ -64,13 +64,13 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				dbUtils: &RDSDatabaseUtils{},
+				dbUtils: &RDSCredentialUtils{},
 			},
 			password:  "fake-pw",
 			expectErr: true,
 		},
 		"database with replica": {
-			dbUtils: &RDSDatabaseUtils{},
+			dbUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "postgres",
 				Username: "user-1",
@@ -80,7 +80,7 @@ func TestGetCredentials(t *testing.T) {
 				},
 				ReplicaDatabaseHost: "replica-host",
 				Database:            "db-1",
-				dbUtils:             &RDSDatabaseUtils{},
+				dbUtils:             &RDSCredentialUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{

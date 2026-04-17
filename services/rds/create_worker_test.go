@@ -54,7 +54,7 @@ func TestCreateWorker(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 				DbType:   "postgres",
 			},
 			worker: &CreateWorker{
@@ -86,7 +86,7 @@ func TestCreateWorker(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -105,7 +105,7 @@ func TestCreateWorker(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 				DbType:          "postgres",
 				AddReadReplica:  true,
 			},
@@ -152,7 +152,7 @@ func TestCreateWorker(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -173,7 +173,7 @@ func TestCreateWorker(t *testing.T) {
 					returnErr: errors.New("failed"),
 				},
 				logger: logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -185,7 +185,7 @@ func TestCreateWorker(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -206,7 +206,7 @@ func TestCreateWorker(t *testing.T) {
 				},
 				logger:               logger,
 				parameterGroupClient: &mockParameterGroupClient{},
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -218,7 +218,7 @@ func TestCreateWorker(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -239,7 +239,7 @@ func TestCreateWorker(t *testing.T) {
 				},
 				logger:               logger,
 				parameterGroupClient: &mockParameterGroupClient{},
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -251,7 +251,7 @@ func TestCreateWorker(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -300,7 +300,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			worker: &CreateWorker{
 				settings: &config.Settings{},
@@ -319,7 +319,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				Database:              "db-1",
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				Username:              "fake-user",
 				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
@@ -380,7 +380,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
 				DbVersion:             "8.0",
-				dbUtils:               &RDSDatabaseUtils{},
+				dbUtils:               &RDSCredentialUtils{},
 				Username:              "fake-user",
 				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
@@ -492,7 +492,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					returnErr: errors.New("failed"),
 				},
 				logger: logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -504,7 +504,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -525,7 +525,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -537,7 +537,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -558,7 +558,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -570,7 +570,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -608,7 +608,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -621,7 +621,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
@@ -664,7 +664,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -680,7 +680,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceReady,
 		},
@@ -716,7 +716,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
 			},
@@ -732,7 +732,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
@@ -749,7 +749,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				rds:                  &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockGetPassworrdErr: errors.New("error getting password"),
 				},
 			},
@@ -761,7 +761,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				Database: helpers.RandStr(10),
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),

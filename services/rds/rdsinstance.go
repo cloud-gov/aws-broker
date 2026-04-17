@@ -16,7 +16,7 @@ import (
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils DatabaseUtils `gorm:"-" json:"-"`
+	dbUtils CredentialUtils `gorm:"-" json:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
@@ -57,7 +57,7 @@ type RDSInstance struct {
 
 func NewRDSInstance() *RDSInstance {
 	return &RDSInstance{
-		dbUtils: &RDSDatabaseUtils{},
+		dbUtils: &RDSCredentialUtils{},
 	}
 }
 
