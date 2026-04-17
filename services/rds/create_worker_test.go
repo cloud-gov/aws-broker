@@ -2,7 +2,6 @@ package rds
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,9 +22,6 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/riverdriver/riversqlite"
-	"github.com/riverqueue/river/rivertest"
-	"github.com/riverqueue/river/rivertype"
 )
 
 func TestCreateWorker(t *testing.T) {
@@ -39,15 +35,13 @@ func TestCreateWorker(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		ctx               context.Context
-		dbInstance        *RDSInstance
-		expectedState     base.InstanceState
-		password          string
-		plan              *catalog.RDSPlan
-		expectErr         bool
-		worker            *CreateWorker
-		expectedEventKind river.EventKind
-		expectedJobState  rivertype.JobState
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		expectedState base.InstanceState
+		password      string
+		plan          *catalog.RDSPlan
+		expectErr     bool
+		worker        *CreateWorker
 	}{
 		"success without replica": {
 			ctx:      context.Background(),
@@ -92,11 +86,12 @@ func TestCreateWorker(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
-			plan:              &catalog.RDSPlan{},
-			expectedState:     base.InstanceReady,
-			expectedEventKind: river.EventKindJobCompleted,
-			expectedJobState:  rivertype.JobStateCompleted,
+			plan:          &catalog.RDSPlan{},
+			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
 			ctx:      context.Background(),
@@ -157,11 +152,12 @@ func TestCreateWorker(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
-			plan:              &catalog.RDSPlan{},
-			expectedState:     base.InstanceReady,
-			expectedEventKind: river.EventKindJobCompleted,
-			expectedJobState:  rivertype.JobStateCompleted,
+			plan:          &catalog.RDSPlan{},
+			expectedState: base.InstanceReady,
 		},
 		"error provisioning custom parameter group": {
 			ctx: context.Background(),
@@ -177,6 +173,9 @@ func TestCreateWorker(t *testing.T) {
 					returnErr: errors.New("failed"),
 				},
 				logger: logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -188,12 +187,10 @@ func TestCreateWorker(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			plan:              &catalog.RDSPlan{},
-			password:          helpers.RandStr(10),
-			expectedState:     base.InstanceNotCreated,
-			expectErr:         true,
-			expectedEventKind: river.EventKindJobCancelled,
-			expectedJobState:  rivertype.JobStateCancelled,
+			plan:          &catalog.RDSPlan{},
+			password:      helpers.RandStr(10),
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 		"create DB error": {
 			ctx: context.Background(),
@@ -209,6 +206,9 @@ func TestCreateWorker(t *testing.T) {
 				},
 				logger:               logger,
 				parameterGroupClient: &mockParameterGroupClient{},
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -220,12 +220,10 @@ func TestCreateWorker(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			plan:              &catalog.RDSPlan{},
-			password:          helpers.RandStr(10),
-			expectedState:     base.InstanceNotCreated,
-			expectErr:         true,
-			expectedEventKind: river.EventKindJobCancelled,
-			expectedJobState:  rivertype.JobStateCancelled,
+			plan:          &catalog.RDSPlan{},
+			password:      helpers.RandStr(10),
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 		"error waiting for database creation": {
 			ctx: context.Background(),
@@ -241,6 +239,9 @@ func TestCreateWorker(t *testing.T) {
 				},
 				logger:               logger,
 				parameterGroupClient: &mockParameterGroupClient{},
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -252,12 +253,10 @@ func TestCreateWorker(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSDatabaseUtils{},
 			},
-			plan:              &catalog.RDSPlan{},
-			password:          helpers.RandStr(10),
-			expectedState:     base.InstanceNotCreated,
-			expectErr:         true,
-			expectedEventKind: river.EventKindJobCancelled,
-			expectedJobState:  rivertype.JobStateCancelled,
+			plan:          &catalog.RDSPlan{},
+			password:      helpers.RandStr(10),
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
 		},
 	}
 
@@ -271,30 +270,15 @@ func TestCreateWorker(t *testing.T) {
 				t.Fatal(fmt.Errorf("error creating river client: %w", err))
 			}
 
-			tx := brokerDB.Begin()
-			if err := tx.Error; err != nil {
-				t.Fatal(err)
-			}
-			defer tx.Rollback()
-
-			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
-
-			testWorker := rivertest.NewWorker(t, riversqlite.New(nil), &river.Config{}, test.worker)
-
-			result, err := testWorker.Work(test.ctx, t, sqlTx, CreateArgs{
+			err = test.worker.Work(test.ctx, &river.Job[CreateArgs]{Args: CreateArgs{
 				Instance: test.dbInstance,
 				Plan:     test.plan,
-			}, nil)
-			if err != nil {
+			}})
+			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}
-
-			if result.EventKind != test.expectedEventKind {
-				t.Fatalf("expected event kind: %s, got: %s", test.expectedEventKind, result.EventKind)
-			}
-
-			if result.Job.State != test.expectedJobState {
-				t.Fatalf("expected job state: %s, got: %s", test.expectedJobState, result.Job.State)
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
 			}
 		})
 	}

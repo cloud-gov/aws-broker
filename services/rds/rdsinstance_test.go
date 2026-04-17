@@ -63,7 +63,6 @@ func TestInit(t *testing.T) {
 					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
-					mockClearPassword:     "clear-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
@@ -279,7 +278,6 @@ func TestInit(t *testing.T) {
 					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
-					mockClearPassword:     "clear-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
@@ -346,7 +344,6 @@ func TestInit(t *testing.T) {
 					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
-					mockClearPassword:     "clear-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
