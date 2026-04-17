@@ -1,6 +1,6 @@
 module github.com/cloud-gov/aws-broker
 
-go 1.24.0
+go 1.25.0
 
 require (
 	code.cloudfoundry.org/brokerapi/v13 v13.0.10
@@ -51,7 +51,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.6.0 // indirect
+	github.com/jackc/pgx/v5 v5.9.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
@@ -65,8 +65,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.6.1 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
