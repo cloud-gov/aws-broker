@@ -492,6 +492,9 @@ func TestAsyncCreateDb(t *testing.T) {
 					returnErr: errors.New("failed"),
 				},
 				logger: logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -522,6 +525,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -552,6 +558,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -599,6 +608,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -652,6 +664,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
@@ -701,6 +716,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockClearPassword: "fake-pw",
+				},
 			},
 			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
@@ -716,6 +734,37 @@ func TestAsyncCreateDb(t *testing.T) {
 				AddReadReplica:  true,
 				dbUtils:         &RDSDatabaseUtils{},
 			},
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
+		},
+		"error getting password": {
+			ctx: context.Background(),
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				rds:                  &mockRDSClient{},
+				parameterGroupClient: &mockParameterGroupClient{},
+				logger:               logger,
+				dbUtils: &MockDbUtils{
+					mockGetPassworrdErr: errors.New("error getting password"),
+				},
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+				dbUtils:  &RDSDatabaseUtils{},
+			},
+			plan:          &catalog.RDSPlan{},
+			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},

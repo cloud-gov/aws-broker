@@ -46,6 +46,7 @@ type MockDbUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string
 	mockClearPassword     string
+	mockGetPassworrdErr   error
 	mockCreds             map[string]string
 }
 
@@ -62,7 +63,7 @@ func (m *MockDbUtils) generatePassword(salt string, password string, key string)
 }
 
 func (m *MockDbUtils) getPassword(salt string, password string, key string) (string, error) {
-	return m.mockClearPassword, nil
+	return m.mockClearPassword, m.mockGetPassworrdErr
 }
 
 func (m *MockDbUtils) generateDatabaseName(settings *config.Settings) string {
