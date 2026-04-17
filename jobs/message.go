@@ -21,7 +21,13 @@ func WriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, opera
 		},
 	}
 	err := db.Save(asyncJobMsg).Error
-	return err
+	if err != nil {
+		db.Rollback()
+		return err
+	}
+	db.Commit()
+
+	return nil
 }
 
 func GetLastAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation) (*AsyncJobMsg, error) {

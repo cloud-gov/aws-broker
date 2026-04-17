@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -22,6 +23,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riversqlite"
+	"github.com/riverqueue/river/rivertest"
 )
 
 func TestCreateWorker(t *testing.T) {
@@ -265,15 +268,37 @@ func TestCreateWorker(t *testing.T) {
 			workers := river.NewWorkers()
 
 			// create client and run migrations
-			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
+			_, err = jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
 			if err != nil {
 				t.Fatal(fmt.Errorf("error creating river client: %w", err))
 			}
 
-			err = test.worker.Work(test.ctx, &river.Job[CreateArgs]{Args: CreateArgs{
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback()
+
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+			ctx := context.WithValue(test.ctx, txContextKey{}, tx)
+
+			sqlDB, err := brokerDB.DB()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var (
+				config = &river.Config{}
+				driver = riversqlite.New(sqlDB)
+			)
+
+			testWorker := rivertest.NewWorker(t, driver, config, test.worker)
+
+			_, err = testWorker.Work(ctx, t, sqlTx, CreateArgs{
 				Instance: test.dbInstance,
 				Plan:     test.plan,
-			}})
+			}, nil)
 			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}
