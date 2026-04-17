@@ -5,7 +5,18 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
+	"io"
 	"math/big"
+
+	"golang.org/x/crypto/argon2"
+)
+
+const (
+	Memory      = 64 * 1024 // 64 MB
+	Iterations  = 3
+	Parallelism = 2
+	KeyLength   = 32 // For AES-256
 )
 
 // RandStr will generate a random alphanumeric string of the specified length.
@@ -33,47 +44,71 @@ func StringWithCharset(length int, charset string) string {
 }
 
 // Encrypt will encrypt the given plain text string.
-func Encrypt(msg, key string, iv []byte) (string, error) {
+func Encrypt(msg string, salt []byte, encKey string) (string, []byte, error) {
 	src := []byte(msg)
-	dst := make([]byte, len(src))
+
+	key := argon2.IDKey([]byte(encKey), salt, Iterations, Memory, Parallelism, KeyLength)
 
 	aesBlockEncrypter, err := aes.NewCipher([]byte(key))
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	aesEncrypter := cipher.NewCFBEncrypter(aesBlockEncrypter, iv)
-	aesEncrypter.XORKeyStream(dst, src)
+	gcm, err := cipher.NewGCM(aesBlockEncrypter)
+	if err != nil {
+		return "", nil, err
+	}
 
-	return base64.StdEncoding.EncodeToString(dst), nil
+	nonceSize := gcm.NonceSize()
+	nonce := make([]byte, nonceSize)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, nonce, src, nil)
+
+	return base64.StdEncoding.EncodeToString(ciphertext), nonce, nil
 }
 
 // Decrypt will decrypt the given encrypted string.
-func Decrypt(msg, key string, iv []byte) (string, error) {
+func Decrypt(msg string, salt []byte, nonce []byte, encKey string) (string, error) {
 	src, _ := base64.StdEncoding.DecodeString(msg)
-	dst := make([]byte, len(src))
+
+	// Re-derive the same key using the original salt
+	key := argon2.IDKey([]byte(encKey), salt, Iterations, Memory, Parallelism, KeyLength)
 
 	aesBlockDecrypter, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return "", err
 	}
 
-	aesDecrypter := cipher.NewCFBDecrypter(aesBlockDecrypter, iv)
-	aesDecrypter.XORKeyStream(dst, src)
+	gcm, err := cipher.NewGCM(aesBlockDecrypter)
+	if err != nil {
+		return "", err
+	}
 
-	return string(dst), nil
+	plaintext, err := gcm.Open(nil, nonce, src, nil)
+	if err != nil {
+		return "", fmt.Errorf("decryption failed: %v", err)
+	}
+
+	return string(plaintext), nil
 }
 
-func generateIv(size int) []byte {
+func generateIv(size int) ([]byte, error) {
 	var bytes = make([]byte, size)
 	rand.Read(bytes)
-
-	return bytes
+	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
+		return nil, err
+	}
+	return bytes, nil
 }
 
 // GenerateSalt will generate a salt with the given size.
-func GenerateSalt(size int) string {
-	iv := generateIv(size)
-
-	return base64.StdEncoding.EncodeToString(iv)
+func GenerateSalt(size int) (string, error) {
+	iv, err := generateIv(size)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(iv), nil
 }

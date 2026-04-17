@@ -58,11 +58,11 @@ func (m *MockCredentialUtils) generateCredentials(settings *config.Settings) (st
 	return m.mockSalt, m.mockEncryptedPassword, nil
 }
 
-func (m *MockCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
+func (m *MockCredentialUtils) generatePassword(password string, salt string, key string) (string, error) {
 	return m.mockEncryptedPassword, nil
 }
 
-func (m *MockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
+func (m *MockCredentialUtils) getPassword(salt string, password string, key string, nonce []byte) (string, error) {
 	return m.mockClearPassword, m.mockGetPassworrdErr
 }
 

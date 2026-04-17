@@ -431,6 +431,7 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 		existingInstance.Salt,
 		existingInstance.Password,
 		broker.settings.EncryptionKey,
+		nil,
 	)
 	if err != nil {
 		return binding, apiresponses.NewFailureResponse(

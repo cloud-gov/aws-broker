@@ -13,8 +13,8 @@ import (
 )
 
 type CredentialUtils interface {
-	generatePassword(salt string, password string, key string) (string, error)
-	getPassword(salt string, password string, key string) (string, error)
+	generatePassword(password string, salt string, key string) (string, error)
+	getPassword(salt string, password string, key string, nonce []byte) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
 	generateCredentials(settings *config.Settings) (string, string, error)
 	generateDatabaseName(settings *config.Settings) string
@@ -29,14 +29,14 @@ func formatDBName(database string) string {
 type RDSCredentialUtils struct {
 }
 
-func (u *RDSCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
+func (u *RDSCredentialUtils) generatePassword(password string, salt string, key string) (string, error) {
 	if salt == "" {
 		return "", errors.New("salt has to be set before writing the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
 
-	encrypted, err := helpers.Encrypt(password, key, iv)
+	encrypted, _, err := helpers.Encrypt(password, iv, key)
 	if err != nil {
 		return "", err
 	}
@@ -44,14 +44,14 @@ func (u *RDSCredentialUtils) generatePassword(salt string, password string, key 
 	return encrypted, nil
 }
 
-func (u *RDSCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
+func (u *RDSCredentialUtils) getPassword(salt string, password string, key string, nonce []byte) (string, error) {
 	if salt == "" || password == "" {
 		return "", errors.New("salt and password has to be set before getting the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
 
-	decrypted, err := helpers.Decrypt(password, key, iv)
+	decrypted, err := helpers.Decrypt(password, iv, nonce, key)
 	if err != nil {
 		return "", err
 	}
@@ -112,9 +112,12 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 func (u *RDSCredentialUtils) generateCredentials(
 	settings *config.Settings,
 ) (string, string, error) {
-	salt := helpers.GenerateSalt(aes.BlockSize)
+	salt, err := helpers.GenerateSalt(aes.BlockSize)
+	if err != nil {
+		return "", "", err
+	}
 	password := helpers.RandStrNoCaps(25)
-	encrypted, err := u.generatePassword(salt, password, settings.EncryptionKey)
+	encrypted, err := u.generatePassword(password, salt, settings.EncryptionKey)
 	if err != nil {
 		return "", "", err
 	}
