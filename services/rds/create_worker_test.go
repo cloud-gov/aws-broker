@@ -25,6 +25,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
 	"github.com/riverqueue/river/rivertest"
+	"github.com/riverqueue/river/rivertype"
 )
 
 func TestCreateWorker(t *testing.T) {
@@ -38,13 +39,15 @@ func TestCreateWorker(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		ctx           context.Context
-		dbInstance    *RDSInstance
-		expectedState base.InstanceState
-		password      string
-		plan          *catalog.RDSPlan
-		expectErr     bool
-		worker        *CreateWorker
+		ctx               context.Context
+		dbInstance        *RDSInstance
+		expectedState     base.InstanceState
+		password          string
+		plan              *catalog.RDSPlan
+		expectErr         bool
+		worker            *CreateWorker
+		expectedEventKind river.EventKind
+		expectedJobState  rivertype.JobState
 	}{
 		"success without replica": {
 			ctx:      createContextWithDb(context.Background(), brokerDB),
@@ -92,8 +95,10 @@ func TestCreateWorker(t *testing.T) {
 					mockClearPassword: "fake-pw",
 				},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceReady,
+			plan:              &catalog.RDSPlan{},
+			expectedState:     base.InstanceReady,
+			expectedEventKind: river.EventKindJobCompleted,
+			expectedJobState:  rivertype.JobStateCompleted,
 		},
 		"success with replica": {
 			ctx:      createContextWithDb(context.Background(), brokerDB),
@@ -157,8 +162,10 @@ func TestCreateWorker(t *testing.T) {
 					mockClearPassword: "fake-pw",
 				},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceReady,
+			plan:              &catalog.RDSPlan{},
+			expectedState:     base.InstanceReady,
+			expectedEventKind: river.EventKindJobCompleted,
+			expectedJobState:  rivertype.JobStateCompleted,
 		},
 		"error provisioning custom parameter group": {
 			ctx: createContextWithDb(context.Background(), brokerDB),
@@ -187,10 +194,11 @@ func TestCreateWorker(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:              &catalog.RDSPlan{},
+			password:          helpers.RandStr(10),
+			expectedState:     base.InstanceNotCreated,
+			expectedEventKind: river.EventKindJobCancelled,
+			expectedJobState:  rivertype.JobStateCancelled,
 		},
 		"create DB error": {
 			ctx: createContextWithDb(context.Background(), brokerDB),
@@ -219,10 +227,11 @@ func TestCreateWorker(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:              &catalog.RDSPlan{},
+			password:          helpers.RandStr(10),
+			expectedState:     base.InstanceNotCreated,
+			expectedEventKind: river.EventKindJobCancelled,
+			expectedJobState:  rivertype.JobStateCancelled,
 		},
 		"error waiting for database creation": {
 			ctx: createContextWithDb(context.Background(), brokerDB),
@@ -251,10 +260,11 @@ func TestCreateWorker(t *testing.T) {
 				Database: helpers.RandStr(10),
 				dbUtils:  &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:              &catalog.RDSPlan{},
+			password:          helpers.RandStr(10),
+			expectedState:     base.InstanceNotCreated,
+			expectedEventKind: river.EventKindJobCancelled,
+			expectedJobState:  rivertype.JobStateCancelled,
 		},
 	}
 
@@ -289,16 +299,19 @@ func TestCreateWorker(t *testing.T) {
 
 			testWorker := rivertest.NewWorker(t, driver, config, test.worker)
 
-			_, err = testWorker.Work(ctx, t, sqlTx, CreateArgs{
+			result, err := testWorker.Work(ctx, t, sqlTx, CreateArgs{
 				Instance: test.dbInstance,
 				Plan:     test.plan,
 			}, nil)
-			if err != nil && !test.expectErr {
+			if err != nil {
 				t.Fatal(err)
 			}
-			// if err == nil && test.expectErr {
-			// 	t.Fatal("expected error")
-			// }
+			if result.EventKind != test.expectedEventKind {
+				t.Fatalf("expected event kind: %s, got: %s", test.expectedEventKind, result.EventKind)
+			}
+			if result.Job.State != test.expectedJobState {
+				t.Fatalf("expected job state: %s, got: %s", test.expectedJobState, result.Job.State)
+			}
 		})
 	}
 }
