@@ -42,7 +42,6 @@ func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &CreateWorker{
-		db:                   brokerDB,
 		settings:             s,
 		rds:                  rdsClient,
 		logger:               logger,

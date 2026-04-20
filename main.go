@@ -74,7 +74,7 @@ func run(ctx context.Context, out io.Writer) error {
 	logger.Debug("run: initializing River workers and client")
 	workers := river.NewWorkers()
 	river.AddWorker(workers, rds.NewCreateWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+		&settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)

@@ -13,6 +13,16 @@ import (
 	"gorm.io/gorm"
 )
 
+type dbContextKey struct{}
+
+func createContextWithDb(ctx context.Context, db *gorm.DB) context.Context {
+	return context.WithValue(ctx, dbContextKey{}, db)
+}
+
+func getDbConnectionFromContext(ctx context.Context) *gorm.DB {
+	return ctx.Value(dbContextKey{}).(*gorm.DB)
+}
+
 func waitForDbReady(
 	ctx context.Context,
 	rdsClient RDSClientInterface,
