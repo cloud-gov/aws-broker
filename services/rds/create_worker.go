@@ -59,6 +59,7 @@ func NewCreateWorker(
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
+	w.logger.Info(fmt.Sprintf("CreateWorker.Work: plan instance class: %s", job.Args.Plan.InstanceClass))
 	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan)
 	return err
 }
