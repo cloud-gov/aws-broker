@@ -39,6 +39,7 @@ type paramDetails struct {
 
 func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, settings config.Settings) *awsParameterGroupClient {
 	return &awsParameterGroupClient{
+		ctx:                  ctx,
 		rds:                  rds,
 		settings:             settings,
 		parameterGroupPrefix: "cg-aws-broker-",
