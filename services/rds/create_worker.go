@@ -80,6 +80,8 @@ func (w *CreateWorker) prepareCreateDbInput(
 		return nil, err
 	}
 
+	w.logger.Info(fmt.Sprintf("plan.InstanceClass: %s", plan.InstanceClass))
+
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
 		AllocatedStorage: allocatedStorage,
@@ -207,11 +209,15 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
 	operation := base.CreateOp
 
+	w.logger.Info("getting password")
+
 	password, err := w.dbUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
 	}
+
+	w.logger.Info("preparing create DB input")
 
 	createDbInputParams, err := w.prepareCreateDbInput(i, plan, password)
 	if err != nil {
@@ -219,11 +225,15 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
 	}
 
+	w.logger.Info("creating DB instance")
+
 	_, err = w.rds.CreateDBInstance(ctx, createDbInputParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
 	}
+
+	w.logger.Info("waiting for created DB instance")
 
 	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
 	if err != nil {
@@ -238,6 +248,8 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 			return river.JobCancel(fmt.Errorf("asyncCreateDB: waitAndCreateDBReadReplica error: %w ", err))
 		}
 	}
+
+	w.logger.Info("DB instance created")
 
 	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
 	return nil
