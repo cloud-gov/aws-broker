@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -144,6 +145,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 	switch serviceID {
 	// RDS Service
 	case b.catalog.RdsService.ID:
+		b.logger.Info(fmt.Sprintf("main broker context: %+v", b.ctx))
 		broker, err := rds.InitRDSBroker(b.ctx, b.catalog, b.db, b.settings, b.tagManager, b.riverClient, b.logger)
 		if err != nil {
 			return nil, err

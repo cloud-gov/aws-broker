@@ -72,6 +72,7 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 
 // CleanupCustomParameterGroups searches out all the parameter groups that we created and tries to clean them up
 func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
+	fmt.Printf("CleanUpCustoParameterGroups p.ctx: %+v\n", p.ctx)
 	input := &rds.DescribeDBParameterGroupsInput{}
 	paginator := rds.NewDescribeDBParameterGroupsPaginator(p.rds, input)
 	for paginator.HasMorePages() {

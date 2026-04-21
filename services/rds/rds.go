@@ -59,6 +59,8 @@ func initializeAdapter(
 	}
 
 	rdsClient := rds.NewFromConfig(cfg)
+
+	logger.Info(fmt.Sprintf("NewAwsParameterGroupClient context: %+v", ctx))
 	parameterGroupClient := NewAwsParameterGroupClient(ctx, rdsClient, *s)
 
 	dbAdapter := NewRdsDedicatedDBAdapter(ctx, s, db, rdsClient, parameterGroupClient, logger, riverClient)
