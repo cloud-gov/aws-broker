@@ -24,8 +24,8 @@ const (
 )
 
 type CreateArgs struct {
-	Instance *RDSInstance
-	Plan     *catalog.RDSPlan
+	Instance *RDSInstance     `json:"instance"`
+	Plan     *catalog.RDSPlan `json:"plan"`
 }
 
 func (CreateArgs) Kind() string { return CreateKind }

@@ -299,6 +299,8 @@ func (d *dedicatedDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan) (ba
 
 	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
+	d.logger.Info(fmt.Sprintf("CreateArgs plan instanceClass: %s", plan.InstanceClass))
+
 	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &CreateArgs{
 		Instance: i,
 		Plan:     plan,
