@@ -59,7 +59,6 @@ func NewCreateWorker(
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	w.logger.Info(fmt.Sprintf("CreateWorker.Work: plan instance class: %s", job.Args.Plan.InstanceClass))
 	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan)
 	return err
 }
@@ -80,8 +79,6 @@ func (w *CreateWorker) prepareCreateDbInput(
 	if err != nil {
 		return nil, err
 	}
-
-	w.logger.Info(fmt.Sprintf("plan.InstanceClass: %s", plan.InstanceClass))
 
 	// Standard parameters
 	params := &rds.CreateDBInstanceInput{
@@ -210,15 +207,11 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
 	operation := base.CreateOp
 
-	w.logger.Info("getting password")
-
 	password, err := w.dbUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
 	}
-
-	w.logger.Info("preparing create DB input")
 
 	createDbInputParams, err := w.prepareCreateDbInput(i, plan, password)
 	if err != nil {
@@ -226,15 +219,11 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
 	}
 
-	w.logger.Info("creating DB instance")
-
 	_, err = w.rds.CreateDBInstance(ctx, createDbInputParams)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
 	}
-
-	w.logger.Info("waiting for created DB instance")
 
 	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
 	if err != nil {
@@ -249,8 +238,6 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 			return river.JobCancel(fmt.Errorf("asyncCreateDB: waitAndCreateDBReadReplica error: %w ", err))
 		}
 	}
-
-	w.logger.Info("DB instance created")
 
 	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating database resources")
 	return nil
