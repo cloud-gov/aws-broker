@@ -23,13 +23,15 @@ type RDSInstance struct {
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	Tags                  *sync.Map `gorm:"-" deep:"-"`
-	BackupRetentionPeriod int64     `sql:"size(255)"`
-	DbSubnetGroup         string    `gorm:"-"`
-	AllocatedStorage      int64     `sql:"size(255)"`
-	SecGroup              string    `gorm:"-"`
-	EnableFunctions       bool      `gorm:"-"`
-	PubliclyAccessible    bool      `gorm:"-"`
+	mu   *sync.Mutex
+	Tags map[string]string `gorm:"-" deep:"-"`
+
+	BackupRetentionPeriod int64  `sql:"size(255)"`
+	DbSubnetGroup         string `gorm:"-"`
+	AllocatedStorage      int64  `sql:"size(255)"`
+	SecGroup              string `gorm:"-"`
+	EnableFunctions       bool   `gorm:"-"`
+	PubliclyAccessible    bool   `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
 
@@ -260,14 +262,14 @@ func (i *RDSInstance) setTags(
 	tags map[string]string,
 ) error {
 	if i.Tags == nil {
-		i.Tags = &sync.Map{}
+		i.Tags = make(map[string]string)
 	}
 	// Load tags from plan
 	for k, v := range plan.Tags {
-		i.Tags.Store(k, v)
+		i.Tags[k] = v
 	}
 	for k, v := range tags {
-		i.Tags.Store(k, v)
+		i.Tags[k] = v
 	}
 	return nil
 }
@@ -278,21 +280,7 @@ func (i *RDSInstance) getTags() map[string]string {
 		return tags
 	}
 
-	i.Tags.Range(func(k, v any) bool {
-		keyString, ok := k.(string)
-		if !ok {
-			return false
-		}
-
-		valueString, ok := v.(string)
-		if !ok {
-			return false
-		}
-
-		tags[keyString] = valueString
-		return true
-	})
-	return tags
+	return i.Tags
 }
 
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {

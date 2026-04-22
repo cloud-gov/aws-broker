@@ -1,6 +1,8 @@
 package rds
 
 import (
+	"encoding/json"
+	"strings"
 	"sync"
 	"testing"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
+	"github.com/lib/pq"
 )
 
 func TestInit(t *testing.T) {
@@ -950,4 +953,31 @@ func TestSetTagsConcurrency(t *testing.T) {
 	go updateInstanceTags(map[string]string{"foo2": "bar2"}, map[string]string{"foo": "bar", "foo2": "bar2"}, &wg)
 
 	wg.Wait()
+}
+
+func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
+	i := &RDSInstance{
+		Database:                         "db",
+		DbType:                           "type1",
+		Username:                         "user1",
+		EnabledCloudwatchLogGroupExports: pq.StringArray{"postgres"},
+	}
+	i.setTags(&catalog.RDSPlan{}, map[string]string{
+		"foo": "bar",
+	})
+	output, err := json.Marshal(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedProperties := []string{
+		`"Database": "db"`,
+		`"DbType": "type1"`,
+		`"Tags": {"foo": "bar"}`,
+		`"EnabledCloudwatchLogGroupExports":["postgres"]`,
+	}
+	for _, property := range expectedProperties {
+		if !strings.Contains(string(output), strings.ReplaceAll(property, " ", "")) {
+			t.Fatalf("could not find %s in marshaled JSON", property)
+		}
+	}
 }
