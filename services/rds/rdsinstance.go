@@ -22,6 +22,7 @@ type RDSInstance struct {
 	Username string `sql:"size(255)"`
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
+	Nonce    []byte
 
 	mu   *sync.Mutex
 	Tags map[string]string `gorm:"-" deep:"-"`
@@ -55,8 +56,6 @@ type RDSInstance struct {
 
 	RotateCredentials        bool `gorm:"-"`
 	AllowMajorVersionUpgrade bool `gorm:"-"`
-
-	Nonce []byte
 }
 
 func NewRDSInstance() *RDSInstance {
