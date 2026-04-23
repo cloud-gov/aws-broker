@@ -235,3 +235,16 @@ func deleteDatabaseReadReplica(
 	i.ReplicaDatabase = ""
 	return nil
 }
+
+func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
+	return &rds.DeleteDBInstanceInput{
+		DBInstanceIdentifier:   aws.String(database), // Required
+		DeleteAutomatedBackups: aws.Bool(false),
+		SkipFinalSnapshot:      aws.Bool(true),
+	}
+}
+
+func isDatabaseInstanceNotFoundError(err error) bool {
+	var notFoundException *rdsTypes.DBInstanceNotFoundFault
+	return errors.As(err, &notFoundException)
+}
