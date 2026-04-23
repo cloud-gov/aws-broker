@@ -22,6 +22,7 @@ type RedisInstance struct {
 
 	Password string `sql:"size(255)" deep:"-"`
 	Salt     string `sql:"size(255)" deep:"-"`
+	Nonce    []byte
 
 	ClearPassword string `gorm:"-" deep:"-"`
 
@@ -56,25 +57,30 @@ func (i *RedisInstance) setPassword(password, key string) error {
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
 
-	encrypted, err := helpers.Encrypt(password, key, iv)
+	encrypted, nonce, err := helpers.Encrypt(password, iv, key)
 	if err != nil {
 		return err
 	}
 
 	i.Password = encrypted
 	i.ClearPassword = password
+	i.Nonce = nonce
 
 	return nil
 }
 
 func (i *RedisInstance) getPassword(key string) (string, error) {
 	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
+		return "", errors.New("salt and password has to be set before getting the password")
+	}
+
+	if i.Nonce == nil {
+		return "", errors.New("nonce has to be set before getting the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
 
-	decrypted, err := helpers.Decrypt(i.Password, key, iv)
+	decrypted, err := helpers.Decrypt(i.Password, iv, i.Nonce, key)
 	if err != nil {
 		return "", err
 	}
@@ -121,7 +127,12 @@ func (i *RedisInstance) init(
 	setInstanceParameters(i, options, plan)
 
 	i.ClusterID = s.DbShorthandPrefix + "-" + uuid
-	i.Salt = helpers.GenerateSalt(aes.BlockSize)
+	salt, err := helpers.GenerateSalt(aes.BlockSize)
+	if err != nil {
+		return err
+	}
+	i.Salt = salt
+
 	password := helpers.RandStr(25)
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err

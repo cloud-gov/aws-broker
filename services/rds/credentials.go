@@ -13,10 +13,10 @@ import (
 )
 
 type CredentialUtils interface {
-	generatePassword(password string, salt string, key string) (string, error)
+	generatePassword(password string, salt string, key string) (string, []byte, error)
 	getPassword(salt string, password string, key string, nonce []byte) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
-	generateCredentials(settings *config.Settings) (string, string, error)
+	generateCredentials(settings *config.Settings) (string, string, []byte, error)
 	generateDatabaseName(settings *config.Settings) string
 	buildUsername() string
 }
@@ -29,19 +29,19 @@ func formatDBName(database string) string {
 type RDSCredentialUtils struct {
 }
 
-func (u *RDSCredentialUtils) generatePassword(password string, salt string, key string) (string, error) {
+func (u *RDSCredentialUtils) generatePassword(password string, salt string, key string) (string, []byte, error) {
 	if salt == "" {
-		return "", errors.New("salt has to be set before writing the password")
+		return "", nil, errors.New("salt has to be set before writing the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
 
-	encrypted, _, err := helpers.Encrypt(password, iv, key)
+	encrypted, nonce, err := helpers.Encrypt(password, iv, key)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return encrypted, nil
+	return encrypted, nonce, nil
 }
 
 func (u *RDSCredentialUtils) getPassword(salt string, password string, key string, nonce []byte) (string, error) {
@@ -111,17 +111,17 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 
 func (u *RDSCredentialUtils) generateCredentials(
 	settings *config.Settings,
-) (string, string, error) {
+) (string, string, []byte, error) {
 	salt, err := helpers.GenerateSalt(aes.BlockSize)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 	password := helpers.RandStrNoCaps(25)
-	encrypted, err := u.generatePassword(password, salt, settings.EncryptionKey)
+	encrypted, nonce, err := u.generatePassword(password, salt, settings.EncryptionKey)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
-	return salt, encrypted, err
+	return salt, encrypted, nonce, err
 }
 
 func (u *RDSCredentialUtils) generateDatabaseName(

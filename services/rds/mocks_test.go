@@ -54,12 +54,12 @@ func (m *MockCredentialUtils) getCredentials(i *RDSInstance, password string) (m
 	return m.mockCreds, nil
 }
 
-func (m *MockCredentialUtils) generateCredentials(settings *config.Settings) (string, string, error) {
-	return m.mockSalt, m.mockEncryptedPassword, nil
+func (m *MockCredentialUtils) generateCredentials(settings *config.Settings) (string, string, []byte, error) {
+	return m.mockSalt, m.mockEncryptedPassword, nil, nil
 }
 
-func (m *MockCredentialUtils) generatePassword(password string, salt string, key string) (string, error) {
-	return m.mockEncryptedPassword, nil
+func (m *MockCredentialUtils) generatePassword(password string, salt string, key string) (string, []byte, error) {
+	return m.mockEncryptedPassword, nil, nil
 }
 
 func (m *MockCredentialUtils) getPassword(salt string, password string, key string, nonce []byte) (string, error) {

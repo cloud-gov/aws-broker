@@ -179,7 +179,7 @@ func (d *dedicatedDBAdapter) prepareModifyDbInstanceInput(
 	}
 
 	if i.RotateCredentials && !isReplica {
-		password, err := i.dbUtils.getPassword(i.Salt, i.Password, d.settings.EncryptionKey)
+		password, err := i.dbUtils.getPassword(i.Salt, i.Password, d.settings.EncryptionKey, i.Nonce)
 		if err != nil {
 			return nil, err
 		}

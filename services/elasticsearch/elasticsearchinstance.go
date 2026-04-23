@@ -21,8 +21,10 @@ type ElasticsearchInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password                       string `sql:"size(255)"`
-	Salt                           string `sql:"size(255)"`
+	Password string `sql:"size(255)"`
+	Salt     string `sql:"size(255)"`
+	Nonce    []byte
+
 	AccessKey                      string `sql:"size(255)"`
 	SecretKey                      string `sql:"size(255)"`
 	IamPolicy                      string `sql:"size(255)"`
@@ -74,25 +76,30 @@ func (i *ElasticsearchInstance) setPassword(password, key string) error {
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
 
-	encrypted, err := helpers.Encrypt(password, key, iv)
+	encrypted, nonce, err := helpers.Encrypt(password, iv, key)
 	if err != nil {
 		return err
 	}
 
 	i.Password = encrypted
 	i.ClearPassword = password
+	i.Nonce = nonce
 
 	return nil
 }
 
 func (i *ElasticsearchInstance) getPassword(key string) (string, error) {
 	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
+		return "", errors.New("salt and password has to be set before getting the password")
+	}
+
+	if i.Nonce == nil {
+		return "", errors.New("nonce has to be set before getting the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
 
-	decrypted, err := helpers.Decrypt(i.Password, key, iv)
+	decrypted, err := helpers.Decrypt(i.Password, iv, i.Nonce, key)
 	if err != nil {
 		return "", err
 	}
@@ -154,7 +161,12 @@ func (i *ElasticsearchInstance) init(
 
 	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
 
-	i.Salt = helpers.GenerateSalt(aes.BlockSize)
+	salt, err := helpers.GenerateSalt(aes.BlockSize)
+	if err != nil {
+		return err
+	}
+	i.Salt = salt
+
 	password := helpers.RandStr(25)
 	if err := i.setPassword(password, s.EncryptionKey); err != nil {
 		return err

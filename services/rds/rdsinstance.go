@@ -55,6 +55,8 @@ type RDSInstance struct {
 
 	RotateCredentials        bool `gorm:"-"`
 	AllowMajorVersionUpgrade bool `gorm:"-"`
+
+	Nonce []byte
 }
 
 func NewRDSInstance() *RDSInstance {
@@ -68,12 +70,13 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 }
 
 func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
-	salt, encrypted, err := i.dbUtils.generateCredentials(settings)
+	salt, encrypted, nonce, err := i.dbUtils.generateCredentials(settings)
 	if err != nil {
 		return err
 	}
 	i.Salt = salt
 	i.Password = encrypted
+	i.Nonce = nonce
 	return nil
 }
 
