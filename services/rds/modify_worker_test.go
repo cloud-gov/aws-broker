@@ -3,6 +3,7 @@ package rds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -13,11 +14,101 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/go-test/deep"
+	"github.com/riverqueue/river"
 )
+
+func TestModifyWorkerWork(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		expectedState base.InstanceState
+		password      string
+		expectErr     bool
+		worker        *ModifyWorker
+		plan          *catalog.RDSPlan
+	}{
+		"success": {
+			ctx:      context.Background(),
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
+				DbType:          "postgres",
+			},
+			plan: &catalog.RDSPlan{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&mockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{},
+			),
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			workers := river.NewWorkers()
+
+			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, slog.New(&mockLogHandler{}), workers)
+			if err != nil {
+				t.Fatal(fmt.Errorf("error creating river client: %w", err))
+			}
+
+			err = test.worker.Work(test.ctx, &river.Job[ModifyArgs]{Args: ModifyArgs{
+				Instance: test.dbInstance,
+				Plan:     test.plan,
+			}})
+			if err != nil && !test.expectErr {
+				t.Fatal(err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
 
 func TestAsyncModifyDb(t *testing.T) {
 	modifyDbErr := errors.New("modify DB error")
