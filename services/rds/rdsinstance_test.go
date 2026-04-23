@@ -1022,4 +1022,9 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 			t.Fatalf("could not find %s in marshaled JSON", property)
 		}
 	}
+	unmarshaledInstance := &RDSInstance{}
+	json.Unmarshal(output, unmarshaledInstance)
+	if diff := deep.Equal(i, unmarshaledInstance); diff != nil {
+		t.Fatal(diff)
+	}
 }
