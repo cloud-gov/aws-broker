@@ -1,6 +1,8 @@
 package rds
 
 import (
+	"encoding/json"
+	"strings"
 	"sync"
 	"testing"
 
@@ -12,24 +14,8 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
+	"github.com/lib/pq"
 )
-
-func TestFormatDBName(t *testing.T) {
-	i := &RDSInstance{
-		dbUtils: &MockDbUtils{
-			mockFormattedDbName: "foobar",
-		},
-		Database: "db" + helpers.RandStrNoCaps(15),
-	}
-	dbName1 := i.FormatDBName()
-	if dbName1 != "foobar" {
-		t.Fatalf("database name should be foobar")
-	}
-	dbName2 := i.FormatDBName()
-	if dbName1 != dbName2 {
-		t.Fatalf("database names should be the same")
-	}
-}
 
 func TestInit(t *testing.T) {
 	testCases := map[string]struct {
@@ -74,13 +60,12 @@ func TestInit(t *testing.T) {
 			spaceGUID: "space-1",
 			serviceID: "service-1",
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName:   "test-db",
 					mockDbName:            "db",
 					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
-					mockClearPassword:     "clear-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
@@ -108,7 +93,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ClearPassword:         "clear-pw",
 			},
 			expectedTags: map[string]string{},
 		},
@@ -125,7 +109,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -163,7 +147,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -201,7 +185,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -237,7 +221,7 @@ func TestInit(t *testing.T) {
 			},
 			settings: &config.Settings{},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{},
+				dbUtils: &MockCredentialUtils{},
 			},
 			uuid:      "uuid-1",
 			orgGUID:   "org-1",
@@ -291,13 +275,12 @@ func TestInit(t *testing.T) {
 				"foo": "bar",
 			},
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName:   "test-db",
 					mockDbName:            "db",
 					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
-					mockClearPassword:     "clear-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
@@ -325,7 +308,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ClearPassword:         "clear-pw",
 			},
 			expectedTags: map[string]string{
 				"plan-tag": "random-value",
@@ -359,13 +341,12 @@ func TestInit(t *testing.T) {
 			spaceGUID: "space-1",
 			serviceID: "service-1",
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockDbUtils{
+				dbUtils: &MockCredentialUtils{
 					mockFormattedDbName:   "test-db",
 					mockDbName:            "db",
 					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
-					mockClearPassword:     "clear-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
@@ -393,7 +374,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ClearPassword:         "clear-pw",
 				ReplicaDatabase:       "db-replica",
 				AddReadReplica:        true,
 			},
@@ -873,11 +853,9 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 		currentPlan             *catalog.RDSPlan
 		newPlan                 *catalog.RDSPlan
 		settings                *config.Settings
-		originalPassword        string
-		originalSalt            string
-		username                string
 		shouldRotateCredentials bool
 		tags                    map[string]string
+		existingInstance        *RDSInstance
 	}{
 		"rotate credentials": {
 			options: Options{
@@ -888,10 +866,13 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
-			originalPassword:        helpers.RandStr(20),
-			originalSalt:            helpers.RandStr(10),
-			username:                helpers.RandStr(10),
 			shouldRotateCredentials: true,
+			existingInstance: &RDSInstance{
+				Username: helpers.RandStr(10),
+				Salt:     helpers.RandStr(10),
+				dbUtils:  &RDSCredentialUtils{},
+				Password: helpers.RandStr(10),
+			},
 		},
 		"do not rotate credentials": {
 			options: Options{
@@ -902,10 +883,12 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
-			originalPassword:        helpers.RandStr(20),
-			originalSalt:            helpers.RandStr(10),
-			username:                helpers.RandStr(10),
 			shouldRotateCredentials: false,
+			existingInstance: &RDSInstance{
+				Salt:     helpers.RandStr(10),
+				Username: helpers.RandStr(10),
+				Password: helpers.RandStr(10),
+			},
 		},
 		"rotate credentials not specified": {
 			options:     Options{},
@@ -914,29 +897,28 @@ func TestModifyInstanceRotateCredentials(t *testing.T) {
 			settings: &config.Settings{
 				EncryptionKey: helpers.RandStr(32),
 			},
-			originalPassword:        helpers.RandStr(20),
-			originalSalt:            helpers.RandStr(10),
-			username:                helpers.RandStr(10),
+			existingInstance: &RDSInstance{
+				Salt:     helpers.RandStr(10),
+				Username: helpers.RandStr(10),
+				Password: helpers.RandStr(10),
+			},
 			shouldRotateCredentials: false,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			existingInstance := &RDSInstance{
-				Username:      test.username,
-				ClearPassword: test.originalPassword,
-				Salt:          test.originalSalt,
-				dbUtils:       &RDSDatabaseUtils{},
-			}
-			modifiedInstance, err := existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
+			modifiedInstance, err := test.existingInstance.modify(test.options, test.currentPlan, test.newPlan, test.settings, test.tags)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
-			if test.shouldRotateCredentials && modifiedInstance.ClearPassword == test.originalPassword {
+			if test.shouldRotateCredentials != modifiedInstance.RotateCredentials {
+				t.Fatalf("mismatch of instance RotateCredentials value, expected: %t, got: %t", test.shouldRotateCredentials, modifiedInstance.RotateCredentials)
+			}
+			if test.shouldRotateCredentials && modifiedInstance.Password == test.existingInstance.Password {
 				t.Fatal("instance password should have been updated")
 			}
-			if test.shouldRotateCredentials && modifiedInstance.Salt == test.originalSalt {
+			if test.shouldRotateCredentials && modifiedInstance.Salt == test.existingInstance.Salt {
 				t.Fatal("instance salt should have been updated")
 			}
 		})
@@ -971,4 +953,78 @@ func TestSetTagsConcurrency(t *testing.T) {
 	go updateInstanceTags(map[string]string{"foo2": "bar2"}, map[string]string{"foo": "bar", "foo2": "bar2"}, &wg)
 
 	wg.Wait()
+}
+
+func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
+	i := &RDSInstance{
+		Instance: base.Instance{
+			Uuid: "uuid-1",
+			Request: request.Request{
+				ServiceID: "service-1",
+			},
+		},
+		AllocatedStorage:                 20,
+		Database:                         "db",
+		DbType:                           "type1",
+		Username:                         "user1",
+		Password:                         "fake-pw",
+		Salt:                             "fake-salt",
+		EnabledCloudwatchLogGroupExports: pq.StringArray{"postgres"},
+		BackupRetentionPeriod:            14,
+		StorageType:                      "gp3",
+		DbSubnetGroup:                    "group-1",
+		SecGroup:                         "sec-group-1",
+		LicenseModel:                     "license",
+		BinaryLogFormat:                  "format",
+		EnablePgCron:                     aws.Bool(false),
+		ParameterGroupFamily:             "postgres16",
+		ParameterGroupName:               "parameter-group-1",
+		ReplicaDatabase:                  "replica",
+		ReplicaDatabaseHost:              "host",
+	}
+	i.setTags(&catalog.RDSPlan{}, map[string]string{
+		"foo": "bar",
+	})
+	output, err := json.Marshal(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedProperties := []string{
+		`"Database": "db"`,
+		`"DbType": "type1"`,
+		`"Tags": {"foo": "bar"}`,
+		`"EnabledCloudwatchLogGroupExports":["postgres"]`,
+		`"Uuid": "uuid-1"`,
+		`"service_id":"service-1"`,
+		`"AllocatedStorage":20`,
+		`"BackupRetentionPeriod":14`,
+		`"StorageType":"gp3"`,
+		`"PubliclyAccessible":false`,
+		`"Password":"fake-pw"`,
+		`"Salt":"fake-salt"`,
+		`"DbSubnetGroup":"group-1"`,
+		`"SecGroup":"sec-group-1"`,
+		`"EnableFunctions":false`,
+		`"LicenseModel":"license"`,
+		`"BinaryLogFormat":"format"`,
+		`"EnablePgCron":false`,
+		`"ParameterGroupFamily": "postgres16"`,
+		`"ParameterGroupName": "parameter-group-1"`,
+		`"AddReadReplica":false`,
+		`"ReplicaDatabase": "replica"`,
+		`"ReplicaDatabaseHost": "host"`,
+		`"DeleteReadReplica":false`,
+		`"RotateCredentials":false`,
+		`"AllowMajorVersionUpgrade":false`,
+	}
+	for _, property := range expectedProperties {
+		if !strings.Contains(string(output), strings.ReplaceAll(property, " ", "")) {
+			t.Fatalf("could not find %s in marshaled JSON", property)
+		}
+	}
+	unmarshaledInstance := &RDSInstance{}
+	json.Unmarshal(output, unmarshaledInstance)
+	if diff := deep.Equal(i, unmarshaledInstance); diff != nil {
+		t.Fatal(diff)
+	}
 }

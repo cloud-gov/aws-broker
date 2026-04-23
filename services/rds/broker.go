@@ -1,18 +1,20 @@
 package rds
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
-	"code.cloudfoundry.org/lager"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/base"
@@ -67,22 +69,38 @@ func (o Options) Validate(settings *config.Settings) error {
 }
 
 type rdsBroker struct {
-	brokerDB   *gorm.DB
-	catalog    *catalog.Catalog
-	settings   *config.Settings
-	tagManager brokertags.TagManager
-	dbAdapter  dbAdapter
+	ctx         context.Context
+	brokerDB    *gorm.DB
+	catalog     *catalog.Catalog
+	settings    *config.Settings
+	tagManager  brokertags.TagManager
+	dbAdapter   dbAdapter
+	riverClient *river.Client[*sql.Tx]
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
-func InitRDSBroker(catalog *catalog.Catalog, brokerDB *gorm.DB, settings *config.Settings, tagManager brokertags.TagManager) (base.Broker, error) {
-	logger := lager.NewLogger("aws-rds-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	dbAdapter, err := initializeAdapter(settings, brokerDB, logger)
+func InitRDSBroker(
+	ctx context.Context,
+	catalog *catalog.Catalog,
+	brokerDB *gorm.DB,
+	settings *config.Settings,
+	tagManager brokertags.TagManager,
+	riverClient *river.Client[*sql.Tx],
+	logger *slog.Logger,
+) (base.Broker, error) {
+	dbAdapter, err := initializeAdapter(ctx, settings, brokerDB, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}
-	return &rdsBroker{brokerDB, catalog, settings, tagManager, dbAdapter}, nil
+	return &rdsBroker{
+		ctx,
+		brokerDB,
+		catalog,
+		settings,
+		tagManager,
+		dbAdapter,
+		riverClient,
+	}, nil
 }
 
 // this helps the manager to respond appropriately depending on whether a service/plan needs an operation to be async
@@ -178,7 +196,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 	}
 
 	// Create the database instance.
-	status, err := broker.dbAdapter.createDB(newInstance, plan, newInstance.ClearPassword)
+	status, err := broker.dbAdapter.createDB(newInstance, plan)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,

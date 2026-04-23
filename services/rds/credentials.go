@@ -12,47 +12,41 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 )
 
-type DatabaseUtils interface {
-	formatDBName(dbType string, database string) string
-	generatePassword(salt string, password string, key string) (string, string, error)
+type CredentialUtils interface {
+	generatePassword(salt string, password string, key string) (string, error)
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
-	generateCredentials(settings *config.Settings) (string, string, string, error)
+	generateCredentials(settings *config.Settings) (string, string, error)
 	generateDatabaseName(settings *config.Settings) string
 	buildUsername() string
 }
 
-type RDSDatabaseUtils struct {
+func formatDBName(database string) string {
+	re, _ := regexp.Compile("(i?)[^a-z0-9]")
+	return re.ReplaceAllString(database, "")
 }
 
-func (u *RDSDatabaseUtils) formatDBName(dbType string, database string) string {
-	switch dbType {
-	case "oracle-se1", "oracle-se2":
-		return "ORCL"
-	default:
-		re, _ := regexp.Compile("(i?)[^a-z0-9]")
-		return re.ReplaceAllString(database, "")
-	}
+type RDSCredentialUtils struct {
 }
 
-func (u *RDSDatabaseUtils) generatePassword(salt string, password string, key string) (string, string, error) {
+func (u *RDSCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
 	if salt == "" {
-		return "", "", errors.New("salt has to be set before writing the password")
+		return "", errors.New("salt has to be set before writing the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
 
 	encrypted, err := helpers.Encrypt(password, key, iv)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return encrypted, password, nil
+	return encrypted, nil
 }
 
-func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string) (string, error) {
+func (u *RDSCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
 	if salt == "" || password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
+		return "", errors.New("salt and password has to be set before getting the password")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
@@ -65,7 +59,7 @@ func (u *RDSDatabaseUtils) getPassword(salt string, password string, key string)
 	return decrypted, nil
 }
 
-func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
+func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
 	var dbScheme string
 	var credentials map[string]string
 
@@ -78,7 +72,7 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
 
-	dbName := i.FormatDBName()
+	dbName := formatDBName(i.Database)
 	uri := fmt.Sprintf(
 		"%s://%s:%s@%s:%d/%s",
 		dbScheme,
@@ -115,24 +109,24 @@ func (u *RDSDatabaseUtils) getCredentials(i *RDSInstance, password string) (map[
 	return credentials, nil
 }
 
-func (u *RDSDatabaseUtils) generateCredentials(
+func (u *RDSCredentialUtils) generateCredentials(
 	settings *config.Settings,
-) (string, string, string, error) {
+) (string, string, error) {
 	salt := helpers.GenerateSalt(aes.BlockSize)
 	password := helpers.RandStrNoCaps(25)
-	encrypted, password, err := u.generatePassword(salt, password, settings.EncryptionKey)
+	encrypted, err := u.generatePassword(salt, password, settings.EncryptionKey)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	return salt, encrypted, password, err
+	return salt, encrypted, err
 }
 
-func (u *RDSDatabaseUtils) generateDatabaseName(
+func (u *RDSCredentialUtils) generateDatabaseName(
 	settings *config.Settings,
 ) string {
 	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
 }
 
-func (u *RDSDatabaseUtils) buildUsername() string {
+func (u *RDSCredentialUtils) buildUsername() string {
 	return "u" + helpers.RandStrNoCaps(15)
 }

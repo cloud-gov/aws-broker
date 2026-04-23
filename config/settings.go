@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 )
 
 // Settings stores settings used to run the application
@@ -17,7 +18,7 @@ type Settings struct {
 	DbNamePrefix              string
 	DbShorthandPrefix         string
 	MaxAllocatedStorage       int64
-	DbConfig                  *common.DBConfig
+	DbConfig                  *db.DBConfig
 	Environment               string
 	Region                    string
 	PubliclyAccessibleFeature bool
@@ -36,6 +37,7 @@ type Settings struct {
 	PollAwsMinDelay           time.Duration
 	PollAwsMaxRetries         int64
 	Port                      string
+	LogLevel                  slog.Level
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -44,7 +46,7 @@ func (s *Settings) LoadFromEnv() error {
 	var err error
 
 	// Load DB Settings
-	dbConfig := common.DBConfig{}
+	dbConfig := db.DBConfig{}
 	dbConfig.DbType = os.Getenv("DB_TYPE")
 	dbConfig.URL = os.Getenv("DB_URL")
 	dbConfig.Username = os.Getenv("DB_USER")
@@ -216,6 +218,12 @@ func (s *Settings) LoadFromEnv() error {
 
 	if s.Port == "" {
 		s.Port = "3000"
+	}
+
+	levelString := os.Getenv("LOG_LEVEL")
+	err = s.LogLevel.UnmarshalText([]byte(levelString))
+	if err != nil {
+		s.LogLevel = slog.LevelInfo
 	}
 
 	return nil

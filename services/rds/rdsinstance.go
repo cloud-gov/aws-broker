@@ -16,22 +16,22 @@ import (
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils DatabaseUtils `gorm:"-"`
+	dbUtils CredentialUtils `gorm:"-" json:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	ClearPassword string `gorm:"-"`
+	mu   *sync.Mutex
+	Tags map[string]string `gorm:"-" deep:"-"`
 
-	Tags                  *sync.Map `gorm:"-" deep:"-"`
-	BackupRetentionPeriod int64     `sql:"size(255)"`
-	DbSubnetGroup         string    `gorm:"-"`
-	AllocatedStorage      int64     `sql:"size(255)"`
-	SecGroup              string    `gorm:"-"`
-	EnableFunctions       bool      `gorm:"-"`
-	PubliclyAccessible    bool      `gorm:"-"`
+	BackupRetentionPeriod int64  `sql:"size(255)"`
+	DbSubnetGroup         string `gorm:"-"`
+	AllocatedStorage      int64  `sql:"size(255)"`
+	SecGroup              string `gorm:"-"`
+	EnableFunctions       bool   `gorm:"-"`
+	PubliclyAccessible    bool   `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
 
@@ -48,21 +48,19 @@ type RDSInstance struct {
 
 	StorageType string `sql:"size(255)"`
 
-	AddReadReplica           bool   `gorm:"-"`
-	ReplicaDatabase          string `sql:"size(255)"`
-	ReplicaDatabaseHost      string `sql:"size(255)"`
-	DeleteReadReplica        bool   `gorm:"-"`
-	AllowMajorVersionUpgrade bool   `gorm:"-"`
+	AddReadReplica      bool   `gorm:"-"`
+	ReplicaDatabase     string `sql:"size(255)"`
+	ReplicaDatabaseHost string `sql:"size(255)"`
+	DeleteReadReplica   bool   `gorm:"-"`
+
+	RotateCredentials        bool `gorm:"-"`
+	AllowMajorVersionUpgrade bool `gorm:"-"`
 }
 
 func NewRDSInstance() *RDSInstance {
 	return &RDSInstance{
-		dbUtils: &RDSDatabaseUtils{},
+		dbUtils: &RDSCredentialUtils{},
 	}
-}
-
-func (i *RDSInstance) FormatDBName() string {
-	return i.dbUtils.formatDBName(i.DbType, i.Database)
 }
 
 func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
@@ -70,13 +68,12 @@ func (i *RDSInstance) getCredentials(password string) (map[string]string, error)
 }
 
 func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
-	salt, encrypted, password, err := i.dbUtils.generateCredentials(settings)
+	salt, encrypted, err := i.dbUtils.generateCredentials(settings)
 	if err != nil {
 		return err
 	}
 	i.Salt = salt
 	i.Password = encrypted
-	i.ClearPassword = password
 	return nil
 }
 
@@ -146,6 +143,7 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	}
 
 	if options.RotateCredentials != nil && *options.RotateCredentials {
+		modifiedInstance.RotateCredentials = *options.RotateCredentials
 		err := modifiedInstance.generateCredentials(settings)
 		if err != nil {
 			return nil, err
@@ -264,14 +262,14 @@ func (i *RDSInstance) setTags(
 	tags map[string]string,
 ) error {
 	if i.Tags == nil {
-		i.Tags = &sync.Map{}
+		i.Tags = make(map[string]string)
 	}
 	// Load tags from plan
 	for k, v := range plan.Tags {
-		i.Tags.Store(k, v)
+		i.Tags[k] = v
 	}
 	for k, v := range tags {
-		i.Tags.Store(k, v)
+		i.Tags[k] = v
 	}
 	return nil
 }
@@ -282,21 +280,7 @@ func (i *RDSInstance) getTags() map[string]string {
 		return tags
 	}
 
-	i.Tags.Range(func(k, v any) bool {
-		keyString, ok := k.(string)
-		if !ok {
-			return false
-		}
-
-		valueString, ok := v.(string)
-		if !ok {
-			return false
-		}
-
-		tags[keyString] = valueString
-		return true
-	})
-	return tags
+	return i.Tags
 }
 
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {

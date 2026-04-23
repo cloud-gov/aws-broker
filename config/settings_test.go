@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/go-test/deep"
 )
 
@@ -25,7 +25,7 @@ func TestSettings(t *testing.T) {
 	}
 
 	expectedSettings := &Settings{
-		DbConfig: &common.DBConfig{
+		DbConfig: &db.DBConfig{
 			Port:    5432,
 			Sslmode: "require",
 		},
@@ -71,7 +71,7 @@ func TestSettingsPort(t *testing.T) {
 	}
 
 	expectedSettings := &Settings{
-		DbConfig: &common.DBConfig{
+		DbConfig: &db.DBConfig{
 			Port:    5432,
 			Sslmode: "require",
 		},

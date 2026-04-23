@@ -1,15 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os/signal"
 
 	"code.cloudfoundry.org/brokerapi/v13"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
+	"github.com/cloud-gov/aws-broker/services/rds"
+	"github.com/cloud-gov/aws-broker/services/redis"
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/riverqueue/river"
 
-	"log"
 	"log/slog"
 	"os"
 
@@ -18,22 +27,70 @@ import (
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
-func main() {
+func run(ctx context.Context, out io.Writer) error {
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	defer cancel()
+
 	var settings config.Settings
 
 	// Load settings from environment
 	if err := settings.LoadFromEnv(); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db, err := db.InternalDBInit(settings.DbConfig)
+	// Create a Text handler that writes to os.Stdout
+	handler := slog.NewTextHandler(out, &slog.HandlerOptions{
+		Level: settings.LogLevel,
+	})
+
+	// Create a new logger with the Text handler
+	logger := slog.New(handler)
+
+	logger.Debug("run: initializing database")
+	db, err := db.DBInit(settings.DbConfig)
 	if err != nil {
-		log.Fatal(fmt.Errorf("error initializing database: %s", err))
+		return fmt.Errorf("error initializing database: %s", err)
+	}
+
+	logger.Debug("run: Migrating GORM models")
+	// Automigrate!
+	err = db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{}) // Add all your models here to help setup the database tables
+	if err != nil {
+		return fmt.Errorf("error migrating GORM models: %s", err)
+	}
+	logger.Debug("run: Migrated GORM models")
+
+	cfg, err := awsConfig.LoadDefaultConfig(
+		ctx,
+		awsConfig.WithRegion(settings.Region),
+	)
+	if err != nil {
+		return fmt.Errorf("error loading AWS config: %s", err)
+	}
+
+	rdsClient := awsRds.NewFromConfig(cfg)
+	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings)
+
+	logger.Debug("run: initializing River workers and client")
+	workers := river.NewWorkers()
+	river.AddWorker(workers, rds.NewCreateWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+	))
+
+	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
+	if err != nil {
+		return fmt.Errorf("error creating river client: %w", err)
+	}
+
+	logger.Debug("run: starting River server")
+	if err = riverClient.Start(ctx); err != nil {
+		return fmt.Errorf("error starting river client: %w", err)
 	}
 
 	asyncJobManager := jobs.NewAsyncJobManager()
 	asyncJobManager.Init()
 
+	logger.Debug("run: initializing tags manager")
 	tagManager, err := brokertags.NewCFTagManager(
 		"AWS broker",
 		settings.Environment,
@@ -42,7 +99,7 @@ func main() {
 		settings.CfApiClientSecret,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	path, _ := os.Getwd()
@@ -56,22 +113,31 @@ func main() {
 		Password: password,
 	}
 
-	// Create a Text handler that writes to os.Stdout
-	handler := slog.NewTextHandler(os.Stdout, nil)
-
-	// Create a new logger with the Text handler
-	logger := slog.New(handler)
-
+	logger.Debug("run: initializing broker")
 	serviceBroker := broker.New(
+		ctx,
 		&settings,
 		db,
 		c,
 		asyncJobManager,
 		tagManager,
+		riverClient,
+		logger,
 	)
-
 	brokerAPI := brokerapi.New(serviceBroker, logger, credentials)
-	http.Handle("/", brokerAPI)
 
+	logger.Debug("run: starting web server")
+	http.Handle("/", brokerAPI)
 	http.ListenAndServe(fmt.Sprintf(":%s", settings.Port), nil)
+
+	return nil
+}
+
+func main() {
+	ctx := context.Background()
+	err := run(ctx, os.Stdout)
+	if err != nil {
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
 }

@@ -1,34 +1,106 @@
 package db
 
 import (
+	"errors"
+	"fmt"
 	"log"
 
-	"github.com/cloud-gov/aws-broker/base"
-	"github.com/cloud-gov/aws-broker/common"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
-	"github.com/cloud-gov/aws-broker/services/elasticsearch"
-	"github.com/cloud-gov/aws-broker/services/rds"
-	"github.com/cloud-gov/aws-broker/services/redis"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-const maxDbConnections = 10
+// DBConfig holds configuration information to connect to a database.
+// Parameters for the config.
+//   - dbname - The name of the database to connect to
+//   - user - The user to sign in as
+//   - password - The user's password
+//   - host - The host to connect to. Values that start with / are for unix domain sockets.
+//     (default is localhost)
+//   - port - The port to bind to. (default is 5432)
+//   - sslmode - Whether or not to use SSL (default is require, this is not the default for libpq)
+//     Valid SSL modes:
+//   - disable - No SSL
+//   - require - Always SSL (skip verification)
+//   - verify-full - Always SSL (require verification)
+type DBConfig struct {
+	DbType   string `yaml:"db_type" validate:"required"`
+	URL      string `yaml:"url" validate:"required"`
+	Username string `yaml:"username" validate:"required"`
+	Password string `yaml:"password" validate:"required"`
+	DbName   string `yaml:"db_name" validate:"required"`
+	Sslmode  string `yaml:"ssl_mode" validate:"required"`
+	Port     int64  `yaml:"port" validate:"required"` // Is int64 to match the type that rds.Endpoint.Port is in the AWS RDS SDK.
+}
 
-// InternalDBInit initializes the internal database connection that the service broker will use.
-// In addition to calling DBInit(), it also makes sure that the tables are setup for Instance and DBConfig structs.
-func InternalDBInit(dbConfig *common.DBConfig) (*gorm.DB, error) {
-	db, err := common.DBInit(dbConfig)
+const defaultMaxDbConnections = 10
+
+// DBInit is a generic helper function that will try to connect to a database with the config in the input.
+// Supported DB types:
+// * postgres
+// * mysql
+// * sqlite3
+func DBInit(dbConfig *DBConfig) (*gorm.DB, error) {
+	var DB *gorm.DB
+	var err error
+
+	var maxDbConnections int
+	maxDbConnections = defaultMaxDbConnections
+
+	switch dbConfig.DbType {
+	case "postgres":
+		conn := "dbname=%s user=%s password=%s host=%s sslmode=%s port=%d"
+		conn = fmt.Sprintf(conn,
+			dbConfig.DbName,
+			dbConfig.Username,
+			dbConfig.Password,
+			dbConfig.URL,
+			dbConfig.Sslmode,
+			dbConfig.Port)
+		DB, err = gorm.Open(postgres.Open(conn), &gorm.Config{})
+	case "mysql":
+		conn := "%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=True"
+		conn = fmt.Sprintf(conn,
+			dbConfig.Username,
+			dbConfig.Password,
+			"tcp",
+			dbConfig.URL,
+			dbConfig.Port,
+			dbConfig.DbName)
+		DB, err = gorm.Open(mysql.New(mysql.Config{
+			DSN: conn,
+		}), &gorm.Config{})
+	case "sqlite3":
+		// see https://github.com/mattn/go-sqlite3/issues/677#issuecomment-450203752
+		DB, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+			// TODO make logger level configurable
+			Logger: logger.Default.LogMode(logger.Silent),
+		})
+		// see https://github.com/mattn/go-sqlite3/issues/209
+		maxDbConnections = 1
+	default:
+		errorString := "Cannot connect. Unsupported DB type: (" + dbConfig.DbType + ")"
+		log.Println(errorString)
+		return nil, errors.New(errorString)
+	}
+	if err != nil {
+		log.Println("Error!" + err.Error())
+		return nil, err
+	}
+
+	sqlDB, err := DB.DB()
 	if err != nil {
 		return nil, err
 	}
-	sqlDB, err := db.DB()
-	if err != nil {
+
+	if err = sqlDB.Ping(); err != nil {
+		log.Println("Unable to verify connection to database")
 		return nil, err
 	}
+
 	sqlDB.SetMaxOpenConns(maxDbConnections)
-	log.Println("Migrating")
-	// Automigrate!
-	db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{}) // Add all your models here to help setup the database tables
-	log.Println("Migrated")
-	return db, err
+
+	return DB, nil
 }

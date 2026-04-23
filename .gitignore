@@ -15,3 +15,5 @@ aws-broker_manifest.yml
 
 go.work
 go.work.sum
+
+*.sqlite*

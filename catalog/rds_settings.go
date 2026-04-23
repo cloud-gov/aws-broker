@@ -3,14 +3,14 @@ package catalog
 import (
 	"errors"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 	"gorm.io/gorm"
 )
 
 // RDSSetting is the wrapper for
 type RDSSetting struct {
 	DB     *gorm.DB
-	Config common.DBConfig
+	Config db.DBConfig
 }
 
 // RDSSettings is a wrapper for all the resources loaded / instantiated.
@@ -22,7 +22,7 @@ type RDSSettings struct {
 func InitRDSSettings(secrets *Secrets) (*RDSSettings, error) {
 	rdsSettings := RDSSettings{databases: make(map[string]*RDSSetting)}
 	for _, rdsSecret := range secrets.RdsSecret.RDSDBSecrets {
-		db, err := common.DBInit(&rdsSecret.DBConfig)
+		db, err := db.DBInit(&rdsSecret.DBConfig)
 		if err == nil {
 			rdsSettings.AddRDSSetting(&RDSSetting{DB: db, Config: rdsSecret.DBConfig}, rdsSecret.PlanID)
 		} else {

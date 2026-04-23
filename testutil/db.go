@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cloud-gov/aws-broker/common"
+	"github.com/cloud-gov/aws-broker/db"
 
 	"gorm.io/gorm"
 )
 
-func InitTestDbConfig() (*common.DBConfig, error) {
-	var dbConfig common.DBConfig
+func InitTestDbConfig() (*db.DBConfig, error) {
+	var dbConfig db.DBConfig
 	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
 		dbConfig.DbType = "sqlite3"
 	}
@@ -37,7 +37,7 @@ func TestDbInit() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := common.DBInit(config)
+	db, err := db.DBInit(config)
 	if err != nil {
 		return nil, err
 	}

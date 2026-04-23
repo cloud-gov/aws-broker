@@ -5,19 +5,35 @@ import (
 	"testing"
 
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/go-test/deep"
 )
 
+func TestFormatDBName(t *testing.T) {
+	dbIdentifier := "db" + helpers.RandStrNoCaps(15)
+	i := &RDSInstance{
+		Database: dbIdentifier,
+	}
+	dbName1 := formatDBName(i.Database)
+	if dbName1 != dbIdentifier {
+		t.Fatalf("database name should be %s", dbIdentifier)
+	}
+	dbName2 := formatDBName(i.Database)
+	if dbName1 != dbName2 {
+		t.Fatalf("database names should be the same")
+	}
+}
+
 func TestGetCredentials(t *testing.T) {
 	testCases := map[string]struct {
-		dbUtils       DatabaseUtils
+		dbUtils       CredentialUtils
 		rdsInstance   *RDSInstance
 		password      string
 		expectErr     bool
 		expectedCreds map[string]string
 	}{
 		"postgres": {
-			dbUtils: &RDSDatabaseUtils{},
+			dbUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "postgres",
 				Username: "user-1",
@@ -25,9 +41,8 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				dbUtils: &MockDbUtils{
-					mockFormattedDbName: "db1",
-				},
+				Database: "db-1",
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
@@ -41,7 +56,7 @@ func TestGetCredentials(t *testing.T) {
 			},
 		},
 		"unknown databse type": {
-			dbUtils: &RDSDatabaseUtils{},
+			dbUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "foobar",
 				Username: "user-1",
@@ -49,15 +64,13 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				dbUtils: &MockDbUtils{
-					mockFormattedDbName: "db1",
-				},
+				dbUtils: &RDSCredentialUtils{},
 			},
 			password:  "fake-pw",
 			expectErr: true,
 		},
 		"database with replica": {
-			dbUtils: &RDSDatabaseUtils{},
+			dbUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "postgres",
 				Username: "user-1",
@@ -66,9 +79,8 @@ func TestGetCredentials(t *testing.T) {
 					Port: 5432,
 				},
 				ReplicaDatabaseHost: "replica-host",
-				dbUtils: &MockDbUtils{
-					mockFormattedDbName: "db1",
-				},
+				Database:            "db-1",
+				dbUtils:             &RDSCredentialUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{

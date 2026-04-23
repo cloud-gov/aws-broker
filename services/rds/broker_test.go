@@ -649,7 +649,8 @@ func TestLastOperation(t *testing.T) {
 			if test.asyncJobMsg != nil {
 				test.asyncJobMsg.BrokerId = test.dbInstance.ServiceID
 				test.asyncJobMsg.InstanceId = test.dbInstance.Uuid
-				err := brokerDB.Create(test.asyncJobMsg).Error
+
+				err = brokerDB.Create(test.asyncJobMsg).Error
 				if err != nil {
 					t.Fatal(err)
 				}

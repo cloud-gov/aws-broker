@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -13,15 +14,25 @@ import (
 )
 
 func createTestRdsInstance(i *RDSInstance) *RDSInstance {
-	i.dbUtils = &RDSDatabaseUtils{}
+	i.dbUtils = &RDSCredentialUtils{}
 	return i
 }
 
-func TestNewParameterGroupAdapter(t *testing.T) {
+func TestNewParameterGroupClient(t *testing.T) {
 	parameterGroupAdapter := NewAwsParameterGroupClient(
+		context.Background(),
 		&mockRDSClient{},
-		config.Settings{},
+		&config.Settings{},
 	)
+	if parameterGroupAdapter.ctx == nil {
+		t.Fatal("context should not be nil")
+	}
+	if parameterGroupAdapter.rds == nil {
+		t.Fatal("RDS client should not be nil")
+	}
+	if parameterGroupAdapter.settings == nil {
+		t.Fatal("RDS client should not be nil")
+	}
 	if parameterGroupAdapter.parameterGroupPrefix != "cg-aws-broker-" {
 		t.Errorf("actual prefix: %s", parameterGroupAdapter.parameterGroupPrefix)
 	}
@@ -53,7 +64,7 @@ func TestSetParameterGroupName(t *testing.T) {
 			},
 			dbInstance: &RDSInstance{
 				Database: "db1234",
-				dbUtils:  &RDSDatabaseUtils{},
+				dbUtils:  &RDSCredentialUtils{},
 			},
 			expectedParameterGroupName: "prefix-db1234",
 		},
@@ -61,7 +72,7 @@ func TestSetParameterGroupName(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{},
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "param-group-1234",
-				dbUtils:            &RDSDatabaseUtils{},
+				dbUtils:            &RDSCredentialUtils{},
 			},
 			expectedParameterGroupName: "param-group-1234",
 		},
@@ -85,21 +96,21 @@ func TestNeedCustomParameters(t *testing.T) {
 	}{
 		"default": {
 			dbInstance: &RDSInstance{
-				dbUtils: &RDSDatabaseUtils{},
+				dbUtils: &RDSCredentialUtils{},
 			},
 			expectedOk: false,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 		},
 		"valid binary log format": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 			expectedOk: true,
 		},
@@ -107,10 +118,10 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "psql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 			expectedOk: false,
 		},
@@ -118,10 +129,10 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: false,
 				},
 			},
@@ -131,10 +142,10 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: false,
 				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: true,
 				},
 			},
@@ -144,10 +155,10 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "psql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: true,
 				},
 			},
@@ -157,10 +168,10 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "mysql",
-				dbUtils:         &RDSDatabaseUtils{},
+				dbUtils:         &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: true,
 				},
 			},
@@ -170,22 +181,22 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(true),
 				DbType:       "postgres",
-				dbUtils:      &RDSDatabaseUtils{},
+				dbUtils:      &RDSCredentialUtils{},
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 		},
 		"disable PG cron": {
 			dbInstance: &RDSInstance{
 				EnablePgCron: aws.Bool(false),
 				DbType:       "postgres",
-				dbUtils:      &RDSDatabaseUtils{},
+				dbUtils:      &RDSCredentialUtils{},
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 		},
 		"enable PG cron not specified": {
@@ -194,7 +205,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			},
 			expectedOk: false,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 		},
 	}
@@ -630,7 +641,7 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: true,
 				},
 			},
@@ -650,7 +661,7 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: true,
 				},
 			},
@@ -670,7 +681,7 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{},
-				settings: config.Settings{
+				settings: &config.Settings{
 					EnableFunctionsFeature: false,
 				},
 			},
@@ -694,7 +705,7 @@ func TestGetCustomParameters(t *testing.T) {
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds:      &mockRDSClient{},
-				settings: config.Settings{},
+				settings: &config.Settings{},
 			},
 		},
 		"enable PG cron, no existing parameter group": {
@@ -712,7 +723,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
@@ -746,7 +757,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
@@ -772,7 +783,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
@@ -822,7 +833,7 @@ func TestGetCustomParameters(t *testing.T) {
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 						{
@@ -847,7 +858,7 @@ func TestGetCustomParameters(t *testing.T) {
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
@@ -868,7 +879,7 @@ func TestGetCustomParameters(t *testing.T) {
 			expectedParams: nil,
 			expectedErr:    describeDbParamsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeDbParamsErr: describeDbParamsErr,
 				},
@@ -883,7 +894,7 @@ func TestGetCustomParameters(t *testing.T) {
 			expectedParams: nil,
 			expectedErr:    describeEngineParamsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeEngineDefaultParamsErr: describeEngineParamsErr,
 					dbEngineVersions: []rdsTypes.DBEngineVersion{
@@ -904,7 +915,7 @@ func TestGetCustomParameters(t *testing.T) {
 			expectedParams: nil,
 			expectedErr:    describeDbParamsErr,
 			parameterGroupAdapter: &awsParameterGroupClient{
-				settings: config.Settings{},
+				settings: &config.Settings{},
 				rds: &mockRDSClient{
 					describeDbParamsErr: describeDbParamsErr,
 				},
