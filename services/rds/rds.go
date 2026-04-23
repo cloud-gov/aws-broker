@@ -300,122 +300,32 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedDBAdapter) waitForDbDeleted(operation base.Operation, i *RDSInstance, database string) error {
-	d.logger.Debug(fmt.Sprintf("Waiting for DB instance %s to be deleted", database))
-
-	// Create a waiter
-	waiter := rds.NewDBInstanceDeletedWaiter(d.rds, func(dawo *rds.DBInstanceDeletedWaiterOptions) {
-		dawo.MinDelay = d.settings.PollAwsMinDelay
-	})
-
-	// Define the waiting strategy
-	maxWaitTime := getPollAwsMaxWaitTime(i.AllocatedStorage, d.settings.PollAwsMaxDuration)
-
-	waiterInput := &rds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: &database,
-	}
-	err := waiter.Wait(d.ctx, waiterInput, maxWaitTime)
-
-	if err != nil {
-		updateErr := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
-		if updateErr != nil {
-			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
-		}
-		return fmt.Errorf("waitForDbReady: %w", err)
-	}
-
-	return nil
-}
-
-func (d *dedicatedDBAdapter) deleteDatabaseInstance(i *RDSInstance, operation base.Operation, database string) error {
-	params := prepareDeleteDbInput(database)
-	_, err := d.rds.DeleteDBInstance(d.ctx, params)
-	if err != nil {
-		if isDatabaseInstanceNotFoundError(err) {
-			d.logger.Debug(fmt.Sprintf("database %s was already deleted, continuing", database))
-			return nil
-		} else {
-			return fmt.Errorf("deleteDatabaseInstance: %w", err)
-		}
-	}
-
-	err = d.waitForDbDeleted(operation, i, database)
-	if err != nil {
-		return fmt.Errorf("deleteDatabaseInstance: %w", err)
-	}
-
-	return nil
-}
-
-func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation base.Operation) error {
-	err := d.deleteDatabaseInstance(i, operation, i.ReplicaDatabase)
-	if err != nil {
-		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
-	}
-	i.ReplicaDatabase = ""
-	return nil
-}
-
-func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
-	operation := base.DeleteOp
-
-	if i.ReplicaDatabase != "" {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
-		err := d.deleteDatabaseReadReplica(i, operation)
-		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete replica database: %s", err))
-			d.logger.Error("asyncDeleteDB: deleteDatabaseReadReplica error", "err", err)
-			return
-		}
-	}
-
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database")
-	err := d.deleteDatabaseInstance(i, operation, i.Database)
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete database: %s", err))
-		d.logger.Error("asyncDeleteDB: deleteDatabaseInstance error", "err", err)
-		return
-	}
-
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
-	err = d.parameterGroupClient.CleanupCustomParameterGroups()
-	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
-		d.logger.Error("asyncDeleteDB: CleanupCustomParameterGroups error", "err", err)
-		return
-	}
-
-	err = d.db.Unscoped().Delete(i).Error
-	if err != nil {
-		d.logger.Error("asyncDeleteDB: error deleting record", "err", err)
-		return
-	}
-
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
-}
-
 func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deleting database resources")
 	if err != nil {
 		return base.InstanceNotGone, err
 	}
 
-	go d.asyncDeleteDB(i)
+	tx := d.db.Begin()
+	if err := tx.Error; err != nil {
+		return base.InstanceNotGone, err
+	}
+	defer tx.Rollback()
+
+	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
+		Instance: i,
+	}, nil)
+	if err != nil {
+		return base.InstanceNotGone, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return base.InstanceNotGone, err
+	}
 
 	return base.InstanceInProgress, nil
-}
-
-func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
-	return &rds.DeleteDBInstanceInput{
-		DBInstanceIdentifier:   aws.String(database), // Required
-		DeleteAutomatedBackups: aws.Bool(false),
-		SkipFinalSnapshot:      aws.Bool(true),
-	}
-}
-
-func isDatabaseInstanceNotFoundError(err error) bool {
-	var notFoundException *rdsTypes.DBInstanceNotFoundFault
-	return errors.As(err, &notFoundException)
 }
 
 func getRetryMultiplier(storageSize int64) int64 {

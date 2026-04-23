@@ -2,12 +2,14 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/base"
-	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/riverqueue/river"
@@ -19,8 +21,7 @@ const (
 )
 
 type DeleteArgs struct {
-	Instance *RDSInstance     `json:"instance"`
-	Plan     *catalog.RDSPlan `json:"plan"`
+	Instance *RDSInstance `json:"instance"`
 }
 
 func (DeleteArgs) Kind() string { return DeleteKind }
@@ -150,4 +151,17 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance) error 
 
 	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
 	return nil
+}
+
+func prepareDeleteDbInput(database string) *rds.DeleteDBInstanceInput {
+	return &rds.DeleteDBInstanceInput{
+		DBInstanceIdentifier:   aws.String(database), // Required
+		DeleteAutomatedBackups: aws.Bool(false),
+		SkipFinalSnapshot:      aws.Bool(true),
+	}
+}
+
+func isDatabaseInstanceNotFoundError(err error) bool {
+	var notFoundException *rdsTypes.DBInstanceNotFoundFault
+	return errors.As(err, &notFoundException)
 }

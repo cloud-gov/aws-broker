@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -268,7 +267,6 @@ func TestModifyDb(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.plan)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -581,14 +579,15 @@ func TestDeleteDb(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		dbAdapter              *dedicatedDBAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		password               string
-		expectedAsyncJobStates []base.InstanceState
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedErr   error
+		expectedState base.InstanceState
+		password      string
 	}{
 		"success": {
+			ctx: context.Background(),
 			dbAdapter: NewTestDedicatedDBAdapter(
 				context.Background(),
 				brokerDB,
@@ -612,8 +611,7 @@ func TestDeleteDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			expectedState:          base.InstanceInProgress,
-			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceGone},
+			expectedState: base.InstanceInProgress,
 		},
 	}
 
@@ -628,17 +626,22 @@ func TestDeleteDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
-				if err != nil {
-					t.Fatal(err)
-				}
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
+			}
 
-				// The exact database state at this point in the test is non-deterministic, since the database updates
-				// are being done in a goroutine. So we test against a set of possible job states
-				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
-					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
-				}
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
+			}
+
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+			defer tx.Rollback()
+
+			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+
+			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
+				t.Fatal("Did not receive expected RDS instance as create worker argument")
 			}
 
 			if responseCode != test.expectedState {
