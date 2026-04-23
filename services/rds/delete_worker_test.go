@@ -3,6 +3,7 @@ package rds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -11,10 +12,84 @@ import (
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/riverqueue/river"
 )
+
+func TestDeleteWorkerWork(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		expectedState base.InstanceState
+		password      string
+		expectErr     bool
+		worker        *DeleteWorker
+	}{
+		"success": {
+			ctx:      context.Background(),
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
+				DbType:          "postgres",
+			},
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{&rdsTypes.DBInstanceNotFoundFault{
+						Message: aws.String("not found"),
+					}},
+				},
+				slog.New(&mockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{},
+			),
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			workers := river.NewWorkers()
+
+			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, slog.New(&mockLogHandler{}), workers)
+			if err != nil {
+				t.Fatal(fmt.Errorf("error creating river client: %w", err))
+			}
+
+			err = test.worker.Work(test.ctx, &river.Job[DeleteArgs]{Args: DeleteArgs{
+				Instance: test.dbInstance,
+			}})
+			if err != nil && !test.expectErr {
+				t.Fatal(err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
 
 func TestAsyncDeleteDB(t *testing.T) {
 	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{

@@ -23,7 +23,7 @@ import (
 	"github.com/riverqueue/river"
 )
 
-func TestCreateWorker(t *testing.T) {
+func TestCreateWorkerWork(t *testing.T) {
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
