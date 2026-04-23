@@ -564,8 +564,6 @@ func (d *dedicatedDBAdapter) deleteDatabaseReadReplica(i *RDSInstance, operation
 func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 	operation := base.DeleteOp
 
-	d.logger.Info("asyncDeleteDB: deleting replica")
-
 	if i.ReplicaDatabase != "" {
 		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 		err := d.deleteDatabaseReadReplica(i, operation)
@@ -576,8 +574,6 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 		}
 	}
 
-	d.logger.Info("asyncDeleteDB: deleting database")
-
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database")
 	err := d.deleteDatabaseInstance(i, operation, i.Database)
 	if err != nil {
@@ -586,8 +582,6 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 		return
 	}
 
-	d.logger.Info("asyncDeleteDB: cleaning up parameter groups")
-
 	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
 	err = d.parameterGroupClient.CleanupCustomParameterGroups()
 	if err != nil {
@@ -595,8 +589,6 @@ func (d *dedicatedDBAdapter) asyncDeleteDB(i *RDSInstance) {
 		d.logger.Error("asyncDeleteDB: CleanupCustomParameterGroups error", "err", err)
 		return
 	}
-
-	d.logger.Info("asyncDeleteDB: deleting database instance")
 
 	err = d.db.Unscoped().Delete(i).Error
 	if err != nil {
