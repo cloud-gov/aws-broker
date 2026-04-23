@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bytes"
 	"crypto/aes"
 	"testing"
 )
@@ -44,11 +45,21 @@ func TestIvChangesEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encrypted1, _, _ := Encrypt(msg, iv1, key)
-	encrypted2, _, _ := Encrypt(msg, iv2, key)
+	encrypted1, nonce1, err := Encrypt(msg, iv1, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encrypted2, nonce2, err := Encrypt(msg, iv2, key)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if encrypted1 == encrypted2 {
 		t.Error("different ivs should return different strings")
+	}
+
+	if bytes.Equal(nonce1, nonce2) {
+		t.Error("nonces should never be the same")
 	}
 }
 
@@ -61,11 +72,21 @@ func TestKeyChangesEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encrypted1, _, _ := Encrypt(msg, iv, key1)
-	encrypted2, _, _ := Encrypt(msg, iv, key2)
+	encrypted1, nonce1, err := Encrypt(msg, iv, key1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encrypted2, nonce2, err := Encrypt(msg, iv, key2)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if encrypted1 == encrypted2 {
 		t.Error("different ivs should return different strings")
+	}
+
+	if bytes.Equal(nonce1, nonce2) {
+		t.Error("nonces should never be the same")
 	}
 }
 
