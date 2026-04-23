@@ -76,6 +76,9 @@ func run(ctx context.Context, out io.Writer) error {
 	river.AddWorker(workers, rds.NewCreateWorker(
 		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
 	))
+	river.AddWorker(workers, rds.NewModifyWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
 	if err != nil {
