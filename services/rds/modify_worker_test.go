@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -31,10 +30,6 @@ func TestAsyncModifyDb(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
 	testCases := map[string]struct {
 		dbInstance         *RDSInstance
 		expectedState      base.InstanceState
@@ -49,7 +44,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{
 					returnErr: errors.New("fail"),
 				},
@@ -77,7 +72,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockRDSClient{
 					modifyDbErrs: []error{modifyDbErr},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -103,7 +98,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -147,7 +142,7 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -214,7 +209,7 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -278,7 +273,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					modifyDbErrs: []error{nil, modifyDbErr},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -331,7 +326,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					createDBInstanceReadReplicaErrs: []error{errors.New("error creating read replica")},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -378,7 +373,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -434,7 +429,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					addTagsToResourceErr: errors.New("error updating tags"),
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -479,7 +474,7 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),

@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -210,3 +211,15 @@ func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.Modify
 		},
 	}, nil
 }
+
+type mockLogHandler struct {
+	Records []slog.Record
+}
+
+func (h *mockLogHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+func (h *mockLogHandler) Handle(_ context.Context, r slog.Record) error {
+	h.Records = append(h.Records, r)
+	return nil
+}
+func (h *mockLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler { return h }
+func (h *mockLogHandler) WithGroup(name string) slog.Handler       { return h }

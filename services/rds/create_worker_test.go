@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -25,10 +24,6 @@ import (
 )
 
 func TestCreateWorker(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +79,7 @@ func TestCreateWorker(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -150,7 +145,7 @@ func TestCreateWorker(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -169,7 +164,7 @@ func TestCreateWorker(t *testing.T) {
 					},
 				},
 				&mockRDSClient{},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
@@ -204,7 +199,7 @@ func TestCreateWorker(t *testing.T) {
 				&mockRDSClient{
 					createDbErr: errors.New("create database error"),
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -237,7 +232,7 @@ func TestCreateWorker(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -265,7 +260,7 @@ func TestCreateWorker(t *testing.T) {
 			workers := river.NewWorkers()
 
 			// create client and run migrations
-			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, logger, workers)
+			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, slog.New(&mockLogHandler{}), workers)
 			if err != nil {
 				t.Fatal(fmt.Errorf("error creating river client: %w", err))
 			}
@@ -458,9 +453,6 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 
 func TestAsyncCreateDb(t *testing.T) {
 	createDbErr := errors.New("create DB error")
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
 
 	brokerDB, err := testDBInit()
 	if err != nil {
@@ -488,7 +480,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 				},
 				&mockRDSClient{},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
@@ -523,7 +515,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				&mockRDSClient{
 					createDbErr: createDbErr,
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -556,7 +548,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -606,7 +598,7 @@ func TestAsyncCreateDb(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -662,7 +654,7 @@ func TestAsyncCreateDb(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -714,7 +706,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					createDBInstanceReadReplicaErrs: []error{errors.New("fail")},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -747,7 +739,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 				},
 				&mockRDSClient{},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{
 					mockGetPassworrdErr: errors.New("error getting password"),
@@ -794,10 +786,6 @@ func TestAsyncCreateDb(t *testing.T) {
 }
 
 func TestCreateDBReadReplica(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
@@ -823,7 +811,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 				},
 				rds:                  &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
+				logger:               slog.New(&mockLogHandler{}),
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -849,7 +837,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 				},
 				rds:                  &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
+				logger:               slog.New(&mockLogHandler{}),
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -882,7 +870,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 					},
 				},
 				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
+				logger:               slog.New(&mockLogHandler{}),
 			},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -912,10 +900,6 @@ func TestCreateDBReadReplica(t *testing.T) {
 }
 
 func TestWaitAndCreateDBReadReplica(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
@@ -958,7 +942,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -997,7 +981,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					},
 					describeDbInstancesErrs: []error{nil, errors.New("error describing database instances")},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -1037,7 +1021,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -1084,7 +1068,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				logger,
+				slog.New(&mockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
