@@ -1,6 +1,7 @@
 ---
 jobs:
   - name: deploy-aws-broker-development
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -612,6 +613,7 @@ jobs:
           - aws-broker-app/ci/config.yml
 
   - name: deploy-aws-broker-staging
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -1271,6 +1273,7 @@ jobs:
           channel: ((slack-channel-customer-success))
 
   - name: deploy-aws-broker-prod
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
