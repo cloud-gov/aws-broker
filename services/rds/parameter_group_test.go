@@ -14,7 +14,7 @@ import (
 )
 
 func createTestRdsInstance(i *RDSInstance) *RDSInstance {
-	i.dbUtils = &RDSCredentialUtils{}
+	i.credentialUtils = &RDSCredentialUtils{}
 	return i
 }
 
@@ -63,8 +63,8 @@ func TestSetParameterGroupName(t *testing.T) {
 				parameterGroupPrefix: "prefix-",
 			},
 			dbInstance: &RDSInstance{
-				Database: "db1234",
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        "db1234",
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedParameterGroupName: "prefix-db1234",
 		},
@@ -72,7 +72,7 @@ func TestSetParameterGroupName(t *testing.T) {
 			parameterGroupAdapter: &awsParameterGroupClient{},
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "param-group-1234",
-				dbUtils:            &RDSCredentialUtils{},
+				credentialUtils:    &RDSCredentialUtils{},
 			},
 			expectedParameterGroupName: "param-group-1234",
 		},
@@ -96,7 +96,7 @@ func TestNeedCustomParameters(t *testing.T) {
 	}{
 		"default": {
 			dbInstance: &RDSInstance{
-				dbUtils: &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedOk: false,
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -107,7 +107,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{},
@@ -118,7 +118,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "psql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{},
@@ -129,7 +129,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "mysql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{
@@ -142,7 +142,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: false,
 				DbType:          "mysql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{
@@ -155,7 +155,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "psql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{
@@ -168,7 +168,7 @@ func TestNeedCustomParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
 				DbType:          "mysql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{
@@ -179,9 +179,9 @@ func TestNeedCustomParameters(t *testing.T) {
 		},
 		"enable PG cron": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: aws.Bool(true),
-				DbType:       "postgres",
-				dbUtils:      &RDSCredentialUtils{},
+				EnablePgCron:    aws.Bool(true),
+				DbType:          "postgres",
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -190,9 +190,9 @@ func TestNeedCustomParameters(t *testing.T) {
 		},
 		"disable PG cron": {
 			dbInstance: &RDSInstance{
-				EnablePgCron: aws.Bool(false),
-				DbType:       "postgres",
-				dbUtils:      &RDSCredentialUtils{},
+				EnablePgCron:    aws.Bool(false),
+				DbType:          "postgres",
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{

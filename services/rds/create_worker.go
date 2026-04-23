@@ -37,7 +37,8 @@ type CreateWorker struct {
 	rds                  RDSClientInterface
 	logger               *slog.Logger
 	parameterGroupClient parameterGroupClient
-	dbUtils              CredentialUtils
+	credentialUtils      CredentialUtils
+	workerUtils          *WorkerUtils
 }
 
 func NewCreateWorker(
@@ -46,7 +47,7 @@ func NewCreateWorker(
 	rds RDSClientInterface,
 	logger *slog.Logger,
 	parameterGroupClient parameterGroupClient,
-	dbUtils CredentialUtils,
+	credentialUtils CredentialUtils,
 ) *CreateWorker {
 	return &CreateWorker{
 		db:                   db,
@@ -54,7 +55,13 @@ func NewCreateWorker(
 		rds:                  rds,
 		logger:               logger,
 		parameterGroupClient: parameterGroupClient,
-		dbUtils:              dbUtils,
+		credentialUtils:      credentialUtils,
+		workerUtils: &WorkerUtils{
+			db:       db,
+			logger:   logger,
+			rds:      rds,
+			settings: settings,
+		},
 	}
 }
 
@@ -173,7 +180,7 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 	i *RDSInstance,
 	plan *catalog.RDSPlan,
 ) error {
-	err := waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
+	err := w.workerUtils.waitForDbReady(ctx, operation, i, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
@@ -188,14 +195,14 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.ReplicaDatabase)
+	err = w.workerUtils.waitForDbReady(ctx, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		w.logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
 		jobs.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
-	err = updateDBTags(ctx, w.rds, i, *createReplicaOutput.DBInstance.DBInstanceArn)
+	err = w.workerUtils.updateDBTags(ctx, i, *createReplicaOutput.DBInstance.DBInstanceArn)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
@@ -207,7 +214,7 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
 	operation := base.CreateOp
 
-	password, err := w.dbUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
+	password, err := w.credentialUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
@@ -225,7 +232,7 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
 	}
 
-	err = waitForDbReady(ctx, w.rds, w.db, w.logger, w.settings, operation, i, i.Database)
+	err = w.workerUtils.waitForDbReady(ctx, operation, i, i.Database)
 	if err != nil {
 		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: waitForDbReady error: %w ", err))

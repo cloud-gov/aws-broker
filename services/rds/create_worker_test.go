@@ -53,20 +53,20 @@ func TestCreateWorker(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
-				DbType:   "postgres",
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
+				DbType:          "postgres",
 			},
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -84,12 +84,12 @@ func TestCreateWorker(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
 		},
@@ -105,20 +105,20 @@ func TestCreateWorker(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 				DbType:          "postgres",
 				AddReadReplica:  true,
 			},
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -150,33 +150,33 @@ func TestCreateWorker(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
 		},
 		"error provisioning custom parameter group": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+				&mockRDSClient{},
+				logger,
+				&mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
-				logger: logger,
-				dbUtils: &MockCredentialUtils{
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -184,8 +184,8 @@ func TestCreateWorker(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -194,22 +194,22 @@ func TestCreateWorker(t *testing.T) {
 		},
 		"create DB error": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					createDbErr: errors.New("create database error"),
 				},
-				logger:               logger,
-				parameterGroupClient: &mockParameterGroupClient{},
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -217,8 +217,8 @@ func TestCreateWorker(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -227,22 +227,22 @@ func TestCreateWorker(t *testing.T) {
 		},
 		"error waiting for database creation": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				logger:               logger,
-				parameterGroupClient: &mockParameterGroupClient{},
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -250,8 +250,8 @@ func TestCreateWorker(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -300,7 +300,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat: "ROW",
 				DbType:          "mysql",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			worker: &CreateWorker{
 				settings: &config.Settings{},
@@ -319,7 +319,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				Database:              "db-1",
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				dbUtils:               &RDSCredentialUtils{},
+				credentialUtils:       &RDSCredentialUtils{},
 				Username:              "fake-user",
 				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
@@ -380,7 +380,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
 				DbVersion:             "8.0",
-				dbUtils:               &RDSCredentialUtils{},
+				credentialUtils:       &RDSCredentialUtils{},
 				Username:              "fake-user",
 				StorageType:           "storage-1",
 				PubliclyAccessible:    true,
@@ -478,24 +478,24 @@ func TestAsyncCreateDb(t *testing.T) {
 	}{
 		"error provisioning custom parameter group": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+				&mockRDSClient{},
+				logger,
+				&mockParameterGroupClient{
 					returnErr: errors.New("failed"),
 				},
-				logger: logger,
-				dbUtils: &MockCredentialUtils{
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -503,8 +503,8 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -513,22 +513,22 @@ func TestAsyncCreateDb(t *testing.T) {
 		},
 		"create DB error": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					createDbErr: createDbErr,
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -536,8 +536,8 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -546,22 +546,22 @@ func TestAsyncCreateDb(t *testing.T) {
 		},
 		"error waiting for database creation": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -569,8 +569,8 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -579,16 +579,16 @@ func TestAsyncCreateDb(t *testing.T) {
 		},
 		"success without replica": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -606,12 +606,12 @@ func TestAsyncCreateDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -620,24 +620,24 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -662,12 +662,12 @@ func TestAsyncCreateDb(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -680,22 +680,22 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceReady,
 		},
 		"error creating replica": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -714,12 +714,12 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					createDBInstanceReadReplicaErrs: []error{errors.New("fail")},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
-			},
+			),
 			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
@@ -732,27 +732,27 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
 		"error getting password": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				rds:                  &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-				dbUtils: &MockCredentialUtils{
+				&mockRDSClient{},
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{
 					mockGetPassworrdErr: errors.New("error getting password"),
 				},
-			},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -760,8 +760,8 @@ func TestAsyncCreateDb(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
@@ -931,16 +931,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	}{
 		"success": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -958,9 +958,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-			},
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -975,16 +976,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"error checking database creation status": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -996,9 +997,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 					},
 					describeDbInstancesErrs: []error{nil, errors.New("error describing database instances")},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-			},
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -1014,16 +1016,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"error creating database replica": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					createDBInstanceReadReplicaErrs: []error{errors.New("error creating database instance read replica")},
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1035,9 +1037,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-			},
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{},
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -1053,16 +1056,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		},
 		"error adding tags": {
 			ctx: context.Background(),
-			worker: &CreateWorker{
-				db: brokerDB,
-				settings: &config.Settings{
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 3 * time.Millisecond,
 				},
-				rds: &mockRDSClient{
+				&mockRDSClient{
 					addTagsToResourceErr: errors.New("error adding tags to read replica"),
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
@@ -1081,9 +1084,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 						},
 					},
 				},
-				parameterGroupClient: &mockParameterGroupClient{},
-				logger:               logger,
-			},
+				logger,
+				&mockParameterGroupClient{},
+				&mockCredentialUtils{},
+			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{

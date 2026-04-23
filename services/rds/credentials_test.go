@@ -26,14 +26,14 @@ func TestFormatDBName(t *testing.T) {
 
 func TestGetCredentials(t *testing.T) {
 	testCases := map[string]struct {
-		dbUtils       CredentialUtils
-		rdsInstance   *RDSInstance
-		password      string
-		expectErr     bool
-		expectedCreds map[string]string
+		credentialUtils CredentialUtils
+		rdsInstance     *RDSInstance
+		password        string
+		expectErr       bool
+		expectedCreds   map[string]string
 	}{
 		"postgres": {
-			dbUtils: &RDSCredentialUtils{},
+			credentialUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "postgres",
 				Username: "user-1",
@@ -41,8 +41,8 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				Database: "db-1",
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
@@ -56,7 +56,7 @@ func TestGetCredentials(t *testing.T) {
 			},
 		},
 		"unknown databse type": {
-			dbUtils: &RDSCredentialUtils{},
+			credentialUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "foobar",
 				Username: "user-1",
@@ -64,13 +64,13 @@ func TestGetCredentials(t *testing.T) {
 					Host: "host",
 					Port: 5432,
 				},
-				dbUtils: &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			password:  "fake-pw",
 			expectErr: true,
 		},
 		"database with replica": {
-			dbUtils: &RDSCredentialUtils{},
+			credentialUtils: &RDSCredentialUtils{},
 			rdsInstance: &RDSInstance{
 				DbType:   "postgres",
 				Username: "user-1",
@@ -80,7 +80,7 @@ func TestGetCredentials(t *testing.T) {
 				},
 				ReplicaDatabaseHost: "replica-host",
 				Database:            "db-1",
-				dbUtils:             &RDSCredentialUtils{},
+				credentialUtils:     &RDSCredentialUtils{},
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
@@ -99,7 +99,7 @@ func TestGetCredentials(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			creds, err := test.dbUtils.getCredentials(test.rdsInstance, test.password)
+			creds, err := test.credentialUtils.getCredentials(test.rdsInstance, test.password)
 			if err == nil && test.expectErr {
 				t.Fatal("expected error, got nil")
 			}

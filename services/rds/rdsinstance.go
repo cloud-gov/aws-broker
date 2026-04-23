@@ -16,7 +16,7 @@ import (
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils CredentialUtils `gorm:"-" json:"-"`
+	credentialUtils CredentialUtils `gorm:"-" json:"-"`
 
 	Database string `sql:"size(255)"`
 	Username string `sql:"size(255)"`
@@ -59,16 +59,16 @@ type RDSInstance struct {
 
 func NewRDSInstance() *RDSInstance {
 	return &RDSInstance{
-		dbUtils: &RDSCredentialUtils{},
+		credentialUtils: &RDSCredentialUtils{},
 	}
 }
 
 func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
-	return i.dbUtils.getCredentials(i, password)
+	return i.credentialUtils.getCredentials(i, password)
 }
 
 func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
-	salt, encrypted, err := i.dbUtils.generateCredentials(settings)
+	salt, encrypted, err := i.credentialUtils.generateCredentials(settings)
 	if err != nil {
 		return err
 	}
@@ -210,8 +210,8 @@ func (i *RDSInstance) init(
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = i.dbUtils.generateDatabaseName(settings)
-	i.Username = i.dbUtils.buildUsername()
+	i.Database = i.credentialUtils.generateDatabaseName(settings)
+	i.Username = i.credentialUtils.buildUsername()
 
 	err := i.generateCredentials(settings)
 	if err != nil {

@@ -16,7 +16,6 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
-	"gorm.io/gorm"
 )
 
 func TestWaitForDbReady(t *testing.T) {
@@ -31,34 +30,33 @@ func TestWaitForDbReady(t *testing.T) {
 
 	testCases := map[string]struct {
 		ctx                   context.Context
-		db                    *gorm.DB
-		settings              *config.Settings
-		logger                *slog.Logger
+		workerUtils           *WorkerUtils
 		dbInstance            *RDSInstance
-		rds                   RDSClientInterface
 		expectedState         base.InstanceState
 		expectErr             bool
 		expectAsyncJobMessage bool
 	}{
 		"success": {
 			ctx: context.Background(),
-			db:  brokerDB,
-			settings: &config.Settings{
-				PollAwsMinDelay:    1 * time.Millisecond,
-				PollAwsMaxDuration: 1 * time.Millisecond,
-			},
-			rds: &mockRDSClient{
-				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
+			workerUtils: &WorkerUtils{
+				db: brokerDB,
+				settings: &config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
 							},
 						},
 					},
 				},
+				logger: logger,
 			},
-			logger: logger,
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -71,37 +69,39 @@ func TestWaitForDbReady(t *testing.T) {
 		},
 		"waits with retries for database creation": {
 			ctx: context.Background(),
-			db:  brokerDB,
-			settings: &config.Settings{
-				PollAwsMinDelay:    1 * time.Millisecond,
-				PollAwsMaxDuration: 10 * time.Millisecond,
-			},
-			rds: &mockRDSClient{
-				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("creating"),
+			workerUtils: &WorkerUtils{
+				db: brokerDB,
+				settings: &config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
 							},
 						},
-					},
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("creating"),
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
 							},
 						},
-					},
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("available"),
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
 							},
 						},
 					},
 				},
+				logger: logger,
 			},
-			logger: logger,
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -114,37 +114,39 @@ func TestWaitForDbReady(t *testing.T) {
 		},
 		"gives up after maximum retries for database creation": {
 			ctx: context.Background(),
-			db:  brokerDB,
-			settings: &config.Settings{
-				PollAwsMinDelay:    1 * time.Millisecond,
-				PollAwsMaxDuration: 3 * time.Millisecond,
-			},
-			rds: &mockRDSClient{
-				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("creating"),
+			workerUtils: &WorkerUtils{
+				db: brokerDB,
+				settings: &config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
 							},
 						},
-					},
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("creating"),
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
 							},
 						},
-					},
-					{
-						DBInstances: []rdsTypes.DBInstance{
-							{
-								DBInstanceStatus: aws.String("creating"),
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("creating"),
+								},
 							},
 						},
 					},
 				},
+				logger: logger,
 			},
-			logger: logger,
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -160,15 +162,17 @@ func TestWaitForDbReady(t *testing.T) {
 		},
 		"error checking database creation status": {
 			ctx: context.Background(),
-			db:  brokerDB,
-			settings: &config.Settings{
-				PollAwsMinDelay:    1 * time.Millisecond,
-				PollAwsMaxDuration: 3 * time.Millisecond,
+			workerUtils: &WorkerUtils{
+				db: brokerDB,
+				settings: &config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
+				},
+				rds: &mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
+				},
+				logger: logger,
 			},
-			rds: &mockRDSClient{
-				describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-			},
-			logger: logger,
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -186,7 +190,7 @@ func TestWaitForDbReady(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := waitForDbReady(test.ctx, test.rds, test.db, test.logger, test.settings, base.CreateOp, test.dbInstance, test.dbInstance.Database)
+			err := test.workerUtils.waitForDbReady(test.ctx, base.CreateOp, test.dbInstance, test.dbInstance.Database)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}

@@ -427,7 +427,7 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.dbUtils.getPassword(
+	password, err := existingInstance.credentialUtils.getPassword(
 		existingInstance.Salt,
 		existingInstance.Password,
 		broker.settings.EncryptionKey,
