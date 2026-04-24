@@ -33,7 +33,7 @@ import (
 )
 
 func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config.Settings, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
-	logger := slog.New(&mockLogHandler{})
+	logger := slog.New(&testutil.MockLogHandler{})
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, NewCreateWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))

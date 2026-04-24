@@ -17,6 +17,7 @@ import (
 	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/go-test/deep"
 	"github.com/riverqueue/river"
 )
@@ -78,7 +79,7 @@ func TestModifyWorkerWork(t *testing.T) {
 						},
 					},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -127,7 +128,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
 					returnErr: errors.New("fail"),
 				},
@@ -155,7 +156,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockRDSClient{
 					modifyDbErrs: []error{modifyDbErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -181,7 +182,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("fail")},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -225,7 +226,7 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -292,7 +293,7 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -356,7 +357,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					modifyDbErrs: []error{nil, modifyDbErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -409,7 +410,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					createDBInstanceReadReplicaErrs: []error{errors.New("error creating read replica")},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -456,7 +457,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -512,7 +513,7 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					addTagsToResourceErr: errors.New("error updating tags"),
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),
@@ -557,7 +558,7 @@ func TestAsyncModifyDb(t *testing.T) {
 						},
 					},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&RDSCredentialUtils{},
 			),

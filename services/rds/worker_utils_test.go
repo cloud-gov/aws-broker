@@ -15,6 +15,7 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
 )
 
@@ -53,7 +54,7 @@ func TestWaitForDbReady(t *testing.T) {
 					},
 				},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -97,7 +98,7 @@ func TestWaitForDbReady(t *testing.T) {
 					},
 				},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -141,7 +142,7 @@ func TestWaitForDbReady(t *testing.T) {
 					},
 				},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -165,7 +166,7 @@ func TestWaitForDbReady(t *testing.T) {
 			rds: &mockRDSClient{
 				describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -235,7 +236,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 				describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
 			},
 			parameterGroupClient: &mockParameterGroupClient{},
-			logger:               slog.New(&mockLogHandler{}),
+			logger:               slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -272,7 +273,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 				},
 				describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -315,7 +316,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 					},
 				},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -339,7 +340,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 			rdsClient: &mockRDSClient{
 				describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 			},
-			logger: slog.New(&mockLogHandler{}),
+			logger: slog.New(&testutil.MockLogHandler{}),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{

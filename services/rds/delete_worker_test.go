@@ -15,6 +15,7 @@ import (
 	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/riverqueue/river"
 )
 
@@ -60,7 +61,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 						Message: aws.String("not found"),
 					}},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -111,7 +112,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -137,7 +138,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -165,7 +166,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -193,7 +194,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -222,7 +223,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -250,7 +251,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -278,7 +279,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
@@ -304,7 +305,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockRDSClient{
 					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
 				},
-				slog.New(&mockLogHandler{}),
+				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
 				&mockCredentialUtils{},
 			),
