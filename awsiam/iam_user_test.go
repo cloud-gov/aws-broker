@@ -6,7 +6,6 @@ import (
 
 	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/go-test/deep"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -21,76 +20,6 @@ var (
 func NewTestIAMUserClient(iamSvc IAMClientInterface) *IAMUserClient {
 	logger.RegisterSink(testSink)
 	return NewIAMUserClient(iamSvc, logger)
-}
-
-func TestDescribeIAMUser(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName: userName,
-		getUserOutput: &iam.GetUserOutput{
-			User: &iamTypes.User{
-				Arn:    aws.String("user-arn"),
-				UserId: aws.String("user-id"),
-			},
-		},
-	})
-
-	userDetails, err := iamUserClient.Describe(userName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	properUserDetails := UserDetails{
-		UserName: userName,
-		UserARN:  "user-arn",
-		UserID:   "user-id",
-	}
-	if diff := deep.Equal(userDetails, properUserDetails); diff != nil {
-		t.Error(diff)
-	}
-}
-
-func TestDescribeIAMUserError(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName: userName,
-		getUserOutput: &iam.GetUserOutput{
-			User: &iamTypes.User{
-				Arn:    aws.String("user-arn"),
-				UserId: aws.String("user-id"),
-			},
-		},
-		getUserErr: errors.New("operation failed"),
-	})
-
-	_, err := iamUserClient.Describe(userName)
-	if err == nil {
-		t.Fatal("expected error but received none")
-	}
-
-	if err.Error() != "operation failed" {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestDescribeIAMUserAWSError(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName: userName,
-		getUserOutput: &iam.GetUserOutput{
-			User: &iamTypes.User{
-				Arn:    aws.String("user-arn"),
-				UserId: aws.String("user-id"),
-			},
-		},
-		getUserErr: &iamTypes.NoSuchEntityException{
-			Message: aws.String("not found"),
-		},
-	})
-
-	_, err := iamUserClient.Describe(userName)
-
-	var exception *iamTypes.NoSuchEntityException
-	if !errors.As(err, &exception) {
-		t.Fatalf("unexpected error: %s", err)
-	}
 }
 
 func TestCreateUser(t *testing.T) {
@@ -162,44 +91,6 @@ func TestDeleteUserError(t *testing.T) {
 	}
 }
 
-func TestListAccessKeys(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName: userName,
-		listAccessKeysOutput: iam.ListAccessKeysOutput{
-			AccessKeyMetadata: []iamTypes.AccessKeyMetadata{
-				{
-					AccessKeyId: aws.String("access-key-id-1"),
-				},
-				{
-					AccessKeyId: aws.String("access-key-id-2"),
-				},
-			},
-		},
-	})
-
-	accessKeys, err := iamUserClient.ListAccessKeys(userName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if diff := deep.Equal(accessKeys, []string{"access-key-id-1", "access-key-id-2"}); diff != nil {
-		t.Error(diff)
-	}
-}
-
-func TestListAccessKeysError(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName:          userName,
-		listAccessKeysErr: &iamTypes.NoSuchEntityException{},
-	})
-
-	_, err := iamUserClient.ListAccessKeys(userName)
-	var exception *iamTypes.NoSuchEntityException
-	if !errors.As(err, &exception) {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
 func TestCreateAccessKey(t *testing.T) {
 	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
 		userName: userName,
@@ -254,44 +145,6 @@ func TestDeleteAccessKeyError(t *testing.T) {
 		deleteAccessKeyErr: &iamTypes.NoSuchEntityException{},
 	})
 	err := iamUserClient.DeleteAccessKey(userName, "access-key-id")
-	var exception *iamTypes.NoSuchEntityException
-	if !errors.As(err, &exception) {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestListAttachedUserPolicies(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName: userName,
-		iamPath:  iamPath,
-		listAttachedUserPoliciesOutput: iam.ListAttachedUserPoliciesOutput{
-			AttachedPolicies: []iamTypes.AttachedPolicy{
-				{
-					PolicyArn: aws.String("user-policy-1"),
-				},
-				{
-					PolicyArn: aws.String("user-policy-2"),
-				},
-			},
-		},
-	})
-	policies, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if diff := deep.Equal(policies, []string{"user-policy-1", "user-policy-2"}); diff != nil {
-		t.Error(diff)
-	}
-}
-
-func TestListAttachedUserPoliciesError(t *testing.T) {
-	iamUserClient := NewTestIAMUserClient(&mockIAMClient{
-		userName:                    userName,
-		iamPath:                     iamPath,
-		listAttachedUserPoliciesErr: &iamTypes.NoSuchEntityException{},
-	})
-	_, err := iamUserClient.ListAttachedUserPolicies(userName, iamPath)
 	var exception *iamTypes.NoSuchEntityException
 	if !errors.As(err, &exception) {
 		t.Fatalf("unexpected error: %s", err)

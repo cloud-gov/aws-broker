@@ -39,28 +39,6 @@ func (q *AsyncJobManager) Init() {
 	q.scheduler.StartAsync()
 }
 
-// Allow Jobs to be scheduled by brokers
-func (q *AsyncJobManager) scheduleJob(cronExpression string, id string, task interface{}) (*gocron.Job, error) {
-	return q.scheduler.Cron(cronExpression).Tag(id).Do(task)
-}
-
-// Stop jobs scheduled
-func (q *AsyncJobManager) unscheduleJob(id string) error {
-	return q.scheduler.RemoveByTag(id)
-}
-
-// Determine if job(id) is scheduled
-func (q *AsyncJobManager) isJobScheduled(id string) bool {
-	for _, job := range q.scheduler.Jobs() {
-		for _, tag := range job.Tags() {
-			if id == tag {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // update the state list for the unique job
 func (q *AsyncJobManager) processMsg(msg asyncmessage.AsyncJobMsg) {
 	key := &AsyncJobKey{
