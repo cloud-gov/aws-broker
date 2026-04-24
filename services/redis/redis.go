@@ -536,29 +536,3 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 	}
 	return params, nil
 }
-
-func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyReplicationGroupInput, error) {
-	securityGroups := []string{i.SecGroup}
-
-	snapshotRetentionLimit, err := common.ConvertIntToInt32Safely(i.SnapshotRetentionLimit)
-	if err != nil {
-		return nil, err
-	}
-
-	// Standard parameters
-	params := &elasticache.ModifyReplicationGroupInput{
-		ReplicationGroupDescription: aws.String(i.Description),
-		AutomaticFailoverEnabled:    aws.Bool(i.AutomaticFailoverEnabled),
-		ReplicationGroupId:          aws.String(i.ClusterID),
-		CacheNodeType:               aws.String(i.CacheNodeType),
-		SecurityGroupIds:            securityGroups,
-		Engine:                      aws.String(i.Engine),
-		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
-		SnapshotWindow:              aws.String(i.SnapshotWindow),
-		SnapshotRetentionLimit:      snapshotRetentionLimit,
-	}
-	if i.EngineVersion != "" {
-		params.EngineVersion = aws.String(i.EngineVersion)
-	}
-	return params, nil
-}
