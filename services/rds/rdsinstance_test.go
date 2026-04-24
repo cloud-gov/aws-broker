@@ -928,6 +928,38 @@ func TestSetTagsConcurrency(t *testing.T) {
 	wg.Wait()
 }
 
+func TestSetTagsInitializesMutex(t *testing.T) {
+	plan := &catalog.RDSPlan{
+		Tags: map[string]string{
+			"foo": "bar",
+		},
+	}
+
+	i := &RDSInstance{} // no mutex defined by default
+	i.setTags(plan, map[string]string{"foo2": "bar2"})
+
+	updatedTags := i.getTags()
+	expectedTags := map[string]string{
+		"foo":  "bar",
+		"foo2": "bar2",
+	}
+
+	if diff := deep.Equal(expectedTags, updatedTags); diff != nil {
+		t.Error(diff)
+	}
+}
+
+func TestGetTagsInitializesMutex(t *testing.T) {
+	i := &RDSInstance{} // no mutex defined by default
+
+	tags := i.getTags()
+	expectedTags := map[string]string{}
+
+	if diff := deep.Equal(expectedTags, tags); diff != nil {
+		t.Error(diff)
+	}
+}
+
 func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 	i := &RDSInstance{
 		Instance: base.Instance{

@@ -479,7 +479,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					mockClearPassword: "fake-pw",
 				},
 			),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -488,7 +488,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
@@ -512,7 +512,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					mockClearPassword: "fake-pw",
 				},
 			),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -521,7 +521,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
@@ -545,7 +545,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					mockClearPassword: "fake-pw",
 				},
 			),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -554,7 +554,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,
@@ -596,7 +596,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 			),
 			password: helpers.RandStr(10),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -605,7 +605,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceReady,
 		},
@@ -653,7 +653,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			),
 			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -664,7 +664,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			expectedState: base.InstanceReady,
 		},
 		"error creating replica": {
@@ -705,7 +705,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			),
 			plan:     &catalog.RDSPlan{},
 			password: helpers.RandStr(10),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -716,7 +716,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -736,7 +736,7 @@ func TestAsyncCreateDb(t *testing.T) {
 					mockGetPassworrdErr: errors.New("error getting password"),
 				},
 			),
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -745,7 +745,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
-			},
+			}),
 			plan:          &catalog.RDSPlan{},
 			password:      helpers.RandStr(10),
 			expectedState: base.InstanceNotCreated,

@@ -332,7 +332,7 @@ func TestModify(t *testing.T) {
 					},
 				},
 			},
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
 					Request: request.Request{
@@ -340,7 +340,7 @@ func TestModify(t *testing.T) {
 						PlanID:    "456",
 					},
 				},
-			},
+			}),
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -349,6 +349,7 @@ func TestModify(t *testing.T) {
 					},
 					State: base.InstanceInProgress,
 				},
+				Tags: map[string]string{},
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -374,7 +375,7 @@ func TestModify(t *testing.T) {
 					},
 				},
 			},
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
 					Request: request.Request{
@@ -384,7 +385,7 @@ func TestModify(t *testing.T) {
 				},
 				DbType:    "mysql",
 				DbVersion: "8.0",
-			},
+			}),
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -395,6 +396,7 @@ func TestModify(t *testing.T) {
 				},
 				DbType:    "mysql",
 				DbVersion: "9.0",
+				Tags:      map[string]string{},
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -427,7 +429,7 @@ func TestModify(t *testing.T) {
 					},
 				},
 			},
-			dbInstance: &RDSInstance{
+			dbInstance: createTestRdsInstance(&RDSInstance{
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
 					Request: request.Request{
@@ -435,7 +437,7 @@ func TestModify(t *testing.T) {
 						PlanID:    "456",
 					},
 				},
-			},
+			}),
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -445,6 +447,7 @@ func TestModify(t *testing.T) {
 					State: base.InstanceInProgress,
 				},
 				ReplicaDatabase: "-replica",
+				Tags:            map[string]string{},
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{

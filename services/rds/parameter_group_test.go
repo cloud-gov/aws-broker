@@ -13,11 +13,6 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 )
 
-func createTestRdsInstance(i *RDSInstance) *RDSInstance {
-	i.credentialUtils = &RDSCredentialUtils{}
-	return i
-}
-
 func TestNewParameterGroupClient(t *testing.T) {
 	parameterGroupAdapter := NewAwsParameterGroupClient(
 		context.Background(),

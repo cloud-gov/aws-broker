@@ -22,6 +22,13 @@ func testDBInit() (*gorm.DB, error) {
 	return db, err
 }
 
+func createTestRdsInstance(i *RDSInstance) *RDSInstance {
+	if i.credentialUtils == nil {
+		i.credentialUtils = &RDSCredentialUtils{}
+	}
+	return i
+}
+
 type mockParameterGroupClient struct {
 	rds              RDSClientInterface
 	customPgroupName string

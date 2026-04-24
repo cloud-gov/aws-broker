@@ -24,7 +24,7 @@ type RDSInstance struct {
 	Salt     string `sql:"size(255)"`
 
 	mu   *sync.RWMutex
-	Tags map[string]string
+	Tags map[string]string `gorm:"serializer:json"`
 
 	BackupRetentionPeriod int64  `sql:"size(255)"`
 	DbSubnetGroup         string `gorm:"-"`
@@ -60,6 +60,7 @@ type RDSInstance struct {
 func NewRDSInstance() *RDSInstance {
 	return &RDSInstance{
 		credentialUtils: &RDSCredentialUtils{},
+		mu:              &sync.RWMutex{},
 	}
 }
 
@@ -257,10 +258,17 @@ func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
 	}
 }
 
+func (i *RDSInstance) initMutex() {
+	if i.mu == nil {
+		i.mu = &sync.RWMutex{}
+	}
+}
+
 func (i *RDSInstance) setTags(
 	plan *catalog.RDSPlan,
 	tags map[string]string,
 ) error {
+	i.initMutex()
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.Tags == nil {
@@ -277,6 +285,7 @@ func (i *RDSInstance) setTags(
 }
 
 func (i *RDSInstance) getTags() map[string]string {
+	i.initMutex()
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	var tags = make(map[string]string)
