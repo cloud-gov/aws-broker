@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	ModifyKind = "rds-modify"
+	ModifyKind = "elasticache-modify"
 )
 
 type ModifyArgs struct {
