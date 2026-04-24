@@ -63,7 +63,7 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 		instanceID = args.Instance.Uuid
 		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.CreateOp, base.InstanceNotCreated, "job panicked")
 	case rds.DeleteKind:
-		args := rds.CreateArgs{}
+		args := rds.DeleteArgs{}
 		err = json.Unmarshal(job.EncodedArgs, &args)
 		if err != nil {
 			break
