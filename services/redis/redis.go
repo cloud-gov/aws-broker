@@ -20,7 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
-	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
@@ -137,117 +136,6 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance) (base.InstanceStat
 	}
 
 	return base.InstanceInProgress, nil
-}
-
-func (d *dedicatedRedisAdapter) verifyIncreasedReplicaCount(i *RedisInstance) error {
-	var nodesReady bool
-
-	attempts := 1
-	maxAttempts := 1 + int(d.settings.PollAwsMaxRetries)
-
-	for !nodesReady && attempts <= maxAttempts {
-		d.logger.Info(fmt.Sprintf("verifying replica creation. attempt %d of %d", attempts, maxAttempts))
-		output, err := d.elasticache.DescribeReplicationGroups(context.TODO(), &elasticache.DescribeReplicationGroupsInput{
-			ReplicationGroupId: &i.ClusterID,
-		})
-
-		if err != nil {
-			return err
-		}
-
-		nodeGroup := output.ReplicationGroups[0].NodeGroups[0]
-		status := *nodeGroup.Status
-
-		var replicaNodes []elasticacheTypes.NodeGroupMember
-		for _, nodeMember := range nodeGroup.NodeGroupMembers {
-			if *nodeMember.CurrentRole == "replica" {
-				replicaNodes = append(replicaNodes, nodeMember)
-			}
-		}
-
-		nodesReady = (status == "available" && len(replicaNodes) == i.NewReplicaCount)
-		if nodesReady {
-			break
-		}
-
-		attempts += 1
-		time.Sleep(d.settings.PollAwsMinDelay)
-		continue
-	}
-
-	return nil
-}
-
-func (d *dedicatedRedisAdapter) increaseReplicaCount(i *RedisInstance, operation base.Operation) error {
-	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new replica nodes")
-
-	newReplicaCount, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
-	if err != nil {
-		return err
-	}
-
-	_, err = d.elasticache.IncreaseReplicaCount(context.TODO(), &elasticache.IncreaseReplicaCountInput{
-		ReplicationGroupId: &i.ClusterID,
-		NewReplicaCount:    newReplicaCount,
-		ApplyImmediately:   aws.Bool(true),
-	})
-	if err != nil {
-		d.logger.Error("error increasing replica count", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
-		return err
-	}
-
-	// Wait for replication group to be available
-	waiter := elasticache.NewReplicationGroupAvailableWaiter(d.elasticache, func(dawo *elasticache.ReplicationGroupAvailableWaiterOptions) {
-		dawo.MinDelay = d.settings.PollAwsMinDelay
-	})
-
-	waiterInput := &elasticache.DescribeReplicationGroupsInput{
-		ReplicationGroupId: &i.ClusterID,
-	}
-
-	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
-	if err != nil {
-		return err
-	}
-
-	err = d.verifyIncreasedReplicaCount(i)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (d *dedicatedRedisAdapter) asyncModifyRedis(i *RedisInstance) {
-	operation := base.ModifyOp
-
-	params, err := prepareModifyReplicationGroupInput(i)
-	if err != nil {
-		d.logger.Error("prepareModifyReplicationGroupInput err", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
-		return
-	}
-
-	if i.NewReplicaCount > 0 {
-		err = d.increaseReplicaCount(i, operation)
-		if err != nil {
-			d.logger.Error("error increasing replica count", "err", err)
-			asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
-			return
-		}
-	}
-
-	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
-
-	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
-	if err != nil {
-		d.logger.Error("ModifyReplicationGroup", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
-		return
-	}
-
-	asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
 }
 
 func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {

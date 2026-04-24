@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"slices"
 	"testing"
@@ -15,6 +17,8 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
+	"github.com/riverqueue/river/riverdriver/riversqlite"
+	"github.com/riverqueue/river/rivertest"
 )
 
 func TestPrepareCreateReplicationGroupInput(t *testing.T) {
@@ -130,7 +134,13 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 }
 
 func TestModifyRedis(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
+		ctx                    context.Context
 		instance               *RedisInstance
 		adapter                redisAdapter
 		expectedErr            error
@@ -138,7 +148,14 @@ func TestModifyRedis(t *testing.T) {
 		expectedAsyncJobStates []base.InstanceState
 	}{
 		"success": {
-			adapter: &mockRedisAdapter{},
+			ctx: t.Context(),
+			adapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
+				&config.Settings{},
+				brokerDB,
+				&mockRedisClient{},
+				&mockS3Client{},
+			),
 			instance: &RedisInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -160,6 +177,20 @@ func TestModifyRedis(t *testing.T) {
 			}
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
+			}
+
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+			defer tx.Rollback()
+
+			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &ModifyArgs{}, nil)
+
+			if job.Args.Instance.Uuid != test.instance.Uuid {
+				t.Fatal("Did not receive expected RDS instance as create worker argument")
 			}
 
 			if responseCode != test.expectedState {
