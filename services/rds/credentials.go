@@ -17,8 +17,6 @@ type CredentialUtils interface {
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
 	generateCredentials(settings *config.Settings) (string, string, error)
-	generateDatabaseName(settings *config.Settings) string
-	buildUsername() string
 }
 
 func formatDBName(database string) string {
@@ -121,12 +119,12 @@ func (u *RDSCredentialUtils) generateCredentials(
 	return salt, encrypted, err
 }
 
-func (u *RDSCredentialUtils) generateDatabaseName(
+func generateDatabaseName(
 	settings *config.Settings,
 ) string {
 	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
 }
 
-func (u *RDSCredentialUtils) buildUsername() string {
+func buildUsername() string {
 	return "u" + helpers.RandStrNoCaps(15)
 }

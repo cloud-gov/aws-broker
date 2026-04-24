@@ -210,8 +210,8 @@ func (i *RDSInstance) init(
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = i.credentialUtils.generateDatabaseName(settings)
-	i.Username = i.credentialUtils.buildUsername()
+	i.Database = generateDatabaseName(settings)
+	i.Username = buildUsername()
 
 	err := i.generateCredentials(settings)
 	if err != nil {
