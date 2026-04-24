@@ -10,10 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"gorm.io/gorm"
 )
 
@@ -44,7 +44,7 @@ func waitForDbReady(
 	err := waiter.Wait(ctx, waiterInput, maxWaitTime)
 
 	if err != nil {
-		updateErr := jobs.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
+		updateErr := asyncmessage.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Failed waiting for database to become available: %s", err))
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
@@ -125,29 +125,29 @@ func waitAndCreateDBReadReplica(
 ) error {
 	err := waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.Database)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
 	}
 
-	jobs.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
+	asyncmessage.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
 	createReplicaOutput, err := createDBReadReplica(ctx, settings, rdsClient, logger, i, plan)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", "err", err)
-		jobs.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
+		asyncmessage.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
 	err = waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
-		jobs.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		asyncmessage.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
 	err = updateDBTags(ctx, rdsClient, i, *createReplicaOutput.DBInstance.DBInstanceArn)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
@@ -180,7 +180,7 @@ func waitForDbDeleted(
 	err := waiter.Wait(ctx, waiterInput, maxWaitTime)
 
 	if err != nil {
-		updateErr := jobs.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
+		updateErr := asyncmessage.WriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}

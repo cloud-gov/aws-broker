@@ -7,12 +7,12 @@ import (
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	"github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"github.com/go-test/deep"
@@ -509,7 +509,7 @@ func TestLastOperation(t *testing.T) {
 		tagManager    brokertags.TagManager
 		settings      *config.Settings
 		catalog       *catalog.Catalog
-		asyncJobMsg   *jobs.AsyncJobMsg
+		asyncJobMsg   *asyncmessage.AsyncJobMsg
 		pollDetails   domain.PollDetails
 		adapter       redisAdapter
 	}{
@@ -574,9 +574,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.ModifyOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -613,9 +613,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.ModifyOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "in progress",
 					State:   base.InstanceInProgress,
 				},
@@ -653,9 +653,9 @@ func TestLastOperation(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: base.InstanceGone,
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.DeleteOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceGone,
 				},
@@ -692,9 +692,9 @@ func TestLastOperation(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: base.InstanceInProgress,
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.DeleteOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "in progress",
 					State:   base.InstanceInProgress,
 				},

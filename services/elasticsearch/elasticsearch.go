@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
@@ -419,14 +420,14 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 }
 
 // state is persisted in the jobs for LastOperations polling.
-func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan jobs.AsyncJobMsg) {
+func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *ElasticsearchInstance, password string, jobstate chan asyncmessage.AsyncJobMsg) {
 	defer close(jobstate)
 
-	msg := jobs.AsyncJobMsg{
+	msg := asyncmessage.AsyncJobMsg{
 		BrokerId:   i.ServiceID,
 		InstanceId: i.Uuid,
 		JobType:    base.DeleteOp,
-		JobState:   jobs.AsyncJobState{},
+		JobState:   asyncmessage.AsyncJobState{},
 	}
 	msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Started for Service Instance: %s", i.Uuid)
 	msg.JobState.State = base.InstanceInProgress

@@ -7,11 +7,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 )
@@ -123,31 +123,31 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
 	modifyParams, err := w.prepareModifyDbInstanceInput(i, plan, database, isReplica)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
 	}
 
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, database)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
 	modifyOutput, err := w.rds.ModifyDBInstance(ctx, modifyParams)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, database)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
 	err = updateDBTags(ctx, w.rds, i, *modifyOutput.DBInstance.DBInstanceArn)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("asyncModifyDb, error updating replica tags: %w", err)
 	}
 
@@ -159,7 +159,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 
 	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		w.logger.Error("asyncModifyDb: asyncModifyDbInstance error", "err", err)
 		return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database instance %w ", err))
 	}
@@ -168,14 +168,14 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 		// Add new read replica
 		err = waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
 		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
+			asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
 			w.logger.Error("asyncModifyDb: waitAndCreateDBReadReplica error", "err", err)
 			return river.JobCancel(fmt.Errorf("asyncModifyDb: error creating database replica %w ", err))
 		}
 	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
 		err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.ReplicaDatabase, true)
 		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
+			asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
 			w.logger.Error("asyncModifyDb: asyncModifyDbInstance read replica error", "err", err)
 			return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database replica %w ", err))
 		}
@@ -184,7 +184,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 	if i.DeleteReadReplica {
 		err = deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
 		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
+			asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
 			w.logger.Error("asyncModifyDb: deleteDatabaseReadReplica error", "err", err)
 			return river.JobCancel(fmt.Errorf("asyncModifyDb: error deleting database replica %w ", err))
 		}
@@ -192,11 +192,11 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 
 	err = w.db.Save(i).Error
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error saving record: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error saving record: %s", err))
 		w.logger.Error("asyncModifyDb: error saving record", "err", err)
 		return river.JobCancel(fmt.Errorf("asyncModifyDb: error saving database record %w ", err))
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
+	asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying database resources")
 	return nil
 }

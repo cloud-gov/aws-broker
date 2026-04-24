@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 )
@@ -72,7 +72,7 @@ func (w *DeleteWorker) waitForDbDeleted(ctx context.Context, operation base.Oper
 	err := waiter.Wait(ctx, waiterInput, maxWaitTime)
 
 	if err != nil {
-		updateErr := jobs.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
+		updateErr := asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed waiting for database to be deleted: %s", err))
 		if updateErr != nil {
 			err = fmt.Errorf("while handling error %w, error updating async job message: %w", err, updateErr)
 		}
@@ -115,27 +115,27 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance) error 
 	operation := base.DeleteOp
 
 	if i.ReplicaDatabase != "" {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 		err := w.deleteDatabaseReadReplica(ctx, i, operation)
 		if err != nil {
-			jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete replica database: %s", err))
+			asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete replica database: %s", err))
 			w.logger.Error("asyncDeleteDB: deleteDatabaseReadReplica error", "err", err)
 			return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting replica %w ", err))
 		}
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database")
+	asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database")
 	err := w.deleteDatabaseInstance(ctx, i, operation, i.Database)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete database: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete database: %s", err))
 		w.logger.Error("asyncDeleteDB: deleteDatabaseInstance error", "err", err)
 		return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting database %w ", err))
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
+	asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
 	err = w.parameterGroupClient.CleanupCustomParameterGroups()
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
 		w.logger.Error("asyncDeleteDB: CleanupCustomParameterGroups error", "err", err)
 		return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting parameter groups %w ", err))
 	}
@@ -146,6 +146,6 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance) error 
 		return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting record %w ", err))
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
+	asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
 	return nil
 }

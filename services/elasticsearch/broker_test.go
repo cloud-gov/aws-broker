@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
@@ -52,7 +52,7 @@ func TestValidate(t *testing.T) {
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	db.AutoMigrate(&ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err
 }
 

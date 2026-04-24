@@ -8,12 +8,12 @@ import (
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
@@ -507,7 +507,7 @@ func TestLastOperation(t *testing.T) {
 		tagManager    brokertags.TagManager
 		settings      *config.Settings
 		catalog       *catalog.Catalog
-		asyncJobMsg   *jobs.AsyncJobMsg
+		asyncJobMsg   *asyncmessage.AsyncJobMsg
 		pollDetails   domain.PollDetails
 	}{
 		"create": {
@@ -539,9 +539,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.CreateOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -577,9 +577,9 @@ func TestLastOperation(t *testing.T) {
 				EncryptionKey: helpers.RandStr(32),
 				Environment:   "test", // use the mock adapter
 			},
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.ModifyOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},
@@ -616,9 +616,9 @@ func TestLastOperation(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			expectedState: base.InstanceGone,
-			asyncJobMsg: &jobs.AsyncJobMsg{
+			asyncJobMsg: &asyncmessage.AsyncJobMsg{
 				JobType: base.DeleteOp,
-				JobState: jobs.AsyncJobState{
+				JobState: asyncmessage.AsyncJobState{
 					Message: "completed",
 					State:   base.InstanceReady,
 				},

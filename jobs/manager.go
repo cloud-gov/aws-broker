@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/go-co-op/gocron"
 )
@@ -12,8 +13,8 @@ type JobManager interface {
 	scheduleJob(cronExpression string, id string, task interface{}) (*gocron.Job, error)
 	unScheduleJob(id string) error
 	isJobScheduled(id string) bool
-	RequestJobMessageQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error)
-	GetJobState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error)
+	RequestJobMessageQueue(brokerid string, instanceid string, operation base.Operation) (chan asyncmessage.AsyncJobMsg, error)
+	GetJobState(brokerid string, instanceid string, operation base.Operation) (*asyncmessage.AsyncJobState, error)
 }
 
 // can be called to initialize the manager
@@ -21,8 +22,8 @@ type JobManager interface {
 // runs clean up check every 15 minutes
 func NewAsyncJobManager() *AsyncJobManager {
 	return &AsyncJobManager{
-		jobStates:    make(map[AsyncJobKey]AsyncJobState),
-		brokerQueues: make(map[AsyncJobKey]chan AsyncJobMsg),
+		jobStates:    make(map[AsyncJobKey]asyncmessage.AsyncJobState),
+		brokerQueues: make(map[AsyncJobKey]chan asyncmessage.AsyncJobMsg),
 		cleanup:      make(map[AsyncJobKey]time.Time),
 		scheduler:    gocron.NewScheduler(time.Local),
 		expiration:   5 * time.Minute, //platform issues last-operation calls every 2 minutes
@@ -61,7 +62,7 @@ func (q *AsyncJobManager) isJobScheduled(id string) bool {
 }
 
 // update the state list for the unique job
-func (q *AsyncJobManager) processMsg(msg AsyncJobMsg) {
+func (q *AsyncJobManager) processMsg(msg asyncmessage.AsyncJobMsg) {
 	key := &AsyncJobKey{
 		BrokerId:   msg.BrokerId,
 		InstanceId: msg.InstanceId,
@@ -76,7 +77,7 @@ func (q *AsyncJobManager) processMsg(msg AsyncJobMsg) {
 
 // async job monitor will process any messages
 // coming in on the channel and then update the state for that job
-func (q *AsyncJobManager) msgProcessor(jobChan chan AsyncJobMsg, key *AsyncJobKey) {
+func (q *AsyncJobManager) msgProcessor(jobChan chan asyncmessage.AsyncJobMsg, key *AsyncJobKey) {
 	for job := range jobChan {
 		q.processMsg(job)
 	}
@@ -113,10 +114,10 @@ func (q *AsyncJobManager) getJobMessageKey(brokerid string, instanceid string, o
 // the queue manager will launch a channel monitor to recieve messages and update the state of that async operation.
 // will return an error if a channel has already been launched. Channels must be closed by the recipient after use.
 // job state will be persisted and retained for a period of time before being cleaned up.
-func (q *AsyncJobManager) RequestJobMessageQueue(brokerid string, instanceid string, operation base.Operation) (chan AsyncJobMsg, error) {
+func (q *AsyncJobManager) RequestJobMessageQueue(brokerid string, instanceid string, operation base.Operation) (chan asyncmessage.AsyncJobMsg, error) {
 	key := q.getJobMessageKey(brokerid, instanceid, operation)
 	if _, present := q.brokerQueues[*key]; !present {
-		jobchan := make(chan AsyncJobMsg)
+		jobchan := make(chan asyncmessage.AsyncJobMsg)
 		q.brokerQueues[*key] = jobchan
 		go q.msgProcessor(jobchan, key)
 		return jobchan, nil
@@ -127,7 +128,7 @@ func (q *AsyncJobManager) RequestJobMessageQueue(brokerid string, instanceid str
 // a broker or adapter can query the state of a job, will return an error if there is no known state.
 // jobstates get cleaned-up automatically after a period of time after the chan is closed
 // we cant do clean up here because state means different things to different brokers
-func (q *AsyncJobManager) GetJobState(brokerid string, instanceid string, operation base.Operation) (*AsyncJobState, error) {
+func (q *AsyncJobManager) GetJobState(brokerid string, instanceid string, operation base.Operation) (*asyncmessage.AsyncJobState, error) {
 	key := &AsyncJobKey{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
@@ -136,5 +137,5 @@ func (q *AsyncJobManager) GetJobState(brokerid string, instanceid string, operat
 	if state, present := q.jobStates[*key]; present {
 		return &state, nil
 	}
-	return &AsyncJobState{}, fmt.Errorf("jobs: no state found for that key: %v", key)
+	return &asyncmessage.AsyncJobState{}, fmt.Errorf("jobs: no state found for that key: %v", key)
 }

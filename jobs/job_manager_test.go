@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 )
 
@@ -20,11 +21,11 @@ func TestRequestJobMessageQueue(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobchan <- AsyncJobMsg{
+	jobchan <- asyncmessage.AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
-		JobState: AsyncJobState{
+		JobState: asyncmessage.AsyncJobState{
 			State:   jobstate,
 			Message: jobmsg,
 		},
@@ -46,11 +47,11 @@ func TestGetJobState(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobMsg := AsyncJobMsg{
+	jobMsg := asyncmessage.AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
-		JobState: AsyncJobState{
+		JobState: asyncmessage.AsyncJobState{
 			State:   jobstate,
 			Message: jobmsg,
 		},
@@ -84,11 +85,11 @@ func TestCleanUpJobState(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobchan <- AsyncJobMsg{
+	jobchan <- asyncmessage.AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
-		JobState: AsyncJobState{
+		JobState: asyncmessage.AsyncJobState{
 			State:   jobstate,
 			Message: jobmsg,
 		},

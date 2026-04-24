@@ -7,10 +7,10 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
 )
@@ -18,7 +18,7 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err
 }
 

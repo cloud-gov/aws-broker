@@ -14,10 +14,10 @@ import (
 	brokertags "github.com/cloud-gov/go-broker-tags"
 	"gorm.io/gorm"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/jobs"
 )
 
 type RedisOptions struct {
@@ -308,7 +308,7 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 	}
 
 	if needAsyncJobState {
-		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
 			return lastOperation, apiresponses.NewFailureResponse(
 				err,

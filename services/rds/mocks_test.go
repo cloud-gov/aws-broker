@@ -8,9 +8,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
 )
@@ -18,7 +18,7 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	err = db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	err = db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err
 }
 
