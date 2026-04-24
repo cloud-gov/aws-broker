@@ -1,6 +1,8 @@
 package rds
 
 import (
+	"encoding/json"
+	"strings"
 	"sync"
 	"testing"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
+	"github.com/lib/pq"
 )
 
 func TestInit(t *testing.T) {
@@ -950,4 +953,78 @@ func TestSetTagsConcurrency(t *testing.T) {
 	go updateInstanceTags(map[string]string{"foo2": "bar2"}, map[string]string{"foo": "bar", "foo2": "bar2"}, &wg)
 
 	wg.Wait()
+}
+
+func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
+	i := &RDSInstance{
+		Instance: base.Instance{
+			Uuid: "uuid-1",
+			Request: request.Request{
+				ServiceID: "service-1",
+			},
+		},
+		AllocatedStorage:                 20,
+		Database:                         "db",
+		DbType:                           "type1",
+		Username:                         "user1",
+		Password:                         "fake-pw",
+		Salt:                             "fake-salt",
+		EnabledCloudwatchLogGroupExports: pq.StringArray{"postgres"},
+		BackupRetentionPeriod:            14,
+		StorageType:                      "gp3",
+		DbSubnetGroup:                    "group-1",
+		SecGroup:                         "sec-group-1",
+		LicenseModel:                     "license",
+		BinaryLogFormat:                  "format",
+		EnablePgCron:                     aws.Bool(false),
+		ParameterGroupFamily:             "postgres16",
+		ParameterGroupName:               "parameter-group-1",
+		ReplicaDatabase:                  "replica",
+		ReplicaDatabaseHost:              "host",
+	}
+	i.setTags(&catalog.RDSPlan{}, map[string]string{
+		"foo": "bar",
+	})
+	output, err := json.Marshal(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedProperties := []string{
+		`"Database": "db"`,
+		`"DbType": "type1"`,
+		`"Tags": {"foo": "bar"}`,
+		`"EnabledCloudwatchLogGroupExports":["postgres"]`,
+		`"Uuid": "uuid-1"`,
+		`"service_id":"service-1"`,
+		`"AllocatedStorage":20`,
+		`"BackupRetentionPeriod":14`,
+		`"StorageType":"gp3"`,
+		`"PubliclyAccessible":false`,
+		`"Password":"fake-pw"`,
+		`"Salt":"fake-salt"`,
+		`"DbSubnetGroup":"group-1"`,
+		`"SecGroup":"sec-group-1"`,
+		`"EnableFunctions":false`,
+		`"LicenseModel":"license"`,
+		`"BinaryLogFormat":"format"`,
+		`"EnablePgCron":false`,
+		`"ParameterGroupFamily": "postgres16"`,
+		`"ParameterGroupName": "parameter-group-1"`,
+		`"AddReadReplica":false`,
+		`"ReplicaDatabase": "replica"`,
+		`"ReplicaDatabaseHost": "host"`,
+		`"DeleteReadReplica":false`,
+		`"RotateCredentials":false`,
+		`"AllowMajorVersionUpgrade":false`,
+	}
+	for _, property := range expectedProperties {
+		if !strings.Contains(string(output), strings.ReplaceAll(property, " ", "")) {
+			t.Fatalf("could not find %s in marshaled JSON", property)
+		}
+	}
+	unmarshaledInstance := &RDSInstance{}
+	json.Unmarshal(output, unmarshaledInstance)
+	if diff := deep.Equal(i, unmarshaledInstance); diff != nil {
+		t.Fatal(diff)
+	}
 }

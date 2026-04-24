@@ -28,7 +28,7 @@ type parameterGroupClient interface {
 type awsParameterGroupClient struct {
 	ctx                  context.Context
 	rds                  RDSClientInterface
-	settings             config.Settings
+	settings             *config.Settings
 	parameterGroupPrefix string
 }
 
@@ -37,8 +37,9 @@ type paramDetails struct {
 	applyMethod string
 }
 
-func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, settings config.Settings) *awsParameterGroupClient {
+func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, settings *config.Settings) *awsParameterGroupClient {
 	return &awsParameterGroupClient{
+		ctx:                  ctx,
 		rds:                  rds,
 		settings:             settings,
 		parameterGroupPrefix: "cg-aws-broker-",

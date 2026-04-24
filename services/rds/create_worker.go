@@ -16,6 +16,7 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/riverqueue/river"
+	"gorm.io/gorm"
 )
 
 const (
@@ -23,14 +24,15 @@ const (
 )
 
 type CreateArgs struct {
-	Instance *RDSInstance
-	Plan     *catalog.RDSPlan
+	Instance *RDSInstance     `json:"instance"`
+	Plan     *catalog.RDSPlan `json:"plan"`
 }
 
 func (CreateArgs) Kind() string { return CreateKind }
 
 type CreateWorker struct {
 	river.WorkerDefaults[CreateArgs]
+	db                   *gorm.DB
 	settings             *config.Settings
 	rds                  RDSClientInterface
 	logger               *slog.Logger
@@ -39,6 +41,7 @@ type CreateWorker struct {
 }
 
 func NewCreateWorker(
+	db *gorm.DB,
 	settings *config.Settings,
 	rds RDSClientInterface,
 	logger *slog.Logger,
@@ -46,6 +49,7 @@ func NewCreateWorker(
 	dbUtils CredentialUtils,
 ) *CreateWorker {
 	return &CreateWorker{
+		db:                   db,
 		settings:             settings,
 		rds:                  rds,
 		logger:               logger,
@@ -208,7 +212,7 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 
 	password, err := w.dbUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
+		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
 	}
 

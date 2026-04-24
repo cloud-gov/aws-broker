@@ -48,13 +48,13 @@ func (s *RDSService) ToBrokerAPIService() domain.Service {
 type RDSPlan struct {
 	domain.ServicePlan    `yaml:",inline" validate:"required"`
 	Adapter               string            `yaml:"adapter" json:"-" validate:"required"`
-	InstanceClass         string            `yaml:"instanceClass" json:"-"`
+	InstanceClass         string            `yaml:"instanceClass"`
 	DbType                string            `yaml:"dbType" json:"-" validate:"required"`
 	DbVersion             string            `yaml:"dbVersion" json:"-"`
 	LicenseModel          string            `yaml:"licenseModel" json:"-"`
 	Tags                  map[string]string `yaml:"tags" json:"-" validate:"required"`
-	Redundant             bool              `yaml:"redundant" json:"-"`
-	Encrypted             bool              `yaml:"encrypted" json:"-"`
+	Redundant             bool              `yaml:"redundant"`
+	Encrypted             bool              `yaml:"encrypted"`
 	StorageType           string            `yaml:"storage_type" json:"-"`
 	AllocatedStorage      int64             `yaml:"allocatedStorage" json:"-"`
 	BackupRetentionPeriod int64             `yaml:"backup_retention_period" json:"-" validate:"required"`
