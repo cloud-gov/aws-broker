@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
-	"runtime/debug"
 	"time"
 
 	"github.com/cloud-gov/aws-broker/db"
@@ -30,8 +29,7 @@ func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.Job
 
 func (e *CustomErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
 	e.logger.Error(fmt.Sprintf("Job panicked with: %v", panicVal))
-	e.logger.Error(fmt.Sprintf("Panic stack trace: %s", panicVal))
-	e.logger.Error("Job panicked", "stack", string(debug.Stack()))
+	e.logger.Error(fmt.Sprintf("Panic stack trace: %s", trace))
 	e.logger.Info(fmt.Sprintf("Cancelling job %s due to panic", job.Kind))
 	return &river.ErrorHandlerResult{
 		SetCancelled: true,
