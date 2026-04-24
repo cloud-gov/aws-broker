@@ -26,8 +26,6 @@ meta:
     subnet_group: `${TERRAFORM} output -raw -state stack.tfstate rds_subnet_group`
     postgres_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_postgres_security_group`
     mysql_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_mysql_security_group`
-    oracle_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_oracle_security_group`
-    mssql_security_group: `${TERRAFORM} output -raw -state=stack.tfstate rds_mssql_security_group`
   redis:
     subnet_group: `${TERRAFORM} output -raw -state stack.tfstate elasticache_subnet_group`
     security_group: `${TERRAFORM} output -raw -state stack.tfstate elasticache_redis_security_group`
