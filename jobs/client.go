@@ -28,13 +28,12 @@ type CustomErrorHandler struct {
 }
 
 func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.JobRow, err error) *river.ErrorHandlerResult {
-	e.logger.Error(fmt.Sprintf("Job kind %s errored", job.Kind), "err", err)
+	e.logger.Error(fmt.Sprintf("job kind %s errored", job.Kind), "err", err)
 	return nil
 }
 
 func (e *CustomErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
 	e.logger.Error(fmt.Sprintf("Job panicked with: %v, trace: %s", panicVal, trace))
-	e.logger.Info(fmt.Sprintf("Cancelling job %s due to panic", job.Kind))
 	e.markJobAsFailed(job)
 	return &river.ErrorHandlerResult{
 		SetCancelled: true,
@@ -54,7 +53,7 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 			break
 		}
 		instanceID = args.Instance.Uuid
-		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.ModifyOp, base.InstanceNotModified, "operation failed due to panic. see logs for more details")
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.ModifyOp, base.InstanceNotModified, "job panicked")
 	case rds.CreateKind:
 		args := rds.CreateArgs{}
 		err = json.Unmarshal(job.EncodedArgs, &args)
@@ -62,7 +61,7 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 			break
 		}
 		instanceID = args.Instance.Uuid
-		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.CreateOp, base.InstanceNotCreated, "operation failed due to panic. see logs for more details")
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.CreateOp, base.InstanceNotCreated, "job panicked")
 	case rds.DeleteKind:
 		args := rds.CreateArgs{}
 		err = json.Unmarshal(job.EncodedArgs, &args)
@@ -70,7 +69,7 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 			break
 		}
 		instanceID = args.Instance.Uuid
-		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "operation failed due to panic. see logs for more details")
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
 	}
 
 	if err != nil {
