@@ -23,7 +23,7 @@ type RDSInstance struct {
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	mu   *sync.Mutex
+	mu   *sync.RWMutex
 	Tags map[string]string `gorm:"-"`
 
 	BackupRetentionPeriod int64  `sql:"size(255)"`
@@ -261,6 +261,8 @@ func (i *RDSInstance) setTags(
 	plan *catalog.RDSPlan,
 	tags map[string]string,
 ) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
 	if i.Tags == nil {
 		i.Tags = make(map[string]string)
 	}
@@ -275,6 +277,8 @@ func (i *RDSInstance) setTags(
 }
 
 func (i *RDSInstance) getTags() map[string]string {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
 	var tags = make(map[string]string)
 	if i.Tags == nil {
 		return tags
