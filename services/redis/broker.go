@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -41,6 +42,7 @@ type redisBroker struct {
 
 // InitRedisBroker is the constructor for the redisBroker.
 func InitRedisBroker(
+	ctx context.Context,
 	catalog *catalog.Catalog,
 	brokerDB *gorm.DB,
 	settings *config.Settings,
@@ -48,7 +50,7 @@ func InitRedisBroker(
 	riverClient *river.Client[*sql.Tx],
 	logger *slog.Logger,
 ) (base.Broker, error) {
-	adapter, err := initializeAdapter(settings, brokerDB, logger, riverClient)
+	adapter, err := initializeAdapter(ctx, settings, brokerDB, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,13 @@ type redisAdapter interface {
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, db *gorm.DB, logger *slog.Logger, riverClient *river.Client[*sql.Tx]) (redisAdapter, error) {
+func initializeAdapter(
+	ctx context.Context,
+	s *config.Settings,
+	db *gorm.DB,
+	logger *slog.Logger,
+	riverClient *river.Client[*sql.Tx],
+) (redisAdapter, error) {
 	var redisAdapter redisAdapter
 
 	if s.Environment == "test" {
@@ -56,11 +62,12 @@ func initializeAdapter(s *config.Settings, db *gorm.DB, logger *slog.Logger, riv
 	elasticacheClient := elasticache.NewFromConfig(cfg)
 	s3 := s3.NewFromConfig(cfg)
 
-	redisAdapter = NewRedisDedicatedDBAdapter(s, db, elasticacheClient, s3, logger, riverClient)
+	redisAdapter = NewRedisDedicatedDBAdapter(ctx, s, db, elasticacheClient, s3, logger, riverClient)
 	return redisAdapter, nil
 }
 
 func NewRedisDedicatedDBAdapter(
+	ctx context.Context,
 	s *config.Settings,
 	db *gorm.DB,
 	elasticache ElasticacheClientInterface,
@@ -69,6 +76,7 @@ func NewRedisDedicatedDBAdapter(
 	riverClient *river.Client[*sql.Tx],
 ) *dedicatedRedisAdapter {
 	return &dedicatedRedisAdapter{
+		ctx:         ctx,
 		settings:    *s,
 		db:          db,
 		logger:      logger,
@@ -102,6 +110,7 @@ func (d *mockRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, er
 }
 
 type dedicatedRedisAdapter struct {
+	ctx         context.Context
 	settings    config.Settings
 	logger      *slog.Logger
 	elasticache ElasticacheClientInterface
@@ -247,7 +256,24 @@ func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceStat
 		return base.InstanceNotModified, err
 	}
 
-	go d.asyncModifyRedis(i)
+	tx := d.db.Begin()
+	if err := tx.Error; err != nil {
+		return base.InstanceNotModified, err
+	}
+	defer tx.Rollback()
+
+	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &ModifyArgs{
+		Instance: i,
+	}, nil)
+	if err != nil {
+		return base.InstanceNotModified, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return base.InstanceNotModified, err
+	}
 
 	return base.InstanceInProgress, nil
 }

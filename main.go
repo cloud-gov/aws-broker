@@ -69,19 +69,21 @@ func run(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("error loading AWS config: %s", err)
 	}
 
-	rdsClient := awsRds.NewFromConfig(cfg)
-	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings)
-
 	logger.Debug("run: initializing River workers and client")
 	workers := river.NewWorkers()
+
+	// RDS workers
+	rdsClient := awsRds.NewFromConfig(cfg)
+	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings)
+	credentialUtils := &rds.RDSCredentialUtils{}
 	river.AddWorker(workers, rds.NewCreateWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
 	))
 	river.AddWorker(workers, rds.NewModifyWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
 	))
 	river.AddWorker(workers, rds.NewDeleteWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)

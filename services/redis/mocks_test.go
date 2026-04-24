@@ -48,7 +48,7 @@ func NewTestDedicatedRedisAdapter(
 		log.Fatal(fmt.Errorf("error creating river client: %w", err))
 	}
 
-	return NewRedisDedicatedDBAdapter(s, brokerDB, elasticache, s3, logger, riverClient)
+	return NewRedisDedicatedDBAdapter(ctx, s, brokerDB, elasticache, s3, logger, riverClient)
 }
 
 type mockRedisClient struct {
