@@ -14,11 +14,69 @@ import (
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/go-test/deep"
+	"github.com/riverqueue/river"
 )
+
+func TestModifyWorkerWork(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx           context.Context
+		dbInstance    *RedisInstance
+		expectedState base.InstanceState
+		password      string
+		expectErr     bool
+		worker        *ModifyWorker
+	}{
+		"success": {
+			ctx:      context.Background(),
+			password: helpers.RandStr(10),
+			dbInstance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRedisClient{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectedState: base.InstanceReady,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err = test.worker.Work(test.ctx, &river.Job[ModifyArgs]{Args: ModifyArgs{
+				Instance: test.dbInstance,
+			}})
+			if err != nil && !test.expectErr {
+				t.Fatal(err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
 
 func TestAsyncModifyRedis(t *testing.T) {
 	brokerDB, err := testDBInit()
