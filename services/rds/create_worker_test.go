@@ -3,7 +3,6 @@ package rds
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -258,14 +256,6 @@ func TestCreateWorkerWork(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			workers := river.NewWorkers()
-
-			// create client and run migrations
-			_, err := jobs.NewClient(test.ctx, brokerDB, test.worker.settings.DbConfig, slog.New(&mockLogHandler{}), workers)
-			if err != nil {
-				t.Fatal(fmt.Errorf("error creating river client: %w", err))
-			}
-
 			err = test.worker.Work(test.ctx, &river.Job[CreateArgs]{Args: CreateArgs{
 				Instance: test.dbInstance,
 				Plan:     test.plan,

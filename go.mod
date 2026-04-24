@@ -24,6 +24,7 @@ require (
 	github.com/riverqueue/river v0.34.0
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.34.0
 	github.com/riverqueue/river/riverdriver/riversqlite v0.34.0
+	github.com/riverqueue/river/rivershared v0.34.0
 	github.com/riverqueue/river/rivertype v0.34.0
 	gopkg.in/go-playground/validator.v8 v8.18.2
 	gorm.io/driver/mysql v1.6.0
@@ -68,7 +69,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.34.0 // indirect
-	github.com/riverqueue/river/rivershared v0.34.0 // indirect
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.34.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect

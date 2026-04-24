@@ -29,7 +29,7 @@ import (
 	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/testutil"
 )
 
 func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config.Settings, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
@@ -46,7 +46,7 @@ func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config
 		}
 	}
 
-	riverClient, err := jobs.NewClient(ctx, brokerDB, s.DbConfig, logger, workers)
+	riverClient, err := testutil.GetRiverClient(ctx, brokerDB, s.DbConfig, workers, logger)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating river client: %w", err))
 	}
