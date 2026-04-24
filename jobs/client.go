@@ -23,7 +23,7 @@ type CustomErrorHandler struct {
 }
 
 func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.JobRow, err error) *river.ErrorHandlerResult {
-	e.logger.Error("Job errored", "err", err)
+	e.logger.Error(fmt.Sprintf("Job kind %s errored", job.Kind), "err", err)
 	return nil
 }
 
@@ -44,9 +44,11 @@ func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *
 	}
 
 	riverConfig := &river.Config{
-		ErrorHandler: &CustomErrorHandler{},
-		JobTimeout:   4 * time.Hour,
-		Logger:       logger,
+		ErrorHandler: &CustomErrorHandler{
+			logger: logger,
+		},
+		JobTimeout: 4 * time.Hour,
+		Logger:     logger,
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: runtime.GOMAXPROCS(0)}, // Run as many workers as we have CPU cores available.
 		},
