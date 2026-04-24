@@ -23,7 +23,7 @@ type RDSInstance struct {
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	mu   *sync.RWMutex
+	mu   sync.RWMutex
 	Tags map[string]string `gorm:"-" deep:"-"`
 
 	BackupRetentionPeriod int64  `sql:"size(255)"`

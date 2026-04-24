@@ -59,8 +59,7 @@ func NewCreateWorker(
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan)
-	return err
+	return w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan)
 }
 
 func (w *CreateWorker) prepareCreateDbInput(
@@ -212,7 +211,7 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 
 	password, err := w.dbUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
-		jobs.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
+		jobs.ShouldWriteAsyncJobMessage(db, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
 	}
 
