@@ -28,8 +28,7 @@ func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.Job
 }
 
 func (e *CustomErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
-	e.logger.Error(fmt.Sprintf("Job panicked with: %v", panicVal))
-	e.logger.Error(fmt.Sprintf("Panic stack trace: %s", trace))
+	e.logger.Error(fmt.Sprintf("Job panicked with: %v, trace: %s", panicVal, trace))
 	e.logger.Info(fmt.Sprintf("Cancelling job %s due to panic", job.Kind))
 	return &river.ErrorHandlerResult{
 		SetCancelled: true,
