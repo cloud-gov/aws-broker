@@ -61,16 +61,11 @@ func TestInit(t *testing.T) {
 			serviceID: "service-1",
 			rdsInstance: &RDSInstance{
 				credentialUtils: &mockCredentialUtils{
-					mockFormattedDbName:   "test-db",
-					mockDbName:            "db",
-					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
-				Database: "db",
-				Username: "fake-user",
 				Instance: base.Instance{
 					Uuid: "uuid-1",
 					Request: request.Request{
@@ -276,16 +271,11 @@ func TestInit(t *testing.T) {
 			},
 			rdsInstance: &RDSInstance{
 				credentialUtils: &mockCredentialUtils{
-					mockFormattedDbName:   "test-db",
-					mockDbName:            "db",
-					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
-				Database: "db",
-				Username: "fake-user",
 				Instance: base.Instance{
 					Uuid: "uuid-1",
 					Request: request.Request{
@@ -342,16 +332,11 @@ func TestInit(t *testing.T) {
 			serviceID: "service-1",
 			rdsInstance: &RDSInstance{
 				credentialUtils: &mockCredentialUtils{
-					mockFormattedDbName:   "test-db",
-					mockDbName:            "db",
-					mockUsername:          "fake-user",
 					mockSalt:              "salt",
 					mockEncryptedPassword: "encrypted-pw",
 				},
 			},
 			expectedInstance: &RDSInstance{
-				Database: "db",
-				Username: "fake-user",
 				Instance: base.Instance{
 					Uuid: "uuid-1",
 					Request: request.Request{
@@ -374,7 +359,6 @@ func TestInit(t *testing.T) {
 				SecGroup:              "security-group-1",
 				Salt:                  "salt",
 				Password:              "encrypted-pw",
-				ReplicaDatabase:       "db-replica",
 				AddReadReplica:        true,
 			},
 			expectedTags: map[string]string{},

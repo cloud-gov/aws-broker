@@ -445,7 +445,6 @@ func TestBindDBToApp(t *testing.T) {
 			),
 			rdsInstance: &RDSInstance{
 				credentialUtils: &mockCredentialUtils{
-					mockFormattedDbName: "db1",
 					mockCreds: map[string]string{
 						"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
 						"username": "user-1",

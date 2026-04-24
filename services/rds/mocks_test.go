@@ -41,9 +41,6 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 }
 
 type mockCredentialUtils struct {
-	mockFormattedDbName   string
-	mockDbName            string
-	mockUsername          string
 	mockSalt              string
 	mockEncryptedPassword string
 	mockClearPassword     string
@@ -65,14 +62,6 @@ func (m *mockCredentialUtils) generatePassword(salt string, password string, key
 
 func (m *mockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
 	return m.mockClearPassword, m.mockGetPassworrdErr
-}
-
-func (m *mockCredentialUtils) generateDatabaseName(settings *config.Settings) string {
-	return m.mockDbName
-}
-
-func (m *mockCredentialUtils) buildUsername() string {
-	return m.mockUsername
 }
 
 type mockRDSClient struct {

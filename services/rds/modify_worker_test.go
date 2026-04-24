@@ -643,21 +643,22 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				credentialUtils:       &RDSCredentialUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 				DbVersion:             "8.0",
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					customPgroupName: "foobar",
 					rds:              &mockRDSClient{},
 				},
-			},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -679,20 +680,21 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				credentialUtils:       &RDSCredentialUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					rds:       &mockRDSClient{},
 					returnErr: testErr,
 				},
-			},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -701,24 +703,25 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"update password": {
 			dbInstance: &RDSInstance{
-				BinaryLogFormat: "ROW",
-				DbType:          "mysql",
-				credentialUtils: &mockCredentialUtils{
-					mockClearPassword: "fake-pw",
-				},
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 				RotateCredentials:     true,
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-			},
+				&mockCredentialUtils{
+					mockClearPassword: "fake-pw",
+				},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -736,21 +739,22 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"update storage type": {
 			dbInstance: &RDSInstance{
-				credentialUtils:       &RDSCredentialUtils{},
 				DbType:                "mysql",
 				StorageType:           "gp3",
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-			},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -768,7 +772,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"update engine version": {
 			dbInstance: &RDSInstance{
-				credentialUtils:       &RDSCredentialUtils{},
 				DbType:                "mysql",
 				StorageType:           "gp3",
 				AllocatedStorage:      20,
@@ -776,14 +779,16 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BackupRetentionPeriod: 14,
 				DbVersion:             "9.0",
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-			},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -804,19 +809,20 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
 				DbType:                "mysql",
-				credentialUtils:       &RDSCredentialUtils{},
 				AllocatedStorage:      20,
 				Database:              "db-name",
 				BackupRetentionPeriod: 14,
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-			},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,
@@ -834,7 +840,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		},
 		"allow major version upgrade": {
 			dbInstance: &RDSInstance{
-				credentialUtils:          &RDSCredentialUtils{},
 				DbType:                   "mysql",
 				StorageType:              "gp3",
 				AllocatedStorage:         20,
@@ -843,14 +848,16 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				DbVersion:                "9.0",
 				AllowMajorVersionUpgrade: true,
 			},
-			worker: &ModifyWorker{
-				db:       brokerDB,
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
-				parameterGroupClient: &mockParameterGroupClient{
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
-			},
+				&mockCredentialUtils{},
+			),
 			plan: &catalog.RDSPlan{
 				InstanceClass: "class",
 				Redundant:     true,

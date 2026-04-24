@@ -18,8 +18,8 @@ type RDSInstance struct {
 
 	credentialUtils CredentialUtils `gorm:"-" json:"-"`
 
-	Database string `sql:"size(255)"`
-	Username string `sql:"size(255)"`
+	Database string `sql:"size(255)" deep:"-"`
+	Username string `sql:"size(255)" deep:"-"`
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
@@ -49,7 +49,7 @@ type RDSInstance struct {
 	StorageType string `sql:"size(255)"`
 
 	AddReadReplica      bool   `gorm:"-"`
-	ReplicaDatabase     string `sql:"size(255)"`
+	ReplicaDatabase     string `sql:"size(255)" deep:"-"`
 	ReplicaDatabaseHost string `sql:"size(255)"`
 	DeleteReadReplica   bool   `gorm:"-"`
 
