@@ -285,6 +285,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
@@ -323,6 +324,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error checking status": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -346,6 +348,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error verifying deletion": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
@@ -369,6 +372,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error deleting": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -392,6 +396,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error describing initial snapshot": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -416,6 +421,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error copying snapshot": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -449,6 +455,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error writing snapshot to S3": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -483,6 +490,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error describing snapshot copy": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -516,6 +524,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 		},
 		"error deleting snapshot": {
 			dbAdapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 10 * time.Millisecond,
@@ -604,6 +613,7 @@ func TestDeleteRedis(t *testing.T) {
 	}{
 		"success": {
 			adapter: NewTestDedicatedRedisAdapter(
+				t.Context(),
 				&config.Settings{
 					PollAwsMinDelay: 1 * time.Millisecond,
 				},

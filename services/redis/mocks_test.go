@@ -2,16 +2,19 @@ package redis
 
 import (
 	"context"
-	"os"
+	"fmt"
+	"log"
+	"log/slog"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/testutil"
+	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 )
 
@@ -22,10 +25,30 @@ func testDBInit() (*gorm.DB, error) {
 	return db, err
 }
 
-func NewTestDedicatedRedisAdapter(s *config.Settings, db *gorm.DB, elasticache ElasticacheClientInterface, s3 brokerAws.S3ClientInterface) *dedicatedRedisAdapter {
-	logger := lager.NewLogger("aws-redis-test")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-	return NewRedisDedicatedDBAdapter(s, db, elasticache, s3, logger)
+func NewTestDedicatedRedisAdapter(
+	ctx context.Context,
+	s *config.Settings,
+	brokerDB *gorm.DB,
+	elasticache ElasticacheClientInterface,
+	s3 brokerAws.S3ClientInterface,
+) *dedicatedRedisAdapter {
+	logger := slog.New(&testutil.MockLogHandler{})
+
+	workers := river.NewWorkers()
+	river.AddWorker(workers, NewModifyWorker(brokerDB, s, elasticache, logger))
+
+	if s.DbConfig == nil {
+		s.DbConfig = &db.DBConfig{
+			DbType: "sqlite3",
+		}
+	}
+
+	riverClient, err := testutil.GetRiverClient(ctx, brokerDB, s.DbConfig, workers, logger)
+	if err != nil {
+		log.Fatal(fmt.Errorf("error creating river client: %w", err))
+	}
+
+	return NewRedisDedicatedDBAdapter(s, brokerDB, elasticache, s3, logger, riverClient)
 }
 
 type mockRedisClient struct {
