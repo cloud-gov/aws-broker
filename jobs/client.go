@@ -30,7 +30,9 @@ func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.Job
 func (e *CustomErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
 	e.logger.Error(fmt.Sprintf("Job panicked with: %v\n", panicVal))
 	e.logger.Error(fmt.Sprintf("Panic stack trace: %s\n", panicVal))
-	return nil
+	return &river.ErrorHandlerResult{
+		SetCancelled: true,
+	}
 }
 
 func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
