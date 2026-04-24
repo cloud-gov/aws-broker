@@ -2,8 +2,6 @@ package redis
 
 import (
 	"errors"
-	"log"
-	"os"
 	"slices"
 	"testing"
 	"time"
@@ -17,23 +15,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/go-test/deep"
-	"gorm.io/gorm"
 )
-
-var brokerDB *gorm.DB
-
-func TestMain(m *testing.M) {
-	var err error
-
-	brokerDB, err = testDBInit()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	exitCode := m.Run()
-
-	os.Exit(exitCode)
-}
 
 func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 	testCases := map[string]struct {
@@ -188,6 +170,11 @@ func TestModifyRedis(t *testing.T) {
 }
 
 func TestAsyncDeleteRedis(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}
@@ -514,6 +501,11 @@ func TestAsyncDeleteRedis(t *testing.T) {
 }
 
 func TestDeleteRedis(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	notFoundErr := &elasticacheTypes.ReplicationGroupNotFoundFault{
 		Message: aws.String("not found"),
 	}

@@ -21,6 +21,11 @@ import (
 )
 
 func TestAsyncModifyRedis(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		ctx              context.Context
 		instance         *RedisInstance
