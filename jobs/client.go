@@ -14,8 +14,24 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
 	"github.com/riverqueue/river/rivermigrate"
+	"github.com/riverqueue/river/rivertype"
 	"gorm.io/gorm"
 )
+
+type CustomErrorHandler struct {
+	logger *slog.Logger
+}
+
+func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.JobRow, err error) *river.ErrorHandlerResult {
+	e.logger.Error("Job errored", "err", err)
+	return nil
+}
+
+func (e *CustomErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
+	e.logger.Error(fmt.Sprintf("Job panicked with: %v\n", panicVal))
+	e.logger.Error(fmt.Sprintf("Panic stack trace: %s\n", panicVal))
+	return nil
+}
 
 func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
 	logger.Info("initializing river client")
@@ -26,8 +42,9 @@ func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *
 	}
 
 	riverConfig := &river.Config{
-		JobTimeout: 4 * time.Hour,
-		Logger:     logger,
+		ErrorHandler: &CustomErrorHandler{},
+		JobTimeout:   4 * time.Hour,
+		Logger:       logger,
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: runtime.GOMAXPROCS(0)}, // Run as many workers as we have CPU cores available.
 		},
