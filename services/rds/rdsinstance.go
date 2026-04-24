@@ -24,7 +24,7 @@ type RDSInstance struct {
 	Salt     string `sql:"size(255)"`
 
 	mu   *sync.RWMutex
-	Tags map[string]string `gorm:"-"`
+	Tags map[string]string
 
 	BackupRetentionPeriod int64  `sql:"size(255)"`
 	DbSubnetGroup         string `gorm:"-"`
