@@ -14,9 +14,8 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
+	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/go-test/deep"
-	"github.com/riverqueue/river/riverdriver/riversqlite"
-	"github.com/riverqueue/river/rivertest"
 )
 
 func TestPrepareCreateReplicationGroupInput(t *testing.T) {
@@ -184,7 +183,10 @@ func TestModifyRedis(t *testing.T) {
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 			defer tx.Rollback()
 
-			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &ModifyArgs{}, nil)
+			job, err := testutil.RequireInsertedTx(test.ctx, t, sqlTx, &ModifyArgs{}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if job.Args.Instance.Uuid != test.instance.Uuid {
 				t.Fatal("Did not receive expected RDS instance as modify worker argument")
@@ -264,7 +266,10 @@ func TestDeleteRedis(t *testing.T) {
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 			defer tx.Rollback()
 
-			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+			job, err := testutil.RequireInsertedTx(test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if job.Args.Instance.Uuid != test.instance.Uuid {
 				t.Fatal("Did not receive expected instance as delete worker argument")

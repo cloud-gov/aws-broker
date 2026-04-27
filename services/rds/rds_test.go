@@ -16,8 +16,6 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/riverdriver/riversqlite"
-	"github.com/riverqueue/river/rivertest"
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -146,7 +144,10 @@ func TestCreateDb(t *testing.T) {
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 			defer tx.Rollback()
 
-			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &CreateArgs{}, nil)
+			job, err := testutil.RequireInsertedTx(test.ctx, t, sqlTx, &CreateArgs{}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
 				t.Fatal("Did not receive expected RDS instance as create worker argument")
@@ -283,7 +284,10 @@ func TestModifyDb(t *testing.T) {
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 			defer tx.Rollback()
 
-			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &ModifyArgs{}, nil)
+			job, err := testutil.RequireInsertedTx(test.ctx, t, sqlTx, &ModifyArgs{}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
 				t.Fatal("Did not receive expected RDS instance as modify worker argument")
@@ -637,7 +641,10 @@ func TestDeleteDb(t *testing.T) {
 			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 			defer tx.Rollback()
 
-			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+			job, err := testutil.RequireInsertedTx(test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
 				t.Fatal("Did not receive expected RDS instance as delete worker argument")
