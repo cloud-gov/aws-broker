@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -88,7 +89,7 @@ func run(ctx context.Context, out io.Writer) error {
 		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
 	))
 
-	// Elasticache workers
+	// ElastiCache workers
 	elasticacheClient := elasticache.NewFromConfig(cfg)
 	s3 := s3.NewFromConfig(cfg)
 	river.AddWorker(workers, redis.NewModifyWorker(
@@ -97,11 +98,11 @@ func run(ctx context.Context, out io.Writer) error {
 	river.AddWorker(workers, redis.NewDeleteWorker(
 		db, &settings, elasticacheClient, s3, logger,
 	))
-	river.AddWorker(workers, rds.NewModifyWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
-	))
-	river.AddWorker(workers, rds.NewDeleteWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+
+	// OpenSearch workers
+	opensearch := opensearch.NewFromConfig(cfg)
+	river.AddWorker(workers, elasticsearch.NewDeleteWorker(
+		db, &settings, opensearch, logger,
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
