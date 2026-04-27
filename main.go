@@ -10,7 +10,10 @@ import (
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+<<<<<<< HEAD
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+=======
+>>>>>>> main
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
