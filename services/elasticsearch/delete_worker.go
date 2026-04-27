@@ -65,14 +65,13 @@ func NewDeleteWorker(
 }
 
 func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) error {
-	// TODO fix password handling
-	return w.asyncDeleteElasticSearchDomain(ctx, job.Args.Instance, "")
+	return w.asyncDeleteElasticSearchDomain(ctx, job.Args.Instance)
 }
 
-func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance, password string) error {
+func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance) error {
 	operation := base.DeleteOp
 
-	err := w.takeLastSnapshot(ctx, i, password)
+	err := w.takeLastSnapshot(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error"
 		w.logger.Error(errorMsg, "err", err)
@@ -110,13 +109,13 @@ func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *El
 
 // in which we make the ES API call to take a snapshot
 // then poll for snapshot completetion, may block for a considerable time
-func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchInstance, password string) error {
+func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchInstance) error {
 	var creds map[string]string
 	var err error
 
 	// check if instance was never bound and thus never set host...
 	if i.Host == "" {
-		creds, err = bindElasticsearchToApp(ctx, w.opensearch, w.ip, w.settings, w.logger, i, password)
+		creds, err = bindElasticsearchToApp(ctx, w.opensearch, w.ip, w.settings, w.logger, i)
 		if err != nil {
 			w.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", "err", err)
 			return err

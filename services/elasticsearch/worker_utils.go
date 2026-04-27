@@ -105,7 +105,7 @@ func createUpdateBucketRolesAndPolicies(
 	return nil
 }
 
-func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, ip *awsiam.IAMPolicyClient, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance, password string) (map[string]string, error) {
+func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, ip *awsiam.IAMPolicyClient, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
