@@ -1,17 +1,19 @@
 package redis
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
-	"code.cloudfoundry.org/lager"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
+	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -33,22 +35,22 @@ type redisBroker struct {
 	brokerDB   *gorm.DB
 	catalog    *catalog.Catalog
 	settings   *config.Settings
-	logger     lager.Logger
+	logger     *slog.Logger
 	tagManager brokertags.TagManager
 	adapter    redisAdapter
 }
 
 // InitRedisBroker is the constructor for the redisBroker.
 func InitRedisBroker(
+	ctx context.Context,
 	catalog *catalog.Catalog,
 	brokerDB *gorm.DB,
 	settings *config.Settings,
 	tagManager brokertags.TagManager,
+	riverClient *river.Client[*sql.Tx],
+	logger *slog.Logger,
 ) (base.Broker, error) {
-	logger := lager.NewLogger("aws-redis-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	adapter, err := initializeAdapter(settings, brokerDB, logger)
+	adapter, err := initializeAdapter(ctx, settings, brokerDB, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +323,7 @@ func (broker *redisBroker) LastOperation(id string, details domain.PollDetails) 
 	} else {
 		redisState, err := broker.adapter.checkRedisStatus(&existingInstance)
 		if err != nil {
-			broker.logger.Error("Error checking Redis status", err)
+			broker.logger.Error("Error checking Redis status", "err", err)
 			return lastOperation, apiresponses.NewFailureResponse(
 				err,
 				http.StatusInternalServerError,

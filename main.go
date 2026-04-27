@@ -9,7 +9,9 @@ import (
 
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -69,13 +71,31 @@ func run(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("error loading AWS config: %s", err)
 	}
 
-	rdsClient := awsRds.NewFromConfig(cfg)
-	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings)
-
 	logger.Debug("run: initializing River workers and client")
 	workers := river.NewWorkers()
+
+	// RDS workers
+	rdsClient := awsRds.NewFromConfig(cfg)
+	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings)
+	credentialUtils := &rds.RDSCredentialUtils{}
 	river.AddWorker(workers, rds.NewCreateWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+	))
+	river.AddWorker(workers, rds.NewModifyWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+	))
+	river.AddWorker(workers, rds.NewDeleteWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+	))
+
+	// Elasticache workers
+	elasticacheClient := elasticache.NewFromConfig(cfg)
+	s3 := s3.NewFromConfig(cfg)
+	river.AddWorker(workers, redis.NewModifyWorker(
+		db, &settings, elasticacheClient, logger,
+	))
+	river.AddWorker(workers, redis.NewDeleteWorker(
+		db, &settings, elasticacheClient, s3, logger,
 	))
 	river.AddWorker(workers, rds.NewModifyWorker(
 		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},

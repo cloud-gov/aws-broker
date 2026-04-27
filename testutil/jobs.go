@@ -5,27 +5,26 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
+	"testing"
 
 	"github.com/cloud-gov/aws-broker/db"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
 	"github.com/riverqueue/river/rivermigrate"
+	"github.com/riverqueue/river/rivertest"
 	"gorm.io/gorm"
 )
 
 func GetRiverClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, workers *river.Workers, logger *slog.Logger) (*river.Client[*sql.Tx], error) {
-	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
-		dbConfig.DbType = "sqlite3"
-	}
+	dbType := getDbType()
 
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
 	}
 
-	switch dbConfig.DbType {
+	switch dbType {
 	case "postgres":
 		driver := riverdatabasesql.New(sqlDB)
 		migrator, err := rivermigrate.New(driver, nil)
@@ -60,5 +59,18 @@ func GetRiverClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, wor
 		return riverClient, nil
 	default:
 		return nil, fmt.Errorf("unsupported db type: %s", dbConfig.DbType)
+	}
+}
+
+func RequireInsertedTx[TArgs river.JobArgs](ctx context.Context, tb testing.TB, tx *sql.Tx, expectedJob TArgs, opts *rivertest.RequireInsertedOpts) (*river.Job[TArgs], error) {
+	dbType := getDbType()
+
+	switch dbType {
+	case "postgres":
+		return rivertest.RequireInsertedTx[*riverdatabasesql.Driver](ctx, tb, tx, expectedJob, opts), nil
+	case "sqlite3":
+		return rivertest.RequireInsertedTx[*riversqlite.Driver](ctx, tb, tx, expectedJob, opts), nil
+	default:
+		return nil, fmt.Errorf("unsupported db type: %s", dbType)
 	}
 }

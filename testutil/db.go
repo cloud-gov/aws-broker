@@ -9,12 +9,18 @@ import (
 	"gorm.io/gorm"
 )
 
+func getDbType() string {
+	dbType := os.Getenv("DB_TYPE")
+	if dbType == "" {
+		return "sqlite3"
+	}
+	return dbType
+}
+
 func InitTestDbConfig() (*db.DBConfig, error) {
 	var dbConfig db.DBConfig
-	if dbConfig.DbType = os.Getenv("DB_TYPE"); dbConfig.DbType == "" {
-		dbConfig.DbType = "sqlite3"
-	}
-	switch dbConfig.DbType {
+	dbType := getDbType()
+	switch dbType {
 	case "postgres":
 		dbConfig.DbType = "postgres"
 		dbConfig.DbName = os.Getenv("POSTGRES_USER")
