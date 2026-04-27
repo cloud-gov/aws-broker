@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/cloud-gov/aws-broker/asyncmessage"
-	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
@@ -18,8 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
-
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"fmt"
 )
@@ -56,9 +53,8 @@ func initializeAdapter(
 	}
 
 	elasticacheClient := elasticache.NewFromConfig(cfg)
-	s3 := s3.NewFromConfig(cfg)
 
-	redisAdapter = NewRedisDedicatedDBAdapter(ctx, s, db, elasticacheClient, s3, logger, riverClient)
+	redisAdapter = NewRedisDedicatedDBAdapter(ctx, s, db, elasticacheClient, logger, riverClient)
 	return redisAdapter, nil
 }
 
@@ -67,7 +63,6 @@ func NewRedisDedicatedDBAdapter(
 	s *config.Settings,
 	db *gorm.DB,
 	elasticache ElasticacheClientInterface,
-	s3 brokerAws.S3ClientInterface,
 	logger *slog.Logger,
 	riverClient *river.Client[*sql.Tx],
 ) *dedicatedRedisAdapter {
@@ -77,7 +72,6 @@ func NewRedisDedicatedDBAdapter(
 		db:          db,
 		logger:      logger,
 		elasticache: elasticache,
-		s3:          s3,
 		riverClient: riverClient,
 	}
 }
@@ -110,7 +104,6 @@ type dedicatedRedisAdapter struct {
 	settings    config.Settings
 	logger      *slog.Logger
 	elasticache ElasticacheClientInterface
-	s3          brokerAws.S3ClientInterface
 	db          *gorm.DB
 	riverClient *river.Client[*sql.Tx]
 }
