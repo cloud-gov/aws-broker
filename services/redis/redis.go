@@ -45,7 +45,7 @@ func initializeAdapter(
 	}
 
 	cfg, err := awsConfig.LoadDefaultConfig(
-		context.TODO(),
+		ctx,
 		awsConfig.WithRegion(s.Region),
 	)
 	if err != nil {
@@ -119,7 +119,7 @@ func (d *dedicatedRedisAdapter) createRedis(i *RedisInstance) (base.InstanceStat
 		return base.InstanceNotCreated, err
 	}
 
-	_, err = d.elasticache.CreateReplicationGroup(context.TODO(), params)
+	_, err = d.elasticache.CreateReplicationGroup(d.ctx, params)
 	if err != nil {
 		d.logger.Error("CreateReplicationGroup", "err", err)
 		return base.InstanceNotCreated, err
@@ -164,7 +164,7 @@ func (d *dedicatedRedisAdapter) checkRedisStatus(i *RedisInstance) (base.Instanc
 			ReplicationGroupId: aws.String(i.ClusterID), // Required
 		}
 
-		resp, err := d.elasticache.DescribeReplicationGroups(context.TODO(), params)
+		resp, err := d.elasticache.DescribeReplicationGroups(d.ctx, params)
 		if err != nil {
 			d.logger.Error("checkRedisStatus: DescribeReplicationGroups failed", "err", err)
 			return base.InstanceNotCreated, err
@@ -204,7 +204,7 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 			ReplicationGroupId: aws.String(i.ClusterID), // Required
 		}
 
-		resp, err := d.elasticache.DescribeReplicationGroups(context.TODO(), params)
+		resp, err := d.elasticache.DescribeReplicationGroups(d.ctx, params)
 		if err != nil {
 			d.logger.Error("bindRedisToApp: DescribeReplicationGroups failed", "err", err)
 			return nil, err
