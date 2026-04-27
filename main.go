@@ -11,6 +11,7 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -89,8 +90,12 @@ func run(ctx context.Context, out io.Writer) error {
 
 	// Elasticache workers
 	elasticacheClient := elasticache.NewFromConfig(cfg)
+	s3 := s3.NewFromConfig(cfg)
 	river.AddWorker(workers, redis.NewModifyWorker(
 		db, &settings, elasticacheClient, logger,
+	))
+	river.AddWorker(workers, redis.NewDeleteWorker(
+		db, &settings, elasticacheClient, s3, logger,
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
