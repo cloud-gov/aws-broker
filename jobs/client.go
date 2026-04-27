@@ -3,19 +3,79 @@ package jobs
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"runtime"
 	"time"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/services/rds"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
 	"github.com/riverqueue/river/rivermigrate"
+	"github.com/riverqueue/river/rivertype"
 	"gorm.io/gorm"
 )
+
+type CustomErrorHandler struct {
+	db     *gorm.DB
+	logger *slog.Logger
+}
+
+func (e *CustomErrorHandler) HandleError(ctx context.Context, job *rivertype.JobRow, err error) *river.ErrorHandlerResult {
+	e.logger.Error(fmt.Sprintf("job kind %s errored", job.Kind), "err", err)
+	return nil
+}
+
+func (e *CustomErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
+	e.logger.Error(fmt.Sprintf("Job panicked with: %v, trace: %s", panicVal, trace))
+	e.markJobAsFailed(job)
+	return &river.ErrorHandlerResult{
+		SetCancelled: true,
+	}
+}
+
+func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
+	var (
+		err        error
+		instanceID string
+	)
+	switch job.Kind {
+	case rds.ModifyKind:
+		args := rds.ModifyArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.ModifyOp, base.InstanceNotModified, "job panicked")
+	case rds.CreateKind:
+		args := rds.CreateArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.CreateOp, base.InstanceNotCreated, "job panicked")
+	case rds.DeleteKind:
+		args := rds.DeleteArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
+	}
+
+	if err != nil {
+		e.logger.Error(fmt.Sprintf("Failed to update status for %s job, instance %s", job.Kind, instanceID), "err", err)
+	}
+}
 
 func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *slog.Logger, workers *river.Workers) (*river.Client[*sql.Tx], error) {
 	logger.Info("initializing river client")
@@ -26,6 +86,10 @@ func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *
 	}
 
 	riverConfig := &river.Config{
+		ErrorHandler: &CustomErrorHandler{
+			db:     db,
+			logger: logger,
+		},
 		JobTimeout: 4 * time.Hour,
 		Logger:     logger,
 		Queues: map[string]river.QueueConfig{

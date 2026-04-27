@@ -1,6 +1,7 @@
 ---
 jobs:
   - name: deploy-aws-broker-development
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -324,7 +325,7 @@ jobs:
       params:
         <<: *slack-failure-config
         text: |
-          :x: Acceptance Tests for aws-broker on development FAILED
+          :x: ElastiCache acceptance tests for aws-broker on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-development
@@ -387,7 +388,7 @@ jobs:
       params:
         <<: *slack-failure-config
         text: |
-          :x: Acceptance Tests for aws-broker on development FAILED
+          :x: OpenSearch acceptance tests for aws-broker on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-db-development
@@ -599,7 +600,7 @@ jobs:
       params:
         <<: *slack-failure-config
         text: |
-          :x: Acceptance Tests for aws-broker on development FAILED
+          :x: RDS acceptance tests for aws-broker on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: reconfigure
@@ -612,6 +613,7 @@ jobs:
           - aws-broker-app/ci/config.yml
 
   - name: deploy-aws-broker-staging
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -1067,7 +1069,7 @@ jobs:
       params:
         <<: *slack-failure-config
         text: |
-          :x: Acceptance Tests for aws-broker on staging FAILED
+          :x: RDS acceptance tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-redis-staging
@@ -1144,7 +1146,7 @@ jobs:
       params:
         <<: *slack-failure-config
         text: |
-          :x: Acceptance Tests for aws-broker on staging FAILED
+          :x: ElastiCache acceptance tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-staging
@@ -1206,7 +1208,7 @@ jobs:
       params:
         <<: *slack-failure-config
         text: |
-          :x: Acceptance Tests for aws-broker on staging FAILED
+          :x: OpenSearch acceptance tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: terraform-plan-aws-broker-prod
@@ -1271,6 +1273,7 @@ jobs:
           channel: ((slack-channel-customer-success))
 
   - name: deploy-aws-broker-prod
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -1796,7 +1799,6 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
-
     on_failure:
       put: slack
       params:

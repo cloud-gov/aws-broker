@@ -2,14 +2,15 @@ package rds
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"gorm.io/gorm"
 )
@@ -17,8 +18,15 @@ import (
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
 	// Automigrate!
-	err = db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	err = db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err
+}
+
+func createTestRdsInstance(i *RDSInstance) *RDSInstance {
+	if i.credentialUtils == nil {
+		i.credentialUtils = &RDSCredentialUtils{}
+	}
+	return i
 }
 
 type mockParameterGroupClient struct {
@@ -39,10 +47,7 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 	return nil
 }
 
-type MockCredentialUtils struct {
-	mockFormattedDbName   string
-	mockDbName            string
-	mockUsername          string
+type mockCredentialUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string
 	mockClearPassword     string
@@ -50,28 +55,20 @@ type MockCredentialUtils struct {
 	mockCreds             map[string]string
 }
 
-func (m *MockCredentialUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
+func (m *mockCredentialUtils) getCredentials(i *RDSInstance, password string) (map[string]string, error) {
 	return m.mockCreds, nil
 }
 
-func (m *MockCredentialUtils) generateCredentials(settings *config.Settings) (string, string, error) {
+func (m *mockCredentialUtils) generateCredentials(settings *config.Settings) (string, string, error) {
 	return m.mockSalt, m.mockEncryptedPassword, nil
 }
 
-func (m *MockCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
+func (m *mockCredentialUtils) generatePassword(salt string, password string, key string) (string, error) {
 	return m.mockEncryptedPassword, nil
 }
 
-func (m *MockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
+func (m *mockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
 	return m.mockClearPassword, m.mockGetPassworrdErr
-}
-
-func (m *MockCredentialUtils) generateDatabaseName(settings *config.Settings) string {
-	return m.mockDbName
-}
-
-func (m *MockCredentialUtils) buildUsername() string {
-	return m.mockUsername
 }
 
 type mockRDSClient struct {
@@ -210,3 +207,15 @@ func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.Modify
 		},
 	}, nil
 }
+
+type mockLogHandler struct {
+	Records []slog.Record
+}
+
+func (h *mockLogHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+func (h *mockLogHandler) Handle(_ context.Context, r slog.Record) error {
+	h.Records = append(h.Records, r)
+	return nil
+}
+func (h *mockLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler { return h }
+func (h *mockLogHandler) WithGroup(name string) slog.Handler       { return h }

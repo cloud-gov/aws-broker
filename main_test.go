@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/broker"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -52,7 +53,7 @@ func setup() http.Handler {
 	if err != nil {
 		log.Fatal(err)
 	}
-	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{})
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 
 	tq := jobs.NewAsyncJobManager()
 	tq.Init()

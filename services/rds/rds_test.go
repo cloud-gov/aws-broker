@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"os"
-	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -31,23 +29,16 @@ import (
 	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/cloud-gov/aws-broker/testutil"
 )
 
 func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config.Settings, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})
-	logger := slog.New(handler)
+	logger := slog.New(&mockLogHandler{})
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &CreateWorker{
-		db:                   brokerDB,
-		settings:             s,
-		rds:                  rdsClient,
-		logger:               logger,
-		parameterGroupClient: parameterGroupClient,
-	})
+	river.AddWorker(workers, NewCreateWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))
+	river.AddWorker(workers, NewModifyWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))
+	river.AddWorker(workers, NewDeleteWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))
 
 	if s.DbConfig == nil {
 		s.DbConfig = &db.DBConfig{
@@ -55,7 +46,7 @@ func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config
 		}
 	}
 
-	riverClient, err := jobs.NewClient(ctx, brokerDB, s.DbConfig, logger, workers)
+	riverClient, err := testutil.GetRiverClient(ctx, brokerDB, s.DbConfig, workers, logger)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error creating river client: %w", err))
 	}
@@ -125,7 +116,7 @@ func TestCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: "replica",
 				AddReadReplica:  true,
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedState: base.InstanceInProgress,
 			plan: &catalog.RDSPlan{
@@ -172,145 +163,23 @@ func TestCreateDb(t *testing.T) {
 	}
 }
 
-func TestAsyncModifyDb(t *testing.T) {
-	modifyDbErr := errors.New("modify DB error")
-	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
-		Message: aws.String("operation failed"),
-	}
-
+func TestModifyDb(t *testing.T) {
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testCases := map[string]struct {
-		dbInstance         *RDSInstance
-		dbAdapter          *dedicatedDBAdapter
-		expectedState      base.InstanceState
-		expectedDbInstance *RDSInstance
-		plan               *catalog.RDSPlan
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		worker        *ModifyWorker
+		expectedErr   error
+		expectedState base.InstanceState
+		plan          *catalog.RDSPlan
 	}{
-		"error preparing modify input": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					returnErr: errors.New("fail"),
-				},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
-			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-		},
-		"modify primary DB error": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{
-					modifyDbErrs: []error{modifyDbErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
-			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-		},
-		"error waiting for database to be ready": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("fail")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
-			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-		},
-		"success without read replica": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-				},
-				&mockParameterGroupClient{},
-			),
-			plan: &catalog.RDSPlan{},
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database: "db-1",
-				dbUtils:  &RDSCredentialUtils{},
-			},
-			expectedState: base.InstanceReady,
-			expectedDbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database: "db-1",
-				dbUtils:  &RDSCredentialUtils{},
-			},
-		},
-		"success with adding read replica": {
+		"success": {
+			ctx: context.Background(),
 			dbAdapter: NewTestDedicatedDBAdapter(
 				context.Background(),
 				brokerDB,
@@ -352,196 +221,13 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				&mockParameterGroupClient{},
 			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-2",
-					},
-					Uuid: "uuid-2",
-				},
-				Database:        "db-2",
-				AddReadReplica:  true,
-				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSCredentialUtils{},
-			},
-			expectedState: base.InstanceReady,
-			expectedDbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-2",
-					},
-					Uuid: "uuid-2",
-				},
-				Database:        "db-2",
-				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSCredentialUtils{},
-			},
-			plan: &catalog.RDSPlan{},
-		},
-		"error modifying read replica": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
+			worker: &ModifyWorker{
+				db: brokerDB,
+				settings: &config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-					modifyDbErrs: []error{nil, modifyDbErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSCredentialUtils{},
-			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-		},
-		"error creating read replica": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-					createDBInstanceReadReplicaErrs: []error{errors.New("error creating read replica")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				AddReadReplica:  true,
-				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSCredentialUtils{},
-			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-		},
-		"success with deleting read replica": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-3",
-					},
-					Uuid: "uuid-3",
-				},
-				Database:          "db-3",
-				DeleteReadReplica: true,
-				ReplicaDatabase:   "db-replica",
-				dbUtils:           &RDSCredentialUtils{},
-			},
-			expectedState: base.InstanceReady,
-			expectedDbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-3",
-					},
-					Uuid: "uuid-3",
-				},
-				Database: "db-3",
-				dbUtils:  &RDSCredentialUtils{},
-			},
-			plan: &catalog.RDSPlan{},
-		},
-		"error updating read replica tags": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
+				rds: &mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
 						{
 							DBInstances: []rdsTypes.DBInstance{
@@ -560,161 +246,8 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					addTagsToResourceErr: errors.New("error updating tags"),
 				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSCredentialUtils{},
+				parameterGroupClient: &mockParameterGroupClient{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-		},
-		"success without read replica and updating version": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-				},
-				&mockParameterGroupClient{},
-			),
-			plan: &catalog.RDSPlan{},
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database:  "db-1",
-				dbUtils:   &RDSCredentialUtils{},
-				DbVersion: "9.0",
-			},
-			expectedState: base.InstanceReady,
-			expectedDbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database:  "db-1",
-				dbUtils:   &RDSCredentialUtils{},
-				DbVersion: "9.0",
-			},
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			test.dbAdapter.asyncModifyDb(test.dbInstance, test.plan)
-
-			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if test.expectedState != asyncJobMsg.JobState.State {
-				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
-			}
-
-			if test.expectedDbInstance != nil {
-				updatedInstance := RDSInstance{}
-				err = brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(&updatedInstance).Error
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				if diff := deep.Equal(&updatedInstance, test.expectedDbInstance); diff != nil {
-					t.Error(diff)
-				}
-			}
-		})
-	}
-}
-
-func TestModifyDb(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		dbAdapter              dbAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		expectedAsyncJobStates []base.InstanceState
-		plan                   *catalog.RDSPlan
-	}{
-		"success": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-					},
-				},
-				&mockParameterGroupClient{},
-			),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -725,17 +258,15 @@ func TestModifyDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				AddReadReplica:  true,
 				ReplicaDatabase: "db-replica",
-				dbUtils:         &RDSCredentialUtils{},
+				credentialUtils: &RDSCredentialUtils{},
 			},
-			expectedState:          base.InstanceInProgress,
-			expectedAsyncJobStates: []base.InstanceState{base.InstanceReady, base.InstanceInProgress},
-			plan:                   &catalog.RDSPlan{},
+			expectedState: base.InstanceInProgress,
+			plan:          &catalog.RDSPlan{},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			responseCode, err := test.dbAdapter.modifyDB(test.dbInstance, test.plan)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -744,289 +275,26 @@ func TestModifyDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
-				if err != nil {
-					t.Fatal(err)
-				}
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
+			}
 
-				// The exact database state at this point in the test is non-deterministic, since the database updates
-				// are being done in a goroutine. So we test against a set of possible job states
-				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
-					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
-				}
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+			defer tx.Rollback()
+
+			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &ModifyArgs{}, nil)
+
+			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
+				t.Fatal("Did not receive expected RDS instance as create worker argument")
+			}
+
+			if job.Args.Plan.ID != test.plan.ID {
+				t.Fatal("Did not receive expected RDS plan as create worker argument")
 			}
 
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
-			}
-		})
-	}
-}
-
-func TestPrepareModifyDbInstanceInput(t *testing.T) {
-	testErr := errors.New("fail")
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCases := map[string]struct {
-		dbInstance        *RDSInstance
-		dbAdapter         *dedicatedDBAdapter
-		expectedGroupName string
-		expectedErr       error
-		expectedParams    *rds.ModifyDBInstanceInput
-		plan              *catalog.RDSPlan
-		isReplica         bool
-	}{
-		"expect returned group name": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				dbUtils:               &RDSCredentialUtils{},
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-				DbVersion:             "8.0",
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					customPgroupName: "foobar",
-					rds:              &mockRDSClient{},
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedGroupName: "foobar",
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-				DBParameterGroupName:     aws.String("foobar"),
-				EngineVersion:            aws.String("8.0"),
-			},
-		},
-		"expect error": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				dbUtils:               &RDSCredentialUtils{},
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					rds:       &mockRDSClient{},
-					returnErr: testErr,
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedErr: testErr,
-		},
-		"update password": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat: "ROW",
-				DbType:          "mysql",
-				dbUtils: &MockCredentialUtils{
-					mockClearPassword: "fake-pw",
-				},
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-				RotateCredentials:     true,
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					rds: &mockRDSClient{},
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-				MasterUserPassword:       aws.String("fake-pw"),
-			},
-		},
-		"update storage type": {
-			dbInstance: &RDSInstance{
-				dbUtils:               &RDSCredentialUtils{},
-				DbType:                "mysql",
-				StorageType:           "gp3",
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					rds: &mockRDSClient{},
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-				StorageType:              aws.String("gp3"),
-			},
-		},
-		"update engine version": {
-			dbInstance: &RDSInstance{
-				dbUtils:               &RDSCredentialUtils{},
-				DbType:                "mysql",
-				StorageType:           "gp3",
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-				DbVersion:             "9.0",
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					rds: &mockRDSClient{},
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-				StorageType:              aws.String("gp3"),
-				EngineVersion:            aws.String("9.0"),
-			},
-		},
-		"does not update password for replica": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				dbUtils:               &RDSCredentialUtils{},
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					rds: &mockRDSClient{},
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			isReplica: true,
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-			},
-		},
-		"allow major version upgrade": {
-			dbInstance: &RDSInstance{
-				dbUtils:                  &RDSCredentialUtils{},
-				DbType:                   "mysql",
-				StorageType:              "gp3",
-				AllocatedStorage:         20,
-				Database:                 "db-name",
-				BackupRetentionPeriod:    14,
-				DbVersion:                "9.0",
-				AllowMajorVersionUpgrade: true,
-			},
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				&mockParameterGroupClient{
-					rds: &mockRDSClient{},
-				},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(true),
-				BackupRetentionPeriod:    aws.Int32(14),
-				StorageType:              aws.String("gp3"),
-				EngineVersion:            aws.String("9.0"),
-			},
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			params, err := test.dbAdapter.prepareModifyDbInstanceInput(test.dbInstance, test.plan, test.dbInstance.Database, test.isReplica)
-			if !errors.Is(test.expectedErr, err) {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if test.expectedParams != nil {
-				if diff := deep.Equal(params, test.expectedParams); diff != nil {
-					t.Error(diff)
-				}
 			}
 		})
 	}
@@ -1176,8 +444,7 @@ func TestBindDBToApp(t *testing.T) {
 				&mockParameterGroupClient{},
 			),
 			rdsInstance: &RDSInstance{
-				dbUtils: &MockCredentialUtils{
-					mockFormattedDbName: "db1",
+				credentialUtils: &mockCredentialUtils{
 					mockCreds: map[string]string{
 						"uri":      "postgres://user-1:fake-pw@db-address:1234/db1",
 						"username": "user-1",
@@ -1300,432 +567,6 @@ func TestBindDBToApp(t *testing.T) {
 	}
 }
 
-func TestWaitForDbDeleted(t *testing.T) {
-	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
-		Message: aws.String("operation failed"),
-	}
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCases := map[string]struct {
-		dbInstance            *RDSInstance
-		dbAdapter             *dedicatedDBAdapter
-		expectedState         base.InstanceState
-		expectErr             bool
-		expectAsyncJobMessage bool
-	}{
-		"success": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-		},
-		"waits with retries for database creation": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 3 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("deleting"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("deleting"),
-								},
-							},
-						},
-					},
-					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-		},
-		"gives up after maximum retries for database creation": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 3 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("deleting"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("deleting"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("deleting"),
-								},
-							},
-						},
-					},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-			expectedState:         base.InstanceNotGone,
-			expectErr:             true,
-			expectAsyncJobMessage: true,
-		},
-		"error checking database creation status": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-			expectedState:         base.InstanceNotGone,
-			expectErr:             true,
-			expectAsyncJobMessage: true,
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			err := test.dbAdapter.waitForDbDeleted(base.CreateOp, test.dbInstance, test.dbInstance.Database)
-			if !test.expectErr && err != nil {
-				t.Fatal(err)
-			}
-
-			if test.expectAsyncJobMessage {
-				asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				if asyncJobMsg.JobState.State != test.expectedState {
-					t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
-				}
-			}
-		})
-	}
-}
-
-func TestAsyncDeleteDB(t *testing.T) {
-	dbInstanceNotFoundErr := &rdsTypes.DBInstanceNotFoundFault{
-		Message: aws.String("not found"),
-	}
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCases := map[string]struct {
-		dbInstance          *RDSInstance
-		dbAdapter           *dedicatedDBAdapter
-		expectedState       base.InstanceState
-		expectedRecordCount int64
-	}{
-		"success without replica": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-			expectedState: base.InstanceGone,
-		},
-		"success with replica": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				ReplicaDatabase: helpers.RandStr(10),
-			},
-			expectedState: base.InstanceGone,
-		},
-		"error checking database status": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-			expectedState:       base.InstanceNotGone,
-			expectedRecordCount: 1,
-		},
-		"error checking replica database status": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					describeDbInstancesErrs: []error{errors.New("error describing database instances")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				ReplicaDatabase: helpers.RandStr(10),
-			},
-			expectedState:       base.InstanceNotGone,
-			expectedRecordCount: 1,
-		},
-		"error deleting database": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-			expectedState:       base.InstanceNotGone,
-			expectedRecordCount: 1,
-		},
-		"error deleting replica database": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					deleteDbInstancesErrs: []error{errors.New("failed to delete database")},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				ReplicaDatabase: helpers.RandStr(10),
-			},
-			expectedState:       base.InstanceNotGone,
-			expectedRecordCount: 1,
-		},
-		"database already deleted": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database: helpers.RandStr(10),
-			},
-			expectedState: base.InstanceGone,
-		},
-		"replica and database already deleted": {
-			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-				},
-				&mockRDSClient{
-					deleteDbInstancesErrs: []error{dbInstanceNotFoundErr, dbInstanceNotFoundErr},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: helpers.RandStr(10),
-					},
-					Uuid: helpers.RandStr(10),
-				},
-				Database:        helpers.RandStr(10),
-				ReplicaDatabase: helpers.RandStr(10),
-			},
-			expectedState: base.InstanceGone,
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			err := brokerDB.Create(test.dbInstance).Error
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			var count int64
-			brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(test.dbInstance).Count(&count)
-			if count == 0 {
-				t.Fatal("The instance should be in the DB")
-			}
-
-			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
-			test.dbAdapter.asyncDeleteDB(test.dbInstance)
-
-			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if asyncJobMsg.JobState.State != test.expectedState {
-				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
-			}
-
-			brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(test.dbInstance).Count(&count)
-			if count != test.expectedRecordCount {
-				t.Fatalf("expected %d records, found %d", test.expectedRecordCount, count)
-			}
-		})
-	}
-}
-
 func TestDeleteDb(t *testing.T) {
 	brokerDB, err := testDBInit()
 	if err != nil {
@@ -1737,14 +578,15 @@ func TestDeleteDb(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		dbInstance             *RDSInstance
-		dbAdapter              *dedicatedDBAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		password               string
-		expectedAsyncJobStates []base.InstanceState
+		ctx           context.Context
+		dbInstance    *RDSInstance
+		dbAdapter     *dedicatedDBAdapter
+		expectedErr   error
+		expectedState base.InstanceState
+		password      string
 	}{
 		"success": {
+			ctx: context.Background(),
 			dbAdapter: NewTestDedicatedDBAdapter(
 				context.Background(),
 				brokerDB,
@@ -1765,11 +607,10 @@ func TestDeleteDb(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database: helpers.RandStr(10),
-				dbUtils:  &RDSCredentialUtils{},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
 			},
-			expectedState:          base.InstanceInProgress,
-			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceGone},
+			expectedState: base.InstanceInProgress,
 		},
 	}
 
@@ -1784,17 +625,22 @@ func TestDeleteDb(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
-				if err != nil {
-					t.Fatal(err)
-				}
+			if responseCode != test.expectedState {
+				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
+			}
 
-				// The exact database state at this point in the test is non-deterministic, since the database updates
-				// are being done in a goroutine. So we test against a set of possible job states
-				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
-					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
-				}
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
+			}
+
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+			defer tx.Rollback()
+
+			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+
+			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
+				t.Fatal("Did not receive expected RDS instance as create worker argument")
 			}
 
 			if responseCode != test.expectedState {

@@ -17,8 +17,6 @@ type CredentialUtils interface {
 	getPassword(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
 	generateCredentials(settings *config.Settings) (string, string, error)
-	generateDatabaseName(settings *config.Settings) string
-	buildUsername() string
 }
 
 func formatDBName(database string) string {
@@ -66,8 +64,6 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	switch i.DbType {
 	case "postgres", "mysql":
 		dbScheme = i.DbType
-	case "oracle-se1", "oracle-se2", "oracle-ee":
-		dbScheme = "oracle"
 	default:
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
@@ -121,12 +117,12 @@ func (u *RDSCredentialUtils) generateCredentials(
 	return salt, encrypted, err
 }
 
-func (u *RDSCredentialUtils) generateDatabaseName(
+func generateDatabaseName(
 	settings *config.Settings,
 ) string {
 	return settings.DbNamePrefix + helpers.RandStrNoCaps(15)
 }
 
-func (u *RDSCredentialUtils) buildUsername() string {
+func buildUsername() string {
 	return "u" + helpers.RandStrNoCaps(15)
 }

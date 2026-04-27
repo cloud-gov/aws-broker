@@ -16,15 +16,15 @@ import (
 type RDSInstance struct {
 	base.Instance
 
-	dbUtils CredentialUtils `gorm:"-" json:"-"`
+	credentialUtils CredentialUtils `gorm:"-" json:"-"`
 
-	Database string `sql:"size(255)"`
-	Username string `sql:"size(255)"`
+	Database string `sql:"size(255)" deep:"-"`
+	Username string `sql:"size(255)" deep:"-"`
 	Password string `sql:"size(255)"`
 	Salt     string `sql:"size(255)"`
 
-	mu   *sync.Mutex
-	Tags map[string]string `gorm:"-" deep:"-"`
+	mu   *sync.RWMutex
+	Tags map[string]string `gorm:"serializer:json"`
 
 	BackupRetentionPeriod int64  `sql:"size(255)"`
 	DbSubnetGroup         string `gorm:"-"`
@@ -49,7 +49,7 @@ type RDSInstance struct {
 	StorageType string `sql:"size(255)"`
 
 	AddReadReplica      bool   `gorm:"-"`
-	ReplicaDatabase     string `sql:"size(255)"`
+	ReplicaDatabase     string `sql:"size(255)" deep:"-"`
 	ReplicaDatabaseHost string `sql:"size(255)"`
 	DeleteReadReplica   bool   `gorm:"-"`
 
@@ -59,16 +59,17 @@ type RDSInstance struct {
 
 func NewRDSInstance() *RDSInstance {
 	return &RDSInstance{
-		dbUtils: &RDSCredentialUtils{},
+		credentialUtils: &RDSCredentialUtils{},
+		mu:              &sync.RWMutex{},
 	}
 }
 
 func (i *RDSInstance) getCredentials(password string) (map[string]string, error) {
-	return i.dbUtils.getCredentials(i, password)
+	return i.credentialUtils.getCredentials(i, password)
 }
 
 func (i *RDSInstance) generateCredentials(settings *config.Settings) error {
-	salt, encrypted, err := i.dbUtils.generateCredentials(settings)
+	salt, encrypted, err := i.credentialUtils.generateCredentials(settings)
 	if err != nil {
 		return err
 	}
@@ -210,8 +211,8 @@ func (i *RDSInstance) init(
 	i.LicenseModel = plan.LicenseModel
 
 	// Build random values
-	i.Database = i.dbUtils.generateDatabaseName(settings)
-	i.Username = i.dbUtils.buildUsername()
+	i.Database = generateDatabaseName(settings)
+	i.Username = buildUsername()
 
 	err := i.generateCredentials(settings)
 	if err != nil {
@@ -257,10 +258,19 @@ func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
 	}
 }
 
+func (i *RDSInstance) initMutex() {
+	if i.mu == nil {
+		i.mu = &sync.RWMutex{}
+	}
+}
+
 func (i *RDSInstance) setTags(
 	plan *catalog.RDSPlan,
 	tags map[string]string,
 ) error {
+	i.initMutex()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 	if i.Tags == nil {
 		i.Tags = make(map[string]string)
 	}
@@ -275,6 +285,9 @@ func (i *RDSInstance) setTags(
 }
 
 func (i *RDSInstance) getTags() map[string]string {
+	i.initMutex()
+	i.mu.RLock()
+	defer i.mu.RUnlock()
 	var tags = make(map[string]string)
 	if i.Tags == nil {
 		return tags

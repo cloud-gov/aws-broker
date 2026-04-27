@@ -11,12 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/go-test/deep"
 	"gorm.io/gorm"
 )
@@ -437,7 +437,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			test.adapter.asyncModifyRedis(test.instance)
 
-			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.ModifyOp)
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.ModifyOp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -789,7 +789,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 			// do not invoke in a goroutine so that we can guarantee it has finished to observe its results
 			test.dbAdapter.asyncDeleteRedis(test.instance)
 
-			asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -856,7 +856,7 @@ func TestDeleteRedis(t *testing.T) {
 			}
 
 			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := jobs.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
+				asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
 				if err != nil {
 					t.Fatal(err)
 				}

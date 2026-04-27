@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
@@ -54,7 +55,7 @@ func run(ctx context.Context, out io.Writer) error {
 
 	logger.Debug("run: Migrating GORM models")
 	// Automigrate!
-	err = db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &jobs.AsyncJobMsg{}) // Add all your models here to help setup the database tables
+	err = db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) // Add all your models here to help setup the database tables
 	if err != nil {
 		return fmt.Errorf("error migrating GORM models: %s", err)
 	}
@@ -74,6 +75,12 @@ func run(ctx context.Context, out io.Writer) error {
 	logger.Debug("run: initializing River workers and client")
 	workers := river.NewWorkers()
 	river.AddWorker(workers, rds.NewCreateWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+	))
+	river.AddWorker(workers, rds.NewModifyWorker(
+		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
+	))
+	river.AddWorker(workers, rds.NewDeleteWorker(
 		db, &settings, rdsClient, logger, parameterGroupClient, &rds.RDSCredentialUtils{},
 	))
 

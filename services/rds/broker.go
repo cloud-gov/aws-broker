@@ -17,10 +17,10 @@ import (
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 )
 
 // Options is a struct containing all of the custom parameters supported by
@@ -386,7 +386,7 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 	}
 
 	if needAsyncJobState {
-		asyncJobMsg, err := jobs.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
 		if err != nil {
 			return lastOperation, apiresponses.NewFailureResponse(
 				err,
@@ -427,7 +427,7 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.dbUtils.getPassword(
+	password, err := existingInstance.credentialUtils.getPassword(
 		existingInstance.Salt,
 		existingInstance.Password,
 		broker.settings.EncryptionKey,

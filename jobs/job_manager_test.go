@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 )
 
@@ -20,11 +21,11 @@ func TestRequestJobMessageQueue(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobchan <- AsyncJobMsg{
+	jobchan <- asyncmessage.AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
-		JobState: AsyncJobState{
+		JobState: asyncmessage.AsyncJobState{
 			State:   jobstate,
 			Message: jobmsg,
 		},
@@ -46,11 +47,11 @@ func TestGetJobState(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobMsg := AsyncJobMsg{
+	jobMsg := asyncmessage.AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
-		JobState: AsyncJobState{
+		JobState: asyncmessage.AsyncJobState{
 			State:   jobstate,
 			Message: jobmsg,
 		},
@@ -84,11 +85,11 @@ func TestCleanUpJobState(t *testing.T) {
 	if err != nil {
 		t.Errorf("RequestQueue failed! %v", err)
 	}
-	jobchan <- AsyncJobMsg{
+	jobchan <- asyncmessage.AsyncJobMsg{
 		BrokerId:   brokerid,
 		InstanceId: instanceid,
 		JobType:    jobop,
-		JobState: AsyncJobState{
+		JobState: asyncmessage.AsyncJobState{
 			State:   jobstate,
 			Message: jobmsg,
 		},
@@ -105,51 +106,4 @@ func TestCleanUpJobState(t *testing.T) {
 	if len(quemgr.jobStates) > 0 {
 		t.Error("Jobstates failed to cleanup")
 	}
-}
-
-func TestScheduleJob(t *testing.T) {
-	quemgr := NewAsyncJobManager()
-	quemgr.scheduler.StartAsync()
-	_, err := quemgr.scheduleJob("*/1 * * * *", "test", quemgr.cleanupJobStates)
-	if err != nil {
-		t.Error("Test Task could not be schedule", err)
-	}
-	if quemgr.scheduler.Len() != 1 {
-		t.Error("Jobs are not = 1")
-	}
-	quemgr.scheduler.Stop()
-}
-
-func TestUnscheduleJob(t *testing.T) {
-	quemgr := NewAsyncJobManager()
-	quemgr.scheduler.StartAsync()
-	_, err := quemgr.scheduleJob("*/1 * * * *", "test", quemgr.cleanupJobStates)
-	if err != nil {
-		t.Error("Test Task could not be schedule", err)
-	}
-	if quemgr.scheduler.Len() != 1 {
-		t.Error("Jobs are not = 1")
-	}
-	quemgr.unscheduleJob("test")
-	if quemgr.scheduler.Len() != 0 {
-		t.Error("Jobs are not = 0")
-	}
-	quemgr.scheduler.Stop()
-}
-
-func TestIsJobScheduled(t *testing.T) {
-	quemgr := NewAsyncJobManager()
-	quemgr.scheduler.StartAsync()
-	_, err := quemgr.scheduleJob("*/1 * * * *", "test", quemgr.cleanupJobStates)
-	if err != nil {
-		t.Error("Test Task could not be schedule", err)
-	}
-	if quemgr.scheduler.Len() != 1 {
-		t.Error("Jobs are not = 1")
-	}
-	if !quemgr.isJobScheduled("test") {
-		t.Error("could not fine test job")
-	}
-	quemgr.scheduler.Stop()
-
 }

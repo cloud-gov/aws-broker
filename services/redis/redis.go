@@ -9,11 +9,11 @@ import (
 	"code.cloudfoundry.org/lager"
 	"gorm.io/gorm"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
-	"github.com/cloud-gov/aws-broker/jobs"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -159,7 +159,7 @@ func (d *dedicatedRedisAdapter) verifyIncreasedReplicaCount(i *RedisInstance) er
 }
 
 func (d *dedicatedRedisAdapter) increaseReplicaCount(i *RedisInstance, operation base.Operation) error {
-	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new replica nodes")
+	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new replica nodes")
 
 	newReplicaCount, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
 	if err != nil {
@@ -173,7 +173,7 @@ func (d *dedicatedRedisAdapter) increaseReplicaCount(i *RedisInstance, operation
 	})
 	if err != nil {
 		d.logger.Error("error increasing replica count", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
 		return err
 	}
 
@@ -205,7 +205,7 @@ func (d *dedicatedRedisAdapter) asyncModifyRedis(i *RedisInstance) {
 	params, err := prepareModifyReplicationGroupInput(i)
 	if err != nil {
 		d.logger.Error("prepareModifyReplicationGroupInput err", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
 		return
 	}
 
@@ -213,25 +213,25 @@ func (d *dedicatedRedisAdapter) asyncModifyRedis(i *RedisInstance) {
 		err = d.increaseReplicaCount(i, operation)
 		if err != nil {
 			d.logger.Error("error increasing replica count", err)
-			jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
+			asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
 			return
 		}
 	}
 
-	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
+	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
 
 	_, err = d.elasticache.ModifyReplicationGroup(context.TODO(), params)
 	if err != nil {
 		d.logger.Error("ModifyReplicationGroup err", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
 		return
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
+	asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
 }
 
 func (d *dedicatedRedisAdapter) modifyRedis(i *RedisInstance) (base.InstanceState, error) {
-	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Modification in progress")
+	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.ModifyOp, base.InstanceInProgress, "Modification in progress")
 	if err != nil {
 		return base.InstanceNotModified, err
 	}
@@ -327,7 +327,7 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 	operation := base.DeleteOp
 
-	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
+	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
 
 	params := &elasticache.DeleteReplicationGroupInput{
 		ReplicationGroupId:      aws.String(i.ClusterID), // Required
@@ -337,7 +337,7 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 
 	if err != nil {
 		d.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
 		return
 	}
 
@@ -351,16 +351,16 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
 	if err != nil {
 		d.logger.Error("error waiting for cluster to be deleted", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
 		return
 	}
 
-	jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
 
 	err = d.exportRedisSnapshot(i)
 	if err != nil {
 		d.logger.Error("asyncDeleteRedis: exportRedisSnapshot failed", err)
-		jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
+		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
 		return
 	}
 
@@ -370,11 +370,11 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 		return
 	}
 
-	jobs.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
+	asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
 }
 
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
-	err := jobs.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deletion in progress")
+	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deletion in progress")
 	if err != nil {
 		return base.InstanceNotGone, err
 	}
