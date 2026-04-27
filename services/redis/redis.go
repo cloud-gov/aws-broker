@@ -3,10 +3,8 @@ package redis
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"log/slog"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -23,7 +21,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	"bytes"
 	"fmt"
 )
 
@@ -249,165 +246,32 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 	return i.getCredentials(password)
 }
 
-func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
-	operation := base.DeleteOp
-
-	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
-
-	params := &elasticache.DeleteReplicationGroupInput{
-		ReplicationGroupId:      aws.String(i.ClusterID), // Required
-		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
-	}
-	_, err := d.elasticache.DeleteReplicationGroup(context.TODO(), params)
-
-	if err != nil {
-		d.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
-		return
-	}
-
-	// Create a waiter
-	waiter := elasticache.NewReplicationGroupDeletedWaiter(d.elasticache, func(dawo *elasticache.ReplicationGroupDeletedWaiterOptions) {
-		dawo.MinDelay = d.settings.PollAwsMinDelay
-	})
-	waiterInput := &elasticache.DescribeReplicationGroupsInput{
-		ReplicationGroupId: &i.ClusterID,
-	}
-	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
-	if err != nil {
-		d.logger.Error("error waiting for cluster to be deleted", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
-		return
-	}
-
-	asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
-
-	err = d.exportRedisSnapshot(i)
-	if err != nil {
-		d.logger.Error("asyncDeleteRedis: exportRedisSnapshot failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
-		return
-	}
-
-	err = d.db.Unscoped().Delete(i).Error
-	if err != nil {
-		d.logger.Error("asyncDeleteRedis: error deleting record", "err", err)
-		return
-	}
-
-	asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
-}
-
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
 	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deletion in progress")
 	if err != nil {
 		return base.InstanceNotGone, err
 	}
 
-	go d.asyncDeleteRedis(i)
+	tx := d.db.Begin()
+	if err := tx.Error; err != nil {
+		return base.InstanceNotGone, err
+	}
+	defer tx.Rollback()
+
+	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
+		Instance: i,
+	}, nil)
+	if err != nil {
+		return base.InstanceNotGone, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return base.InstanceNotGone, err
+	}
 
 	return base.InstanceInProgress, nil
-}
-
-func (d *dedicatedRedisAdapter) exportRedisSnapshot(i *RedisInstance) error {
-	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
-	bucket := d.settings.SnapshotsBucketName
-
-	snapshot_name := i.ClusterID + "-final"
-	sleep := 30 * time.Second
-	d.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot to Complete")
-
-	// poll for snapshot being available
-	check_input := &elasticache.DescribeSnapshotsInput{
-		SnapshotName: &snapshot_name,
-	}
-	for {
-		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
-		if err != nil {
-			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", "err", err)
-			return err
-		}
-
-		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
-			break
-		}
-		time.Sleep(sleep)
-	}
-
-	d.logger.Info("exportRedisSnapshot: Exporting Instance Snapshot to s3")
-	// export to s3 bucket so copy will autoexpire after 14 days
-	copy_input := &elasticache.CopySnapshotInput{
-		TargetBucket:       aws.String(bucket),
-		TargetSnapshotName: aws.String(path + "/" + snapshot_name),
-		SourceSnapshotName: aws.String(snapshot_name),
-	}
-	_, err := d.elasticache.CopySnapshot(context.TODO(), copy_input)
-	if err != nil {
-		d.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", "err", err)
-		return err
-	}
-
-	d.logger.Info("exportRedisSnapshot: Writing Instance manifest to s3")
-	// write instance to manifest
-	// marshall instance to bytes.
-	data, err := json.Marshal(i)
-	if err != nil {
-		return err
-	}
-	body := bytes.NewReader(data)
-
-	serverSideEncryption, err := brokerAws.GetS3ServerSideEncryptionEnum("AES256")
-	if err != nil {
-		d.logger.Error("exportRedisSnapshot: GetS3ServerSideEncryptionEnum failed", "err", err)
-		return err
-	}
-
-	input := s3.PutObjectInput{
-		Body:                 body,
-		Bucket:               aws.String(bucket),
-		Key:                  aws.String(path + "/instance_manifest.json"),
-		ServerSideEncryption: *serverSideEncryption,
-	}
-
-	// drop info to s3
-	_, err = d.s3.PutObject(context.TODO(), &input)
-	// Decide if AWS service call was successful
-	if err != nil {
-		d.logger.Error("exportRedisSnapshot: S3.PutObject Failed", "err", err)
-		return err
-	}
-
-	d.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot Copy to Complete")
-	// poll for snapshot being available again before delete
-	check_input = &elasticache.DescribeSnapshotsInput{
-		SnapshotName: &snapshot_name,
-	}
-	for {
-		resp, err := d.elasticache.DescribeSnapshots(context.TODO(), check_input)
-		if err != nil {
-			d.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", "err", err)
-			return err
-		}
-
-		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
-			break
-		}
-		time.Sleep(sleep)
-	}
-
-	d.logger.Info("exportRedisSnapshot: Deleting ElatiCache Service Snapshot", "err", err)
-	// now cleanup snapshot from ElastiCache
-	delete_input := &elasticache.DeleteSnapshotInput{
-		SnapshotName: aws.String(snapshot_name),
-	}
-	_, err = d.elasticache.DeleteSnapshot(context.TODO(), delete_input)
-	if err != nil {
-		d.logger.Error("Redis.DeleteSnapshot: Failed", "err", err)
-		return err
-	}
-
-	d.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete")
-	return nil
 }
 
 func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateReplicationGroupInput, error) {

@@ -4,14 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"slices"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
-	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
@@ -170,7 +168,6 @@ func TestModifyRedis(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			responseCode, err := test.adapter.modifyRedis(test.instance)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("unexpected error: %s", err)
@@ -190,7 +187,7 @@ func TestModifyRedis(t *testing.T) {
 			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &ModifyArgs{}, nil)
 
 			if job.Args.Instance.Uuid != test.instance.Uuid {
-				t.Fatal("Did not receive expected RDS instance as create worker argument")
+				t.Fatal("Did not receive expected RDS instance as modify worker argument")
 			}
 
 			if responseCode != test.expectedState {
@@ -211,14 +208,15 @@ func TestDeleteRedis(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		instance               *RedisInstance
-		adapter                *dedicatedRedisAdapter
-		expectedErr            error
-		expectedState          base.InstanceState
-		password               string
-		expectedAsyncJobStates []base.InstanceState
+		ctx           context.Context
+		instance      *RedisInstance
+		adapter       *dedicatedRedisAdapter
+		expectedErr   error
+		expectedState base.InstanceState
+		password      string
 	}{
 		"success": {
+			ctx: t.Context(),
 			adapter: NewTestDedicatedRedisAdapter(
 				t.Context(),
 				&config.Settings{
@@ -239,8 +237,7 @@ func TestDeleteRedis(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			expectedState:          base.InstanceInProgress,
-			expectedAsyncJobStates: []base.InstanceState{base.InstanceInProgress, base.InstanceGone},
+			expectedState: base.InstanceInProgress,
 		},
 	}
 
@@ -255,21 +252,22 @@ func TestDeleteRedis(t *testing.T) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
 
-			if len(test.expectedAsyncJobStates) > 0 {
-				asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				// The exact database state at this point in the test is non-deterministic, since the database updates
-				// are being done in a goroutine. So we test against a set of possible job states
-				if !slices.Contains(test.expectedAsyncJobStates, asyncJobMsg.JobState.State) {
-					t.Fatalf("expected one of async job states: %+v, got: %s", test.expectedAsyncJobStates, asyncJobMsg.JobState.State)
-				}
-			}
-
 			if responseCode != test.expectedState {
 				t.Errorf("expected response: %s, got: %s", test.expectedState, responseCode)
+			}
+
+			tx := brokerDB.Begin()
+			if err := tx.Error; err != nil {
+				t.Fatal(err)
+			}
+
+			sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+			defer tx.Rollback()
+
+			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &DeleteArgs{}, nil)
+
+			if job.Args.Instance.Uuid != test.instance.Uuid {
+				t.Fatal("Did not receive expected instance as delete worker argument")
 			}
 		})
 	}

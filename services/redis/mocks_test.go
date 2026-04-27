@@ -36,6 +36,7 @@ func NewTestDedicatedRedisAdapter(
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, NewModifyWorker(brokerDB, s, elasticache, logger))
+	river.AddWorker(workers, NewDeleteWorker(brokerDB, s, elasticache, s3, logger))
 
 	if s.DbConfig == nil {
 		s.DbConfig = &db.DBConfig{
