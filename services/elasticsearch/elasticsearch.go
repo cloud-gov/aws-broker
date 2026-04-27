@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/riverqueue/river"
+	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -24,7 +27,6 @@ import (
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/common"
@@ -38,7 +40,7 @@ type ElasticsearchAdapter interface {
 	modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance, passoword string, queue *jobs.AsyncJobManager) (base.InstanceState, error)
+	deleteElasticsearch(i *ElasticsearchInstance, passoword string) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
@@ -60,12 +62,12 @@ func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstan
 	return i.getCredentials()
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	return base.InstanceInProgress, nil
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, logger *slog.Logger) (ElasticsearchAdapter, error) {
+func initializeAdapter(ctx context.Context, db *gorm.DB, s *config.Settings, logger *slog.Logger, riverClient *river.Client[*sql.Tx]) (ElasticsearchAdapter, error) {
 	var elasticsearchAdapter ElasticsearchAdapter
 
 	if s.Environment == "test" {
@@ -74,7 +76,7 @@ func initializeAdapter(s *config.Settings, logger *slog.Logger) (ElasticsearchAd
 	}
 
 	cfg, err := awsConfig.LoadDefaultConfig(
-		context.TODO(),
+		ctx,
 		awsConfig.WithRegion(s.Region),
 	)
 	if err != nil {
@@ -84,26 +86,32 @@ func initializeAdapter(s *config.Settings, logger *slog.Logger) (ElasticsearchAd
 	iamSvc := iam.NewFromConfig(cfg)
 
 	elasticsearchAdapter = &dedicatedElasticsearchAdapter{
-		settings:   *s,
-		logger:     logger,
-		opensearch: opensearch.NewFromConfig(cfg),
-		iam:        iamSvc,
-		sts:        sts.NewFromConfig(cfg),
-		ip:         awsiam.NewIAMPolicyClient(iamSvc, logger),
-		s3:         s3.NewFromConfig(cfg),
+		ctx:         ctx,
+		db:          db,
+		settings:    *s,
+		logger:      logger,
+		opensearch:  opensearch.NewFromConfig(cfg),
+		iam:         iamSvc,
+		sts:         sts.NewFromConfig(cfg),
+		ip:          awsiam.NewIAMPolicyClient(iamSvc, logger),
+		s3:          s3.NewFromConfig(cfg),
+		riverClient: riverClient,
 	}
 
 	return elasticsearchAdapter, nil
 }
 
 type dedicatedElasticsearchAdapter struct {
-	settings   config.Settings
-	logger     *slog.Logger
-	iam        awsiam.IAMClientInterface
-	sts        STSClientInterface
-	opensearch OpensearchClientInterface
-	ip         *awsiam.IAMPolicyClient
-	s3         brokerAws.S3ClientInterface
+	ctx         context.Context
+	db          *gorm.DB
+	settings    config.Settings
+	logger      *slog.Logger
+	iam         awsiam.IAMClientInterface
+	sts         STSClientInterface
+	opensearch  OpensearchClientInterface
+	ip          *awsiam.IAMPolicyClient
+	s3          brokerAws.S3ClientInterface
+	riverClient *river.Client[*sql.Tx]
 }
 
 // This is the prefix for all pgroups created by the broker.
@@ -269,12 +277,12 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string, queue *jobs.AsyncJobManager) (base.InstanceState, error) {
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
 	//check for backing resource and do async otherwise remove from db
 	params := &opensearch.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	_, err := d.opensearch.DescribeDomain(context.TODO(), params)
+	_, err := d.opensearch.DescribeDomain(d.ctx, params)
 	if err != nil {
 		var notFoundException *opensearchTypes.ResourceNotFoundException
 		if errors.As(err, &notFoundException) {
@@ -284,11 +292,26 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 		d.logger.Error("deleteElasticsearch: DescribeDomain error", "err", err)
 		return base.InstanceNotGone, err
 	}
-	// perform async deletion and return in progress
-	jobchan, err := queue.RequestJobMessageQueue(i.ServiceID, i.Uuid, base.DeleteOp)
-	if err == nil {
-		go d.asyncDeleteElasticSearchDomain(i, password, jobchan)
+
+	tx := d.db.Begin()
+	if err := tx.Error; err != nil {
+		return base.InstanceNotGone, err
 	}
+	defer tx.Rollback()
+
+	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
+
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
+		Instance: i,
+	}, nil)
+	if err != nil {
+		return base.InstanceNotGone, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return base.InstanceNotGone, err
+	}
+
 	return base.InstanceInProgress, nil
 }
 

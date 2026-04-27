@@ -1,6 +1,8 @@
 package elasticsearch
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +18,7 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/riverqueue/river"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -51,14 +54,16 @@ type elasticsearchBroker struct {
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(
+	ctx context.Context,
 	catalog *catalog.Catalog,
 	brokerDB *gorm.DB,
 	settings *config.Settings,
 	jobs *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
+	riverClient *river.Client[*sql.Tx],
 	logger *slog.Logger,
 ) (base.Broker, error) {
-	adapter, err := initializeAdapter(settings, logger)
+	adapter, err := initializeAdapter(ctx, brokerDB, settings, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +396,7 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	}
 
 	// send async deletion request.
-	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password, broker.jobs)
+	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
