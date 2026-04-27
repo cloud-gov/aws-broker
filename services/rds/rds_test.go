@@ -286,11 +286,11 @@ func TestModifyDb(t *testing.T) {
 			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &ModifyArgs{}, nil)
 
 			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
-				t.Fatal("Did not receive expected RDS instance as create worker argument")
+				t.Fatal("Did not receive expected RDS instance as modify worker argument")
 			}
 
 			if job.Args.Plan.ID != test.plan.ID {
-				t.Fatal("Did not receive expected RDS plan as create worker argument")
+				t.Fatal("Did not receive expected RDS plan as modify worker argument")
 			}
 
 			if responseCode != test.expectedState {
@@ -640,7 +640,7 @@ func TestDeleteDb(t *testing.T) {
 			job := rivertest.RequireInsertedTx[*riversqlite.Driver](test.ctx, t, sqlTx, &DeleteArgs{}, nil)
 
 			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
-				t.Fatal("Did not receive expected RDS instance as create worker argument")
+				t.Fatal("Did not receive expected RDS instance as delete worker argument")
 			}
 
 			if responseCode != test.expectedState {
