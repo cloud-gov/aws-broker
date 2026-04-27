@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
@@ -84,6 +85,12 @@ func run(ctx context.Context, out io.Writer) error {
 	))
 	river.AddWorker(workers, rds.NewDeleteWorker(
 		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+	))
+
+	// Elasticache workers
+	elasticacheClient := elasticache.NewFromConfig(cfg)
+	river.AddWorker(workers, redis.NewModifyWorker(
+		db, &settings, elasticacheClient, logger,
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
