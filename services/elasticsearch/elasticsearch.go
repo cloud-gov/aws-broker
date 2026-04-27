@@ -14,7 +14,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
@@ -190,7 +189,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	i.IamPolicyARN = policyARN
 
 	//try setup of roles and policies on create
-	err = d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	err = createUpdateBucketRolesAndPolicies(d.ip, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 	if err != nil {
 		return base.InstanceNotCreated, nil
 	}
@@ -254,7 +253,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 		}
 
-		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+		err := createUpdateBucketRolesAndPolicies(d.ip, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
 			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
@@ -264,7 +263,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	// add client bucket and adjust policies and roles if present
 	if i.Bucket != "" {
-		err := d.createUpdateBucketRolesAndPolicies(i, i.Bucket, "", iamTags)
+		err := createUpdateBucketRolesAndPolicies(d.ip, d.logger, i, i.Bucket, "", iamTags)
 		if err != nil {
 			return nil, err
 		}
@@ -346,97 +345,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	}
 	return base.InstanceNotCreated, nil
 
-}
-
-// utility to create roles and policies to enable snapshots in an s3 bucket
-// we pass bucket-name separately to enable reuse for client and broker buckets
-func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
-	i *ElasticsearchInstance,
-	bucket string,
-	path string,
-	iamTags []iamTypes.Tag,
-) error {
-	// ip := awsiam.NewIAMPolicyClient(d.settings.Region, d.logger)
-	var snapshotRole *iamTypes.Role
-
-	// create snapshotrole if not done yet
-	if i.SnapshotARN == "" {
-		rolename := i.Domain + "-to-s3-SnapshotRole"
-		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		arole, err := d.ip.CreateAssumeRole(policy, rolename, iamTags)
-		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", "err", err)
-			return err
-		}
-
-		i.SnapshotARN = *arole.Arn
-		snapshotRole = arole
-
-	}
-
-	// create PassRolePolicy if DNE
-	if i.IamPassRolePolicyARN == "" {
-		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
-		policyname := i.Domain + "-to-S3-ESRolePolicy"
-		username := i.Domain
-		policyarn, err := d.ip.CreateUserPolicy(policy, policyname, username, iamTags)
-		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", "err", err)
-			return err
-		}
-		i.IamPassRolePolicyARN = policyarn
-	}
-
-	// Create PolicyDoc Statements
-	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
-	bucketArn := "arn:aws-us-gov:s3:::" + bucket
-	listStatement := awsiam.PolicyStatementEntry{
-		Action:   []string{"s3:ListBucket"},
-		Effect:   "Allow",
-		Resource: []string{bucketArn},
-	}
-	// add wildcard for any path including empty one
-	// using path will now limit access to the specific path provided
-	path += "/*"
-	// Looks like: {"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `/*"]}
-	objectStatement := awsiam.PolicyStatementEntry{
-		Action:   []string{"s3:GetObject", "s3:PutObject", "s3:DeleteObject"},
-		Effect:   "Allow",
-		Resource: []string{bucketArn + path},
-	}
-
-	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
-	if i.SnapshotPolicyARN == "" {
-
-		policyDoc := awsiam.PolicyDocument{
-			Version:   "2012-10-17",
-			Statement: []awsiam.PolicyStatementEntry{listStatement, objectStatement},
-		}
-
-		policyname := i.Domain + "-to-S3-RolePolicy"
-		policy, err := policyDoc.ToString()
-		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
-			return err
-		}
-		policyarn, err := d.ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
-		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", "err", err)
-			return err
-		}
-		i.SnapshotPolicyARN = policyarn
-
-	} else {
-		// snaphost policy has already been created so we need to add the new statements for this new bucket
-		// to the existing policy version.
-		_, err := d.ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
-		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", "err", err)
-			return err
-		}
-
-	}
-	return nil
 }
 
 // determine whether the error is an opensearch.InvalidTypeException
