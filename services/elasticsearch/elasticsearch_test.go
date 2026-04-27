@@ -10,30 +10,6 @@ import (
 	"github.com/go-test/deep"
 )
 
-type mockEsApiClient struct {
-	getSnapshotStatusCallNum   int
-	getSnapshotStatusResponses []string
-	getSnapshotStatusErrs      []error
-}
-
-func (m *mockEsApiClient) CreateSnapshotRepo(repositoryName string, bucketName string, path string, region string, roleArn string) (string, error) {
-	return "", nil
-}
-
-func (m *mockEsApiClient) CreateSnapshot(repositoryName string, snapshotName string) (string, error) {
-	return "", nil
-}
-
-func (m *mockEsApiClient) GetSnapshotStatus(repositoryName string, snapshotName string) (string, error) {
-	currentCallNum := m.getSnapshotStatusCallNum
-	m.getSnapshotStatusCallNum++
-	if len(m.getSnapshotStatusErrs) > 0 && m.getSnapshotStatusErrs[currentCallNum] != nil {
-		return "", m.getSnapshotStatusErrs[currentCallNum]
-	}
-	status := m.getSnapshotStatusResponses[currentCallNum]
-	return status, nil
-}
-
 func TestIsInvalidTypeException(t *testing.T) {
 	isInvalidType := isInvalidTypeException(&opensearchTypes.InvalidTypeException{})
 	if !isInvalidType {
