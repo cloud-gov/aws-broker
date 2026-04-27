@@ -11,8 +11,6 @@ import (
 	"sort"
 	"text/template"
 
-	"code.cloudfoundry.org/lager"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -129,13 +127,13 @@ func (ip *IAMPolicyClient) CreateAssumeRole(
 				RoleName: aws.String(rolename),
 			})
 			if innerErr != nil {
-				ip.logger.Error("CreateAssumeRole: GetRole error", err)
+				ip.logger.Error("CreateAssumeRole: GetRole error", "err", err)
 				return nil, innerErr
 			}
 			return resp.Role, nil
 		}
 
-		ip.logger.Error("CreateAssumeRole: CreateRole error", err)
+		ip.logger.Error("CreateAssumeRole: CreateRole error", "err", err)
 		return role, err
 	}
 
@@ -163,7 +161,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		},
 	}).Parse(policyTemplate)
 	if err != nil {
-		ip.logger.Error("CreatePolicyFromTemplate: template.Parse error", err)
+		ip.logger.Error("CreatePolicyFromTemplate: template.Parse error", "err", err)
 		return "", err
 	}
 	policy := bytes.Buffer{}
@@ -172,7 +170,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		"Resources": resources,
 	})
 	if err != nil {
-		ip.logger.Error("CreatePolicyFromTemplate: tmpl.Execute error", err)
+		ip.logger.Error("CreatePolicyFromTemplate: tmpl.Execute error", "err", err)
 		return "", err
 	}
 
@@ -182,14 +180,14 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		Path:           stringOrNil(iamPath),
 		Tags:           iamTags,
 	}
-	ip.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
+	ip.logger.Debug("create-policy", "input", createPolicyInput)
 
 	createPolicyOutput, err := ip.iam.CreatePolicy(context.TODO(), createPolicyInput)
 	if err != nil {
-		ip.logger.Error("CreatePolicyFromTemplate: CreatePolicy error", err)
+		ip.logger.Error("CreatePolicyFromTemplate: CreatePolicy error", "err", err)
 		return "", err
 	}
-	ip.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
+	ip.logger.Debug("create-policy", "output", createPolicyOutput)
 
 	return *createPolicyOutput.Policy.Arn, nil
 }
@@ -222,7 +220,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 			})
 
 			if innerErr != nil {
-				ip.logger.Error("CreateUserPolicy: ListAttachedUserPolicies error", innerErr)
+				ip.logger.Error("CreateUserPolicy: ListAttachedUserPolicies error", "err", innerErr)
 				return "", innerErr
 			}
 
@@ -235,7 +233,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 			return "", err
 		}
 
-		ip.logger.Error("CreateUserPolicy: CreatePolicy error", err)
+		ip.logger.Error("CreateUserPolicy: CreatePolicy error", "err", err)
 
 		// return if error
 		return IamRolePolicyARN, err
@@ -249,7 +247,7 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 		}
 		_, err := ip.iam.AttachUserPolicy(context.TODO(), userAttachPolicyInput)
 		if err != nil {
-			ip.logger.Error("CreateUserPolicy: AttachUserPolicy error", err)
+			ip.logger.Error("CreateUserPolicy: AttachUserPolicy error", "err", err)
 			return IamRolePolicyARN, err
 		}
 	}
@@ -272,7 +270,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 
 	respPolicy, err := ip.iam.CreatePolicy(context.TODO(), rolePolicyInput)
 	if err != nil {
-		ip.logger.Error("CreatePolicyAttachRole: CreatePolicy error", err)
+		ip.logger.Error("CreatePolicyAttachRole: CreatePolicy error", "err", err)
 
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
@@ -281,7 +279,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 				RoleName: role.RoleName,
 			})
 			if innerErr != nil {
-				ip.logger.Error("CreatePolicyAttachRole: ListAttachedRolePolicies error", err)
+				ip.logger.Error("CreatePolicyAttachRole: ListAttachedRolePolicies error", "err", err)
 				return "", innerErr
 			}
 			for _, policy := range resp.AttachedPolicies {
@@ -304,7 +302,7 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 
 		_, err := ip.iam.AttachRolePolicy(context.TODO(), roleAttachPolicyInput)
 		if err != nil {
-			ip.logger.Error("CreatePolicyAttachRole: AttachRolePolicy error", err)
+			ip.logger.Error("CreatePolicyAttachRole: AttachRolePolicy error", "err", err)
 			return policyarn, err
 		}
 	}
@@ -321,7 +319,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		PolicyArn: aws.String(policyARN),
 	})
 	if err != nil {
-		ip.logger.Error("UpdateExistingPolicy: GetPolicy error", err)
+		ip.logger.Error("UpdateExistingPolicy: GetPolicy error", "err", err)
 		ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN))
 		return respPolVer, err
 	}
@@ -333,7 +331,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		}
 		resPolicyVersion, err := ip.iam.GetPolicyVersion(context.TODO(), policyVersionInput)
 		if err != nil {
-			ip.logger.Error("UpdateExistingPolicy: GetPolicyVersion error", err)
+			ip.logger.Error("UpdateExistingPolicy: GetPolicyVersion error", "err", err)
 			ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId)))
 			return respPolVer, err
 		}
@@ -370,7 +368,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 
 		resp, err := ip.iam.CreatePolicyVersion(context.TODO(), policyUpdatedVersion)
 		if err != nil {
-			ip.logger.Error("UpdateExistingPolicy: CreatePolicyVersion error", err)
+			ip.logger.Error("UpdateExistingPolicy: CreatePolicyVersion error", "err", err)
 			ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion))
 			return respPolVer, err
 		}
@@ -391,13 +389,13 @@ func (ip *IAMPolicyClient) DeletePolicy(policyARN string) error {
 	// list and remove all versions but default first
 	ip.deleteNonDefaultPolicyVersions(policyARN)
 
-	ip.logger.Debug("delete-policy", lager.Data{"input": deletePolicyInput})
+	ip.logger.Debug("delete-policy", "input", deletePolicyInput)
 	deletePolicyOutput, err := ip.iam.DeletePolicy(context.TODO(), deletePolicyInput)
 	if err != nil {
-		ip.logger.Error("DeletePolicy: DeletePolicy error", err)
+		ip.logger.Error("DeletePolicy: DeletePolicy error", "err", err)
 		return err
 	}
-	ip.logger.Debug("delete-policy", lager.Data{"output": deletePolicyOutput})
+	ip.logger.Debug("delete-policy", "output", deletePolicyOutput)
 
 	return nil
 }
@@ -408,21 +406,21 @@ func (ip IAMPolicyClient) deleteNonDefaultPolicyVersions(policyARN string) error
 	}
 
 	listPolicyVersionsOutput, err := ip.iam.ListPolicyVersions(context.TODO(), input)
-	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": listPolicyVersionsOutput})
+	ip.logger.Debug("list-policy-versions", "listVersions", listPolicyVersionsOutput)
 	if err != nil {
-		ip.logger.Error("deleteNonDefaultPolicyVersions: ListPolicyVersions error", err)
+		ip.logger.Error("deleteNonDefaultPolicyVersions: ListPolicyVersions error", "err", err)
 		return err
 	}
 
 	for _, version := range listPolicyVersionsOutput.Versions {
 		if !version.IsDefaultVersion {
-			ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
+			ip.logger.Debug("delete-policy deleting version", "version", version)
 			_, err := ip.iam.DeletePolicyVersion(context.TODO(), &iam.DeletePolicyVersionInput{
 				VersionId: version.VersionId,
 				PolicyArn: aws.String(policyARN),
 			})
 			if err != nil {
-				ip.logger.Error("deleteNonDefaultPolicyVersions: DeletePolicyVersion error", err)
+				ip.logger.Error("deleteNonDefaultPolicyVersions: DeletePolicyVersion error", "err", err)
 				return err
 			}
 		}
@@ -438,9 +436,9 @@ func (ip IAMPolicyClient) trimPolicyVersions(policyARN string, maxVersions int) 
 	}
 
 	resPolVers, err := ip.iam.ListPolicyVersions(context.TODO(), input)
-	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": resPolVers})
+	ip.logger.Debug("list-policy-versions", "listVersions", resPolVers)
 	if err != nil {
-		ip.logger.Error("trimPolicyVersions: ListPolicyVersions error", err)
+		ip.logger.Error("trimPolicyVersions: ListPolicyVersions error", "err", err)
 		return err
 	}
 
@@ -456,10 +454,10 @@ func (ip IAMPolicyClient) trimPolicyVersions(policyARN string, maxVersions int) 
 					PolicyArn: &policyARN,
 					VersionId: version.VersionId,
 				}
-				ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
+				ip.logger.Debug("delete-policy deleting version", "version", version)
 				_, err := ip.iam.DeletePolicyVersion(context.TODO(), input)
 				if err != nil {
-					ip.logger.Error("trimPolicyVersions: DeletePolicyVersion error", err)
+					ip.logger.Error("trimPolicyVersions: DeletePolicyVersion error", "err", err)
 					return err
 				}
 			}

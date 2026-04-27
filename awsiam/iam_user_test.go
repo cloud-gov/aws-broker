@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"testing"
 
-	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/testutil"
 
@@ -14,7 +13,6 @@ import (
 )
 
 var (
-	testSink = lagertest.NewTestSink()
 	iamPath  = "/"
 	userName = "iam-user"
 )
