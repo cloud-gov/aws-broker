@@ -2,12 +2,14 @@ package awsiam
 
 import (
 	"errors"
+	"log/slog"
 	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/cloud-gov/aws-broker/testutil"
 
 	"github.com/go-test/deep"
 )
@@ -32,8 +34,7 @@ var objectStatement PolicyStatementEntry = PolicyStatementEntry{
 }
 
 func NewTestIAMPolicyClient(iamSvc IAMClientInterface) *IAMPolicyClient {
-	logger.RegisterSink(testSink)
-	return NewIAMPolicyClient(iamSvc, logger)
+	return NewIAMPolicyClient(iamSvc, slog.New(&testutil.MockLogHandler{}))
 }
 
 func TestCreateAssumeRole(t *testing.T) {
@@ -432,7 +433,7 @@ func TestCreatePolicyFromTemplate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			iamPolicyClient := &IAMPolicyClient{
 				iam:    test.fakeIAMClient,
-				logger: logger,
+				logger: slog.New(&testutil.MockLogHandler{}),
 			}
 			policyARN, err := iamPolicyClient.CreatePolicyFromTemplate(
 				test.policyName,

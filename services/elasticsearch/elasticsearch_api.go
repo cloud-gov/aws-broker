@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 
@@ -27,7 +27,7 @@ type EsApiClient interface {
 
 type EsApiHandler struct {
 	opensearchClient *opensearch.Client
-	logger           lager.Logger
+	logger           *slog.Logger
 }
 
 type SnapshotRepo struct {
@@ -71,7 +71,7 @@ func NewSnapshotRepo(bucketname string, path string, region string, rolearn stri
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
-func NewEsApiHandler(svcInfo map[string]string, region string, logger lager.Logger) (*EsApiHandler, error) {
+func NewEsApiHandler(svcInfo map[string]string, region string, logger *slog.Logger) (*EsApiHandler, error) {
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),

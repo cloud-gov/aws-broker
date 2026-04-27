@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"log/slog"
 	"time"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
@@ -65,7 +65,7 @@ func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance,
 }
 
 // initializeAdapter is the main function to create database instances
-func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAdapter, error) {
+func initializeAdapter(s *config.Settings, logger *slog.Logger) (ElasticsearchAdapter, error) {
 	var elasticsearchAdapter ElasticsearchAdapter
 
 	if s.Environment == "test" {
@@ -98,7 +98,7 @@ func initializeAdapter(s *config.Settings, logger lager.Logger) (ElasticsearchAd
 
 type dedicatedElasticsearchAdapter struct {
 	settings   config.Settings
-	logger     lager.Logger
+	logger     *slog.Logger
 	iam        awsiam.IAMClientInterface
 	sts        STSClientInterface
 	opensearch OpensearchClientInterface

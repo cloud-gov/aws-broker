@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
-	"code.cloudfoundry.org/lager"
 
 	"gorm.io/gorm"
 
@@ -45,7 +44,7 @@ type elasticsearchBroker struct {
 	catalog    *catalog.Catalog
 	settings   *config.Settings
 	jobs       *jobs.AsyncJobManager
-	logger     lager.Logger
+	logger     *slog.Logger
 	tagManager brokertags.TagManager
 	adapter    ElasticsearchAdapter
 }
@@ -57,10 +56,8 @@ func InitElasticsearchBroker(
 	settings *config.Settings,
 	jobs *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
+	logger *slog.Logger,
 ) (base.Broker, error) {
-	logger := lager.NewLogger("aws-es-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
 	adapter, err := initializeAdapter(settings, logger)
 	if err != nil {
 		return nil, err

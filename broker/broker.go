@@ -156,7 +156,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 		}
 		return broker, nil
 	case b.catalog.ElasticsearchService.ID:
-		broker, err := elasticsearch.InitElasticsearchBroker(b.catalog, b.db, b.settings, b.jobManager, b.tagManager)
+		broker, err := elasticsearch.InitElasticsearchBroker(b.catalog, b.db, b.settings, b.jobManager, b.tagManager, b.logger)
 		if err != nil {
 			return nil, err
 		}

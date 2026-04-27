@@ -2,12 +2,13 @@ package elasticsearch
 
 import (
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
@@ -291,7 +292,7 @@ func TestPollForSnapshotCreation(t *testing.T) {
 					PollAwsMinDelay:   1 * time.Millisecond,
 					PollAwsMaxRetries: 1,
 				},
-				logger: lager.NewLogger("es-tests"),
+				logger: slog.New(&testutil.MockLogHandler{}),
 			},
 			expectedGetSnapshotCalls: 1,
 			expectErr:                true,

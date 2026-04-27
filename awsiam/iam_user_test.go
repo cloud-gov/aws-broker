@@ -2,10 +2,12 @@ package awsiam
 
 import (
 	"errors"
+	"log/slog"
 	"testing"
 
 	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/cloud-gov/aws-broker/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -18,8 +20,7 @@ var (
 )
 
 func NewTestIAMUserClient(iamSvc IAMClientInterface) *IAMUserClient {
-	logger.RegisterSink(testSink)
-	return NewIAMUserClient(iamSvc, logger)
+	return NewIAMUserClient(iamSvc, slog.New(&testutil.MockLogHandler{}))
 }
 
 func TestCreateUser(t *testing.T) {

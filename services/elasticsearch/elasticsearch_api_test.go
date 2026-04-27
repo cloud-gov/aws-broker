@@ -3,11 +3,11 @@ package elasticsearch
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"net/http"
-	"os"
 	"testing"
 
-	"code.cloudfoundry.org/lager"
+	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/opensearch-project/opensearch-go/v2"
 )
 
@@ -31,9 +31,7 @@ func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return m.Response, m.Err
 }
 
-func NewTestEsAPIHandler(client *opensearch.Client) *EsApiHandler {
-	logger := lager.NewLogger("aws-rds-test")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+func NewTestEsAPIHandler(client *opensearch.Client, logger *slog.Logger) *EsApiHandler {
 	return &EsApiHandler{
 		opensearchClient: client,
 		logger:           logger,
@@ -71,7 +69,7 @@ func TestCreateSnapshotRepoSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := NewTestEsAPIHandler(client)
+	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
 
 	_, err = es.CreateSnapshotRepo(repoName, bucket, path, region, rolearn)
 	if err != nil {
@@ -95,7 +93,7 @@ func TestCreateSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := NewTestEsAPIHandler(client)
+	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
 	_, err = es.CreateSnapshot(repoName, snapshotName)
 	if err != nil {
 		t.Errorf("Err is not nil: %v", err)
@@ -118,7 +116,7 @@ func TestGetSnapshotStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := NewTestEsAPIHandler(client)
+	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
 
 	resp, err := es.GetSnapshotStatus(repoName, snapshotName)
 	if err != nil {
@@ -146,7 +144,7 @@ func TestGetSnapshotStatusNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := NewTestEsAPIHandler(client)
+	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
 
 	resp, err := es.GetSnapshotStatus(repoName, snapshotName)
 	if err != nil {
@@ -174,7 +172,7 @@ func TestGetSnapshotStatusNoSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	es := NewTestEsAPIHandler(client)
+	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
 
 	_, err = es.GetSnapshotStatus(repoName, snapshotName)
 	if err == nil {

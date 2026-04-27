@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"sort"
 	"text/template"
@@ -61,7 +62,7 @@ type IAMClientInterface interface {
 
 type IAMPolicyClient struct {
 	iam    IAMClientInterface
-	logger lager.Logger
+	logger *slog.Logger
 }
 
 func (pd *PolicyDocument) ToString() (string, error) {
@@ -99,10 +100,10 @@ func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry)
 	return modified
 }
 
-func NewIAMPolicyClient(iamSvc IAMClientInterface, logger lager.Logger) *IAMPolicyClient {
+func NewIAMPolicyClient(iamSvc IAMClientInterface, logger *slog.Logger) *IAMPolicyClient {
 	return &IAMPolicyClient{
 		iam:    iamSvc,
-		logger: logger.Session("iam-policy"),
+		logger: logger,
 	}
 }
 

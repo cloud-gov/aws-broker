@@ -2,6 +2,7 @@ package awsiam
 
 import (
 	"context"
+	"log/slog"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,16 +13,16 @@ import (
 
 type IAMUserClient struct {
 	iamsvc IAMClientInterface
-	logger lager.Logger
+	logger *slog.Logger
 }
 
 func NewIAMUserClient(
 	iamsvc IAMClientInterface,
-	logger lager.Logger,
+	logger *slog.Logger,
 ) *IAMUserClient {
 	return &IAMUserClient{
 		iamsvc: iamsvc,
-		logger: logger.Session("iam-user"),
+		logger: logger,
 	}
 }
 
