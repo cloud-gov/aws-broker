@@ -59,7 +59,7 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance) e
 	params, err := prepareModifyReplicationGroupInput(i)
 	if err != nil {
 		w.logger.Error("error preparing modify replication group input", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error preparing modify input %w ", err))
 	}
 
@@ -67,26 +67,26 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance) e
 		err = w.increaseReplicaCount(ctx, i, operation)
 		if err != nil {
 			w.logger.Error("error increasing replica count", "err", err)
-			asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
 			return river.JobCancel(fmt.Errorf("asyncModifyRedis: error increasing replica count %w ", err))
 		}
 	}
 
-	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
 
 	_, err = w.elasticache.ModifyReplicationGroup(context.TODO(), params)
 	if err != nil {
 		w.logger.Error("error modifying replication group", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error modifying replication group %w ", err))
 	}
 
-	asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
 	return nil
 }
 
 func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstance, operation base.Operation) error {
-	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new replica nodes")
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new replica nodes")
 
 	newReplicaCount, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
 	if err != nil {
@@ -100,7 +100,7 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	})
 	if err != nil {
 		w.logger.Error("error increasing replica count", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
 		return err
 	}
 

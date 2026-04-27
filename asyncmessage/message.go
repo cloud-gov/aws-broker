@@ -2,7 +2,7 @@ package asyncmessage
 
 import (
 	"errors"
-	"fmt"
+	"log/slog"
 
 	"github.com/cloud-gov/aws-broker/base"
 	"gorm.io/gorm"
@@ -32,9 +32,9 @@ func GetLastAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, ope
 	return &asyncJobMsg, result.Error
 }
 
-func ShouldWriteAsyncJobMessage(db *gorm.DB, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) {
+func WriteAsyncJobMessageAndLogError(db *gorm.DB, logger *slog.Logger, brokerId string, instanceId string, operation base.Operation, state base.InstanceState, message string) {
 	err := WriteAsyncJobMessage(db, brokerId, instanceId, operation, state, message)
 	if err != nil {
-		fmt.Println(fmt.Errorf("ShouldWriteAsyncJobMessage error: %w", err))
+		logger.Error("Could not write async job message to database", "err", err)
 	}
 }

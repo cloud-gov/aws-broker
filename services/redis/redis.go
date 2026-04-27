@@ -262,7 +262,7 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 
 	if err != nil {
 		d.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
 		return
 	}
 
@@ -276,7 +276,7 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 	err = waiter.Wait(context.TODO(), waiterInput, d.settings.PollAwsMaxDuration)
 	if err != nil {
 		d.logger.Error("error waiting for cluster to be deleted", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
 		return
 	}
 
@@ -285,7 +285,7 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 	err = d.exportRedisSnapshot(i)
 	if err != nil {
 		d.logger.Error("asyncDeleteRedis: exportRedisSnapshot failed", "err", err)
-		asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
 		return
 	}
 
@@ -295,7 +295,7 @@ func (d *dedicatedRedisAdapter) asyncDeleteRedis(i *RedisInstance) {
 		return
 	}
 
-	asyncmessage.ShouldWriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
+	asyncmessage.WriteAsyncJobMessageAndLogError(d.db, d.logger, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
 }
 
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
