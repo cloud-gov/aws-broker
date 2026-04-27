@@ -181,7 +181,7 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 	snapshots := Snapshots{}
 	err = json.Unmarshal(bodyBytes, &snapshots)
 	if err != nil {
-		es.logger.Error("GetSnapshotStatus JSON unmarshal error", err)
+		es.logger.Error("GetSnapshotStatus JSON unmarshal error", "err", err)
 		return "", err
 	}
 

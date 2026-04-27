@@ -65,53 +65,42 @@ func NewDeleteWorker(
 }
 
 func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) error {
-	return nil
+	// TODO fix password handling
+	return w.asyncDeleteElasticSearchDomain(ctx, job.Args.Instance, "")
 }
 
-func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance, password string, jobstate chan asyncmessage.AsyncJobMsg) error {
-	// defer close(jobstate)
-
-	// msg := asyncmessage.AsyncJobMsg{
-	// 	BrokerId:   i.ServiceID,
-	// 	InstanceId: i.Uuid,
-	// 	JobType:    base.DeleteOp,
-	// 	JobState:   asyncmessage.AsyncJobState{},
-	// }
-	// msg.JobState.Message = fmt.Sprintf("Async DeleteOperation Started for Service Instance: %s", i.Uuid)
-	// msg.JobState.State = base.InstanceInProgress
-	// jobstate <- msg
-
+func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance, password string) error {
 	operation := base.DeleteOp
 
 	err := w.takeLastSnapshot(ctx, i, password)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error"
-		w.logger.Error(errorMsg, err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %w ", errorMsg, err))
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	err = w.writeManifestToS3(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error"
-		w.logger.Error(errorMsg, err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %w ", errorMsg, err))
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	err = w.cleanupRolesAndPolicies(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupRolesAndPolicies returned error"
-		w.logger.Error(errorMsg, err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %w ", errorMsg, err))
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	err = w.cleanupElasticSearchDomain(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error"
-		w.logger.Error(errorMsg, err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %w ", errorMsg, err))
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
@@ -129,13 +118,13 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 	if i.Host == "" {
 		creds, err = bindElasticsearchToApp(ctx, w.opensearch, w.ip, w.settings, w.logger, i, password)
 		if err != nil {
-			w.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", err)
+			w.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", "err", err)
 			return err
 		}
 	} else {
 		creds, err = i.getCredentials()
 		if err != nil {
-			w.logger.Error("takeLastSnapshot: getCredentials failed", err)
+			w.logger.Error("takeLastSnapshot: getCredentials failed", "err", err)
 			return err
 		}
 	}
@@ -148,7 +137,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 		iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 		err := createUpdateBucketRolesAndPolicies(w.ip, w.logger, i, w.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
-			w.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+			w.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return err
 		}
 		i.BrokerSnapshotsEnabled = true
@@ -157,7 +146,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi, err := NewEsApiHandler(creds, w.settings.Region, w.logger)
 	if err != nil {
-		w.logger.Error("NewEsApiHandler: %s", err)
+		w.logger.Error("NewEsApiHandler: %s", "err", err)
 		return err
 	}
 
@@ -170,7 +159,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 		i.SnapshotARN,
 	)
 	if err != nil {
-		w.logger.Error("createsnapshotrepo returns error", err)
+		w.logger.Error("createsnapshotrepo returns error", "err", err)
 		return err
 	}
 
@@ -179,7 +168,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 	// create snapshot
 	_, err = esApi.CreateSnapshot(w.settings.SnapshotsRepoName, snapshotName)
 	if err != nil {
-		w.logger.Error("CreateSnapshot returns error", err)
+		w.logger.Error("CreateSnapshot returns error", "err", err)
 		return err
 	}
 
@@ -194,7 +183,7 @@ func (w *DeleteWorker) pollForSnapshotCreation(esApi EsApiClient, snapshotName s
 	for attempts <= int(w.settings.PollAwsMaxRetries) {
 		snapshotState, err = esApi.GetSnapshotStatus(w.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
-			w.logger.Error("GetSnapShotStatus failed", err)
+			w.logger.Error("GetSnapShotStatus failed", "err", err)
 			return err
 		}
 		if snapshotState == "SUCCESS" {
@@ -216,17 +205,17 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	user := awsiam.NewIAMUserClient(w.iam, w.logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", "err", err)
 		return err
 	}
 
 	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", "err", err)
 		return err
 	}
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", "err", err)
 		return err
 	}
 
@@ -236,12 +225,12 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	}
 
 	if _, err := w.iam.DetachRolePolicy(ctx, roleDetachPolicyInput); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", "err", err)
 		return err
 	}
 
 	if err := w.ip.DeletePolicy(i.SnapshotPolicyARN); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", "err", err)
 		return err
 	}
 
@@ -250,22 +239,22 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	}
 
 	if _, err := w.iam.DeleteRole(ctx, rolePolicyDeleteInput); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", "err", err)
 		return err
 	}
 
 	if err := w.ip.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", "err", err)
 		return err
 	}
 
 	if err := user.Delete(i.Domain); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: user.Delete failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: user.Delete failed", "err", err)
 		return err
 	}
 
 	if err := w.ip.DeletePolicy(i.IamPolicyARN); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", err)
+		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", "err", err)
 		return err
 	}
 	return nil
@@ -298,7 +287,7 @@ func (w *DeleteWorker) cleanupElasticSearchDomain(ctx context.Context, i *Elasti
 				return nil
 			}
 
-			w.logger.Error("cleanupElasticSearchDomain: DescribeDomain err", err)
+			w.logger.Error("cleanupElasticSearchDomain: DescribeDomain err", "err", err)
 			return err
 		}
 	}
@@ -329,7 +318,7 @@ func (w *DeleteWorker) writeManifestToS3(ctx context.Context, i *ElasticsearchIn
 
 	_, err = w.s3.PutObject(ctx, &input)
 	if err != nil {
-		w.logger.Error("writeManifesttoS3: PutObject err", err)
+		w.logger.Error("writeManifesttoS3: PutObject err", "err", err)
 		return err
 	}
 

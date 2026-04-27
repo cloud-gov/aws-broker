@@ -229,20 +229,20 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 
 	err := esInstance.update(options)
 	if err != nil {
-		broker.logger.Error("Updating instance failed", err)
+		broker.logger.Error("Updating instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating servie instance")
 	}
 
 	state, err := broker.adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
-		broker.logger.Error("AWS call updating instance failed", err)
+		broker.logger.Error("AWS call updating instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "modifying Elasticsearch instance")
 	}
 	esInstance.State = state
 
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
-		broker.logger.Error("Saving instance failed", err)
+		broker.logger.Error("Saving instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "saving modified service instance")
 	}
 
@@ -286,7 +286,7 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 	default: //all other ops use synchronous checking of aws api
 		status, statusErr = broker.adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
-			broker.logger.Error("Error checking Elasticsearch status", statusErr)
+			broker.logger.Error("Error checking Elasticsearch status", "err", statusErr)
 			return lastOperation, apiresponses.NewFailureResponse(
 				statusErr,
 				http.StatusInternalServerError,

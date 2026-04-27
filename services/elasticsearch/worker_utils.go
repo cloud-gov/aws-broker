@@ -31,7 +31,7 @@ func createUpdateBucketRolesAndPolicies(
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := ip.CreateAssumeRole(policy, rolename, iamTags)
 		if err != nil {
-			logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
+			logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", "err", err)
 			return err
 		}
 
@@ -47,7 +47,7 @@ func createUpdateBucketRolesAndPolicies(
 		username := i.Domain
 		policyarn, err := ip.CreateUserPolicy(policy, policyname, username, iamTags)
 		if err != nil {
-			logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", err)
+			logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", "err", err)
 			return err
 		}
 		i.IamPassRolePolicyARN = policyarn
@@ -82,12 +82,12 @@ func createUpdateBucketRolesAndPolicies(
 		policyname := i.Domain + "-to-S3-RolePolicy"
 		policy, err := policyDoc.ToString()
 		if err != nil {
-			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", err)
+			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
 			return err
 		}
 		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
 		if err != nil {
-			logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", err)
+			logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", "err", err)
 			return err
 		}
 		i.SnapshotPolicyARN = policyarn
@@ -97,7 +97,7 @@ func createUpdateBucketRolesAndPolicies(
 		// to the existing policy version.
 		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
-			logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
+			logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", "err", err)
 			return err
 		}
 
@@ -115,7 +115,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 
 		resp, err := opensearchClient.DescribeDomain(ctx, params)
 		if err != nil {
-			logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", err)
+			logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", "err", err)
 			return nil, err
 		}
 
@@ -148,7 +148,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 
 		err := createUpdateBucketRolesAndPolicies(ip, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
-			logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+			logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
 		}
 		i.BrokerSnapshotsEnabled = true

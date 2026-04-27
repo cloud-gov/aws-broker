@@ -116,7 +116,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 	_, err := user.Create(i.Domain, "", iamTags)
 	if err != nil {
-		d.logger.Error("createElasticsearch: user.Create err", err)
+		d.logger.Error("createElasticsearch: user.Create err", "err", err)
 		return base.InstanceNotCreated, err
 	}
 
@@ -135,7 +135,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := d.sts.GetCallerIdentity(context.TODO(), stsInput)
 	if err != nil {
-		d.logger.Error("createElasticsearch: GetCallerIdentity err", err)
+		d.logger.Error("createElasticsearch: GetCallerIdentity err", "err", err)
 		return base.InstanceNotCreated, nil
 	}
 
@@ -146,7 +146,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
 	if err != nil {
-		d.logger.Error("createElasticsearch: prepareCreateDomainInput err", err)
+		d.logger.Error("createElasticsearch: prepareCreateDomainInput err", "err", err)
 		return base.InstanceNotCreated, err
 	}
 
@@ -165,7 +165,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	// Decide if AWS service call was successful
 	if err != nil {
-		d.logger.Error("createElasticsearch: CreateDomain err", err)
+		d.logger.Error("createElasticsearch: CreateDomain err", "err", err)
 		return base.InstanceNotCreated, err
 	}
 
@@ -201,7 +201,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 
 	_, err = d.opensearch.UpdateDomainConfig(context.TODO(), params)
 	if err != nil {
-		d.logger.Error("modifyElasticsearch: UpdateDomainConfig err", err)
+		d.logger.Error("modifyElasticsearch: UpdateDomainConfig err", "err", err)
 		return base.InstanceNotModified, err
 	}
 
@@ -218,7 +218,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 		resp, err := d.opensearch.DescribeDomain(context.TODO(), params)
 		if err != nil {
-			d.logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", err)
+			d.logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", "err", err)
 			return nil, err
 		}
 
@@ -251,7 +251,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
-			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
 		}
 		i.BrokerSnapshotsEnabled = true
@@ -281,7 +281,7 @@ func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInst
 			return base.InstanceGone, err
 		}
 
-		d.logger.Error("deleteElasticsearch: DescribeDomain error", err)
+		d.logger.Error("deleteElasticsearch: DescribeDomain error", "err", err)
 		return base.InstanceNotGone, err
 	}
 	// perform async deletion and return in progress
@@ -304,7 +304,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 
 		resp, err := d.opensearch.DescribeDomain(context.TODO(), params)
 		if err != nil {
-			d.logger.Error("checkElasticsearchStatus: UpdateDomainConfig err", err)
+			d.logger.Error("checkElasticsearchStatus: UpdateDomainConfig err", "err", err)
 			return base.InstanceNotCreated, err
 		}
 
@@ -345,7 +345,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := d.ip.CreateAssumeRole(policy, rolename, iamTags)
 		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", "err", err)
 			return err
 		}
 
@@ -361,7 +361,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 		username := i.Domain
 		policyarn, err := d.ip.CreateUserPolicy(policy, policyname, username, iamTags)
 		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", "err", err)
 			return err
 		}
 		i.IamPassRolePolicyARN = policyarn
@@ -396,12 +396,12 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 		policyname := i.Domain + "-to-S3-RolePolicy"
 		policy, err := policyDoc.ToString()
 		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
 			return err
 		}
 		policyarn, err := d.ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
 		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", "err", err)
 			return err
 		}
 		i.SnapshotPolicyARN = policyarn
@@ -411,7 +411,7 @@ func (d *dedicatedElasticsearchAdapter) createUpdateBucketRolesAndPolicies(
 		// to the existing policy version.
 		_, err := d.ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
-			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", err)
+			d.logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", "err", err)
 			return err
 		}
 
@@ -436,7 +436,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	err := d.takeLastSnapshot(i, password)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error"
-		d.logger.Error(errorMsg, err)
+		d.logger.Error(errorMsg, "err", err)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
@@ -446,7 +446,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	err = d.writeManifestToS3(i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error"
-		d.logger.Error(errorMsg, err)
+		d.logger.Error(errorMsg, "err", err)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
@@ -456,7 +456,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	err = d.cleanupRolesAndPolicies(i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupRolesAndPolicies returned error"
-		d.logger.Error(errorMsg, err)
+		d.logger.Error(errorMsg, "err", err)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
@@ -466,7 +466,7 @@ func (d *dedicatedElasticsearchAdapter) asyncDeleteElasticSearchDomain(i *Elasti
 	err = d.cleanupElasticSearchDomain(i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error"
-		d.logger.Error(errorMsg, err)
+		d.logger.Error(errorMsg, "err", err)
 		msg.JobState.State = base.InstanceNotGone
 		msg.JobState.Message = fmt.Sprintf("%s %v", errorMsg, err)
 		jobstate <- msg
@@ -488,13 +488,13 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	if i.Host == "" {
 		creds, err = d.bindElasticsearchToApp(i, password)
 		if err != nil {
-			d.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", err)
+			d.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", "err", err)
 			return err
 		}
 	} else {
 		creds, err = i.getCredentials()
 		if err != nil {
-			d.logger.Error("takeLastSnapshot: getCredentials failed", err)
+			d.logger.Error("takeLastSnapshot: getCredentials failed", "err", err)
 			return err
 		}
 	}
@@ -507,7 +507,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 		err := d.createUpdateBucketRolesAndPolicies(i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
-			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", err)
+			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return err
 		}
 		i.BrokerSnapshotsEnabled = true
@@ -516,7 +516,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi, err := NewEsApiHandler(creds, d.settings.Region, d.logger)
 	if err != nil {
-		d.logger.Error("NewEsApiHandler: %s", err)
+		d.logger.Error("NewEsApiHandler: %s", "err", err)
 		return err
 	}
 
@@ -529,7 +529,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 		i.SnapshotARN,
 	)
 	if err != nil {
-		d.logger.Error("createsnapshotrepo returns error", err)
+		d.logger.Error("createsnapshotrepo returns error", "err", err)
 		return err
 	}
 
@@ -538,7 +538,7 @@ func (d *dedicatedElasticsearchAdapter) takeLastSnapshot(i *ElasticsearchInstanc
 	// create snapshot
 	_, err = esApi.CreateSnapshot(d.settings.SnapshotsRepoName, snapshotName)
 	if err != nil {
-		d.logger.Error("CreateSnapshot returns error", err)
+		d.logger.Error("CreateSnapshot returns error", "err", err)
 		return err
 	}
 
@@ -553,7 +553,7 @@ func (d *dedicatedElasticsearchAdapter) pollForSnapshotCreation(esApi EsApiClien
 	for attempts <= int(d.settings.PollAwsMaxRetries) {
 		snapshotState, err = esApi.GetSnapshotStatus(d.settings.SnapshotsRepoName, snapshotName)
 		if err != nil {
-			d.logger.Error("GetSnapShotStatus failed", err)
+			d.logger.Error("GetSnapShotStatus failed", "err", err)
 			return err
 		}
 		if snapshotState == "SUCCESS" {
@@ -575,17 +575,17 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	user := awsiam.NewIAMUserClient(d.iam, d.logger)
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPolicyARN); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", "err", err)
 		return err
 	}
 
 	if err := user.DeleteAccessKey(i.Domain, i.AccessKey); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", "err", err)
 		return err
 	}
 
 	if err := user.DetachUserPolicy(i.Domain, i.IamPassRolePolicyARN); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", "err", err)
 		return err
 	}
 
@@ -595,12 +595,12 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	}
 
 	if _, err := d.iam.DetachRolePolicy(context.TODO(), roleDetachPolicyInput); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", "err", err)
 		return err
 	}
 
 	if err := d.ip.DeletePolicy(i.SnapshotPolicyARN); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", "err", err)
 		return err
 	}
 
@@ -609,22 +609,22 @@ func (d *dedicatedElasticsearchAdapter) cleanupRolesAndPolicies(i *Elasticsearch
 	}
 
 	if _, err := d.iam.DeleteRole(context.TODO(), rolePolicyDeleteInput); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", "err", err)
 		return err
 	}
 
 	if err := d.ip.DeletePolicy(i.IamPassRolePolicyARN); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", "err", err)
 		return err
 	}
 
 	if err := user.Delete(i.Domain); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: user.Delete failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: user.Delete failed", "err", err)
 		return err
 	}
 
 	if err := d.ip.DeletePolicy(i.IamPolicyARN); err != nil {
-		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", err)
+		d.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", "err", err)
 		return err
 	}
 	return nil
@@ -657,7 +657,7 @@ func (d *dedicatedElasticsearchAdapter) cleanupElasticSearchDomain(i *Elasticsea
 				return nil
 			}
 
-			d.logger.Error("cleanupElasticSearchDomain: DescribeDomain err", err)
+			d.logger.Error("cleanupElasticSearchDomain: DescribeDomain", "err", err)
 			return err
 		}
 	}
@@ -688,7 +688,7 @@ func (d *dedicatedElasticsearchAdapter) writeManifestToS3(i *ElasticsearchInstan
 
 	_, err = d.s3.PutObject(context.TODO(), &input)
 	if err != nil {
-		d.logger.Error("writeManifesttoS3: PutObject err", err)
+		d.logger.Error("writeManifesttoS3: PutObject err", "err", err)
 		return err
 	}
 
