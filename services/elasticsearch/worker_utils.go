@@ -15,7 +15,8 @@ import (
 )
 
 func createUpdateBucketRolesAndPolicies(
-	ip *awsiam.IAMPolicyClient,
+	ctx context.Context,
+	iam awsiam.IAMClientInterface,
 	logger *slog.Logger,
 	i *ElasticsearchInstance,
 	bucket string,
@@ -28,7 +29,7 @@ func createUpdateBucketRolesAndPolicies(
 	if i.SnapshotARN == "" {
 		rolename := i.Domain + "-to-s3-SnapshotRole"
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
-		arole, err := ip.CreateAssumeRole(policy, rolename, iamTags)
+		arole, err := awsiam.CreateAssumeRole(ctx, iam, logger, policy, rolename, iamTags)
 		if err != nil {
 			logger.Error("createUpdateBucketRolesAndPolcies -- CreateAssumeRole Error", "err", err)
 			return err
@@ -44,7 +45,7 @@ func createUpdateBucketRolesAndPolicies(
 		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
 		policyname := i.Domain + "-to-S3-ESRolePolicy"
 		username := i.Domain
-		policyarn, err := ip.CreateUserPolicy(policy, policyname, username, iamTags)
+		policyarn, err := awsiam.CreateUserPolicy(ctx, iam, logger, policy, policyname, username, iamTags)
 		if err != nil {
 			logger.Error("createUpdateBucketRolesAndPolcies -- CreateUserPolicy Error", "err", err)
 			return err
@@ -84,7 +85,7 @@ func createUpdateBucketRolesAndPolicies(
 			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
 			return err
 		}
-		policyarn, err := ip.CreatePolicyAttachRole(policyname, policy, *snapshotRole, iamTags)
+		policyarn, err := awsiam.CreatePolicyAttachRole(ctx, iam, logger, policyname, policy, *snapshotRole, iamTags)
 		if err != nil {
 			logger.Error("createUpdateBucketRolesAndPolcies -- CreatePolicyAttachRole Error", "err", err)
 			return err
@@ -94,7 +95,7 @@ func createUpdateBucketRolesAndPolicies(
 	} else {
 		// snaphost policy has already been created so we need to add the new statements for this new bucket
 		// to the existing policy version.
-		_, err := ip.UpdateExistingPolicy(i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
+		_, err := awsiam.UpdateExistingPolicy(ctx, iam, logger, i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
 			logger.Error("createUpdateBucketRolesAndPolcies -- UpdateExistingPolicy Error", "err", err)
 			return err
@@ -104,7 +105,7 @@ func createUpdateBucketRolesAndPolicies(
 	return nil
 }
 
-func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, ip *awsiam.IAMPolicyClient, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
+func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, iam awsiam.IAMClientInterface, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
 	if i.State != base.InstanceReady {
@@ -145,7 +146,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 		}
 
-		err := createUpdateBucketRolesAndPolicies(ip, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+		err := createUpdateBucketRolesAndPolicies(ctx, iam, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
 			logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
@@ -155,7 +156,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 
 	// add client bucket and adjust policies and roles if present
 	if i.Bucket != "" {
-		err := createUpdateBucketRolesAndPolicies(ip, logger, i, i.Bucket, "", iamTags)
+		err := createUpdateBucketRolesAndPolicies(ctx, iam, logger, i, i.Bucket, "", iamTags)
 		if err != nil {
 			return nil, err
 		}

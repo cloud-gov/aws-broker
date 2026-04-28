@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/db"
@@ -44,7 +45,9 @@ func (m *mockEsApiClient) GetSnapshotStatus(repositoryName string, snapshotName 
 	return status, nil
 }
 
-type mockOpensearchClient struct{}
+type mockOpensearchClient struct {
+	describeDomainResult *opensearch.DescribeDomainOutput
+}
 
 func (o *mockOpensearchClient) CreateDomain(ctx context.Context, params *opensearch.CreateDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.CreateDomainOutput, error) {
 	return nil, nil
@@ -55,7 +58,7 @@ func (o *mockOpensearchClient) DeleteDomain(ctx context.Context, params *opensea
 }
 
 func (o *mockOpensearchClient) DescribeDomain(ctx context.Context, params *opensearch.DescribeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeDomainOutput, error) {
-	return nil, nil
+	return o.describeDomainResult, nil
 }
 
 func (o *mockOpensearchClient) UpdateDomainConfig(ctx context.Context, params *opensearch.UpdateDomainConfigInput, optFns ...func(*opensearch.Options)) (*opensearch.UpdateDomainConfigOutput, error) {
@@ -190,9 +193,19 @@ func TestDeleteWorkerWork(t *testing.T) {
 						DbType: "sqlite3",
 					},
 				},
-				&mockOpensearchClient{},
+				&mockOpensearchClient{
+					describeDomainResult: &opensearch.DescribeDomainOutput{
+						DomainStatus: &types.DomainStatus{
+							Created: aws.Bool(true),
+							Endpoints: map[string]string{
+								"vpc": "endpoint",
+							},
+							ARN:           aws.String("fake-arn"),
+							EngineVersion: aws.String("version-1"),
+						},
+					},
+				},
 				&mockIamClient{},
-				awsiam.NewIAMPolicyClient(&mockIamClient{}, slog.New(&testutil.MockLogHandler{})),
 				&mockS3Client{},
 				slog.New(&testutil.MockLogHandler{}),
 			),
@@ -235,7 +248,6 @@ func TestPollForSnapshotCreation(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				nil,
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedGetSnapshotCalls: 1,
@@ -250,7 +262,6 @@ func TestPollForSnapshotCreation(t *testing.T) {
 					PollAwsMinDelay:   1 * time.Millisecond,
 					PollAwsMaxRetries: 3,
 				},
-				nil,
 				nil,
 				nil,
 				nil,
@@ -271,7 +282,6 @@ func TestPollForSnapshotCreation(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				nil,
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedGetSnapshotCalls: 3,
@@ -287,7 +297,6 @@ func TestPollForSnapshotCreation(t *testing.T) {
 					PollAwsMinDelay:   1 * time.Millisecond,
 					PollAwsMaxRetries: 1,
 				},
-				nil,
 				nil,
 				nil,
 				nil,

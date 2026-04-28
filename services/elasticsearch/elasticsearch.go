@@ -89,7 +89,6 @@ func initializeAdapter(ctx context.Context, db *gorm.DB, s *config.Settings, log
 		opensearch:  opensearch.NewFromConfig(cfg),
 		iam:         iamSvc,
 		sts:         sts.NewFromConfig(cfg),
-		ip:          awsiam.NewIAMPolicyClient(iamSvc, logger),
 		s3:          s3.NewFromConfig(cfg),
 		riverClient: riverClient,
 	}
@@ -105,7 +104,6 @@ type dedicatedElasticsearchAdapter struct {
 	iam         awsiam.IAMClientInterface
 	sts         STSClientInterface
 	opensearch  OpensearchClientInterface
-	ip          *awsiam.IAMPolicyClient
 	s3          brokerAws.S3ClientInterface
 	riverClient *river.Client[*sql.Tx]
 }
@@ -177,7 +175,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	esARNs := make([]string, 0)
 	esARNs = append(esARNs, i.ARN)
 	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-	policyARN, err := d.ip.CreatePolicyFromTemplate(i.Domain, "/", policy, esARNs, iamTags)
+	policyARN, err := awsiam.CreatePolicyFromTemplate(d.ctx, d.iam, d.logger, i.Domain, "/", policy, esARNs, iamTags)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
@@ -189,7 +187,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	i.IamPolicyARN = policyARN
 
 	//try setup of roles and policies on create
-	err = createUpdateBucketRolesAndPolicies(d.ip, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	err = createUpdateBucketRolesAndPolicies(d.ctx, d.iam, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 	if err != nil {
 		return base.InstanceNotCreated, nil
 	}
@@ -253,7 +251,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 		}
 
-		err := createUpdateBucketRolesAndPolicies(d.ip, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+		err := createUpdateBucketRolesAndPolicies(d.ctx, d.iam, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 		if err != nil {
 			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
@@ -263,7 +261,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 	// add client bucket and adjust policies and roles if present
 	if i.Bucket != "" {
-		err := createUpdateBucketRolesAndPolicies(d.ip, d.logger, i, i.Bucket, "", iamTags)
+		err := createUpdateBucketRolesAndPolicies(d.ctx, d.iam, d.logger, i, i.Bucket, "", iamTags)
 		if err != nil {
 			return nil, err
 		}
