@@ -71,10 +71,11 @@ func NewSnapshotRepo(bucketname string, path string, region string, rolearn stri
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
-func NewEsApiHandler(svcInfo map[string]string, region string, logger *slog.Logger) (*EsApiHandler, error) {
+func NewEsApiHandler(ctx context.Context, svcInfo map[string]string, region string, logger *slog.Logger) (*EsApiHandler, error) {
 	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
+		ctx,
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),
+		config.WithRegion(region),
 	)
 	if err != nil {
 		return nil, err
@@ -86,7 +87,7 @@ func NewEsApiHandler(svcInfo map[string]string, region string, logger *slog.Logg
 	}
 
 	client, err := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{fmt.Sprintf("https://%s", svcInfo["host"])},
+		Addresses: []string{svcInfo["uri"]},
 		Signer:    signer,
 	})
 	if err != nil {

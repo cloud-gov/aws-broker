@@ -65,6 +65,8 @@ type ElasticsearchInstance struct {
 	IndexSlowLogsGroupARN  string `sql:"size(2048)"`
 	ErrorLogsGroupARN      string `sql:"size(2048)"`
 	AuditLogsGroupARN      string `sql:"size(2048)"`
+
+	Protocol string `gorm:"-"`
 }
 
 func (i *ElasticsearchInstance) setPassword(password, key string) error {
@@ -103,8 +105,10 @@ func (i *ElasticsearchInstance) getPassword(key string) (string, error) {
 func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 	var credentials map[string]string
 
-	uri := fmt.Sprintf("https://%s:443",
-		i.Host)
+	if i.Protocol == "" {
+		i.Protocol = "https"
+	}
+	uri := fmt.Sprintf("%s://%s", i.Protocol, i.Host)
 
 	if len(i.Bucket) > 0 {
 		credentials = map[string]string{

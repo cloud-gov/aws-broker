@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -140,7 +141,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 	}
 
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
-	esApi, err := NewEsApiHandler(creds, w.settings.Region, w.logger)
+	esApi, err := NewEsApiHandler(ctx, creds, w.settings.Region, w.logger)
 	if err != nil {
 		w.logger.Error("NewEsApiHandler: %s", "err", err)
 		return err
@@ -279,14 +280,14 @@ func (w *DeleteWorker) cleanupElasticSearchDomain(ctx context.Context, i *Elasti
 	}
 
 	// now we poll for completion
-	// TODO - don't allow polling forever
-	for {
-		time.Sleep(time.Minute)
+	attempts := 1
+
+	for attempts <= int(w.settings.PollAwsMaxRetries) {
 		params := &opensearch.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		_, err := w.opensearch.DescribeDomain(context.TODO(), params)
+		_, err := w.opensearch.DescribeDomain(ctx, params)
 		if err != nil {
 			var notFoundException *opensearchTypes.ResourceNotFoundException
 			if errors.As(err, &notFoundException) {
@@ -298,7 +299,12 @@ func (w *DeleteWorker) cleanupElasticSearchDomain(ctx context.Context, i *Elasti
 			w.logger.Error("cleanupElasticSearchDomain: DescribeDomain err", "err", err)
 			return err
 		}
+
+		attempts += 1
+		time.Sleep(w.settings.PollAwsMinDelay)
 	}
+
+	return errors.New("could not verify deletion of domain")
 }
 
 // in which we Marshall the instance into Json and dump to a manifest file in the snapshot bucket
