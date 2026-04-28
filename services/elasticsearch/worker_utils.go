@@ -119,23 +119,22 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, err
 		}
 
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
-			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
-				logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
-				i.Host = resp.DomainStatus.Endpoints["vpc"]
-				i.ARN = *(resp.DomainStatus.ARN)
-				i.State = base.InstanceReady
-				i.CurrentESVersion = *(resp.DomainStatus.EngineVersion)
-				// Should only be one regardless. Just return now.
-			} else {
-				// Something went horribly wrong. Should never get here.
-				return nil, errors.New("invalid memory for endpoint and/or endpoint members")
-			}
-		} else {
+		if resp.DomainStatus.Created == nil || (resp.DomainStatus.Created != nil && !*(resp.DomainStatus.Created)) {
 			// Instance not up yet.
 			return nil, errors.New("instance not available yet. Please wait and try again")
 		}
 
+		if resp.DomainStatus.Endpoints == nil && resp.DomainStatus.ARN == nil {
+			// Something went horribly wrong. Should never get here.
+			return nil, errors.New("invalid memory for endpoint and/or endpoint members")
+		}
+
+		logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
+		i.Host = resp.DomainStatus.Endpoints["vpc"]
+		i.ARN = *(resp.DomainStatus.ARN)
+		i.State = base.InstanceReady
+		i.CurrentESVersion = *(resp.DomainStatus.EngineVersion)
+		// Should only be one regardless. Just return now.
 	}
 
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
