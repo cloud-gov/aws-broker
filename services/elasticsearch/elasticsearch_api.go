@@ -26,6 +26,7 @@ type EsApiClient interface {
 }
 
 type EsApiHandler struct {
+	ctx              context.Context
 	opensearchClient *opensearch.Client
 	logger           *slog.Logger
 }
@@ -95,6 +96,7 @@ func NewEsApiHandler(ctx context.Context, svcInfo map[string]string, region stri
 	}
 
 	return &EsApiHandler{
+		ctx:              ctx,
 		opensearchClient: client,
 		logger:           logger,
 	}, nil
@@ -118,7 +120,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName str
 		Body:       bytes.NewReader(jsonData),
 	}
 
-	res, err := req.Do(context.Background(), es.opensearchClient)
+	res, err := req.Do(es.ctx, es.opensearchClient)
 	if err != nil {
 		return "", fmt.Errorf("CreateSnapshotRepo: error creating snapshot repository: %w", err)
 	}
@@ -137,7 +139,7 @@ func (es *EsApiHandler) CreateSnapshot(repositoryName string, snapshotName strin
 		Snapshot:   snapshotName,
 	}
 
-	res, err := req.Do(context.Background(), es.opensearchClient)
+	res, err := req.Do(es.ctx, es.opensearchClient)
 	if err != nil {
 		return "", fmt.Errorf("error creating snapshot: %s", err)
 	}
@@ -157,7 +159,7 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 		Snapshot:   []string{snapshotName},
 	}
 
-	res, err := req.Do(context.Background(), es.opensearchClient)
+	res, err := req.Do(es.ctx, es.opensearchClient)
 	if err != nil {
 		return "", fmt.Errorf("error getting snapshot: %s", err)
 	}
