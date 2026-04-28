@@ -22,7 +22,6 @@ func createUpdateBucketRolesAndPolicies(
 	path string,
 	iamTags []iamTypes.Tag,
 ) error {
-	// ip := awsiam.NewIAMPolicyClient(settings.Region, logger)
 	var snapshotRole *iamTypes.Role
 
 	// create snapshotrole if not done yet
