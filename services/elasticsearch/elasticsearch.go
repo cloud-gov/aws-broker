@@ -132,10 +132,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	userParams := &iam.GetUserInput{
 		UserName: aws.String(i.Domain),
 	}
-	userResp, _ := d.iam.GetUser(context.TODO(), userParams)
+	userResp, _ := d.iam.GetUser(d.ctx, userParams)
 	uniqueUserArn := *(userResp.User.Arn)
 	stsInput := &sts.GetCallerIdentityInput{}
-	result, err := d.sts.GetCallerIdentity(context.TODO(), stsInput)
+	result, err := d.sts.GetCallerIdentity(d.ctx, stsInput)
 	if err != nil {
 		d.logger.Error("createElasticsearch: GetCallerIdentity err", "err", err)
 		return base.InstanceNotCreated, nil
@@ -152,7 +152,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		return base.InstanceNotCreated, err
 	}
 
-	resp, err := d.opensearch.CreateDomain(context.TODO(), params)
+	resp, err := d.opensearch.CreateDomain(d.ctx, params)
 	if isInvalidTypeException(err) {
 		// IAM is eventually consistent, meaning new IAM users may not be immediately available for read, such as when
 		// Opensearch goes to validate the IAM user specified as the AWS principal in the access
@@ -162,7 +162,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		// see https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency
 		log.Println("Retrying domain creation because of possible IAM eventual consistency issue")
 		time.Sleep(5 * time.Second)
-		resp, err = d.opensearch.CreateDomain(context.TODO(), params)
+		resp, err = d.opensearch.CreateDomain(d.ctx, params)
 	}
 
 	// Decide if AWS service call was successful
@@ -201,7 +201,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		return base.InstanceNotModified, err
 	}
 
-	_, err = d.opensearch.UpdateDomainConfig(context.TODO(), params)
+	_, err = d.opensearch.UpdateDomainConfig(d.ctx, params)
 	if err != nil {
 		d.logger.Error("modifyElasticsearch: UpdateDomainConfig err", "err", err)
 		return base.InstanceNotModified, err
@@ -218,7 +218,7 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := d.opensearch.DescribeDomain(context.TODO(), params)
+		resp, err := d.opensearch.DescribeDomain(d.ctx, params)
 		if err != nil {
 			d.logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", "err", err)
 			return nil, err
@@ -319,7 +319,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			DomainName: aws.String(i.Domain), // Required
 		}
 
-		resp, err := d.opensearch.DescribeDomain(context.TODO(), params)
+		resp, err := d.opensearch.DescribeDomain(d.ctx, params)
 		if err != nil {
 			d.logger.Error("checkElasticsearchStatus: UpdateDomainConfig err", "err", err)
 			return base.InstanceNotCreated, err
