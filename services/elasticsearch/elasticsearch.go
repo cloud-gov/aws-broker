@@ -112,22 +112,26 @@ type dedicatedElasticsearchAdapter struct {
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	user := awsiam.NewIAMUserClient(d.iam, d.logger)
-
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
-	_, err := user.Create(i.Domain, "", iamTags)
+	_, err := d.iam.CreateUser(d.ctx, &iam.CreateUserInput{
+		UserName: aws.String(i.Domain),
+		Path:     nil,
+		Tags:     iamTags,
+	})
 	if err != nil {
 		d.logger.Error("createElasticsearch: user.Create err", "err", err)
 		return base.InstanceNotCreated, err
 	}
 
-	accessKeyID, secretAccessKey, err := user.CreateAccessKey(i.Domain)
+	createAccessKeyOutput, err := d.iam.CreateAccessKey(d.ctx, &iam.CreateAccessKeyInput{
+		UserName: aws.String(i.Domain),
+	})
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
-	i.AccessKey = accessKeyID
-	i.SecretKey = secretAccessKey
+	i.AccessKey = *createAccessKeyOutput.AccessKey.AccessKeyId
+	i.SecretKey = *createAccessKeyOutput.AccessKey.SecretAccessKey
 
 	userParams := &iam.GetUserInput{
 		UserName: aws.String(i.Domain),
@@ -180,7 +184,10 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 		return base.InstanceNotCreated, err
 	}
 
-	if err = user.AttachUserPolicy(i.Domain, policyARN); err != nil {
+	if _, err = d.iam.AttachUserPolicy(d.ctx, &iam.AttachUserPolicyInput{
+		PolicyArn: aws.String(policyARN),
+		UserName:  aws.String(i.Domain),
+	}); err != nil {
 		return base.InstanceNotCreated, err
 	}
 	i.IamPolicy = policy

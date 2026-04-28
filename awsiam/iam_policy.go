@@ -487,3 +487,10 @@ func trimPolicyVersions(
 	}
 	return nil
 }
+
+func stringOrNil(v string) *string {
+	if v != "" {
+		return &v
+	}
+	return nil
+}
