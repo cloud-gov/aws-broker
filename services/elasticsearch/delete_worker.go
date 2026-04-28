@@ -231,9 +231,8 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 		return err
 	}
 
-	if _, err := w.iam.DeletePolicy(ctx, &iam.DeletePolicyInput{
-		PolicyArn: aws.String(i.SnapshotPolicyARN),
-	}); err != nil {
+	err := awsiam.DeletePolicy(ctx, w.iam, w.logger, i.SnapshotPolicyARN)
+	if err != nil {
 		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", "err", err)
 		return err
 	}
@@ -245,9 +244,8 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 		return err
 	}
 
-	if _, err := w.iam.DeletePolicy(ctx, &iam.DeletePolicyInput{
-		PolicyArn: aws.String(i.IamPassRolePolicyARN),
-	}); err != nil {
+	err = awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPassRolePolicyARN)
+	if err != nil {
 		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", "err", err)
 		return err
 	}
@@ -260,9 +258,8 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 		return err
 	}
 
-	if _, err := w.iam.DeletePolicy(ctx, &iam.DeletePolicyInput{
-		PolicyArn: aws.String(i.IamPolicyARN),
-	}); err != nil {
+	err = awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPolicyARN)
+	if err != nil {
 		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", "err", err)
 		return err
 	}
