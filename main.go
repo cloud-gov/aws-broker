@@ -117,9 +117,6 @@ func run(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("error starting river client: %w", err)
 	}
 
-	asyncJobManager := jobs.NewAsyncJobManager()
-	asyncJobManager.Init()
-
 	logger.Debug("run: initializing tags manager")
 	tagManager, err := brokertags.NewCFTagManager(
 		"AWS broker",
@@ -149,7 +146,6 @@ func run(ctx context.Context, out io.Writer) error {
 		&settings,
 		db,
 		c,
-		asyncJobManager,
 		tagManager,
 		riverClient,
 		logger,

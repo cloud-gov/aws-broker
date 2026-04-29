@@ -26,7 +26,6 @@ import (
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
@@ -55,9 +54,6 @@ func setup() http.Handler {
 	}
 	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 
-	tq := jobs.NewAsyncJobManager()
-	tq.Init()
-
 	path, _ := os.Getwd()
 	c := catalog.InitCatalog(path)
 
@@ -70,7 +66,6 @@ func setup() http.Handler {
 		&s,
 		brokerDB,
 		c,
-		tq,
 		&mocks.MockTagGenerator{},
 		nil,
 		logger,
