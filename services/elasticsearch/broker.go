@@ -82,9 +82,9 @@ func (broker *elasticsearchBroker) AsyncOperationRequired(o base.Operation) bool
 	case base.DeleteOp:
 		return true
 	case base.CreateOp:
-		return true
+		return false
 	case base.ModifyOp:
-		return true
+		return false
 	case base.BindOp:
 		return false
 	default:
@@ -257,16 +257,24 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 
 	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
 	if err != nil {
-		return lastOperation, err
+		if apiErr, ok := err.(*apiresponses.FailureResponse); ok {
+			if apiErr.ValidatedStatusCode(nil) == http.StatusGone && details.OperationData != base.DeleteOp.String() {
+				return lastOperation, err
+			}
+		} else {
+			return lastOperation, err
+		}
 	}
 
 	var count int64
 	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
-		return lastOperation, apiresponses.NewFailureResponse(
-			err,
-			http.StatusInternalServerError,
-			"find existing instance",
-		)
+		if !errors.Is(err, gorm.ErrRecordNotFound) || (errors.Is(err, gorm.ErrRecordNotFound) && details.OperationData != base.DeleteOp.String()) {
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"find existing instance",
+			)
+		}
 	}
 	if count == 0 && details.OperationData != base.DeleteOp.String() {
 		return lastOperation, apiresponses.ErrInstanceDoesNotExist
@@ -433,5 +441,4 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 			"deleting instance",
 		)
 	}
-
 }
