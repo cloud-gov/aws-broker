@@ -87,9 +87,10 @@ func (s *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput,
 }
 
 type mockIamClient struct {
-	createPolicyOutput *iam.CreatePolicyOutput
-	createRoleCallNum  int
-	createRoleOutput   []*iam.CreateRoleOutput
+	createPolicyOutput       *iam.CreatePolicyOutput
+	createRoleCallNum        int
+	createRoleOutput         []*iam.CreateRoleOutput
+	listPolicyVersionsOutput *iam.ListPolicyVersionsOutput
 }
 
 func (m *mockIamClient) CreateAccessKey(ctx context.Context, params *iam.CreateAccessKeyInput, optFns ...func(*iam.Options)) (*iam.CreateAccessKeyOutput, error) {
@@ -175,7 +176,7 @@ func (m *mockIamClient) ListAttachedUserPolicies(ctx context.Context, params *ia
 }
 
 func (m *mockIamClient) ListPolicyVersions(ctx context.Context, params *iam.ListPolicyVersionsInput, optFns ...func(*iam.Options)) (*iam.ListPolicyVersionsOutput, error) {
-	return nil, nil
+	return m.listPolicyVersionsOutput, nil
 }
 
 func TestDeleteWorkerWork(t *testing.T) {
@@ -254,6 +255,9 @@ func TestDeleteWorkerWork(t *testing.T) {
 						Policy: &iamTypes.Policy{
 							Arn: aws.String("policy-1"),
 						},
+					},
+					listPolicyVersionsOutput: &iam.ListPolicyVersionsOutput{
+						Versions: []iamTypes.PolicyVersion{},
 					},
 				},
 				&mockS3Client{},
