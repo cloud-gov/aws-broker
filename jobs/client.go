@@ -13,7 +13,9 @@ import (
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/db"
+	"github.com/cloud-gov/aws-broker/services/elasticsearch"
 	"github.com/cloud-gov/aws-broker/services/rds"
+	"github.com/cloud-gov/aws-broker/services/redis"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
@@ -64,6 +66,30 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.CreateOp, base.InstanceNotCreated, "job panicked")
 	case rds.DeleteKind:
 		args := rds.DeleteArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
+	case redis.ModifyKind:
+		args := redis.ModifyArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.ModifyOp, base.InstanceNotModified, "job panicked")
+	case redis.DeleteKind:
+		args := redis.DeleteArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
+	case elasticsearch.DeleteKind:
+		args := elasticsearch.DeleteArgs{}
 		err = json.Unmarshal(job.EncodedArgs, &args)
 		if err != nil {
 			break
