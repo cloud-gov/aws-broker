@@ -58,4 +58,4 @@ cf delete -f "$TEST_APP"
 cf delete-service -f "$TEST_SERVICE"
 
 # Wait for service to be deleted
-wait_for_deletion "$SERVICE_NAME"
+wait_for_deletion "$TEST_SERVICE"
