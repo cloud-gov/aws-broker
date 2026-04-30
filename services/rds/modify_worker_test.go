@@ -38,7 +38,7 @@ func TestModifyWorkerWork(t *testing.T) {
 		plan          *catalog.RDSPlan
 	}{
 		"success": {
-			ctx:      context.Background(),
+			ctx:      t.Context(),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -146,7 +146,7 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			expectErr:     true,
 		},
 		"modify primary DB error": {
@@ -172,7 +172,7 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			expectErr:     true,
 		},
 		"error waiting for database to be ready": {
@@ -198,7 +198,7 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			expectErr:     true,
 		},
 		"success without read replica": {
@@ -252,7 +252,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        "db-1",
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			ctx: context.Background(),
+			ctx: t.Context(),
 		},
 		"success with adding read replica": {
 			worker: NewModifyWorker(
@@ -322,7 +322,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan: &catalog.RDSPlan{},
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 		},
 		"error modifying read replica": {
 			worker: NewModifyWorker(
@@ -374,7 +374,7 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			expectErr:     true,
 		},
 		"error creating read replica": {
@@ -428,7 +428,7 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			expectErr:     true,
 		},
 		"success with deleting read replica": {
@@ -485,7 +485,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 			},
 			plan: &catalog.RDSPlan{},
-			ctx:  context.Background(),
+			ctx:  t.Context(),
 		},
 		"error updating read replica tags": {
 			worker: NewModifyWorker(
@@ -530,7 +530,7 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotModified,
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			expectErr:     true,
 		},
 		"success without read replica and updating version": {
@@ -586,7 +586,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 				DbVersion:       "9.0",
 			},
-			ctx: context.Background(),
+			ctx: t.Context(),
 		},
 	}
 

@@ -37,7 +37,7 @@ func TestModifyWorkerWork(t *testing.T) {
 		worker        *ModifyWorker
 	}{
 		"success": {
-			ctx:      context.Background(),
+			ctx:      t.Context(),
 			password: helpers.RandStr(10),
 			dbInstance: &RedisInstance{
 				Instance: base.Instance{
@@ -93,7 +93,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 		plan             *catalog.RDSPlan
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{},
@@ -112,7 +112,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"error modifying redis isntance": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{},
@@ -132,7 +132,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"error increasing replica count": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{},
@@ -153,7 +153,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"success with increased replica count": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{
@@ -201,7 +201,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"failure waiting for increased replica count": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{
@@ -227,7 +227,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 			expectedState: base.InstanceNotModified,
 		},
 		"success waiting for increase replica count on retry": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{

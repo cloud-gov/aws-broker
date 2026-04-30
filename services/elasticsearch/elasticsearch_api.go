@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"code.cloudfoundry.org/lager"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 
@@ -26,8 +26,9 @@ type EsApiClient interface {
 }
 
 type EsApiHandler struct {
+	ctx              context.Context
 	opensearchClient *opensearch.Client
-	logger           lager.Logger
+	logger           *slog.Logger
 }
 
 type SnapshotRepo struct {
@@ -71,10 +72,11 @@ func NewSnapshotRepo(bucketname string, path string, region string, rolearn stri
 
 // This will take a Credentials mapping from an ElasticSearchInstance and the region info
 // to create an API handler.
-func NewEsApiHandler(svcInfo map[string]string, region string, logger lager.Logger) (*EsApiHandler, error) {
+func NewEsApiHandler(ctx context.Context, svcInfo map[string]string, region string, logger *slog.Logger) (*EsApiHandler, error) {
 	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
+		ctx,
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(svcInfo["access_key"], svcInfo["secret_key"], "")),
+		config.WithRegion(region),
 	)
 	if err != nil {
 		return nil, err
@@ -86,7 +88,7 @@ func NewEsApiHandler(svcInfo map[string]string, region string, logger lager.Logg
 	}
 
 	client, err := opensearch.NewClient(opensearch.Config{
-		Addresses: []string{fmt.Sprintf("https://%s", svcInfo["host"])},
+		Addresses: []string{svcInfo["uri"]},
 		Signer:    signer,
 	})
 	if err != nil {
@@ -94,6 +96,7 @@ func NewEsApiHandler(svcInfo map[string]string, region string, logger lager.Logg
 	}
 
 	return &EsApiHandler{
+		ctx:              ctx,
 		opensearchClient: client,
 		logger:           logger,
 	}, nil
@@ -117,7 +120,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName str
 		Body:       bytes.NewReader(jsonData),
 	}
 
-	res, err := req.Do(context.Background(), es.opensearchClient)
+	res, err := req.Do(es.ctx, es.opensearchClient)
 	if err != nil {
 		return "", fmt.Errorf("CreateSnapshotRepo: error creating snapshot repository: %w", err)
 	}
@@ -136,7 +139,7 @@ func (es *EsApiHandler) CreateSnapshot(repositoryName string, snapshotName strin
 		Snapshot:   snapshotName,
 	}
 
-	res, err := req.Do(context.Background(), es.opensearchClient)
+	res, err := req.Do(es.ctx, es.opensearchClient)
 	if err != nil {
 		return "", fmt.Errorf("error creating snapshot: %s", err)
 	}
@@ -156,7 +159,7 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 		Snapshot:   []string{snapshotName},
 	}
 
-	res, err := req.Do(context.Background(), es.opensearchClient)
+	res, err := req.Do(es.ctx, es.opensearchClient)
 	if err != nil {
 		return "", fmt.Errorf("error getting snapshot: %s", err)
 	}
@@ -181,7 +184,7 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 	snapshots := Snapshots{}
 	err = json.Unmarshal(bodyBytes, &snapshots)
 	if err != nil {
-		es.logger.Error("GetSnapshotStatus JSON unmarshal error", err)
+		es.logger.Error("GetSnapshotStatus JSON unmarshal error", "err", err)
 		return "", err
 	}
 
