@@ -82,9 +82,9 @@ func (broker *elasticsearchBroker) AsyncOperationRequired(o base.Operation) bool
 	case base.DeleteOp:
 		return true
 	case base.CreateOp:
-		return false
+		return true
 	case base.ModifyOp:
-		return false
+		return true
 	case base.BindOp:
 		return false
 	default:
