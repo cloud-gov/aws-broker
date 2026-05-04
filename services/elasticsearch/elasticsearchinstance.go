@@ -111,7 +111,7 @@ func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 	if i.Port == 0 {
 		i.Port = 443
 	}
-	uri := fmt.Sprintf("%s://%s:%d", i.Protocol, i.Host, i.Port)
+	uri := fmt.Sprintf("%s://%s", i.Protocol, i.Host)
 
 	if len(i.Bucket) > 0 {
 		credentials = map[string]string{
