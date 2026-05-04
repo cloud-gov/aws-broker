@@ -113,7 +113,6 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 
 	// check if instance was never bound and thus never set host...
 	if i.Host == "" {
-		w.logger.Info("instance was never bound, initiating bind now")
 		creds, err = bindElasticsearchToApp(ctx, w.opensearch, w.iam, w.settings, w.logger, i)
 		if err != nil {
 			w.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", "err", err)
@@ -141,7 +140,6 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 		i.BrokerSnapshotsEnabled = true
 	}
 
-	w.logger.Info(fmt.Sprintf("creating ES API client with URL %s", creds["uri"]))
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
 	esApi, err := NewEsApiHandler(ctx, creds, w.settings.Region, w.logger)
 	if err != nil {

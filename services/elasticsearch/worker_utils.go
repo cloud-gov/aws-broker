@@ -129,7 +129,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 		}
 
-		logger.Info(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
+		logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
 		i.Host = resp.DomainStatus.Endpoints["vpc"]
 		i.ARN = *(resp.DomainStatus.ARN)
 		i.State = base.InstanceReady
