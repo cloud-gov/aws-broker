@@ -108,6 +108,9 @@ func createUpdateBucketRolesAndPolicies(
 func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, iam awsiam.IAMClientInterface, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
 	// First, we need to check if the instance is up and available before binding.
 	// Only search for details if the instance was not indicated as ready.
+	logger.Debug(fmt.Sprintf("current instance state: %d", i.State))
+	logger.Debug(fmt.Sprintf("current instance host: %s", i.Host))
+
 	if i.State != base.InstanceReady {
 		params := &opensearch.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required

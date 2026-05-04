@@ -113,6 +113,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 
 	// check if instance was never bound and thus never set host...
 	if i.Host == "" {
+		w.logger.Debug("instance was never bound. binding to get credentials now")
 		creds, err = bindElasticsearchToApp(ctx, w.opensearch, w.iam, w.settings, w.logger, i)
 		if err != nil {
 			w.logger.Error("takeLastSnapshot: bindElasticsearchToApp failed", "err", err)
