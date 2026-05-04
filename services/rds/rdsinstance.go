@@ -297,8 +297,6 @@ func (i *RDSInstance) getTags() map[string]string {
 }
 
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
-	// TODO: update this to set the enabled log groups when
-	// enabling log groups is supported by the broker
 	if len(enabledLogGroups) > 0 {
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
 	}
