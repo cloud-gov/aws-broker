@@ -15,6 +15,7 @@ NEW_VERSION=${NEW_VERSION:-""}
 NEW_SERVICE_PLAN=${NEW_SERVICE_PLAN:-""}
 NEW_STORAGE=${NEW_STORAGE:-""}
 ALLOW_MAJOR_VERSION_UPGRADE=${ALLOW_MAJOR_VERSION_UPGRADE:-""}
+ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS=${ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS:-""}
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
@@ -59,6 +60,10 @@ fi
 
 if [ -n "$NEW_STORAGE" ]; then
   update_service_args+=(-c "{\"storage\": $NEW_STORAGE}")
+fi
+
+if [ -n "$ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS" ]; then
+  update_service_args+=(-c "{\"enable_cloudwatch_log_groups_exports\": $ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS}")
 fi
 
 cf update-service "${update_service_args[@]}"
