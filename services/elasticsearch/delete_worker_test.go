@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -200,6 +201,11 @@ func TestDeleteWorkerWork(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	testApiPort, err := strconv.ParseInt(testApiUrl.Port(), 10, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	testCases := map[string]struct {
 		ctx           context.Context
 		instance      *ElasticsearchInstance
@@ -217,7 +223,8 @@ func TestDeleteWorkerWork(t *testing.T) {
 						ServiceID: helpers.RandStr(10),
 					},
 					Uuid: helpers.RandStr(10),
-					Host: testApiUrl.Host,
+					Host: testApiUrl.Hostname(),
+					Port: testApiPort,
 				},
 				AccessKey: "fake-key",
 				SecretKey: "fake-secret",
@@ -274,6 +281,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 						ServiceID: helpers.RandStr(10),
 					},
 					Uuid: helpers.RandStr(10),
+					Port: testApiPort,
 				},
 				AccessKey: "fake-key",
 				SecretKey: "fake-secret",
@@ -297,7 +305,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 							DomainStatus: &types.DomainStatus{
 								Created: aws.Bool(true),
 								Endpoints: map[string]string{
-									"vpc": testApiUrl.Host,
+									"vpc": testApiUrl.Hostname(),
 								},
 								ARN:           aws.String("fake-arn"),
 								EngineVersion: aws.String("version"),
