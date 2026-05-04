@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 
@@ -223,11 +224,16 @@ func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchI
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
 func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deleting resources")
+	if err != nil {
+		return base.InstanceNotGone, err
+	}
+
 	//check for backing resource and do async otherwise remove from db
 	params := &opensearch.DescribeDomainInput{
 		DomainName: aws.String(i.Domain), // Required
 	}
-	_, err := d.opensearch.DescribeDomain(d.ctx, params)
+	_, err = d.opensearch.DescribeDomain(d.ctx, params)
 	if err != nil {
 		var notFoundException *opensearchTypes.ResourceNotFoundException
 		if errors.As(err, &notFoundException) {
