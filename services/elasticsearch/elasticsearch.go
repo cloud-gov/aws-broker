@@ -218,63 +218,7 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
-	// First, we need to check if the instance is up and available before binding.
-	// Only search for details if the instance was not indicated as ready.
-	if i.State != base.InstanceReady {
-		params := &opensearch.DescribeDomainInput{
-			DomainName: aws.String(i.Domain), // Required
-		}
-
-		resp, err := d.opensearch.DescribeDomain(d.ctx, params)
-		if err != nil {
-			d.logger.Error("bindElasticsearchToApp: UpdateDomainConfig err", "err", err)
-			return nil, err
-		}
-
-		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
-			if resp.DomainStatus.Endpoints != nil && resp.DomainStatus.ARN != nil {
-				d.logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
-				i.Host = resp.DomainStatus.Endpoints["vpc"]
-				i.ARN = *(resp.DomainStatus.ARN)
-				i.State = base.InstanceReady
-				i.CurrentESVersion = *(resp.DomainStatus.EngineVersion)
-				// Should only be one regardless. Just return now.
-			} else {
-				// Something went horribly wrong. Should never get here.
-				return nil, errors.New("invalid memory for endpoint and/or endpoint members")
-			}
-		} else {
-			// Instance not up yet.
-			return nil, errors.New("instance not available yet. Please wait and try again")
-		}
-
-	}
-
-	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
-
-	// add broker snapshot bucket and create roles and policies if it hasnt been done.
-	if !i.BrokerSnapshotsEnabled {
-		if i.SnapshotPath == "" {
-			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
-		}
-
-		err := createUpdateBucketRolesAndPolicies(d.ctx, d.iam, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
-		if err != nil {
-			d.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
-			return nil, err
-		}
-		i.BrokerSnapshotsEnabled = true
-	}
-
-	// add client bucket and adjust policies and roles if present
-	if i.Bucket != "" {
-		err := createUpdateBucketRolesAndPolicies(d.ctx, d.iam, d.logger, i, i.Bucket, "", iamTags)
-		if err != nil {
-			return nil, err
-		}
-	}
-	// If we get here that means the instance is up and we have the information for it.
-	return i.getCredentials()
+	return bindElasticsearchToApp(d.ctx, d.opensearch, d.iam, &d.settings, d.logger, i)
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
