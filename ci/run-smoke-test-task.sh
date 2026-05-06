@@ -24,10 +24,7 @@ login
 
 # Clean up existing app and service if present
 cf delete -f "$TEST_APP"
-cf delete-service -f "$TEST_SERVICE"
-
-# Wait for service to be deleted
-wait_for_service_instance "$TEST_SERVICE"
+delete_existing_service "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
 pushd "$TASK_DIRECTORY"
