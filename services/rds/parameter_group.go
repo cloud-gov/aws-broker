@@ -7,6 +7,7 @@ import (
 	"log"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -267,6 +268,11 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 		(i.DbType == "postgres") {
 		return true
 	}
+	if i.DbType == "mysql" &&
+		(slices.Contains(i.EnabledCloudwatchLogGroupExports, "general") ||
+			slices.Contains(i.EnabledCloudwatchLogGroupExports, "slowquery")) {
+		return true
+	}
 
 	return false
 }
@@ -352,6 +358,33 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 			customRDSParameters["mysql"]["binlog_format"] = paramDetails{
 				value:       i.BinaryLogFormat,
 				applyMethod: "immediate",
+			}
+		}
+
+		// Configuration for the instnace to start generating logs if user enables these groups
+		if slices.Contains(i.EnabledCloudwatchLogGroupExports, "general") ||
+			slices.Contains(i.EnabledCloudwatchLogGroupExports, "slowquery") {
+			customRDSParameters["mysql"]["log_output"] = paramDetails{
+				value:       "FILE",
+				applyMethod: "immediate",
+			}
+		}
+		if slices.Contains(i.EnabledCloudwatchLogGroupExports, "general") {
+			customRDSParameters["mysql"]["general_log"] = paramDetails{
+				value:       "1",
+				applyMethod: "immediate",
+			}
+		}
+		if slices.Contains(i.EnabledCloudwatchLogGroupExports, "slowquery") {
+			customRDSParameters["mysql"]["slow_query_log"] = paramDetails{
+				value:       "1",
+				applyMethod: "immediate",
+			}
+			if i.LongQueryTime != nil {
+				customRDSParameters["mysql"]["long_query_time"] = paramDetails{
+					value:       strconv.FormatFloat(*i.LongQueryTime, 'f', -1, 64),
+					applyMethod: "immediate",
+				}
 			}
 		}
 	}

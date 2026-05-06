@@ -37,6 +37,7 @@ type Options struct {
 	RotateCredentials               *bool    `json:"rotate_credentials"`
 	StorageType                     string   `json:"storage_type"`
 	EnableCloudWatchLogGroupExports []string `json:"enable_cloudwatch_log_groups_exports"`
+	LongQueryTime                   *float64 `json:"long_query_time"`
 	AllowMajorVersionUpgrade        *bool    `json:"allow_major_version_upgrade"`
 }
 
@@ -62,6 +63,10 @@ func (o Options) Validate(settings *config.Settings) error {
 	}
 
 	if err := validateStorageType(o.StorageType); err != nil {
+		return err
+	}
+
+	if err := validateLongQueryTime(o.LongQueryTime); err != nil {
 		return err
 	}
 

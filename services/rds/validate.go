@@ -19,3 +19,14 @@ func validateStorageType(storageType string) error {
 		return fmt.Errorf("storage type is not supported: %s", storageType)
 	}
 }
+
+func validateLongQueryTime(v *float64) error {
+	if v == nil {
+		return nil
+	}
+	if *v < 0 {
+		return fmt.Errorf("long_query_time must be >= 0, got %v", *v)
+	}
+
+	return nil
+}

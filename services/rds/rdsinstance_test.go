@@ -794,6 +794,20 @@ func TestModifyInstance(t *testing.T) {
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
+		"update long_query_time": {
+			options: Options{
+				LongQueryTime: aws.Float64(0.5),
+			},
+			existingInstance: &RDSInstance{},
+			expectedInstance: &RDSInstance{
+				LongQueryTime: aws.Float64(0.5),
+				Tags:          map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
 	}
 
 	for name, test := range testCases {
@@ -982,6 +996,7 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 		LicenseModel:                     "license",
 		BinaryLogFormat:                  "format",
 		EnablePgCron:                     aws.Bool(false),
+		LongQueryTime:                    aws.Float64(1.5),
 		ParameterGroupFamily:             "postgres16",
 		ParameterGroupName:               "parameter-group-1",
 		ReplicaDatabase:                  "replica",
@@ -1013,6 +1028,7 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 		`"LicenseModel":"license"`,
 		`"BinaryLogFormat":"format"`,
 		`"EnablePgCron":false`,
+		`"LongQueryTime":1.5`,
 		`"ParameterGroupFamily": "postgres16"`,
 		`"ParameterGroupName": "parameter-group-1"`,
 		`"AddReadReplica":false`,

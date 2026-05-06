@@ -55,6 +55,20 @@ func TestValidate(t *testing.T) {
 			settings:    &config.Settings{},
 			expectedErr: true,
 		},
+		"valid long_query_time": {
+			options: Options{
+				LongQueryTime: aws.Float64(0.5),
+			},
+			settings:    &config.Settings{},
+			expectedErr: false,
+		},
+		"invalid long_query_time": {
+			options: Options{
+				LongQueryTime: aws.Float64(-1),
+			},
+			settings:    &config.Settings{},
+			expectedErr: true,
+		},
 	}
 
 	for name, test := range testCases {
@@ -221,6 +235,29 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				PubliclyAccessible: false,
 				Version:            "",
 				BinaryLogFormat:    "",
+			},
+			expectErr: true,
+		},
+		"long_query_time specified": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"long_query_time": 0.5 }`),
+			},
+			expectedOptions: Options{
+				LongQueryTime: aws.Float64(0.5),
+			},
+		},
+		"invalid long_query_time rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"long_query_time": -1 }`),
+			},
+			expectedOptions: Options{
+				LongQueryTime: aws.Float64(-1),
 			},
 			expectErr: true,
 		},

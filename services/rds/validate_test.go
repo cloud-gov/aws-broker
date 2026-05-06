@@ -83,6 +83,42 @@ func TestValidateStorageType(t *testing.T) {
 	}
 }
 
+func TestValidateLongQueryTime(t *testing.T) {
+	testCases := map[string]struct {
+		value       *float64
+		expectedErr bool
+	}{
+		"nil": {
+			value:       nil,
+			expectedErr: false,
+		},
+		"valid float": {
+			value:       aws.Float64(0.5),
+			expectedErr: false,
+		},
+		"valid int": {
+			value:       aws.Float64(10),
+			expectedErr: false,
+		},
+		"negative": {
+			value:       aws.Float64(-1),
+			expectedErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateLongQueryTime(test.value)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}
+
 func TestValidateRetentionPeriod(t *testing.T) {
 	testCases := map[string]struct {
 		retentionPeriod int64

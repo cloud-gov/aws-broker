@@ -41,6 +41,7 @@ type RDSInstance struct {
 
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         *bool  `sql:"size(255)"`
+	LongQueryTime        *float64
 	ParameterGroupFamily string `gorm:"-"`
 	ParameterGroupName   string `sql:"size(255)"`
 
@@ -139,6 +140,10 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		modifiedInstance.EnablePgCron = options.EnablePgCron
 	}
 
+	if options.LongQueryTime != nil {
+		modifiedInstance.LongQueryTime = options.LongQueryTime
+	}
+
 	if options.EnableFunctions != modifiedInstance.EnableFunctions {
 		modifiedInstance.EnableFunctions = options.EnableFunctions
 	}
@@ -231,6 +236,7 @@ func (i *RDSInstance) init(
 	i.PubliclyAccessible = options.PubliclyAccessible
 	i.BinaryLogFormat = options.BinaryLogFormat
 	i.EnablePgCron = options.EnablePgCron
+	i.LongQueryTime = options.LongQueryTime
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 

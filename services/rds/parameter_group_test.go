@@ -203,6 +203,39 @@ func TestNeedCustomParameters(t *testing.T) {
 				settings: &config.Settings{},
 			},
 		},
+		"mysql general cloudwatch log export": {
+			dbInstance: &RDSInstance{
+				DbType:                           "mysql",
+				EnabledCloudwatchLogGroupExports: []string{"general"},
+				credentialUtils:                  &RDSCredentialUtils{},
+			},
+			expectedOk: true,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+		},
+		"mysql slowquery cloudwatch log export": {
+			dbInstance: &RDSInstance{
+				DbType:                           "mysql",
+				EnabledCloudwatchLogGroupExports: []string{"slowquery"},
+				credentialUtils:                  &RDSCredentialUtils{},
+			},
+			expectedOk: true,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+		},
+		"mysql general cloudwatch log export, wrong db type": {
+			dbInstance: &RDSInstance{
+				DbType:                           "postgres",
+				EnabledCloudwatchLogGroupExports: []string{"general"},
+				credentialUtils:                  &RDSCredentialUtils{},
+			},
+			expectedOk: false,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -914,6 +947,77 @@ func TestGetCustomParameters(t *testing.T) {
 				rds: &mockRDSClient{
 					describeDbParamsErr: describeDbParamsErr,
 				},
+			},
+		},
+		"mysql general cloudwatch log export": {
+			dbInstance: &RDSInstance{
+				DbType:                           "mysql",
+				EnabledCloudwatchLogGroupExports: []string{"general"},
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": {value: "0", applyMethod: "immediate"},
+					"general_log":                     {value: "1", applyMethod: "immediate"},
+					"log_output":                      {value: "FILE", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
+			},
+		},
+		"mysql slowquery cloudwatch log export": {
+			dbInstance: &RDSInstance{
+				DbType:                           "mysql",
+				EnabledCloudwatchLogGroupExports: []string{"slowquery"},
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": {value: "0", applyMethod: "immediate"},
+					"slow_query_log":                  {value: "1", applyMethod: "immediate"},
+					"log_output":                      {value: "FILE", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
+			},
+		},
+		"mysql general and slowquery cloudwatch log exports": {
+			dbInstance: &RDSInstance{
+				DbType:                           "mysql",
+				EnabledCloudwatchLogGroupExports: []string{"slowquery", "general"},
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": {value: "0", applyMethod: "immediate"},
+					"general_log":                     {value: "1", applyMethod: "immediate"},
+					"slow_query_log":                  {value: "1", applyMethod: "immediate"},
+					"log_output":                      {value: "FILE", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
+			},
+		},
+		"mysql slowquery cloudwatch log exports with long_query_time": {
+			dbInstance: &RDSInstance{
+				DbType:                           "mysql",
+				EnabledCloudwatchLogGroupExports: []string{"slowquery"},
+				LongQueryTime:                    aws.Float64(0.5),
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": {value: "0", applyMethod: "immediate"},
+					"slow_query_log":                  {value: "1", applyMethod: "immediate"},
+					"log_output":                      {value: "FILE", applyMethod: "immediate"},
+					"long_query_time":                 {value: "0.5", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
 			},
 		},
 	}
