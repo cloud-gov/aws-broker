@@ -12,7 +12,7 @@ SERVICE_NAME="rds-smoke-tests-db-version-$SERVICE_PLAN"
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-version-$SERVICE_PLAN"
-cf delete-service -f "$SERVICE_NAME"
+delete_existing_service "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds
