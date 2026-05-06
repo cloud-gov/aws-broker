@@ -34,7 +34,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 		worker        *DeleteWorker
 	}{
 		"success": {
-			ctx:      context.Background(),
+			ctx:      t.Context(),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -102,7 +102,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 		expectErr           bool
 	}{
 		"success without replica": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewDeleteWorker(
 				brokerDB,
 				&config.Settings{
@@ -128,7 +128,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedState: base.InstanceGone,
 		},
 		"success with replica": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewDeleteWorker(
 				brokerDB,
 				&config.Settings{
@@ -155,7 +155,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedState: base.InstanceGone,
 		},
 		"error checking database status": {
-			ctx:       context.Background(),
+			ctx:       t.Context(),
 			expectErr: true,
 			worker: NewDeleteWorker(
 				brokerDB,
@@ -183,7 +183,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"error checking replica database status": {
-			ctx:       context.Background(),
+			ctx:       t.Context(),
 			expectErr: true,
 			worker: NewDeleteWorker(
 				brokerDB,
@@ -212,7 +212,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"error deleting database": {
-			ctx:       context.Background(),
+			ctx:       t.Context(),
 			expectErr: true,
 			worker: NewDeleteWorker(
 				brokerDB,
@@ -240,7 +240,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"error deleting replica database": {
-			ctx:       context.Background(),
+			ctx:       t.Context(),
 			expectErr: true,
 			worker: NewDeleteWorker(
 				brokerDB,
@@ -269,7 +269,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedRecordCount: 1,
 		},
 		"database already deleted": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewDeleteWorker(
 				brokerDB,
 				&config.Settings{
@@ -295,7 +295,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 			expectedState: base.InstanceGone,
 		},
 		"replica and database already deleted": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewDeleteWorker(
 				brokerDB,
 				&config.Settings{

@@ -68,9 +68,9 @@ func TestCreateDb(t *testing.T) {
 		plan          *catalog.RDSPlan
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
@@ -180,9 +180,9 @@ func TestModifyDb(t *testing.T) {
 		plan          *catalog.RDSPlan
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
@@ -318,7 +318,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -341,7 +341,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		},
 		"error describing database": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -354,7 +354,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		},
 		"no databases found": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -371,7 +371,7 @@ func TestDescribeDatbaseInstance(t *testing.T) {
 		},
 		"multiple databases found": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -427,7 +427,7 @@ func TestBindDBToApp(t *testing.T) {
 	}{
 		"success": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -483,7 +483,7 @@ func TestBindDBToApp(t *testing.T) {
 		},
 		"database not available": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -510,7 +510,7 @@ func TestBindDBToApp(t *testing.T) {
 		},
 		"database has no endpoint": {
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{},
 				&mockRDSClient{
@@ -590,9 +590,9 @@ func TestDeleteDb(t *testing.T) {
 		password      string
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			dbAdapter: NewTestDedicatedDBAdapter(
-				context.Background(),
+				t.Context(),
 				brokerDB,
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,

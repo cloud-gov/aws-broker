@@ -39,7 +39,7 @@ func TestCreateWorkerWork(t *testing.T) {
 		worker        *CreateWorker
 	}{
 		"success without replica": {
-			ctx:      context.Background(),
+			ctx:      t.Context(),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -89,7 +89,7 @@ func TestCreateWorkerWork(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
-			ctx:      context.Background(),
+			ctx:      t.Context(),
 			password: helpers.RandStr(10),
 			dbInstance: &RDSInstance{
 				Instance: base.Instance{
@@ -155,7 +155,7 @@ func TestCreateWorkerWork(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"error provisioning custom parameter group": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -188,7 +188,7 @@ func TestCreateWorkerWork(t *testing.T) {
 			expectErr:     true,
 		},
 		"create DB error": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -221,7 +221,7 @@ func TestCreateWorkerWork(t *testing.T) {
 			expectErr:     true,
 		},
 		"error waiting for database creation": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -461,7 +461,7 @@ func TestAsyncCreateDb(t *testing.T) {
 		expectErr     bool
 	}{
 		"error provisioning custom parameter group": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -496,7 +496,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectErr:     true,
 		},
 		"create DB error": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -529,7 +529,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectErr:     true,
 		},
 		"error waiting for database creation": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -562,7 +562,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectErr:     true,
 		},
 		"success without replica": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -611,7 +611,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"success with replica": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -669,7 +669,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectedState: base.InstanceReady,
 		},
 		"error creating replica": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -722,7 +722,7 @@ func TestAsyncCreateDb(t *testing.T) {
 			expectErr:     true,
 		},
 		"error getting password": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -791,7 +791,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 		plan       *catalog.RDSPlan
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: &CreateWorker{
 				db: brokerDB,
 				settings: &config.Settings{
@@ -817,7 +817,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 			plan: &catalog.RDSPlan{},
 		},
 		"success on retry": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: &CreateWorker{
 				db: brokerDB,
 				settings: &config.Settings{
@@ -843,7 +843,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 			plan: &catalog.RDSPlan{},
 		},
 		"gives up after maximum retries": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: &CreateWorker{
 				db: brokerDB,
 				settings: &config.Settings{
@@ -906,7 +906,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		plan          *catalog.RDSPlan
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -951,7 +951,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectedState: base.InstanceInProgress,
 		},
 		"error checking database creation status": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -991,7 +991,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectErr:     true,
 		},
 		"error creating database replica": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{
@@ -1031,7 +1031,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			expectErr:     true,
 		},
 		"error adding tags": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			worker: NewCreateWorker(
 				brokerDB,
 				&config.Settings{

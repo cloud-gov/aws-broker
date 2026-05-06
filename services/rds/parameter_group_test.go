@@ -1,7 +1,6 @@
 package rds
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -15,7 +14,7 @@ import (
 
 func TestNewParameterGroupClient(t *testing.T) {
 	parameterGroupAdapter := NewAwsParameterGroupClient(
-		context.Background(),
+		t.Context(),
 		&mockRDSClient{},
 		&config.Settings{},
 	)

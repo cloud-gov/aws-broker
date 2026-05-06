@@ -10,6 +10,8 @@ import (
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -88,7 +90,7 @@ func run(ctx context.Context, out io.Writer) error {
 		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
 	))
 
-	// Elasticache workers
+	// ElastiCache workers
 	elasticacheClient := elasticache.NewFromConfig(cfg)
 	s3 := s3.NewFromConfig(cfg)
 	river.AddWorker(workers, redis.NewModifyWorker(
@@ -96,6 +98,13 @@ func run(ctx context.Context, out io.Writer) error {
 	))
 	river.AddWorker(workers, redis.NewDeleteWorker(
 		db, &settings, elasticacheClient, s3, logger,
+	))
+
+	// OpenSearch workers
+	opensearch := opensearch.NewFromConfig(cfg)
+	iamSvc := iam.NewFromConfig(cfg)
+	river.AddWorker(workers, elasticsearch.NewDeleteWorker(
+		db, &settings, opensearch, iamSvc, s3, logger,
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
@@ -107,9 +116,6 @@ func run(ctx context.Context, out io.Writer) error {
 	if err = riverClient.Start(ctx); err != nil {
 		return fmt.Errorf("error starting river client: %w", err)
 	}
-
-	asyncJobManager := jobs.NewAsyncJobManager()
-	asyncJobManager.Init()
 
 	logger.Debug("run: initializing tags manager")
 	tagManager, err := brokertags.NewCFTagManager(
@@ -140,7 +146,6 @@ func run(ctx context.Context, out io.Writer) error {
 		&settings,
 		db,
 		c,
-		asyncJobManager,
 		tagManager,
 		riverClient,
 		logger,
