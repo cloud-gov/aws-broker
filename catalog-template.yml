@@ -38,7 +38,7 @@ rds:
         - "14"
         - "15"
         - "16"
-      dbVersion: "16"
+      dbVersion: &default-pg-version "16.13"
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -70,7 +70,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.micro
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -104,7 +104,7 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -138,7 +138,7 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -171,7 +171,7 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -205,7 +205,7 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -239,7 +239,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -272,7 +272,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -306,7 +306,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -340,7 +340,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -373,7 +373,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -407,7 +407,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -441,7 +441,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -474,7 +474,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -507,7 +507,7 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -542,7 +542,7 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -575,7 +575,7 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -609,7 +609,7 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -645,7 +645,7 @@ rds:
       instanceClass: db.m5.2xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -678,7 +678,7 @@ rds:
       instanceClass: db.m5.2xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -712,7 +712,7 @@ rds:
       instanceClass: db.m5.2xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -748,7 +748,7 @@ rds:
       instanceClass: &m6-xlarge db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: false
@@ -781,7 +781,7 @@ rds:
       instanceClass: *m6-xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -815,7 +815,7 @@ rds:
       instanceClass: *m6-xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
-      dbVersion: "16"
+      dbVersion: *default-pg-version
       dbType: postgres
       plan_updateable: true
       redundant: true
@@ -851,7 +851,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: &default-mysql-version "8.4.4"
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -886,7 +886,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -921,7 +921,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -955,7 +955,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -990,7 +990,7 @@ rds:
       approvedMajorVersions:
         - "8.4"
       dbType: mysql
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       plan_updateable: true
       redundant: true
       encrypted: true
@@ -1025,7 +1025,7 @@ rds:
       approvedMajorVersions:
         - "8.4"
       dbType: mysql
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       plan_updateable: true
       redundant: true
       read_replica: true
@@ -1059,7 +1059,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -1093,7 +1093,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1128,7 +1128,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1163,7 +1163,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -1197,7 +1197,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1232,7 +1232,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1267,7 +1267,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -1301,7 +1301,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1336,7 +1336,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1371,7 +1371,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: false
@@ -1405,7 +1405,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
@@ -1440,7 +1440,7 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions:
         - "8.4"
-      dbVersion: "8.4.4"
+      dbVersion: *default-mysql-version
       dbType: mysql
       plan_updateable: true
       redundant: true
