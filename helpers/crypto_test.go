@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"crypto/aes"
-	"fmt"
 	"testing"
 )
 
@@ -59,8 +58,6 @@ func TestRandStringGeneration(t *testing.T) {
 		randstrings = append(randstrings, RandStr(10))
 	}
 
-	fmt.Println(randstrings[1])
-
 	dict := make(map[string]bool)
 	duplicatestrings := []string{}
 
@@ -83,7 +80,7 @@ func TestRandStringDistribution(t *testing.T) {
 		randstring := RandStr(1)
 		dict[randstring]++
 	}
-	fmt.Println(dict)
+
 	min := 1000000
 	max := 0
 	for _, value := range dict {
@@ -95,8 +92,6 @@ func TestRandStringDistribution(t *testing.T) {
 		}
 	}
 
-	fmt.Println("Min: ", min)
-	fmt.Println("Max: ", max)
 	if float32(min)/float32(max) < float32(.94) {
 		t.Error("The Deviation of random characters is too high", float32(min)/float32(max), float32(.95))
 	}
