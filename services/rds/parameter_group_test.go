@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"log/slog"
 	"reflect"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/testutil"
 )
 
 func TestNewParameterGroupClient(t *testing.T) {
@@ -17,6 +19,7 @@ func TestNewParameterGroupClient(t *testing.T) {
 		t.Context(),
 		&mockRDSClient{},
 		&config.Settings{},
+		slog.New(&testutil.MockLogHandler{}),
 	)
 	if parameterGroupAdapter.ctx == nil {
 		t.Fatal("context should not be nil")

@@ -78,7 +78,7 @@ func run(ctx context.Context, out io.Writer) error {
 
 	// RDS workers
 	rdsClient := awsRds.NewFromConfig(cfg)
-	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings)
+	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings, logger)
 	credentialUtils := &rds.RDSCredentialUtils{}
 	river.AddWorker(workers, rds.NewCreateWorker(
 		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
