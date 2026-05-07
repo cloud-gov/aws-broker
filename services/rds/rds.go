@@ -32,6 +32,7 @@ type dbAdapter interface {
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 	describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error)
+	reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error)
 }
 
 // initializeAdapter is the main function to create database instances
@@ -123,6 +124,10 @@ func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 
 func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
 	return nil, nil
+}
+
+func (d *mockDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error) {
+	return &i, nil
 }
 
 // END MockDBAdpater
@@ -326,6 +331,22 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	}
 
 	return base.InstanceInProgress, nil
+}
+
+func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error) {
+	output, err := d.rds.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: &i.Database,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("asyncModifyDb: reconcileDbState error %w", err)
+	}
+
+	modifiedInstance := i
+	if modifiedInstance.DbVersion != *output.DBInstances[0].EngineVersion {
+		modifiedInstance.DbVersion = *output.DBInstances[0].EngineVersion
+	}
+
+	return &modifiedInstance, nil
 }
 
 func getRetryMultiplier(storageSize int64) int64 {
