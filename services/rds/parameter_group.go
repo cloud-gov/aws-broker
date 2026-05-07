@@ -45,6 +45,7 @@ func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, set
 		rds:                  rds,
 		settings:             settings,
 		parameterGroupPrefix: "cg-aws-broker-",
+		logger:               logger,
 	}
 }
 
@@ -101,7 +102,7 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
 						// If you can't delete it because it's in use, that is fine.
 						// The db takes a while to delete, so we will clean it up the
 						// next time this is called.
-						p.logger.Debug(fmt.Sprintf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err))
+						p.logger.Debug(fmt.Sprintf("There was an error cleaning up the %s parameter group. The error was: %s", *pgroup.DBParameterGroupName, err))
 						continue
 					}
 
