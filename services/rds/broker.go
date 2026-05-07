@@ -23,22 +23,37 @@ import (
 	"github.com/cloud-gov/aws-broker/config"
 )
 
+// PgQqueryLoggingOptions contains optional PostgreSQL query logging parameters
+// that are applied via the RDS parameter group. Only supported in the modify instance flow.
+type PgQueryLoggingOptions struct {
+	LogConnections          *bool    `json:"log_connections"`
+	LogDisconnections       *bool    `json:"log_disconnections"`
+	LogCheckpoints          *bool    `json:"log_checkpoints"`
+	LogLockWaits            *bool    `json:"log_lock_waits"`
+	LogMinDurationSample    *int64   `json:"log_min_duration_sample"`
+	LogMinDurationStatement *int64   `json:"log_min_duration_statement"`
+	LogStatement            *string  `json:"log_statement"`
+	LogStatementSampleRate  *float64 `json:"log_min_duration_sample_rate"`
+	LogStatementStats       *bool    `json:"log_statement_stats"`
+}
+
 // Options is a struct containing all of the custom parameters supported by
 // the broker for the "cf create-service" and "cf update-service" commands -
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
-	AllocatedStorage                int64    `json:"storage"`
-	EnableFunctions                 bool     `json:"enable_functions"`
-	PubliclyAccessible              bool     `json:"publicly_accessible"`
-	Version                         string   `json:"version"`
-	BackupRetentionPeriod           *int64   `json:"backup_retention_period"`
-	BinaryLogFormat                 string   `json:"binary_log_format"`
-	EnablePgCron                    *bool    `json:"enable_pg_cron"`
-	RotateCredentials               *bool    `json:"rotate_credentials"`
-	StorageType                     string   `json:"storage_type"`
-	EnableCloudWatchLogGroupExports []string `json:"enable_cloudwatch_log_groups_exports"`
-	LongQueryTime                   *float64 `json:"long_query_time"`
-	AllowMajorVersionUpgrade        *bool    `json:"allow_major_version_upgrade"`
+	AllocatedStorage                int64                  `json:"storage"`
+	EnableFunctions                 bool                   `json:"enable_functions"`
+	PubliclyAccessible              bool                   `json:"publicly_accessible"`
+	Version                         string                 `json:"version"`
+	BackupRetentionPeriod           *int64                 `json:"backup_retention_period"`
+	BinaryLogFormat                 string                 `json:"binary_log_format"`
+	EnablePgCron                    *bool                  `json:"enable_pg_cron"`
+	RotateCredentials               *bool                  `json:"rotate_credentials"`
+	StorageType                     string                 `json:"storage_type"`
+	EnableCloudWatchLogGroupExports []string               `json:"enable_cloudwatch_log_groups_exports"`
+	LongQueryTime                   *float64               `json:"long_query_time"`
+	PgQueryLogging                  *PgQueryLoggingOptions `json:"pg_query_logging"`
+	AllowMajorVersionUpgrade        *bool                  `json:"allow_major_version_upgrade"`
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
@@ -67,6 +82,10 @@ func (o Options) Validate(settings *config.Settings) error {
 	}
 
 	if err := validateLongQueryTime(o.LongQueryTime); err != nil {
+		return err
+	}
+
+	if err := validatePgQueryLogging(o.PgQueryLogging); err != nil {
 		return err
 	}
 

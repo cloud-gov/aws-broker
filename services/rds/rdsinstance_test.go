@@ -808,6 +808,44 @@ func TestModifyInstance(t *testing.T) {
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
+		"update PgQueryLogging": {
+			options: Options{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+			},
+			existingInstance: &RDSInstance{},
+			expectedInstance: &RDSInstance{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+				Tags: map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
+		"PgQueryLogging not specified does not update existing value": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement: aws.String("ddl"),
+				},
+			},
+			expectedInstance: &RDSInstance{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement: aws.String("ddl"),
+				},
+				Tags: map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
 	}
 
 	for name, test := range testCases {
@@ -997,10 +1035,14 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 		BinaryLogFormat:                  "format",
 		EnablePgCron:                     aws.Bool(false),
 		LongQueryTime:                    aws.Float64(1.5),
-		ParameterGroupFamily:             "postgres16",
-		ParameterGroupName:               "parameter-group-1",
-		ReplicaDatabase:                  "replica",
-		ReplicaDatabaseHost:              "host",
+		PgQueryLogging: &PgQueryLoggingOptions{
+			LogStatement:            aws.String("ddl"),
+			LogMinDurationStatement: aws.Int64(500),
+		},
+		ParameterGroupFamily: "postgres16",
+		ParameterGroupName:   "parameter-group-1",
+		ReplicaDatabase:      "replica",
+		ReplicaDatabaseHost:  "host",
 	}
 	i.setTags(&catalog.RDSPlan{}, map[string]string{
 		"foo": "bar",
@@ -1029,6 +1071,8 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 		`"BinaryLogFormat":"format"`,
 		`"EnablePgCron":false`,
 		`"LongQueryTime":1.5`,
+		`"log_statement":"ddl"`,
+		`"log_min_duration_statement":500`,
 		`"ParameterGroupFamily": "postgres16"`,
 		`"ParameterGroupName": "parameter-group-1"`,
 		`"AddReadReplica":false`,
