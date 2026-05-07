@@ -293,7 +293,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	}
 
-	reonciledInstance, err := broker.dbAdapter.reconcileDbState(broker.ctx, *existingInstance)
+	reconciledInstance, err := broker.dbAdapter.reconcileDbState(broker.ctx, *existingInstance)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("failed to reconcile instance. Error: %s", err),
@@ -302,7 +302,7 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	}
 
-	modifiedInstance, err := reonciledInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
+	modifiedInstance, err := reconciledInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("failed to modify instance. Error: %s", err),
