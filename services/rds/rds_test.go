@@ -657,6 +657,79 @@ func TestDeleteDb(t *testing.T) {
 	}
 }
 
+func TestReconcileDbState(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx              context.Context
+		dbAdapter        dbAdapter
+		expectErr        bool
+		dbInstance       RDSInstance
+		expectedInstance *RDSInstance
+	}{
+		"success": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									EngineVersion: aws.String("15.14"),
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: RDSInstance{
+				DbVersion: "15",
+			},
+			expectedInstance: &RDSInstance{
+				DbVersion: "15.14",
+			},
+		},
+		"error describing database": {
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{errors.New("error describing database")},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: RDSInstance{},
+			expectErr:  true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			reconciledInstance, err := test.dbAdapter.reconcileDbState(test.ctx, test.dbInstance)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			if diff := deep.Equal(reconciledInstance, test.expectedInstance); diff != nil {
+				t.Error(diff)
+			}
+			if diff := deep.Equal(test.expectedInstance, test.dbInstance); diff == nil {
+				t.Fatal("instance passed as argument to reconcileDbState() should not have been mutated")
+			}
+		})
+	}
+}
+
 func TestGetRetryMultiplier(t *testing.T) {
 	testCases := map[string]struct {
 		storageSize        int64

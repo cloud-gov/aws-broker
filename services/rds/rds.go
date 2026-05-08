@@ -32,6 +32,7 @@ type dbAdapter interface {
 	bindDBToApp(i *RDSInstance, password string) (map[string]string, error)
 	deleteDB(i *RDSInstance) (base.InstanceState, error)
 	describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error)
+	reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error)
 }
 
 // initializeAdapter is the main function to create database instances
@@ -90,8 +91,9 @@ func NewRdsDedicatedDBAdapter(
 // It is only here because *_test.go files are only compiled during "go test"
 // and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
 type mockDBAdapter struct {
-	db            *gorm.DB
-	createDBState *base.InstanceState
+	db                 *gorm.DB
+	createDBState      *base.InstanceState
+	reconciledInstance *RDSInstance
 }
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan) (base.InstanceState, error) {
@@ -123,6 +125,13 @@ func (d *mockDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error) {
 
 func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
 	return nil, nil
+}
+
+func (d *mockDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error) {
+	if d.reconciledInstance != nil {
+		return d.reconciledInstance, nil
+	}
+	return &i, nil
 }
 
 // END MockDBAdpater
@@ -326,6 +335,24 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	}
 
 	return base.InstanceInProgress, nil
+}
+
+func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error) {
+	dbInstanceState, err := d.describeDatabaseInstance(i.Database)
+	if err != nil {
+		return nil, fmt.Errorf("reconcileDbState error: %w", err)
+	}
+
+	reconciledInstance := i
+
+	// Sometimes, the database version tracked by the broker may be out of sync
+	// with the actual version of the database. If that is the case, then update
+	// the database version tracked by the broker
+	if reconciledInstance.DbVersion != *dbInstanceState.EngineVersion {
+		reconciledInstance.DbVersion = *dbInstanceState.EngineVersion
+	}
+
+	return &reconciledInstance, nil
 }
 
 func getRetryMultiplier(storageSize int64) int64 {
