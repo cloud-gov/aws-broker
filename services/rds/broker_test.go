@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
@@ -371,7 +372,6 @@ func TestModify(t *testing.T) {
 			dbAdapter: &mockDBAdapter{
 				db: brokerDB,
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 		"success with version update": {
 			catalog: &catalog.Catalog{
@@ -422,7 +422,6 @@ func TestModify(t *testing.T) {
 			dbAdapter: &mockDBAdapter{
 				db: brokerDB,
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 		"success with replica": {
 			catalog: &catalog.Catalog{
@@ -475,7 +474,6 @@ func TestModify(t *testing.T) {
 			dbAdapter: &mockDBAdapter{
 				db: brokerDB,
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 		"reconciled db version": {
 			catalog: &catalog.Catalog{
@@ -538,7 +536,6 @@ func TestModify(t *testing.T) {
 					DbVersion: "15.14",
 				},
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 		"reconcile db version and update version": {
 			catalog: &catalog.Catalog{
@@ -604,7 +601,6 @@ func TestModify(t *testing.T) {
 					DbType:    "postgres",
 				},
 			},
-			expectedResponseCode: http.StatusAccepted,
 		},
 		"changing database type": {
 			catalog: &catalog.Catalog{
@@ -659,6 +655,59 @@ func TestModify(t *testing.T) {
 			expectErr:            true,
 			expectedResponseCode: http.StatusBadRequest,
 		},
+		"changing to non-updateable plan": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					RDSPlans: []catalog.RDSPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID:            "123",
+								PlanUpdatable: aws.Bool(false),
+							},
+							DbType: "postgres",
+						},
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "456",
+							},
+						},
+					},
+				},
+			},
+			dbInstance: createTestRdsInstance(&RDSInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				DbVersion: "15",
+				DbType:    "postgres",
+			}),
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				DbVersion: "15",
+				DbType:    "postgres",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID: "123",
+			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
+			},
+			expectErr:            true,
+			expectedResponseCode: http.StatusUnprocessableEntity,
+		},
 	}
 
 	for name, test := range testCases {
@@ -677,8 +726,15 @@ func TestModify(t *testing.T) {
 			}
 
 			err = broker.ModifyInstance(test.dbInstance.Uuid, test.updateDetails)
-			if err != nil && !test.expectErr {
-				t.Fatal(err)
+			if err != nil {
+				if !test.expectErr {
+					t.Fatal(err)
+				}
+				if responseErr, ok := err.(*apiresponses.FailureResponse); ok {
+					if responseErr.ValidatedStatusCode(nil) != test.expectedResponseCode {
+						t.Fatalf("expected error code: %d, got: %d", test.expectedResponseCode, responseErr.ValidatedStatusCode(nil))
+					}
+				}
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error, received nil")
