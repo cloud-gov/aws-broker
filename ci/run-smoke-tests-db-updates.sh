@@ -16,6 +16,8 @@ NEW_SERVICE_PLAN=${NEW_SERVICE_PLAN:-""}
 NEW_STORAGE=${NEW_STORAGE:-""}
 ALLOW_MAJOR_VERSION_UPGRADE=${ALLOW_MAJOR_VERSION_UPGRADE:-""}
 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS=${ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS:-""}
+LONG_QUERY_TIME=${LONG_QUERY_TIME:-""}
+PG_QUERY_LOGGING=${PG_QUERY_LOGGING:-""}
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
@@ -64,6 +66,14 @@ fi
 
 if [ -n "$ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS" ]; then
   update_service_args+=(-c "{\"enable_cloudwatch_log_groups_exports\": $ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS}")
+fi
+
+if [ -n "$LONG_QUERY_TIME" ]; then
+  update_service_args+=(-c "{\"long_query_time\": $LONG_QUERY_TIME}")
+fi
+
+if [ -n "$PG_QUERY_LOGGING" ]; then
+  update_service_args+=(-c "{\"pg_query_logging\": $PG_QUERY_LOGGING}")
 fi
 
 cf update-service "${update_service_args[@]}"
