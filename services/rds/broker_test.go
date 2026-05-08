@@ -303,6 +303,14 @@ func TestCreateInstanceSuccess(t *testing.T) {
 }
 
 func TestModify(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reconcileDbStateRDSInstanceUUID := uuid.NewString()
+	reconcileUpdateDbVersionRDSInstanceUUID := uuid.NewString()
+
 	testCases := map[string]struct {
 		dbInstance           *RDSInstance
 		expectedResponseCode int
@@ -313,6 +321,7 @@ func TestModify(t *testing.T) {
 		updateDetails        domain.UpdateDetails
 		expectedDbInstance   *RDSInstance
 		dbAdapter            dbAdapter
+		expectErr            bool
 	}{
 		"success": {
 			catalog: &catalog.Catalog{
@@ -358,6 +367,9 @@ func TestModify(t *testing.T) {
 			},
 			updateDetails: domain.UpdateDetails{
 				PlanID: "123",
+			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
 			},
 			expectedResponseCode: http.StatusAccepted,
 		},
@@ -406,6 +418,9 @@ func TestModify(t *testing.T) {
 			updateDetails: domain.UpdateDetails{
 				PlanID:        "123",
 				RawParameters: json.RawMessage(`{"version": "9.0"}`),
+			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
 			},
 			expectedResponseCode: http.StatusAccepted,
 		},
@@ -457,25 +472,203 @@ func TestModify(t *testing.T) {
 			updateDetails: domain.UpdateDetails{
 				PlanID: "123",
 			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
+			},
 			expectedResponseCode: http.StatusAccepted,
+		},
+		"reconciled db version": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					RDSPlans: []catalog.RDSPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID:            "123",
+								PlanUpdatable: aws.Bool(true),
+							},
+							Redundant:   true,
+							ReadReplica: true,
+						},
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "456",
+							},
+						},
+					},
+				},
+			},
+			dbInstance: createTestRdsInstance(&RDSInstance{
+				Instance: base.Instance{
+					Uuid: reconcileDbStateRDSInstanceUUID,
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				DbVersion: "15",
+			}),
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceInProgress,
+				},
+				DbVersion: "15.14",
+				Tags:      map[string]string{},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID: "123",
+			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
+				reconciledInstance: &RDSInstance{
+					Instance: base.Instance{
+						Uuid: reconcileDbStateRDSInstanceUUID,
+						Request: request.Request{
+							ServiceID: "service-1",
+							PlanID:    "456",
+						},
+					},
+					DbVersion: "15.14",
+				},
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+		"reconcile db version and update version": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					RDSPlans: []catalog.RDSPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID:            "123",
+								PlanUpdatable: aws.Bool(true),
+							},
+							DbType: "postgres",
+						},
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "456",
+							},
+						},
+					},
+				},
+			},
+			dbInstance: createTestRdsInstance(&RDSInstance{
+				Instance: base.Instance{
+					Uuid: reconcileUpdateDbVersionRDSInstanceUUID,
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				DbVersion: "15",
+				DbType:    "postgres",
+			}),
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceInProgress,
+				},
+				DbVersion: "15.16",
+				DbType:    "postgres",
+				Tags:      map[string]string{},
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"version": "15.16"}`),
+			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
+				reconciledInstance: &RDSInstance{
+					Instance: base.Instance{
+						Uuid: reconcileUpdateDbVersionRDSInstanceUUID,
+						Request: request.Request{
+							ServiceID: "service-1",
+							PlanID:    "456",
+						},
+					},
+					DbVersion: "15.14",
+					DbType:    "postgres",
+				},
+			},
+			expectedResponseCode: http.StatusAccepted,
+		},
+		"changing database type": {
+			catalog: &catalog.Catalog{
+				RdsService: catalog.RDSService{
+					RDSPlans: []catalog.RDSPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID:            "123",
+								PlanUpdatable: aws.Bool(true),
+							},
+							DbType: "mysql",
+						},
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "456",
+							},
+						},
+					},
+				},
+			},
+			dbInstance: createTestRdsInstance(&RDSInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				DbVersion: "15",
+				DbType:    "postgres",
+			}),
+			expectedDbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				DbVersion: "15",
+				DbType:    "postgres",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID: "123",
+			},
+			dbAdapter: &mockDBAdapter{
+				db: brokerDB,
+			},
+			expectErr:            true,
+			expectedResponseCode: http.StatusBadRequest,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			brokerDB, err := testDBInit()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			broker := &rdsBroker{
 				brokerDB:   brokerDB,
 				catalog:    test.catalog,
 				settings:   test.settings,
 				tagManager: test.tagManager,
-				dbAdapter: &mockDBAdapter{
-					db: brokerDB,
-				},
+				dbAdapter:  test.dbAdapter,
 			}
 
 			err = brokerDB.Create(test.dbInstance).Error
@@ -484,8 +677,11 @@ func TestModify(t *testing.T) {
 			}
 
 			err = broker.ModifyInstance(test.dbInstance.Uuid, test.updateDetails)
-			if err != nil {
+			if err != nil && !test.expectErr {
 				t.Fatal(err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error, received nil")
 			}
 
 			updatedInstance := &RDSInstance{}

@@ -91,8 +91,9 @@ func NewRdsDedicatedDBAdapter(
 // It is only here because *_test.go files are only compiled during "go test"
 // and it's referenced in non *_test.go code eg. InitializeAdapter in main.go.
 type mockDBAdapter struct {
-	db            *gorm.DB
-	createDBState *base.InstanceState
+	db                 *gorm.DB
+	createDBState      *base.InstanceState
+	reconciledInstance *RDSInstance
 }
 
 func (d *mockDBAdapter) createDB(i *RDSInstance, plan *catalog.RDSPlan) (base.InstanceState, error) {
@@ -127,6 +128,9 @@ func (d *mockDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBI
 }
 
 func (d *mockDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error) {
+	if d.reconciledInstance != nil {
+		return d.reconciledInstance, nil
+	}
 	return &i, nil
 }
 
