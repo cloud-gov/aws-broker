@@ -334,19 +334,21 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 }
 
 func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance) (*RDSInstance, error) {
-	output, err := d.rds.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: &i.Database,
-	})
+	dbInstanceState, err := d.describeDatabaseInstance(i.Database)
 	if err != nil {
-		return nil, fmt.Errorf("asyncModifyDb: reconcileDbState error %w", err)
+		return nil, fmt.Errorf("reconcileDbState error: %w", err)
 	}
 
-	modifiedInstance := i
-	if modifiedInstance.DbVersion != *output.DBInstances[0].EngineVersion {
-		modifiedInstance.DbVersion = *output.DBInstances[0].EngineVersion
+	reconciledInstance := i
+
+	// Sometimes, the database version tracked by the broker may be out of sync
+	// with the actual version of the database. If that is the case, then update
+	// the database version tracked by the broker
+	if reconciledInstance.DbVersion != *dbInstanceState.EngineVersion {
+		reconciledInstance.DbVersion = *dbInstanceState.EngineVersion
 	}
 
-	return &modifiedInstance, nil
+	return &reconciledInstance, nil
 }
 
 func getRetryMultiplier(storageSize int64) int64 {
