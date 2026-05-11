@@ -74,7 +74,7 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance) e
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying replication group")
 
-	_, err = w.elasticache.ModifyReplicationGroup(context.TODO(), params)
+	_, err = w.elasticache.ModifyReplicationGroup(ctx, params)
 	if err != nil {
 		w.logger.Error("error modifying replication group", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))

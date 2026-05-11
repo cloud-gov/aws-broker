@@ -36,7 +36,7 @@ wait_for_service_instance_success() {
   fi
 }
 
-function wait_for_deletion {
+wait_for_deletion() {
   while true; do
     if ! cf service "$1"; then
       break
@@ -78,4 +78,11 @@ get_task_state() {
   fi
 
   echo "$task_state"
+}
+
+delete_existing_service() {
+  if cf service "$1"; then
+    cf delete-service -f "$1"
+    wait_for_deletion "$1"
+  fi
 }

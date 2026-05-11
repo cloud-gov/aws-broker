@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	"github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
@@ -63,30 +65,11 @@ func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance) e
 
 	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
 
-	params := &elasticache.DeleteReplicationGroupInput{
-		ReplicationGroupId:      aws.String(i.ClusterID), // Required
-		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
-	}
-	_, err := w.elasticache.DeleteReplicationGroup(ctx, params)
-
+	err := w.deleteReplicationGroup(ctx, i, operation)
 	if err != nil {
-		w.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error preparing delete replication group input %w ", err))
-	}
-
-	// Create a waiter
-	waiter := elasticache.NewReplicationGroupDeletedWaiter(w.elasticache, func(dawo *elasticache.ReplicationGroupDeletedWaiterOptions) {
-		dawo.MinDelay = w.settings.PollAwsMinDelay
-	})
-	waiterInput := &elasticache.DescribeReplicationGroupsInput{
-		ReplicationGroupId: &i.ClusterID,
-	}
-	err = waiter.Wait(ctx, waiterInput, w.settings.PollAwsMaxDuration)
-	if err != nil {
-		w.logger.Error("error waiting for cluster to be deleted", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error waiting for cluster to be deleted %w ", err))
+		w.logger.Error("asyncDeleteRedis: DdleteReplicationGroup failed", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: deleteReplicationGroup failed: %s", err))
+		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error deleting replication group %w ", err))
 	}
 
 	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
@@ -105,6 +88,41 @@ func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance) e
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")
+	return nil
+}
+
+func (w *DeleteWorker) deleteReplicationGroup(ctx context.Context, i *RedisInstance, operation base.Operation) error {
+	params := &elasticache.DeleteReplicationGroupInput{
+		ReplicationGroupId:      aws.String(i.ClusterID), // Required
+		FinalSnapshotIdentifier: aws.String(i.ClusterID + "-final"),
+	}
+	_, err := w.elasticache.DeleteReplicationGroup(ctx, params)
+
+	if err != nil {
+		var notFoundException *types.ReplicationGroupNotFoundFault
+		if errors.As(err, &notFoundException) {
+			w.logger.Debug(fmt.Sprintf("replication group %s already deleted", i.ClusterID))
+			return nil
+		}
+		w.logger.Error("asyncDeleteRedis: DeleteReplicationGroup failed", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: DeleteReplicationGroup failed: %s", err))
+		return err
+	}
+
+	// Create a waiter
+	waiter := elasticache.NewReplicationGroupDeletedWaiter(w.elasticache, func(dawo *elasticache.ReplicationGroupDeletedWaiterOptions) {
+		dawo.MinDelay = w.settings.PollAwsMinDelay
+	})
+	waiterInput := &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}
+	err = waiter.Wait(ctx, waiterInput, w.settings.PollAwsMaxDuration)
+	if err != nil {
+		w.logger.Error("error waiting for cluster to be deleted", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Error waiting for cluster to be deleted: %s", err))
+		return err
+	}
+
 	return nil
 }
 

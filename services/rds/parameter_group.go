@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strconv"
@@ -31,6 +32,7 @@ type awsParameterGroupClient struct {
 	rds                  RDSClientInterface
 	settings             *config.Settings
 	parameterGroupPrefix string
+	logger               *slog.Logger
 }
 
 type paramDetails struct {
@@ -38,12 +40,13 @@ type paramDetails struct {
 	applyMethod string
 }
 
-func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, settings *config.Settings) *awsParameterGroupClient {
+func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, settings *config.Settings, logger *slog.Logger) *awsParameterGroupClient {
 	return &awsParameterGroupClient{
 		ctx:                  ctx,
 		rds:                  rds,
 		settings:             settings,
 		parameterGroupPrefix: "cg-aws-broker-",
+		logger:               logger,
 	}
 }
 
@@ -95,13 +98,18 @@ func (p *awsParameterGroupClient) CleanupCustomParameterGroups() error {
 				}
 				_, err := p.rds.DeleteDBParameterGroup(p.ctx, deleteinput)
 				if err != nil {
-					var exception *rdsTypes.InvalidDBParameterGroupStateFault
-					if errors.As(err, &exception) {
+					var invalidParameterGroupStateErr *rdsTypes.InvalidDBParameterGroupStateFault
+					if errors.As(err, &invalidParameterGroupStateErr) {
 						// If you can't delete it because it's in use, that is fine.
 						// The db takes a while to delete, so we will clean it up the
-						// next time this is called.  Otherwise there is some sort of AWS error
-						// and we should log that.
-						log.Printf("There was an error cleaning up the %s parameter group.  The error was: %s", *pgroup.DBParameterGroupName, err.Error())
+						// next time this is called.
+						p.logger.Debug(fmt.Sprintf("There was an error cleaning up the %s parameter group. The error was: %s", *pgroup.DBParameterGroupName, err))
+						continue
+					}
+
+					var notFoundErr *rdsTypes.DBParameterGroupNotFoundFault
+					if errors.As(err, &notFoundErr) {
+						p.logger.Debug(fmt.Sprintf("parameter group %s was not found, continuing", *pgroup.DBParameterGroupName))
 						continue
 					}
 

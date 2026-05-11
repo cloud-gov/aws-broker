@@ -12,11 +12,7 @@ login
 
 # Clean up existing app and service if present
 cf delete -f "$APP_NAME"
-
-if cf service "$SERVICE_NAME"; then
-  cf delete-service -f "$SERVICE_NAME"
-  wait_for_deletion "$SERVICE_NAME"
-fi
+delete_existing_service "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
 pushd aws-db-test/databases/aws-rds

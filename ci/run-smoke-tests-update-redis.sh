@@ -17,7 +17,7 @@ NEW_VERSION=${NEW_VERSION:-""}
 NEW_SERVICE_PLAN=${NEW_SERVICE_PLAN:-""}
 
 # Clean up existing service if present
-cf delete-service -f "$SERVICE_NAME"
+delete_existing_service "$SERVICE_NAME"
 
 # Create service
 create_service_args=(aws-elasticache-redis "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME")

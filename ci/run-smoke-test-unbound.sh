@@ -20,20 +20,17 @@ TEST_SERVICE="smoke-test-$SERVICE_PLAN-unbound-service"
 # Log into CF
 login
 
-# Clean up existing app and service if present
-cf delete-service -f $TEST_SERVICE
-
-# Wait for service to be created
-wait_for_service_instance $TEST_SERVICE
+# Clean up existing service if present
+delete_existing_service "$SERVICE_NAME"
 
 # Create service
-cf create-service $SERVICE_NAME $SERVICE_PLAN $TEST_SERVICE -b "$BROKER_NAME"
+cf create-service "$SERVICE_NAME" "$SERVICE_PLAN" "$TEST_SERVICE" -b "$BROKER_NAME"
 
 # Wait for service to be created
-wait_for_service_instance $TEST_SERVICE
+wait_for_service_instance "$TEST_SERVICE"
 
 # now delete service
-cf delete-service -f $TEST_SERVICE
+cf delete-service -f "$TEST_SERVICE"
 
 # Wait for service to be deleted
-wait_for_deletion "$SERVICE_NAME"
+wait_for_deletion "$TEST_SERVICE"

@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"sort"
 	"text/template"
-
-	"code.cloudfoundry.org/lager"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -59,11 +58,6 @@ type IAMClientInterface interface {
 	ListPolicyVersions(ctx context.Context, params *iam.ListPolicyVersionsInput, optFns ...func(*iam.Options)) (*iam.ListPolicyVersionsOutput, error)
 }
 
-type IAMPolicyClient struct {
-	iam    IAMClientInterface
-	logger lager.Logger
-}
-
 func (pd *PolicyDocument) ToString() (string, error) {
 
 	retbytes, err := json.Marshal(pd)
@@ -99,15 +93,11 @@ func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry)
 	return modified
 }
 
-func NewIAMPolicyClient(iamSvc IAMClientInterface, logger lager.Logger) *IAMPolicyClient {
-	return &IAMPolicyClient{
-		iam:    iamSvc,
-		logger: logger.Session("iam-policy"),
-	}
-}
-
 // create new assumable role with the trust policy
-func (ip *IAMPolicyClient) CreateAssumeRole(
+func CreateAssumeRole(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
 	policy string,
 	rolename string,
 	iamTags []types.Tag,
@@ -118,32 +108,35 @@ func (ip *IAMPolicyClient) CreateAssumeRole(
 		RoleName:                 aws.String(rolename),
 		Tags:                     iamTags,
 	}
-	resp, err := ip.iam.CreateRole(context.TODO(), roleInput)
+	resp, err := iamClient.CreateRole(ctx, roleInput)
 	if err != nil {
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			ip.logger.Debug(fmt.Sprintf("role %s already exists, continuing\n", rolename))
+			logger.Debug(fmt.Sprintf("role %s already exists, continuing\n", rolename))
 
-			resp, innerErr := ip.iam.GetRole(context.TODO(), &iam.GetRoleInput{
+			resp, innerErr := iamClient.GetRole(ctx, &iam.GetRoleInput{
 				RoleName: aws.String(rolename),
 			})
 			if innerErr != nil {
-				ip.logger.Error("CreateAssumeRole: GetRole error", err)
+				logger.Error("CreateAssumeRole: GetRole error", "err", err)
 				return nil, innerErr
 			}
 			return resp.Role, nil
 		}
 
-		ip.logger.Error("CreateAssumeRole: CreateRole error", err)
+		logger.Error("CreateAssumeRole: CreateRole error", "err", err)
 		return role, err
 	}
 
 	return resp.Role, nil
 }
 
-func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
-	policyName,
-	iamPath,
+func CreatePolicyFromTemplate(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
+	policyName string,
+	iamPath string,
 	policyTemplate string,
 	resources []string,
 	iamTags []types.Tag,
@@ -162,7 +155,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		},
 	}).Parse(policyTemplate)
 	if err != nil {
-		ip.logger.Error("CreatePolicyFromTemplate: template.Parse error", err)
+		logger.Error("CreatePolicyFromTemplate: template.Parse error", "err", err)
 		return "", err
 	}
 	policy := bytes.Buffer{}
@@ -171,7 +164,7 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		"Resources": resources,
 	})
 	if err != nil {
-		ip.logger.Error("CreatePolicyFromTemplate: tmpl.Execute error", err)
+		logger.Error("CreatePolicyFromTemplate: tmpl.Execute error", "err", err)
 		return "", err
 	}
 
@@ -181,21 +174,24 @@ func (ip *IAMPolicyClient) CreatePolicyFromTemplate(
 		Path:           stringOrNil(iamPath),
 		Tags:           iamTags,
 	}
-	ip.logger.Debug("create-policy", lager.Data{"input": createPolicyInput})
+	logger.Debug("create-policy", "input", createPolicyInput)
 
-	createPolicyOutput, err := ip.iam.CreatePolicy(context.TODO(), createPolicyInput)
+	createPolicyOutput, err := iamClient.CreatePolicy(ctx, createPolicyInput)
 	if err != nil {
-		ip.logger.Error("CreatePolicyFromTemplate: CreatePolicy error", err)
+		logger.Error("CreatePolicyFromTemplate: CreatePolicy error", "err", err)
 		return "", err
 	}
-	ip.logger.Debug("create-policy", lager.Data{"output": createPolicyOutput})
+	logger.Debug("create-policy", "output", createPolicyOutput)
 
 	return *createPolicyOutput.Policy.Arn, nil
 }
 
 // create a policy and attach to a user, return the policy ARN
 // the does not validate the policy
-func (ip *IAMPolicyClient) CreateUserPolicy(
+func CreateUserPolicy(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
 	policy string,
 	policyname string,
 	username string,
@@ -210,31 +206,31 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 		Tags:           iamTags,
 	}
 
-	respPolicy, err := ip.iam.CreatePolicy(context.TODO(), rolePolicyInput)
+	respPolicy, err := iamClient.CreatePolicy(ctx, rolePolicyInput)
 	if err != nil {
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			ip.logger.Debug(fmt.Sprintf("policy name %s already exists, attempting to get policy ARN\n", policyname))
+			logger.Debug(fmt.Sprintf("policy name %s already exists, attempting to get policy ARN\n", policyname))
 
-			resp, innerErr := ip.iam.ListAttachedUserPolicies(context.TODO(), &iam.ListAttachedUserPoliciesInput{
+			resp, innerErr := iamClient.ListAttachedUserPolicies(ctx, &iam.ListAttachedUserPoliciesInput{
 				UserName: aws.String(username),
 			})
 
 			if innerErr != nil {
-				ip.logger.Error("CreateUserPolicy: ListAttachedUserPolicies error", innerErr)
+				logger.Error("CreateUserPolicy: ListAttachedUserPolicies error", "err", innerErr)
 				return "", innerErr
 			}
 
 			for _, policy := range resp.AttachedPolicies {
 				if *policy.PolicyName == policyname {
-					ip.logger.Debug(fmt.Sprintf("found policy ARN %s for policy %s\n", *policy.PolicyArn, policyname))
+					logger.Debug(fmt.Sprintf("found policy ARN %s for policy %s\n", *policy.PolicyArn, policyname))
 					return *policy.PolicyArn, nil
 				}
 			}
 			return "", err
 		}
 
-		ip.logger.Error("CreateUserPolicy: CreatePolicy error", err)
+		logger.Error("CreateUserPolicy: CreatePolicy error", "err", err)
 
 		// return if error
 		return IamRolePolicyARN, err
@@ -246,9 +242,9 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 			PolicyArn: aws.String(IamRolePolicyARN),
 			UserName:  aws.String(username),
 		}
-		_, err := ip.iam.AttachUserPolicy(context.TODO(), userAttachPolicyInput)
+		_, err := iamClient.AttachUserPolicy(ctx, userAttachPolicyInput)
 		if err != nil {
-			ip.logger.Error("CreateUserPolicy: AttachUserPolicy error", err)
+			logger.Error("CreateUserPolicy: AttachUserPolicy error", "err", err)
 			return IamRolePolicyARN, err
 		}
 	}
@@ -257,7 +253,10 @@ func (ip *IAMPolicyClient) CreateUserPolicy(
 
 // create a new policy and attach to a specific role
 // this does not validate the policy
-func (ip *IAMPolicyClient) CreatePolicyAttachRole(
+func CreatePolicyAttachRole(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
 	policyname string,
 	policy string,
 	role types.Role,
@@ -269,23 +268,23 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 		Tags:           iamTags,
 	}
 
-	respPolicy, err := ip.iam.CreatePolicy(context.TODO(), rolePolicyInput)
+	respPolicy, err := iamClient.CreatePolicy(ctx, rolePolicyInput)
 	if err != nil {
-		ip.logger.Error("CreatePolicyAttachRole: CreatePolicy error", err)
+		logger.Error("CreatePolicyAttachRole: CreatePolicy error", "err", err)
 
 		var alreadyExistsException *types.EntityAlreadyExistsException
 		if errors.As(err, &alreadyExistsException) {
-			ip.logger.Debug(fmt.Sprintf("policy name %s already exists, attempting to get policy ARN\n", policyname))
-			resp, innerErr := ip.iam.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+			logger.Debug(fmt.Sprintf("policy name %s already exists, attempting to get policy ARN\n", policyname))
+			resp, innerErr := iamClient.ListAttachedRolePolicies(ctx, &iam.ListAttachedRolePoliciesInput{
 				RoleName: role.RoleName,
 			})
 			if innerErr != nil {
-				ip.logger.Error("CreatePolicyAttachRole: ListAttachedRolePolicies error", err)
+				logger.Error("CreatePolicyAttachRole: ListAttachedRolePolicies error", "err", err)
 				return "", innerErr
 			}
 			for _, policy := range resp.AttachedPolicies {
 				if *policy.PolicyName == policyname {
-					ip.logger.Debug(fmt.Sprintf("found policy ARN %s for role %s\n", *policy.PolicyArn, *role.RoleName))
+					logger.Debug(fmt.Sprintf("found policy ARN %s for role %s\n", *policy.PolicyArn, *role.RoleName))
 					return *policy.PolicyArn, nil
 				}
 			}
@@ -301,9 +300,9 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 			RoleName:  aws.String(*(role.RoleName)),
 		}
 
-		_, err := ip.iam.AttachRolePolicy(context.TODO(), roleAttachPolicyInput)
+		_, err := iamClient.AttachRolePolicy(ctx, roleAttachPolicyInput)
 		if err != nil {
-			ip.logger.Error("CreatePolicyAttachRole: AttachRolePolicy error", err)
+			logger.Error("CreatePolicyAttachRole: AttachRolePolicy error", "err", err)
 			return policyarn, err
 		}
 	}
@@ -312,16 +311,22 @@ func (ip *IAMPolicyClient) CreatePolicyAttachRole(
 
 // update a specific policy by adding new statements and updating the policyversion
 // this does not validate the policy
-func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatements []PolicyStatementEntry) (*types.PolicyVersion, error) {
+func UpdateExistingPolicy(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
+	policyARN string,
+	policyStatements []PolicyStatementEntry,
+) (*types.PolicyVersion, error) {
 	var policyDoc PolicyDocument
 	var respPolVer *(types.PolicyVersion)
 	// get existing policy
-	resPolicy, err := ip.iam.GetPolicy(context.TODO(), &iam.GetPolicyInput{
+	resPolicy, err := iamClient.GetPolicy(ctx, &iam.GetPolicyInput{
 		PolicyArn: aws.String(policyARN),
 	})
 	if err != nil {
-		ip.logger.Error("UpdateExistingPolicy: GetPolicy error", err)
-		ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN))
+		logger.Error("UpdateExistingPolicy: GetPolicy error", "err", err)
+		logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicy with arn: %s failed\n", policyARN))
 		return respPolVer, err
 	}
 	// get existing policy's current version number
@@ -330,10 +335,10 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 			PolicyArn: aws.String(policyARN),
 			VersionId: aws.String(*(resPolicy.Policy.DefaultVersionId)),
 		}
-		resPolicyVersion, err := ip.iam.GetPolicyVersion(context.TODO(), policyVersionInput)
+		resPolicyVersion, err := iamClient.GetPolicyVersion(ctx, policyVersionInput)
 		if err != nil {
-			ip.logger.Error("UpdateExistingPolicy: GetPolicyVersion error", err)
-			ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId)))
+			logger.Error("UpdateExistingPolicy: GetPolicyVersion error", "err", err)
+			logger.Debug(fmt.Sprintf("UpdateExistingPolicy.GetPolicyVersion Failed with: %s failed\n", *(resPolicy.Policy.DefaultVersionId)))
 			return respPolVer, err
 		}
 
@@ -341,7 +346,7 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 		if resPolicyVersion.PolicyVersion.Document != nil {
 			err = policyDoc.FromString(*resPolicyVersion.PolicyVersion.Document)
 			if err != nil {
-				ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed\n", (*resPolicyVersion.PolicyVersion.Document)))
+				logger.Debug(fmt.Sprintf("UpdateExistingPolicy.ConvertToPolicyDoc Failed with: %s failed\n", (*resPolicyVersion.PolicyVersion.Document)))
 				return respPolVer, err
 			}
 		}
@@ -362,66 +367,76 @@ func (ip IAMPolicyClient) UpdateExistingPolicy(policyARN string, policyStatement
 			SetAsDefault:   true,
 		}
 
-		err = ip.trimPolicyVersions(policyARN, 5)
+		err = trimPolicyVersions(ctx, iamClient, logger, policyARN, 5)
 		if err != nil {
 			return respPolVer, err
 		}
 
-		resp, err := ip.iam.CreatePolicyVersion(context.TODO(), policyUpdatedVersion)
+		resp, err := iamClient.CreatePolicyVersion(ctx, policyUpdatedVersion)
 		if err != nil {
-			ip.logger.Error("UpdateExistingPolicy: CreatePolicyVersion error", err)
-			ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion))
+			logger.Error("UpdateExistingPolicy: CreatePolicyVersion error", "err", err)
+			logger.Debug(fmt.Sprintf("UpdateExistingPolicy.CreatePolicyVersion Failed with: %v\n", policyUpdatedVersion))
 			return respPolVer, err
 		}
 		if resp.PolicyVersion != nil {
 			respPolVer = resp.PolicyVersion
 		}
-		ip.logger.Debug(fmt.Sprintf("UpdateExistingPolicy Success with: %v\n", respPolVer))
+		logger.Debug(fmt.Sprintf("UpdateExistingPolicy Success with: %v\n", respPolVer))
 	}
 
 	return respPolVer, nil
 }
 
-func (ip *IAMPolicyClient) DeletePolicy(policyARN string) error {
+func DeletePolicy(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
+	policyARN string,
+) error {
 	deletePolicyInput := &iam.DeletePolicyInput{
 		PolicyArn: aws.String(policyARN),
 	}
 
 	// list and remove all versions but default first
-	ip.deleteNonDefaultPolicyVersions(policyARN)
+	deleteNonDefaultPolicyVersions(ctx, iamClient, logger, policyARN)
 
-	ip.logger.Debug("delete-policy", lager.Data{"input": deletePolicyInput})
-	deletePolicyOutput, err := ip.iam.DeletePolicy(context.TODO(), deletePolicyInput)
+	logger.Debug("delete-policy", "input", deletePolicyInput)
+	deletePolicyOutput, err := iamClient.DeletePolicy(ctx, deletePolicyInput)
 	if err != nil {
-		ip.logger.Error("DeletePolicy: DeletePolicy error", err)
+		logger.Error("DeletePolicy: DeletePolicy error", "err", err)
 		return err
 	}
-	ip.logger.Debug("delete-policy", lager.Data{"output": deletePolicyOutput})
+	logger.Debug("delete-policy", "output", deletePolicyOutput)
 
 	return nil
 }
 
-func (ip IAMPolicyClient) deleteNonDefaultPolicyVersions(policyARN string) error {
+func deleteNonDefaultPolicyVersions(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
+	policyARN string,
+) error {
 	input := &iam.ListPolicyVersionsInput{
 		PolicyArn: &policyARN,
 	}
 
-	listPolicyVersionsOutput, err := ip.iam.ListPolicyVersions(context.TODO(), input)
-	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": listPolicyVersionsOutput})
+	listPolicyVersionsOutput, err := iamClient.ListPolicyVersions(ctx, input)
+	logger.Debug("list-policy-versions", "listVersions", listPolicyVersionsOutput)
 	if err != nil {
-		ip.logger.Error("deleteNonDefaultPolicyVersions: ListPolicyVersions error", err)
+		logger.Error("deleteNonDefaultPolicyVersions: ListPolicyVersions error", "err", err)
 		return err
 	}
 
 	for _, version := range listPolicyVersionsOutput.Versions {
 		if !version.IsDefaultVersion {
-			ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
-			_, err := ip.iam.DeletePolicyVersion(context.TODO(), &iam.DeletePolicyVersionInput{
+			logger.Debug("delete-policy deleting version", "version", version)
+			_, err := iamClient.DeletePolicyVersion(ctx, &iam.DeletePolicyVersionInput{
 				VersionId: version.VersionId,
 				PolicyArn: aws.String(policyARN),
 			})
 			if err != nil {
-				ip.logger.Error("deleteNonDefaultPolicyVersions: DeletePolicyVersion error", err)
+				logger.Error("deleteNonDefaultPolicyVersions: DeletePolicyVersion error", "err", err)
 				return err
 			}
 		}
@@ -431,15 +446,21 @@ func (ip IAMPolicyClient) deleteNonDefaultPolicyVersions(policyARN string) error
 }
 
 // we make sure we have space to create a new version by deleting the oldest.
-func (ip IAMPolicyClient) trimPolicyVersions(policyARN string, maxVersions int) error {
+func trimPolicyVersions(
+	ctx context.Context,
+	iamClient IAMClientInterface,
+	logger *slog.Logger,
+	policyARN string,
+	maxVersions int,
+) error {
 	input := &iam.ListPolicyVersionsInput{
 		PolicyArn: &policyARN,
 	}
 
-	resPolVers, err := ip.iam.ListPolicyVersions(context.TODO(), input)
-	ip.logger.Debug("list-policy-versions", lager.Data{"listVersions": resPolVers})
+	resPolVers, err := iamClient.ListPolicyVersions(ctx, input)
+	logger.Debug("list-policy-versions", "listVersions", resPolVers)
 	if err != nil {
-		ip.logger.Error("trimPolicyVersions: ListPolicyVersions error", err)
+		logger.Error("trimPolicyVersions: ListPolicyVersions error", "err", err)
 		return err
 	}
 
@@ -455,14 +476,21 @@ func (ip IAMPolicyClient) trimPolicyVersions(policyARN string, maxVersions int) 
 					PolicyArn: &policyARN,
 					VersionId: version.VersionId,
 				}
-				ip.logger.Debug("delete-policy deleting version", lager.Data{"version": version})
-				_, err := ip.iam.DeletePolicyVersion(context.TODO(), input)
+				logger.Debug("delete-policy deleting version", "version", version)
+				_, err := iamClient.DeletePolicyVersion(ctx, input)
 				if err != nil {
-					ip.logger.Error("trimPolicyVersions: DeletePolicyVersion error", err)
+					logger.Error("trimPolicyVersions: DeletePolicyVersion error", "err", err)
 					return err
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func stringOrNil(v string) *string {
+	if v != "" {
+		return &v
 	}
 	return nil
 }

@@ -300,6 +300,16 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetch RDS plan")
 	}
 
+	// Check to make sure that we're not switching database engines; this is not
+	// allowed.
+	if newPlan.DbType != existingInstance.DbType {
+		return apiresponses.NewFailureResponse(
+			errors.New("cannot switch between database engines/types. Please select a plan with the same database engine/type"),
+			http.StatusBadRequest,
+			"modify RDS instance",
+		)
+	}
+
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Update,
 		broker.catalog.RdsService.Name,
@@ -317,21 +327,20 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	}
 
-	modifiedInstance, err := existingInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
+	reconciledInstance, err := broker.dbAdapter.reconcileDbState(broker.ctx, *existingInstance)
+	if err != nil {
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("failed to reconcile instance. Error: %s", err),
+			http.StatusInternalServerError,
+			"reconcile RDS instance",
+		)
+	}
+
+	modifiedInstance, err := reconciledInstance.modify(options, currentPlan, newPlan, broker.settings, tags)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("failed to modify instance. Error: %s", err),
 			http.StatusInternalServerError,
-			"modify RDS instance",
-		)
-	}
-
-	// Check to make sure that we're not switching database engines; this is not
-	// allowed.
-	if newPlan.DbType != existingInstance.DbType {
-		return apiresponses.NewFailureResponse(
-			errors.New("cannot switch between database engines/types. Please select a plan with the same database engine/type"),
-			http.StatusBadRequest,
 			"modify RDS instance",
 		)
 	}

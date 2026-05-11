@@ -1,22 +1,24 @@
 package elasticsearch
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
-	"code.cloudfoundry.org/lager"
 
 	"gorm.io/gorm"
 
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
-	jobs "github.com/cloud-gov/aws-broker/jobs"
+	"github.com/riverqueue/river"
 
 	brokertags "github.com/cloud-gov/go-broker-tags"
 )
@@ -44,24 +46,22 @@ type elasticsearchBroker struct {
 	brokerDB   *gorm.DB
 	catalog    *catalog.Catalog
 	settings   *config.Settings
-	jobs       *jobs.AsyncJobManager
-	logger     lager.Logger
+	logger     *slog.Logger
 	tagManager brokertags.TagManager
 	adapter    ElasticsearchAdapter
 }
 
 // InitelasticsearchBroker is the constructor for the elasticsearchBroker.
 func InitElasticsearchBroker(
+	ctx context.Context,
 	catalog *catalog.Catalog,
 	brokerDB *gorm.DB,
 	settings *config.Settings,
-	jobs *jobs.AsyncJobManager,
 	tagManager brokertags.TagManager,
+	riverClient *river.Client[*sql.Tx],
+	logger *slog.Logger,
 ) (base.Broker, error) {
-	logger := lager.NewLogger("aws-es-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	adapter, err := initializeAdapter(settings, logger)
+	adapter, err := initializeAdapter(ctx, brokerDB, settings, logger, riverClient)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,6 @@ func InitElasticsearchBroker(
 		brokerDB,
 		catalog,
 		settings,
-		jobs,
 		logger,
 		tagManager,
 		adapter,
@@ -232,20 +231,20 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 
 	err := esInstance.update(options)
 	if err != nil {
-		broker.logger.Error("Updating instance failed", err)
+		broker.logger.Error("Updating instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating servie instance")
 	}
 
 	state, err := broker.adapter.modifyElasticsearch(&esInstance)
 	if err != nil {
-		broker.logger.Error("AWS call updating instance failed", err)
+		broker.logger.Error("AWS call updating instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "modifying Elasticsearch instance")
 	}
 	esInstance.State = state
 
 	err = broker.brokerDB.Save(&esInstance).Error
 	if err != nil {
-		broker.logger.Error("Saving instance failed", err)
+		broker.logger.Error("Saving instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "saving modified service instance")
 	}
 
@@ -258,38 +257,66 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 
 	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
 	if err != nil {
-		return lastOperation, err
+		if apiErr, ok := err.(*apiresponses.FailureResponse); ok {
+			if apiErr.ValidatedStatusCode(nil) == http.StatusGone && details.OperationData != base.DeleteOp.String() {
+				return lastOperation, err
+			}
+		} else {
+			return lastOperation, err
+		}
 	}
 
 	var count int64
 	if err := broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count).Error; err != nil {
-		return lastOperation, apiresponses.NewFailureResponse(
-			err,
-			http.StatusInternalServerError,
-			"find existing instance",
-		)
+		if !errors.Is(err, gorm.ErrRecordNotFound) || (errors.Is(err, gorm.ErrRecordNotFound) && details.OperationData != base.DeleteOp.String()) {
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"find existing instance",
+			)
+		}
 	}
-	if count == 0 {
+	if count == 0 && details.OperationData != base.DeleteOp.String() {
 		return lastOperation, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	var state string
-	var status base.InstanceState
-	var statusErr error
+	// When asynchronous deletion has finished, the instance record no longer exists, so
+	// return a last operation status indicating that the deletion was successful.
+	if count == 0 && details.OperationData == base.DeleteOp.String() {
+		return domain.LastOperation{
+			State:       domain.Succeeded,
+			Description: "Successfully deleted instance",
+		}, nil
+	}
+
+	var state base.InstanceState
+	var needAsyncJobState bool
+	var instanceOperation base.Operation
+	var statusMessage string
 
 	switch details.OperationData {
-	case base.DeleteOp.String(): // delete is true concurrent operation
-		jobstate, err := broker.jobs.GetJobState(existingInstance.ServiceID, existingInstance.Uuid, base.DeleteOp)
-		if err != nil {
-			jobstate.State = base.InstanceNotGone //indicate a failure
-		}
-		status = jobstate.State
-		broker.logger.Debug(fmt.Sprintf("Deletion Job state: %s\n Message: %s\n", jobstate.State.String(), jobstate.Message))
-
+	case base.DeleteOp.String():
+		needAsyncJobState = broker.AsyncOperationRequired(base.DeleteOp)
+		instanceOperation = base.DeleteOp
 	default: //all other ops use synchronous checking of aws api
-		status, statusErr = broker.adapter.checkElasticsearchStatus(&existingInstance)
+		needAsyncJobState = false
+	}
+
+	if needAsyncJobState {
+		asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)
+		if err != nil {
+			return lastOperation, apiresponses.NewFailureResponse(
+				err,
+				http.StatusInternalServerError,
+				"get last async job message",
+			)
+		}
+		state = asyncJobMsg.JobState.State
+		statusMessage = asyncJobMsg.JobState.Message
+	} else {
+		instanceStatus, statusErr := broker.adapter.checkElasticsearchStatus(&existingInstance)
 		if statusErr != nil {
-			broker.logger.Error("Error checking Elasticsearch status", statusErr)
+			broker.logger.Error("Error checking Elasticsearch status", "err", statusErr)
 			return lastOperation, apiresponses.NewFailureResponse(
 				statusErr,
 				http.StatusInternalServerError,
@@ -303,17 +330,19 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 				"saving updated instance",
 			)
 		}
+		state = instanceStatus
+		statusMessage = fmt.Sprintf("The service instance status is %s", state)
 	}
 
-	if status == base.InstanceGone {
+	if state == base.InstanceGone {
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
 		broker.brokerDB.Unscoped().Delete(&baseInstance)
 	}
 
 	broker.logger.Debug(fmt.Sprintf("LastOperation - Final\n\tstate: %s\n", state))
 	return domain.LastOperation{
-		State:       status.ToLastOperationState(),
-		Description: fmt.Sprintf("The service instance status is %s", state),
+		State:       state.ToLastOperationState(),
+		Description: statusMessage,
 	}, nil
 }
 
@@ -394,7 +423,7 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	}
 
 	// send async deletion request.
-	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password, broker.jobs)
+	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)
@@ -412,5 +441,4 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 			"deleting instance",
 		)
 	}
-
 }

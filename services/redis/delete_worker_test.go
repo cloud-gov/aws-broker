@@ -335,6 +335,47 @@ func TestAsyncDeleteRedis(t *testing.T) {
 			expectedRecordCount: 1,
 			expectErr:           true,
 		},
+		"replication group already gone": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+
+				&mockRedisClient{
+					deleteReplicationGroupErr: notFoundErr,
+					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
+						{
+							Snapshots: []elasticacheTypes.Snapshot{
+								{
+									SnapshotStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							Snapshots: []elasticacheTypes.Snapshot{
+								{
+									SnapshotStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			expectedState: base.InstanceGone,
+		},
 	}
 
 	for name, test := range testCases {

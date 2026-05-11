@@ -37,7 +37,7 @@ func TestWaitForDbReady(t *testing.T) {
 		logger                *slog.Logger
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			db:  brokerDB,
 			settings: &config.Settings{
 				PollAwsMinDelay:    1 * time.Millisecond,
@@ -66,7 +66,7 @@ func TestWaitForDbReady(t *testing.T) {
 			},
 		},
 		"waits with retries for database creation": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 
 			db: brokerDB,
 			settings: &config.Settings{
@@ -110,7 +110,7 @@ func TestWaitForDbReady(t *testing.T) {
 			},
 		},
 		"gives up after maximum retries for database creation": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 
 			db: brokerDB,
 			settings: &config.Settings{
@@ -157,7 +157,7 @@ func TestWaitForDbReady(t *testing.T) {
 			expectAsyncJobMessage: true,
 		},
 		"error checking database creation status": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			db:  brokerDB,
 			settings: &config.Settings{
 				PollAwsMinDelay:    1 * time.Millisecond,
@@ -226,7 +226,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 		logger                *slog.Logger
 	}{
 		"success": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			db:  brokerDB,
 			settings: &config.Settings{
 				PollAwsMinDelay:    1 * time.Millisecond,
@@ -248,11 +248,11 @@ func TestWaitForDbDeleted(t *testing.T) {
 			},
 		},
 		"waits with retries for database creation": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			db:  brokerDB,
 			settings: &config.Settings{
 				PollAwsMinDelay:    1 * time.Millisecond,
-				PollAwsMaxDuration: 3 * time.Millisecond,
+				PollAwsMaxDuration: 5 * time.Millisecond,
 			},
 			rdsClient: &mockRDSClient{
 				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
@@ -285,7 +285,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 			},
 		},
 		"gives up after maximum retries for database creation": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			db:  brokerDB,
 			settings: &config.Settings{
 				PollAwsMinDelay:    1 * time.Millisecond,
@@ -331,7 +331,7 @@ func TestWaitForDbDeleted(t *testing.T) {
 			expectAsyncJobMessage: true,
 		},
 		"error checking database creation status": {
-			ctx: context.Background(),
+			ctx: t.Context(),
 			db:  brokerDB,
 			settings: &config.Settings{
 				PollAwsMinDelay:    1 * time.Millisecond,

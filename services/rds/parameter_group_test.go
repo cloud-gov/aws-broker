@@ -1,8 +1,8 @@
 package rds
 
 import (
-	"context"
 	"errors"
+	"log/slog"
 	"reflect"
 	"testing"
 
@@ -11,13 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/testutil"
 )
 
 func TestNewParameterGroupClient(t *testing.T) {
 	parameterGroupAdapter := NewAwsParameterGroupClient(
-		context.Background(),
+		t.Context(),
 		&mockRDSClient{},
 		&config.Settings{},
+		slog.New(&testutil.MockLogHandler{}),
 	)
 	if parameterGroupAdapter.ctx == nil {
 		t.Fatal("context should not be nil")
@@ -26,10 +28,13 @@ func TestNewParameterGroupClient(t *testing.T) {
 		t.Fatal("RDS client should not be nil")
 	}
 	if parameterGroupAdapter.settings == nil {
-		t.Fatal("RDS client should not be nil")
+		t.Fatal("settings should not be nil")
 	}
 	if parameterGroupAdapter.parameterGroupPrefix != "cg-aws-broker-" {
 		t.Errorf("actual prefix: %s", parameterGroupAdapter.parameterGroupPrefix)
+	}
+	if parameterGroupAdapter.logger == nil {
+		t.Fatal("logger should not be nil")
 	}
 }
 
@@ -1489,6 +1494,101 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			}
 			if test.dbInstance.ParameterGroupName != test.expectedPGroupName {
 				t.Fatalf("unexpected group name: %s, expected: %s", test.dbInstance.ParameterGroupName, test.expectedPGroupName)
+			}
+		})
+	}
+}
+
+func TestCleanupCustomParameterGroups(t *testing.T) {
+	testCases := map[string]struct {
+		customParams          map[string]map[string]string
+		dbInstance            *RDSInstance
+		expectedPGroupName    string
+		expectErr             bool
+		dedicatedDBAdapter    *dedicatedDBAdapter
+		parameterGroupAdapter *awsParameterGroupClient
+	}{
+		"success": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			expectedPGroupName: "",
+			parameterGroupAdapter: NewAwsParameterGroupClient(
+				t.Context(),
+				&mockRDSClient{
+					describeDBParameterGroupsOutput: []*rds.DescribeDBParameterGroupsOutput{
+						{
+							DBParameterGroups: []rdsTypes.DBParameterGroup{
+								{
+									DBParameterGroupName: aws.String("group-1"),
+								},
+							},
+						},
+					},
+				},
+				&config.Settings{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+		},
+		"skips invalid parameter group state error": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			expectedPGroupName: "",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				ctx: t.Context(),
+				rds: &mockRDSClient{
+					describeDBParameterGroupsOutput: []*rds.DescribeDBParameterGroupsOutput{
+						{
+							DBParameterGroups: []rdsTypes.DBParameterGroup{
+								{
+									DBParameterGroupName: aws.String("group-1"),
+								},
+							},
+						},
+					},
+					deleteDbParameterGroupErr: &rdsTypes.InvalidDBParameterGroupStateFault{},
+				},
+				settings:             &config.Settings{},
+				logger:               slog.New(&testutil.MockLogHandler{}),
+				parameterGroupPrefix: "group",
+			},
+		},
+		"skips not found error": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+			},
+			expectedPGroupName: "",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				ctx: t.Context(),
+				rds: &mockRDSClient{
+					describeDBParameterGroupsOutput: []*rds.DescribeDBParameterGroupsOutput{
+						{
+							DBParameterGroups: []rdsTypes.DBParameterGroup{
+								{
+									DBParameterGroupName: aws.String("group-1"),
+								},
+							},
+						},
+					},
+					deleteDbParameterGroupErr: &rdsTypes.DBParameterGroupNotFoundFault{},
+				},
+				settings:             &config.Settings{},
+				logger:               slog.New(&testutil.MockLogHandler{}),
+				parameterGroupPrefix: "group",
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := test.parameterGroupAdapter.CleanupCustomParameterGroups()
+
+			if !test.expectErr && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if test.expectErr && err == nil {
+				t.Error("expected error, got nil")
 			}
 		})
 	}
