@@ -146,7 +146,12 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	}
 
 	if options.PgQueryLogging != nil {
-		modifiedInstance.PgQueryLogging = options.PgQueryLogging
+		if modifiedInstance.PgQueryLogging == nil {
+			modifiedInstance.PgQueryLogging = options.PgQueryLogging
+		} else {
+			modifiedInstance.PgQueryLogging = modifiedInstance.PgQueryLogging.merge(options.PgQueryLogging)
+		}
+
 	}
 
 	if options.EnableFunctions != modifiedInstance.EnableFunctions {
@@ -312,4 +317,37 @@ func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []str
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
 	}
 	return nil
+}
+
+func (existing *PgQueryLoggingOptions) merge(updates *PgQueryLoggingOptions) *PgQueryLoggingOptions {
+	merged := *existing
+
+	if updates.LogConnections != nil {
+		merged.LogConnections = updates.LogConnections
+	}
+	if updates.LogDisconnections != nil {
+		merged.LogDisconnections = updates.LogDisconnections
+	}
+	if updates.LogCheckpoints != nil {
+		merged.LogCheckpoints = updates.LogCheckpoints
+	}
+	if updates.LogLockWaits != nil {
+		merged.LogLockWaits = updates.LogLockWaits
+	}
+	if updates.LogMinDurationSample != nil {
+		merged.LogMinDurationSample = updates.LogMinDurationSample
+	}
+	if updates.LogMinDurationStatement != nil {
+		merged.LogMinDurationStatement = updates.LogMinDurationStatement
+	}
+	if updates.LogStatement != nil {
+		merged.LogStatement = updates.LogStatement
+	}
+	if updates.LogStatementSampleRate != nil {
+		merged.LogStatementSampleRate = updates.LogStatementSampleRate
+	}
+	if updates.LogStatementStats != nil {
+		merged.LogStatementStats = updates.LogStatementStats
+	}
+	return &merged
 }

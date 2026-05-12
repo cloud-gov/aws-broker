@@ -828,6 +828,33 @@ func TestModifyInstance(t *testing.T) {
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
+		"PgQueryLogging partial updates merges with existing fields": {
+			options: Options{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement: aws.String("all"),
+				},
+			},
+			existingInstance: &RDSInstance{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+					LogConnections:          aws.Bool(true),
+				},
+				Tags: map[string]string{},
+			},
+			expectedInstance: &RDSInstance{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("all"),
+					LogMinDurationStatement: aws.Int64(500),
+					LogConnections:          aws.Bool(true),
+				},
+				Tags: map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
 		"PgQueryLogging not specified does not update existing value": {
 			options: Options{},
 			existingInstance: &RDSInstance{
