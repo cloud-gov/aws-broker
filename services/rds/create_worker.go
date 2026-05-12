@@ -110,6 +110,10 @@ func (w *CreateWorker) prepareCreateDbInput(
 		params.LicenseModel = aws.String(i.LicenseModel)
 	}
 
+	if len(i.EnabledCloudwatchLogGroupExports) > 0 {
+		params.EnableCloudwatchLogsExports = i.EnabledCloudwatchLogGroupExports
+	}
+
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
 	err = w.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)

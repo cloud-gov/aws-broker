@@ -20,6 +20,7 @@ import (
 	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/riverqueue/river"
 )
 
@@ -362,19 +363,20 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 		},
 		"handles optional params": {
 			dbInstance: &RDSInstance{
-				AllocatedStorage:      10,
-				Database:              "db-1",
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				DbVersion:             "8.0",
-				credentialUtils:       &RDSCredentialUtils{},
-				Username:              "fake-user",
-				StorageType:           "storage-1",
-				PubliclyAccessible:    true,
-				BackupRetentionPeriod: 14,
-				DbSubnetGroup:         "subnet-group-1",
-				SecGroup:              "sec-group-1",
-				LicenseModel:          "foo",
+				AllocatedStorage:                 10,
+				Database:                         "db-1",
+				BinaryLogFormat:                  "ROW",
+				DbType:                           "mysql",
+				DbVersion:                        "8.0",
+				credentialUtils:                  &RDSCredentialUtils{},
+				Username:                         "fake-user",
+				StorageType:                      "storage-1",
+				PubliclyAccessible:               true,
+				BackupRetentionPeriod:            14,
+				DbSubnetGroup:                    "subnet-group-1",
+				SecGroup:                         "sec-group-1",
+				LicenseModel:                     "foo",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"slowquery", "audit"},
 			},
 			tags: map[string]string{
 				"foo": "bar",
@@ -419,9 +421,10 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				VpcSecurityGroupIds: []string{
 					"sec-group-1",
 				},
-				DBParameterGroupName: aws.String("parameter-group-1"),
-				EngineVersion:        aws.String("8.0"),
-				LicenseModel:         aws.String("foo"),
+				DBParameterGroupName:        aws.String("parameter-group-1"),
+				EngineVersion:               aws.String("8.0"),
+				LicenseModel:                aws.String("foo"),
+				EnableCloudwatchLogsExports: []string{"slowquery", "audit"},
 			},
 		},
 	}

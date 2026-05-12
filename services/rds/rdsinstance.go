@@ -247,6 +247,7 @@ func (i *RDSInstance) init(
 	i.BinaryLogFormat = options.BinaryLogFormat
 	i.EnablePgCron = options.EnablePgCron
 	i.LongQueryTime = options.LongQueryTime
+	i.PgQueryLogging = options.PgQueryLogging
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
