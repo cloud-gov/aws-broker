@@ -1,6 +1,9 @@
 package rds
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 func validateBinaryLogFormat(format string) error {
 	switch format {
@@ -44,13 +47,7 @@ func validatePgQueryLogging(opts *PgQueryLoggingOptions) error {
 		return fmt.Errorf("log_min_duration_sample must be >= -1, got %d", *opts.LogMinDurationSample)
 	}
 	if opts.LogStatement != nil {
-		valid := false
-		for _, v := range validLogStatementValues {
-			if *opts.LogStatement == v {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validLogStatementValues, *opts.LogStatement)
 		if !valid {
 			return fmt.Errorf("log_statement must be one of %v, got %q", validLogStatementValues, *opts.LogStatement)
 		}
