@@ -362,6 +362,110 @@ func TestInit(t *testing.T) {
 				Tags:                  map[string]string{},
 			},
 		},
+		"sets EnableCloudWatchLogGroupExports and long_query_time from options": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"slowquery"},
+				LongQueryTime:                   aws.Float64(2.5),
+			},
+			plan: &catalog.RDSPlan{
+				ServicePlan: domain.ServicePlan{
+					ID: "plan-1",
+				},
+				DbType:           "mysql",
+				DbVersion:        "8.0",
+				StorageType:      "gp3",
+				AllocatedStorage: 20,
+				Tags:             map[string]string{},
+			},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			rdsInstance: &RDSInstance{
+				credentialUtils: &mockCredentialUtils{
+					mockSalt:              "salt",
+					mockEncryptedPassword: "encrypted-pw",
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                           "mysql",
+				DbVersion:                        "8.0",
+				StorageType:                      "gp3",
+				AllocatedStorage:                 20,
+				LongQueryTime:                    aws.Float64(2.5),
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"slowquery"},
+				Salt:                             "salt",
+				Password:                         "encrypted-pw",
+				Tags:                             map[string]string{},
+			},
+		},
+		"sets EnableCloudWatchLogGroupExports and pg_query_logging from options": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"upgrade"},
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+			},
+			plan: &catalog.RDSPlan{
+				ServicePlan: domain.ServicePlan{
+					ID: "plan-1",
+				},
+				DbType:           "postgres",
+				DbVersion:        "16",
+				StorageType:      "gp3",
+				AllocatedStorage: 20,
+				Tags:             map[string]string{},
+			},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			rdsInstance: &RDSInstance{
+				credentialUtils: &mockCredentialUtils{
+					mockSalt:              "salt",
+					mockEncryptedPassword: "encrypted-pw",
+				},
+			},
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                           "postgres",
+				DbVersion:                        "16",
+				StorageType:                      "gp3",
+				AllocatedStorage:                 20,
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"upgrade"},
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+				Salt:     "salt",
+				Password: "encrypted-pw",
+				Tags:     map[string]string{},
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -794,22 +898,25 @@ func TestModifyInstance(t *testing.T) {
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
-		"update long_query_time": {
+		"update EnableCloudWatchLogGroupExports and long_query_time": {
 			options: Options{
-				LongQueryTime: aws.Float64(0.5),
+				EnableCloudWatchLogGroupExports: []string{"slowquery"},
+				LongQueryTime:                   aws.Float64(0.5),
 			},
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{
-				LongQueryTime: aws.Float64(0.5),
-				Tags:          map[string]string{},
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"slowquery"},
+				LongQueryTime:                    aws.Float64(0.5),
+				Tags:                             map[string]string{},
 			},
 			currentPlan:   &catalog.RDSPlan{},
 			newPlan:       &catalog.RDSPlan{},
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
-		"update PgQueryLogging": {
+		"update EnableCloudWatchLogGroupExports and PgQueryLogging": {
 			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"postgresql"},
 				PgQueryLogging: &PgQueryLoggingOptions{
 					LogStatement:            aws.String("ddl"),
 					LogMinDurationStatement: aws.Int64(500),
@@ -817,6 +924,7 @@ func TestModifyInstance(t *testing.T) {
 			},
 			existingInstance: &RDSInstance{},
 			expectedInstance: &RDSInstance{
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"postgresql"},
 				PgQueryLogging: &PgQueryLoggingOptions{
 					LogStatement:            aws.String("ddl"),
 					LogMinDurationStatement: aws.Int64(500),
