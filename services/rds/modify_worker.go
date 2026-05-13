@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -113,6 +114,12 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 	}
 	if i.ParameterGroupName != "" {
 		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
+	}
+
+	if len(i.EnabledCloudwatchLogGroupExports) > 0 {
+		params.CloudwatchLogsExportConfiguration = &rdsTypes.CloudwatchLogsExportConfiguration{
+			EnableLogTypes: i.EnabledCloudwatchLogGroupExports,
+		}
 	}
 	return params, nil
 }

@@ -41,8 +41,10 @@ type RDSInstance struct {
 
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         *bool  `sql:"size(255)"`
-	ParameterGroupFamily string `gorm:"-"`
-	ParameterGroupName   string `sql:"size(255)"`
+	LongQueryTime        *float64
+	PgQueryLogging       *PgQueryLoggingOptions `gorm:"serializer:json"`
+	ParameterGroupFamily string                 `gorm:"-"`
+	ParameterGroupName   string                 `sql:"size(255)"`
 
 	EnabledCloudwatchLogGroupExports pq.StringArray `gorm:"type:text[]"`
 
@@ -139,6 +141,19 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		modifiedInstance.EnablePgCron = options.EnablePgCron
 	}
 
+	if options.LongQueryTime != nil {
+		modifiedInstance.LongQueryTime = options.LongQueryTime
+	}
+
+	if options.PgQueryLogging != nil {
+		if modifiedInstance.PgQueryLogging == nil {
+			modifiedInstance.PgQueryLogging = options.PgQueryLogging
+		} else {
+			modifiedInstance.PgQueryLogging = modifiedInstance.PgQueryLogging.merge(options.PgQueryLogging)
+		}
+
+	}
+
 	if options.EnableFunctions != modifiedInstance.EnableFunctions {
 		modifiedInstance.EnableFunctions = options.EnableFunctions
 	}
@@ -231,6 +246,8 @@ func (i *RDSInstance) init(
 	i.PubliclyAccessible = options.PubliclyAccessible
 	i.BinaryLogFormat = options.BinaryLogFormat
 	i.EnablePgCron = options.EnablePgCron
+	i.LongQueryTime = options.LongQueryTime
+	i.PgQueryLogging = options.PgQueryLogging
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
@@ -297,10 +314,41 @@ func (i *RDSInstance) getTags() map[string]string {
 }
 
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
-	// TODO: update this to set the enabled log groups when
-	// enabling log groups is supported by the broker
 	if len(enabledLogGroups) > 0 {
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
 	}
 	return nil
+}
+
+func (existing *PgQueryLoggingOptions) merge(updates *PgQueryLoggingOptions) *PgQueryLoggingOptions {
+	merged := *existing
+
+	if updates.LogConnections != nil {
+		merged.LogConnections = updates.LogConnections
+	}
+	if updates.LogDisconnections != nil {
+		merged.LogDisconnections = updates.LogDisconnections
+	}
+	if updates.LogCheckpoints != nil {
+		merged.LogCheckpoints = updates.LogCheckpoints
+	}
+	if updates.LogLockWaits != nil {
+		merged.LogLockWaits = updates.LogLockWaits
+	}
+	if updates.LogMinDurationSample != nil {
+		merged.LogMinDurationSample = updates.LogMinDurationSample
+	}
+	if updates.LogMinDurationStatement != nil {
+		merged.LogMinDurationStatement = updates.LogMinDurationStatement
+	}
+	if updates.LogStatement != nil {
+		merged.LogStatement = updates.LogStatement
+	}
+	if updates.LogStatementSampleRate != nil {
+		merged.LogStatementSampleRate = updates.LogStatementSampleRate
+	}
+	if updates.LogStatementStats != nil {
+		merged.LogStatementStats = updates.LogStatementStats
+	}
+	return &merged
 }

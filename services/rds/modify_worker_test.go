@@ -19,6 +19,7 @@ import (
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/go-test/deep"
+	"github.com/lib/pq"
 	"github.com/riverqueue/river"
 )
 
@@ -837,6 +838,41 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				DBInstanceIdentifier:     aws.String("db-name"),
 				AllowMajorVersionUpgrade: aws.Bool(false),
 				BackupRetentionPeriod:    aws.Int32(14),
+			},
+		},
+		"enables cloudwatch log exports": {
+			dbInstance: &RDSInstance{
+				DbType:                           "postgres",
+				AllocatedStorage:                 20,
+				Database:                         "db-name",
+				BackupRetentionPeriod:            14,
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"postgresql", "upgrade"},
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				CloudwatchLogsExportConfiguration: &rdsTypes.CloudwatchLogsExportConfiguration{
+					EnableLogTypes: []string{"postgresql", "upgrade"},
+				},
 			},
 		},
 		"allow major version upgrade": {

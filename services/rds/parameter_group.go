@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -271,8 +272,13 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 		(i.DbType == "mysql") {
 		return true
 	}
-	if i.EnablePgCron != nil &&
-		(i.DbType == "postgres") {
+	if i.DbType == "postgres" &&
+		(i.EnablePgCron != nil || i.PgQueryLogging != nil) {
+		return true
+	}
+	if i.DbType == "mysql" &&
+		(slices.Contains(i.EnabledCloudwatchLogGroupExports, "general") ||
+			slices.Contains(i.EnabledCloudwatchLogGroupExports, "slowquery")) {
 		return true
 	}
 
@@ -362,6 +368,33 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 				applyMethod: "immediate",
 			}
 		}
+
+		// Configuration for the instnace to start generating logs if user enables these groups
+		if slices.Contains(i.EnabledCloudwatchLogGroupExports, "general") ||
+			slices.Contains(i.EnabledCloudwatchLogGroupExports, "slowquery") {
+			customRDSParameters["mysql"]["log_output"] = paramDetails{
+				value:       "FILE",
+				applyMethod: "immediate",
+			}
+		}
+		if slices.Contains(i.EnabledCloudwatchLogGroupExports, "general") {
+			customRDSParameters["mysql"]["general_log"] = paramDetails{
+				value:       "1",
+				applyMethod: "immediate",
+			}
+		}
+		if slices.Contains(i.EnabledCloudwatchLogGroupExports, "slowquery") {
+			customRDSParameters["mysql"]["slow_query_log"] = paramDetails{
+				value:       "1",
+				applyMethod: "immediate",
+			}
+			if i.LongQueryTime != nil {
+				customRDSParameters["mysql"]["long_query_time"] = paramDetails{
+					value:       strconv.FormatFloat(*i.LongQueryTime, 'f', -1, 64),
+					applyMethod: "immediate",
+				}
+			}
+		}
 	}
 
 	if i.DbType == "postgres" {
@@ -382,9 +415,73 @@ func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[strin
 				applyMethod: "pending-reboot",
 			}
 		}
+		if q := i.PgQueryLogging; q != nil {
+			if q.LogConnections != nil {
+				customRDSParameters["postgres"]["log_connections"] = paramDetails{
+					value:       boolToParamvalue(*q.LogConnections),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogDisconnections != nil {
+				customRDSParameters["postgres"]["log_disconnections"] = paramDetails{
+					value:       boolToParamvalue(*q.LogDisconnections),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogCheckpoints != nil {
+				customRDSParameters["postgres"]["log_checkpoints"] = paramDetails{
+					value:       boolToParamvalue(*q.LogCheckpoints),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogLockWaits != nil {
+				customRDSParameters["postgres"]["log_lock_waits"] = paramDetails{
+					value:       boolToParamvalue(*q.LogLockWaits),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogMinDurationSample != nil {
+				customRDSParameters["postgres"]["log_min_duration_sample"] = paramDetails{
+					value:       strconv.FormatInt(*q.LogMinDurationSample, 10),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogMinDurationStatement != nil {
+				customRDSParameters["postgres"]["log_min_duration_statement"] = paramDetails{
+					value:       strconv.FormatInt(*q.LogMinDurationStatement, 10),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogStatement != nil {
+				customRDSParameters["postgres"]["log_statement"] = paramDetails{
+					value:       *q.LogStatement,
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogStatementSampleRate != nil {
+				customRDSParameters["postgres"]["log_statement_sample_rate"] = paramDetails{
+					value:       strconv.FormatFloat(*q.LogStatementSampleRate, 'f', -1, 64),
+					applyMethod: "immediate",
+				}
+			}
+			if q.LogStatementStats != nil {
+				customRDSParameters["postgres"]["log_statement_stats"] = paramDetails{
+					value:       boolToParamvalue(*q.LogStatementStats),
+					applyMethod: "immediate",
+				}
+			}
+
+		}
 	}
 
 	return customRDSParameters, nil
+}
+
+func boolToParamvalue(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
 }
 
 // getParameterGroupName gets a parameter group name for the instance

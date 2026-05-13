@@ -56,6 +56,40 @@ func TestValidate(t *testing.T) {
 			settings:    &config.Settings{},
 			expectedErr: true,
 		},
+		"valid long_query_time": {
+			options: Options{
+				LongQueryTime: aws.Float64(0.5),
+			},
+			settings:    &config.Settings{},
+			expectedErr: false,
+		},
+		"invalid long_query_time": {
+			options: Options{
+				LongQueryTime: aws.Float64(-1),
+			},
+			settings:    &config.Settings{},
+			expectedErr: true,
+		},
+		"valid pg_query_logging": {
+			options: Options{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+			},
+			settings:    &config.Settings{},
+			expectedErr: false,
+		},
+		"invalid pg_query_logging": {
+			options: Options{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("INVALID"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+			},
+			settings:    &config.Settings{},
+			expectedErr: true,
+		},
 	}
 
 	for name, test := range testCases {
@@ -222,6 +256,57 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 				PubliclyAccessible: false,
 				Version:            "",
 				BinaryLogFormat:    "",
+			},
+			expectErr: true,
+		},
+		"long_query_time specified": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"long_query_time": 0.5 }`),
+			},
+			expectedOptions: Options{
+				LongQueryTime: aws.Float64(0.5),
+			},
+		},
+		"invalid long_query_time rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"long_query_time": -1 }`),
+			},
+			expectedOptions: Options{
+				LongQueryTime: aws.Float64(-1),
+			},
+			expectErr: true,
+		},
+		"pg_query_logging specified ": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"pg_query_logging": {"log_statement": "ddl", "log_min_duration_statement": 500}}`),
+			},
+			expectedOptions: Options{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement:            aws.String("ddl"),
+					LogMinDurationStatement: aws.Int64(500),
+				},
+			},
+		},
+		"invalid pg_query_logging rejected ": {
+			broker: &rdsBroker{
+				settings: &config.Settings{},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"pg_query_logging": {"log_statement": "INVALID"}}`),
+			},
+			expectedOptions: Options{
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogStatement: aws.String("INVALID"),
+				},
 			},
 			expectErr: true,
 		},
