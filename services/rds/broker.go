@@ -33,7 +33,7 @@ type PgQueryLoggingOptions struct {
 	LogMinDurationSample    *int64   `json:"log_min_duration_sample"`
 	LogMinDurationStatement *int64   `json:"log_min_duration_statement"`
 	LogStatement            *string  `json:"log_statement"`
-	LogStatementSampleRate  *float64 `json:"log_min_duration_sample_rate"`
+	LogStatementSampleRate  *float64 `json:"log_statement_sample_rate"`
 	LogStatementStats       *bool    `json:"log_statement_stats"`
 }
 
