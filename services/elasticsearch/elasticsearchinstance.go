@@ -49,7 +49,9 @@ type ElasticsearchInstance struct {
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
 
-	ClearPassword string `gorm:"-"`
+	ClearPassword              string `gorm:"-"`
+	VersionUpgradeInProgress   bool
+	TargetElasticsearchVersion string `sql:"size(255)"`
 
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
@@ -202,6 +204,11 @@ func (i *ElasticsearchInstance) init(
 func (i *ElasticsearchInstance) update(
 	options ElasticsearchOptions,
 ) error {
+	if options.ElasticsearchVersion != "" && options.ElasticsearchVersion != i.ElasticsearchVersion {
+		i.TargetElasticsearchVersion = options.ElasticsearchVersion
+		i.VersionUpgradeInProgress = true
+	}
+
 	if options.VolumeType != i.VolumeType {
 		i.VolumeType = options.VolumeType
 	}
