@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log"
 	"log/slog"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -36,6 +38,7 @@ type ElasticsearchAdapter interface {
 	createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
 	modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
+	checkCompatibleVersions(domainName, targetVersion string) error
 	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
 	deleteElasticsearch(i *ElasticsearchInstance, passoword string) (base.InstanceState, error)
 }
@@ -53,6 +56,10 @@ func (d *mockElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance)
 
 func (d *mockElasticsearchAdapter) checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
 	return base.InstanceReady, nil
+}
+
+func (d *mockElasticsearchAdapter) checkCompatibleVersions(domainName, targetVersion string) error {
+	return nil
 }
 
 func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
@@ -204,6 +211,18 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 }
 
 func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
+	if i.VersionUpgradeInProgress {
+		_, err := d.opensearch.UpgradeDomain(d.ctx, &opensearch.UpgradeDomainInput{
+			DomainName:    aws.String(i.Domain),
+			TargetVersion: aws.String(i.TargetElasticsearchVersion),
+		})
+		if err != nil {
+			d.logger.Error("modifyElasticsearch: UpgradeDomain err", "err", err)
+			return base.InstanceNotModified, err
+		}
+		return base.InstanceInProgress, nil
+	}
+
 	params, err := prepareUpdateDomainConfigInput(i)
 	if err != nil {
 		return base.InstanceNotModified, err
@@ -216,6 +235,34 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	}
 
 	return base.InstanceInProgress, nil
+}
+
+func (d *dedicatedElasticsearchAdapter) checkUpgradeStatus(i *ElasticsearchInstance) (base.InstanceState, error) {
+	resp, err := d.opensearch.GetUpgradeStatus(d.ctx, &opensearch.GetUpgradeStatusInput{
+		DomainName: aws.String(i.Domain),
+	})
+	if err != nil {
+		d.logger.Error("checkUpgradeStatus: GetUpgradeStatus err", "err", err)
+		return base.InstanceInProgress, nil
+	}
+
+	d.logger.Error("checkUpgradeStatus", "step", resp.UpgradeStep, "status", resp.StepStatus, "name", aws.ToString(resp.UpgradeName))
+
+	switch resp.StepStatus {
+	case opensearchTypes.UpgradeStatusSucceeded, opensearchTypes.UpgradeStatusSucceededWithIssues:
+		i.ElasticsearchVersion = i.TargetElasticsearchVersion
+		i.TargetElasticsearchVersion = ""
+		i.VersionUpgradeInProgress = false
+		return base.InstanceReady, nil
+	case opensearchTypes.UpgradeStatusFailed:
+		d.logger.Error("checkUpgradeStatus: upgrade failed", "step", resp.UpgradeStep, "name", aws.ToString(resp.UpgradeName))
+		i.TargetElasticsearchVersion = ""
+		i.VersionUpgradeInProgress = false
+		return base.InstanceNotModified, nil
+	default:
+		d.logger.Error("checkUpgradeStatus:", "step", resp.UpgradeStep, "StepStatus", resp.StepStatus, "name", aws.ToString(resp.UpgradeName))
+		return base.InstanceInProgress, nil
+	}
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
@@ -287,6 +334,9 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
 			switch *(resp.DomainStatus.Processing) {
 			case false:
+				if i.VersionUpgradeInProgress {
+					return d.checkUpgradeStatus(i)
+				}
 				return base.InstanceReady, nil
 			case true:
 				return base.InstanceInProgress, nil
@@ -299,6 +349,35 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 		}
 	}
 	return base.InstanceNotCreated, nil
+
+}
+
+func (d *dedicatedElasticsearchAdapter) checkCompatibleVersions(domainName, targetVersion string) error {
+	resp, err := d.opensearch.GetCompatibleVersions(d.ctx, &opensearch.GetCompatibleVersionsInput{
+		DomainName: aws.String(domainName),
+	})
+	if err != nil {
+		return fmt.Errorf("checking compatible versions: %w", err)
+	}
+
+	// CompatibleVersions is a graph of available upgrade paths.
+	// When called with a domain name, AWS returns a single entry of the available upgrade paths from the domain's current version.
+	if len(resp.CompatibleVersions) == 0 {
+		return fmt.Errorf("%s is not a valid upgrade target; no upgrade paths are available from the current version", targetVersion)
+	}
+
+	entry := resp.CompatibleVersions[0]
+	sourceVersion := aws.ToString(entry.SourceVersion)
+
+	if slices.Contains(entry.TargetVersions, targetVersion) {
+		return nil
+	}
+
+	if len(entry.TargetVersions) == 0 {
+		return fmt.Errorf("%s is not a valid upgrade target; no upgrade paths are available from %s", targetVersion, sourceVersion)
+	}
+
+	return fmt.Errorf("%s is not a valid upgrade target from %s; compatible versions are: %s", targetVersion, sourceVersion, strings.Join(entry.TargetVersions, ", "))
 
 }
 

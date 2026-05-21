@@ -35,10 +35,17 @@ type ElasticsearchOptions struct {
 	VolumeType           string                       `json:"volume_type"`
 }
 
+func (o ElasticsearchOptions) HasNonVersionChanges() bool {
+	return o.VolumeType != "" || o.Bucket != "" ||
+		o.AdvancedOptions.IndicesFieldDataCacheSize != "" ||
+		o.AdvancedOptions.IndicesQueryBoolMaxClauseCount != ""
+}
+
 func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 	if err := validateVolumeType(o.VolumeType); err != nil {
 		return err
 	}
+	// TODO: move HasNonVersionChanges validation here
 	return nil
 }
 
@@ -229,10 +236,38 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
 	}
 
+	plan, planErr := broker.catalog.ElasticsearchService.FetchPlan(details.PlanID)
+	if planErr != nil {
+		return planErr
+	}
+
+	if options.ElasticsearchVersion != "" {
+		if !plan.CheckVersion(options.ElasticsearchVersion) {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("%s is not a supported major version", options.ElasticsearchVersion),
+				http.StatusBadRequest,
+				"checking Elasticsearch version",
+			)
+		}
+
+		if options.HasNonVersionChanges() {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("engine version upgrade cannot be combined with other configuration options; please make a separate update-service call"),
+				http.StatusBadRequest,
+				"checking Elasticsearch version",
+			)
+		}
+
+		if err := broker.adapter.checkCompatibleVersions(esInstance.Domain, options.ElasticsearchVersion); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "checking compatible versions")
+		}
+
+	}
+
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", "err", err)
-		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating servie instance")
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating service instance")
 	}
 
 	state, err := broker.adapter.modifyElasticsearch(&esInstance)
