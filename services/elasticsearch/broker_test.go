@@ -14,7 +14,6 @@ import (
 	"github.com/cloud-gov/aws-broker/mocks"
 	"github.com/cloud-gov/aws-broker/testutil"
 	brokertags "github.com/cloud-gov/go-broker-tags"
-	"gorm.io/gorm"
 )
 
 func TestValidate(t *testing.T) {
@@ -50,13 +49,6 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func testDBInit() (*gorm.DB, error) {
-	db, err := testutil.TestDbInit()
-	// Automigrate!
-	db.AutoMigrate(&ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
-	return db, err
 }
 
 func TestCreateInstance(t *testing.T) {
