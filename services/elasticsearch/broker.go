@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
@@ -36,9 +37,8 @@ type ElasticsearchOptions struct {
 }
 
 func (o ElasticsearchOptions) HasNonVersionChanges() bool {
-	return o.VolumeType != "" || o.Bucket != "" ||
-		o.AdvancedOptions.IndicesFieldDataCacheSize != "" ||
-		o.AdvancedOptions.IndicesQueryBoolMaxClauseCount != ""
+	o.ElasticsearchVersion = ""
+	return !reflect.DeepEqual(o, ElasticsearchOptions{})
 }
 
 func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
