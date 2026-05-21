@@ -61,6 +61,41 @@ func TestUpdateInstance(t *testing.T) {
 				VolumeType: "gp3",
 			},
 		},
+		"version upgrade stages TargetElasticSearchVersion and sets VersionUpgradeInProgress": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_2.3",
+			},
+			existingInstance: &ElasticsearchInstance{
+				ElasticsearchVersion: "OpenSearch_1.3",
+			},
+			expectedInstance: &ElasticsearchInstance{
+				ElasticsearchVersion:       "OpenSearch_1.3",
+				TargetElasticsearchVersion: "OpenSearch_2.3",
+				VersionUpgradeInProgress:   true,
+			},
+		},
+		"same version does not set VersionUpgradeInProgress": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_2.3",
+			},
+			existingInstance: &ElasticsearchInstance{
+				ElasticsearchVersion: "OpenSearch_2.3",
+			},
+			expectedInstance: &ElasticsearchInstance{
+				ElasticsearchVersion: "OpenSearch_2.3",
+			},
+		},
+		"empty version is a no-op": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "",
+			},
+			existingInstance: &ElasticsearchInstance{
+				ElasticsearchVersion: "OpenSearch_1.3",
+			},
+			expectedInstance: &ElasticsearchInstance{
+				ElasticsearchVersion: "OpenSearch_1.3",
+			},
+		},
 	}
 
 	for name, test := range testCases {
