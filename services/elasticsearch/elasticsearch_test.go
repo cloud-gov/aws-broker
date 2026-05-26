@@ -2,7 +2,9 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -353,6 +355,143 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			}
 			if test.instance.TargetElasticsearchVersion != test.expectedTargetESVersion {
 				t.Errorf("expected TargetElasticsearchVersion=%q, got %q", test.expectedTargetESVersion, test.instance.TargetElasticsearchVersion)
+			}
+		})
+	}
+}
+
+func TestModifyElasticsearch(t *testing.T) {
+	testCases := map[string]struct {
+		instance            *ElasticsearchInstance
+		upgradeDomainErr    error
+		expectUpgradeCalled bool
+		expectErr           bool
+		expectedState       base.InstanceState
+	}{
+		"version upgrae calls UpgradeDomain": {
+			instance: &ElasticsearchInstance{
+				Domain:                     "test-domain",
+				ElasticsearchVersion:       "OpenSearch_1.3",
+				TargetElasticsearchVersion: "OpenSearch_2.3",
+				VersionUpgradeInProgress:   true,
+			},
+			expectUpgradeCalled: true,
+			expectedState:       base.InstanceInProgress,
+		},
+		"UpgradeDomain error returns InstanceNotModified": {
+			instance: &ElasticsearchInstance{
+				Domain:                     "test-domain",
+				ElasticsearchVersion:       "OpenSearch_1.3",
+				TargetElasticsearchVersion: "OpenSearch_2.3",
+				VersionUpgradeInProgress:   true,
+			},
+			upgradeDomainErr:    errors.New("upgrade failed"),
+			expectUpgradeCalled: true,
+			expectErr:           true,
+			expectedState:       base.InstanceNotModified,
+		},
+		"non-version modify calls UpdateDomainConfig": {
+			instance: &ElasticsearchInstance{
+				Domain:                   "test-domain",
+				VersionUpgradeInProgress: false,
+			},
+			expectUpgradeCalled: false,
+			expectedState:       base.InstanceInProgress,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			mock := &mockOpensearchClient{upgradeDomainErr: test.upgradeDomainErr}
+			adapter := &dedicatedElasticsearchAdapter{
+				ctx:        context.Background(),
+				opensearch: mock,
+				logger:     slog.New(&testutil.MockLogHandler{}),
+			}
+
+			state, err := adapter.modifyElasticsearch(test.instance)
+			if test.expectErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !test.expectErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if state != test.expectedState {
+				t.Errorf("expected state %v, got %v", test.expectedState, state)
+			}
+			upgradeCalled := mock.upgradeDomainInput != nil
+			if upgradeCalled != test.expectUpgradeCalled {
+				t.Errorf("UpgradeDomain called=%v, want=%v", upgradeCalled, test.expectUpgradeCalled)
+			}
+			if test.expectUpgradeCalled && mock.upgradeDomainInput != nil {
+				if diff := deep.Equal(mock.upgradeDomainInput, &opensearch.UpgradeDomainInput{
+					DomainName:    aws.String(test.instance.Domain),
+					TargetVersion: aws.String(test.instance.TargetElasticsearchVersion),
+				}); diff != nil {
+					t.Error(diff)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckCompatibleVersions(t *testing.T) {
+	testCases := map[string]struct {
+		targetVersion      string
+		compatibleVersions []opensearchTypes.CompatibleVersionsMap
+		apiErr             error
+		expectErr          bool
+		errContains        string
+	}{
+		"target in compatible list succeeds": {
+			targetVersion: "OpenSearch_2.3",
+			compatibleVersions: []opensearchTypes.CompatibleVersionsMap{
+				{SourceVersion: aws.String("OpenSearch_1.3"), TargetVersions: []string{"OpenSearch_2.3"}},
+			},
+		},
+		"target not in compatible list returns error with valid options": {
+			targetVersion: "OpenSearch_3.0",
+			compatibleVersions: []opensearchTypes.CompatibleVersionsMap{
+				{SourceVersion: aws.String("OpenSearch_1.3"), TargetVersions: []string{"OpenSearch_2.3"}},
+			},
+			expectErr:   true,
+			errContains: "OpenSearch_2.3",
+		},
+		"no compatible paths returns error": {
+			targetVersion:      "OpenSearch_2.3",
+			compatibleVersions: []opensearchTypes.CompatibleVersionsMap{},
+			expectErr:          true,
+			errContains:        "no upgrade paths are available",
+		},
+		"AWS API error is returned": {
+			targetVersion: "OpenSearch_2.3",
+			apiErr:        errors.New("AWS error"),
+			expectErr:     true,
+			errContains:   "AWS error",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			mock := &mockOpensearchClient{
+				compatibleVersions:    test.compatibleVersions,
+				compatibleVersionsErr: test.apiErr,
+			}
+			adapter := &dedicatedElasticsearchAdapter{
+				ctx:        context.Background(),
+				opensearch: mock,
+				logger:     slog.New(&testutil.MockLogHandler{}),
+			}
+
+			err := adapter.checkCompatibleVersions("test-domain", test.targetVersion)
+			if test.expectErr && err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !test.expectErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.errContains != "" && err != nil && !strings.Contains(err.Error(), test.errContains) {
+				t.Errorf("expected error containing %q, got %q", test.errContains, err.Error())
 			}
 		})
 	}
