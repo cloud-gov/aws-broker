@@ -260,7 +260,6 @@ func (d *dedicatedElasticsearchAdapter) checkUpgradeStatus(i *ElasticsearchInsta
 		i.VersionUpgradeInProgress = false
 		return base.InstanceNotModified, nil
 	default:
-		d.logger.Error("checkUpgradeStatus:", "step", resp.UpgradeStep, "StepStatus", resp.StepStatus, "name", aws.ToString(resp.UpgradeName))
 		return base.InstanceInProgress, nil
 	}
 }
