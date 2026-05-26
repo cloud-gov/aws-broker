@@ -54,7 +54,7 @@ func (o *awsOptionsGroupClient) IsBrokerOptionGroup(optionGroupName string) bool
 }
 
 func (o *awsOptionsGroupClient) getOptionGroupName(i *RDSInstance, majorEngineVersion string) string {
-	return o.optionGroupPrefix + formatDBName(i.Database) + "-option-" + formatDBVersion(majorEngineVersion)
+	return o.optionGroupPrefix + formatDBName(i.Database, i.DbType) + "-option-" + formatDBVersion(majorEngineVersion)
 }
 
 func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, error) {
@@ -197,7 +197,7 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 			OptionGroupName:        aws.String(targetOptionGroupName),
 			EngineName:             aws.String(i.DbType),
 			MajorEngineVersion:     aws.String(targetMajorVersion),
-			OptionGroupDescription: aws.String("aws broker option group for " + formatDBName(i.Database)),
+			OptionGroupDescription: aws.String("aws broker option group for " + formatDBName(i.Database, i.DbType)),
 			Tags:                   rdsTags,
 		})
 		if err != nil {
