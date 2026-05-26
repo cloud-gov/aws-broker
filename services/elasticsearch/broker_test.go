@@ -1,7 +1,9 @@
 package elasticsearch
 
 import (
+	"encoding/json"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
@@ -104,6 +106,114 @@ func TestCreateInstance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+		})
+	}
+}
+
+func TestModifyInstance(t *testing.T) {
+	testCases := map[string]struct {
+		options          ElasticsearchOptions
+		existingVersion  string
+		approvedVersions []string
+		expectedErrMsg   string
+	}{
+		"valid version accepted": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_2.3",
+			},
+			existingVersion:  "OpenSearch_1.3",
+			approvedVersions: []string{"OpenSearch_2.3", "OpenSearch_1.3", "Elasticsearch_7.4"},
+		},
+		"invalid version rejected": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_5.0",
+			},
+			existingVersion:  "OpenSearch_1.3",
+			approvedVersions: []string{"OpenSearch_2.3", "OpenSearch_1.3", "Elasticsearch_7.4"},
+			expectedErrMsg:   "OpenSearch_5.0 is not a supported major version",
+		},
+		"version with other options rejected": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_2.3",
+				VolumeType:           "gp3",
+			},
+			existingVersion:  "OpenSearch_1.3",
+			approvedVersions: []string{"OpenSearch_2.3", "OpenSearch_1.3", "Elasticsearch_7.4"},
+			expectedErrMsg:   "engine version upgrade cannot be combined with other configuration options",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDb, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			planId := "plan-123"
+			instanceId := helpers.RandStr(10)
+			serviceId := helpers.RandStr(10)
+
+			existingInstance := &ElasticsearchInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: serviceId,
+						PlanID:    planId,
+					},
+					Uuid: instanceId,
+				},
+				ElasticsearchVersion: test.existingVersion,
+			}
+			if err := brokerDb.Create(&base.Instance{Uuid: instanceId, Request: existingInstance.Request}).Error; err != nil {
+				t.Fatal((err))
+			}
+			if err := brokerDb.Create(existingInstance).Error; err != nil {
+				t.Fatal(err)
+			}
+
+			rawParams, _ := json.Marshal(test.options)
+			updateDetails := domain.UpdateDetails{
+				PlanID:        planId,
+				RawParameters: rawParams,
+			}
+
+			broker := &elasticsearchBroker{
+				brokerDB: brokerDb,
+				catalog: &catalog.Catalog{
+					ElasticsearchService: catalog.ElasticsearchService{
+						ElasticsearchPlans: []catalog.ElasticsearchPlan{
+							{
+								ServicePlan: domain.ServicePlan{
+									ID: planId,
+								},
+								ApprovedMajorVersions: test.approvedVersions,
+							},
+						},
+					},
+				},
+				settings: &config.Settings{
+					EncryptionKey: helpers.RandStr(32),
+					Environment:   "test",
+				},
+				tagManager: &mocks.MockTagGenerator{},
+				adapter:    &mockElasticsearchAdapter{},
+				logger:     slog.New(&testutil.MockLogHandler{}),
+			}
+
+			err = broker.ModifyInstance(instanceId, updateDetails)
+			if test.expectedErrMsg != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", test.expectedErrMsg)
+				}
+				if !strings.Contains(err.Error(), test.expectedErrMsg) {
+					t.Fatalf("expected error containing %q, got %q", test.expectedErrMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+			}
+
 		})
 	}
 }
