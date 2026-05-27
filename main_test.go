@@ -1503,11 +1503,11 @@ func TestElasticsearchBindInstance(t *testing.T) {
 	validJSON(res.Body.Bytes(), url, t)
 
 	type credentials struct {
-		URI              string `json:"uri"`
-		AccessKey        string `json:"access_key"`
-		SecretKey        string `json:"secret_key"`
-		Host             string `json:"host"`
-		CurrentESVersion string `json:"current_elasticsearch_version"`
+		URI                  string `json:"uri"`
+		AccessKey            string `json:"access_key"`
+		SecretKey            string `json:"secret_key"`
+		Host                 string `json:"host"`
+		ElasticsearchVersion string `json:"current_elasticsearch_version"`
 	}
 
 	type response struct {
