@@ -115,6 +115,17 @@ class ESSmokeTester:
             and results["_source"] == DOCUMENT
         )
 
+def check_version(service_name, expected_version):
+    """
+    Verify the current_elasticsearch_version in es credentials matches the expected version
+    """
+    credentials = get_es_credentials(service_name)
+    actual_version = credentials.get("current_elasticsearch_version", "")
+    if actual_version != expected_version:
+        print(f"Version mismatch: expected '{expected_version}', get '{actual_version}'")
+        sys.exit(1)
+    print(f"Version check passed: {actual_version}")
+
 
 parser = argparse.ArgumentParser(
     description="Smoke tests for aws-elasticsearch service",
@@ -139,11 +150,25 @@ parser.add_argument(
     default='us-gov-west-1'
 )
 
+parser.add_argument(
+    "--expected-version",
+    dest="expected_version",
+    type=str,
+    help="Expected value of elastic search version",
+    required-False,
+    default=None,
+)
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
     service_name = args.service_name
     region_name = args.region_name
+
+    # Verify engine version
+    if args.expected_version:
+        check_version(service_name, args.expected_version)
+
     tester = ESSmokeTester(service_name, region_name)
     results = tester.run()
     isExpected = tester.test_expected(results)

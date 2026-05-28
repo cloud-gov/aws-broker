@@ -383,6 +383,22 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-version
+              file: aws-broker-app/ci/run-smoke-test-es-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_NAME: aws-elasticsearch
+                SERVICE_PLAN: es-dev
+                REGION: ((development-aws-default-region))
+                ES_START_VERSION: OpenSearch_1.3
+                ES_TARGET_VERSION: OpenSearch_2.3
     on_failure:
       put: slack
       params:
@@ -1317,6 +1333,22 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((staging-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-version
+              file: aws-broker-app/ci/run-smoke-test-es-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                SERVICE_NAME: aws-elasticsearch
+                SERVICE_PLAN: es-dev
+                REGION: ((staging-aws-default-region))
+                ES_START_VERSION: OpenSearch_1.3
+                ES_TARGET_VERSION: OpenSearch_2.3
     on_failure:
       put: slack
       params:
@@ -1914,6 +1946,22 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((prod-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-version
+              file: aws-broker-app/ci/run-smoke-test-es-version.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                SERVICE_NAME: aws-elasticsearch
+                SERVICE_PLAN: es-dev
+                REGION: ((prod-aws-default-region))
+                ES_START_VERSION: OpenSearch_1.3
+                ES_TARGET_VERSION: OpenSearch_2.3
 
             - task: smoke-tests-postgres-update-version
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
