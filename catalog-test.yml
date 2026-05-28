@@ -282,7 +282,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.small
       dbType: mysql
-      dbVersion: "8.4.8"
+      dbVersion: "8.4.9"
       allocatedStorage: 20
       approvedMajorVersions: &rds-mysql-approved-major-versions
         - "8.4"
@@ -311,7 +311,7 @@ rds:
       adapter: dedicated
       instanceClass: db.t3.medium
       dbType: mysql
-      dbVersion: "8.4.8"
+      dbVersion: "8.4.9"
       allocatedStorage: 20
       approvedMajorVersions: *rds-mysql-approved-major-versions
       plan_updateable: true
