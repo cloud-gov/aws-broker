@@ -443,7 +443,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 18.3
+                DB_VERSION: 17.3
 
             - task: smoke-tests-postgres-update-storage
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -526,7 +526,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4.9"
+                DB_VERSION: "8.4.4"
 
             - task: smoke-tests-mysql-update-storage
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
