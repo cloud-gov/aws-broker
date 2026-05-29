@@ -236,20 +236,7 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
 	}
 
-	// plan, planErr := broker.catalog.ElasticsearchService.FetchPlan(details.PlanID)
-	// if planErr != nil {
-	// 	return planErr
-	// }
-
 	if options.ElasticsearchVersion != "" {
-		// if !plan.CheckVersion(options.ElasticsearchVersion) {
-		// 	return apiresponses.NewFailureResponse(
-		// 		fmt.Errorf("%s is not a supported major version", options.ElasticsearchVersion),
-		// 		http.StatusBadRequest,
-		// 		"checking Elasticsearch version",
-		// 	)
-		// }
-
 		if options.HasNonVersionChanges() {
 			return apiresponses.NewFailureResponse(
 				fmt.Errorf("engine version upgrade cannot be combined with other configuration options; please make a separate update-service call"),

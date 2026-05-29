@@ -112,34 +112,23 @@ func TestCreateInstance(t *testing.T) {
 
 func TestModifyInstance(t *testing.T) {
 	testCases := map[string]struct {
-		options          ElasticsearchOptions
-		existingVersion  string
-		approvedVersions []string
-		expectedErrMsg   string
+		options         ElasticsearchOptions
+		existingVersion string
+		expectedErrMsg  string
 	}{
 		"valid version accepted": {
 			options: ElasticsearchOptions{
 				ElasticsearchVersion: "OpenSearch_2.3",
 			},
-			existingVersion:  "OpenSearch_1.3",
-			approvedVersions: []string{"OpenSearch_2.3", "OpenSearch_1.3", "Elasticsearch_7.4"},
+			existingVersion: "OpenSearch_1.3",
 		},
-		// "invalid version rejected": {
-		// 	options: ElasticsearchOptions{
-		// 		ElasticsearchVersion: "OpenSearch_5.0",
-		// 	},
-		// 	existingVersion:  "OpenSearch_1.3",
-		// 	approvedVersions: []string{"OpenSearch_2.3", "OpenSearch_1.3", "Elasticsearch_7.4"},
-		// 	expectedErrMsg:   "OpenSearch_5.0 is not a supported major version",
-		// },
 		"version with other options rejected": {
 			options: ElasticsearchOptions{
 				ElasticsearchVersion: "OpenSearch_2.3",
 				VolumeType:           "gp3",
 			},
-			existingVersion:  "OpenSearch_1.3",
-			approvedVersions: []string{"OpenSearch_2.3", "OpenSearch_1.3", "Elasticsearch_7.4"},
-			expectedErrMsg:   "engine version upgrade cannot be combined with other configuration options",
+			existingVersion: "OpenSearch_1.3",
+			expectedErrMsg:  "engine version upgrade cannot be combined with other configuration options",
 		},
 	}
 
@@ -186,7 +175,6 @@ func TestModifyInstance(t *testing.T) {
 								ServicePlan: domain.ServicePlan{
 									ID: planId,
 								},
-								ApprovedMajorVersions: test.approvedVersions,
 							},
 						},
 					},
