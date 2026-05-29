@@ -33,7 +33,7 @@ pushd "$TASK_DIRECTORY"
 cf push "$TEST_APP" -f manifest.yml
 
 # Create service with the starting version
-cf create-service "$SERVICE_NAME" "$SERVICE_PLAN" "$TEST_SERVICE" -b "$BROKER_NAME" -c '{"elasticsearchVersion": "$ES_START_VERSION"}'
+cf create-service "$SERVICE_NAME" "$SERVICE_PLAN" "$TEST_SERVICE" -b "$BROKER_NAME" -c '{"elasticsearchVersion": $ES_START_VERSION}'
 
 # Wait for service to be created
 wait_for_service_instance_success "$TEST_SERVICE"
@@ -52,7 +52,7 @@ test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
 get_task_state "$test_app_guid"
 
 # Upgrade the engine version to target
-cf update-service "$TEST_SERVICE" -c '{"elasticsearchVersion": "$ES_TARGET_VERSION"}'
+cf update-service "$TEST_SERVICE" -c '{"elasticsearchVersion": $ES_TARGET_VERSION}'
 
 # Wait for upgrade to complete
 wait_for_service_instance_success "$TEST_SERVICE"
