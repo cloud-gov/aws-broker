@@ -459,7 +459,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                DB_VERSION: 15
+                DB_VERSION: 17.3
 
             - task: smoke-tests-postgres-update-storage
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -542,7 +542,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4"
+                DB_VERSION: "8.4.4"
 
             - task: smoke-tests-mysql-update-storage
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -652,8 +652,8 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                OLD_VERSION: 14
-                NEW_VERSION: 16
+                OLD_VERSION: 15.1
+                NEW_VERSION: 18.3
                 ALLOW_MAJOR_VERSION_UPGRADE: true
 
             - task: smoke-tests-postgres-rotate-creds-replica
@@ -1097,7 +1097,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4"
+                DB_VERSION: "8.4.4"
 
             - task: smoke-tests-mysql-update-small-to-medium
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1151,8 +1151,8 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                OLD_VERSION: 14
-                NEW_VERSION: 16
+                OLD_VERSION: 15.1
+                NEW_VERSION: 18.3
                 ALLOW_MAJOR_VERSION_UPGRADE: true
 
             - task: smoke-tests-postgres-replica
@@ -1806,7 +1806,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4"
+                DB_VERSION: "8.4.4"
 
             - task: smoke-tests-mysql-update-small-to-medium
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1975,8 +1975,8 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                OLD_VERSION: 14
-                NEW_VERSION: 16
+                OLD_VERSION: 15.1
+                NEW_VERSION: 18.3
                 ALLOW_MAJOR_VERSION_UPGRADE: true
 
             - task: smoke-tests-postgres-replica
