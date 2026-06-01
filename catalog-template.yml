@@ -851,6 +851,10 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: &default-mysql-version "8.4.9"
       dbType: mysql
@@ -886,6 +890,10 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -921,6 +929,10 @@ rds:
       instanceClass: db.t3.micro
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -955,6 +967,10 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -989,6 +1005,10 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbType: mysql
       dbVersion: *default-mysql-version
@@ -1024,6 +1044,10 @@ rds:
       instanceClass: db.t3.small
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbType: mysql
       dbVersion: *default-mysql-version
@@ -1059,6 +1083,10 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1093,6 +1121,10 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1128,6 +1160,10 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1163,6 +1199,10 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1197,6 +1237,10 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1232,6 +1276,10 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1267,6 +1315,10 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1301,6 +1353,10 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1336,6 +1392,10 @@ rds:
       instanceClass: db.m5.large
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1371,6 +1431,10 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1405,6 +1469,10 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
@@ -1440,6 +1508,10 @@ rds:
       instanceClass: db.m5.xlarge
       allocatedStorage: 20
       approvedMajorVersions:
+        - "8.0"
+        - "8.1"
+        - "8.2"
+        - "8.3"
         - "8.4"
       dbVersion: *default-mysql-version
       dbType: mysql
