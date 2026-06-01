@@ -112,9 +112,10 @@ func TestCreateInstance(t *testing.T) {
 
 func TestModifyInstance(t *testing.T) {
 	testCases := map[string]struct {
-		options         ElasticsearchOptions
-		existingVersion string
-		expectedErrMsg  string
+		options                  ElasticsearchOptions
+		existingVersion          string
+		versionUpgradeInProgress bool
+		expectedErrMsg           string
 	}{
 		"valid version accepted": {
 			options: ElasticsearchOptions{
@@ -129,6 +130,14 @@ func TestModifyInstance(t *testing.T) {
 			},
 			existingVersion: "OpenSearch_1.3",
 			expectedErrMsg:  "engine version upgrade cannot be combined with other configuration options",
+		},
+		"reject modify when upgrade in progress": {
+			options: ElasticsearchOptions{
+				VolumeType: "gp3",
+			},
+			existingVersion:          "OpenSearch_1.3",
+			versionUpgradeInProgress: true,
+			expectedErrMsg:           "a version upgrade is currently in progress",
 		},
 	}
 
@@ -151,7 +160,8 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: instanceId,
 				},
-				ElasticsearchVersion: test.existingVersion,
+				ElasticsearchVersion:     test.existingVersion,
+				VersionUpgradeInProgress: test.versionUpgradeInProgress,
 			}
 			if err := brokerDb.Create(&base.Instance{Uuid: instanceId, Request: existingInstance.Request}).Error; err != nil {
 				t.Fatal((err))
