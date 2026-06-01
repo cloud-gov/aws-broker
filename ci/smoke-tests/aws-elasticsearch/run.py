@@ -155,7 +155,7 @@ parser.add_argument(
     dest="expected_version",
     type=str,
     help="Expected value of elastic search version",
-    required-False,
+    required=False,
     default=None,
 )
 
