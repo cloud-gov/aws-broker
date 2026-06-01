@@ -837,7 +837,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - &default-mysql-v8.4.9 "Default MySQL v8.4.9"
+          - &default-mysql-description "Default MySQL v8"
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
@@ -872,7 +872,7 @@ rds:
         bullets:
           - *read-replica
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
@@ -907,7 +907,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
@@ -941,7 +941,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -975,7 +975,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -1010,7 +1010,7 @@ rds:
         bullets:
           - *read-replica
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
@@ -1045,7 +1045,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
@@ -1079,7 +1079,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
@@ -1114,7 +1114,7 @@ rds:
         bullets:
           - *read-replica
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
@@ -1149,7 +1149,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -1183,7 +1183,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -1218,7 +1218,7 @@ rds:
         bullets:
           - *read-replica
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -1253,7 +1253,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -1287,7 +1287,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -1322,7 +1322,7 @@ rds:
         bullets:
           - *read-replica
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
@@ -1357,7 +1357,7 @@ rds:
       metadata:
         bullets:
           - *single-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
@@ -1391,7 +1391,7 @@ rds:
       metadata:
         bullets:
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
@@ -1426,7 +1426,7 @@ rds:
         bullets:
           - *read-replica
           - *multi-az-rds
-          - *default-mysql-v8.4.9
+          - *default-mysql-description
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
