@@ -856,7 +856,7 @@ rds:
         - "8.2"
         - "8.3"
         - "8.4"
-      dbVersion: &default-mysql-version "8.4.9"
+      dbVersion: &default-mysql-version "8.0" #CHANGEMEBACK
       dbType: mysql
       plan_updateable: true
       redundant: false
