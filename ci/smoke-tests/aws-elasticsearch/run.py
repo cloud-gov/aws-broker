@@ -12,7 +12,7 @@ SERVICE = "es"
 
 # Small example document to load
 INDEX = "movies"
-DOC_TYPE = "doc"
+DOC_TYPE = "_doc"
 ID = "1"
 DOCUMENT = {
     "title": "Black Panther",
