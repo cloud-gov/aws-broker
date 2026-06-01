@@ -45,7 +45,6 @@ func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
 	if err := validateVolumeType(o.VolumeType); err != nil {
 		return err
 	}
-	// TODO: move HasNonVersionChanges validation here
 	return nil
 }
 
