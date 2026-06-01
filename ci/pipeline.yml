@@ -607,7 +607,7 @@ jobs:
                 CF_PASSWORD: ((development-cf-deploy-password))
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
-                SERVICE_PLAN: micro-psql
+                SERVICE_PLAN: micro-mysql
                 DB_TYPE: mysql
                 OLD_VERSION: 8.0
                 NEW_VERSION: 8.4
