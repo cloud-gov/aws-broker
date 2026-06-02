@@ -56,13 +56,8 @@ func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, set
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
 func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
-	if !p.needCustomParameters(i) {
-		return nil
-	}
-
 	var existingRDSParameters map[string]map[string]paramDetails
 	var err error
-	var shouldCreateParameterGroup bool
 
 	// we have a parameter group name in i.ParameterGroupName if one exists
 	// see reconcileDbState
@@ -71,22 +66,33 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 		return fmt.Errorf("checkIfParameterGroupExists err %w", err)
 	}
 
-	// By default, create parameter group only if one doesn't exist
-	shouldCreateParameterGroup = !parameterGroupExists
+	fmt.Printf("parameter group name %s, exists: %t\n", i.ParameterGroupName, parameterGroupExists)
 
-	if parameterGroupExists && i.AllowMajorVersionUpgrade {
+	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
+	// if we're changing major versions, we need to create a new parameter group
+	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
+
+	fmt.Printf("shouldCreateParameterGroup %t\n", shouldCreateParameterGroup)
+
+	if needsNewParameterGroupVersion {
 		existingRDSParameters, err = p.getExistingParameters(i)
 		if err != nil {
 			return fmt.Errorf("encountered error getting existing parameters: %w", err)
 		}
-		// if we're changing major versions, we need to create a new parameter group
-		shouldCreateParameterGroup = true
 	}
+
+	if !p.needCustomParameters(i) && !needsNewParameterGroupVersion {
+		return nil
+	}
+
+	fmt.Printf("existing RDS parameters %+v\n", existingRDSParameters)
 
 	customRDSParameters, err := p.getCustomParameters(i)
 	if err != nil {
 		return fmt.Errorf("encountered error getting custom parameters: %w", err)
 	}
+
+	fmt.Printf("custom RDS parameters %+v\n", customRDSParameters)
 
 	// combine existing parameters with any new parameters being set
 	for dbType, dbParams := range existingRDSParameters {
@@ -99,6 +105,9 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 	}
 
 	setParameterGroupName(i, p)
+
+	fmt.Printf("new parameter group name: %s\n", i.ParameterGroupName)
+	fmt.Printf("updated custom RDS parameters %+v\n", customRDSParameters)
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
@@ -230,7 +239,6 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	// retrieve its actual value.
 	parameterGroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
 
-	log.Printf("got parameter group family: %s", parameterGroupFamily)
 	i.ParameterGroupFamily = parameterGroupFamily
 	return nil
 }
@@ -245,7 +253,6 @@ func (p *awsParameterGroupClient) checkIfParameterGroupExists(parameterGroupName
 	// If the db parameter group has already been created, we can return.
 	_, err := p.rds.DescribeDBParameters(p.ctx, dbParametersInput)
 	if err == nil {
-		log.Printf("%s parameter group already exists", parameterGroupName)
 		return true, nil
 	}
 
@@ -541,7 +548,11 @@ func boolToParamvalue(b bool) string {
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
 	// formatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
-	return p.parameterGroupPrefix + formatDBName(i.Database) + "-version-" + formatDBName(i.DbVersion)
+	return p.parameterGroupPrefix + formatDBName(i.Database) + "-version-" + formatDBVersion(i.DbVersion)
+}
+
+func formatDBVersion(version string) string {
+	return strings.ReplaceAll(version, ".", "-")
 }
 
 func GetOldParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
@@ -565,9 +576,6 @@ func (p *awsParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error 
 
 // setParameterGroupName sets the parameter group name on the instance struct
 func setParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) {
-	if i.ParameterGroupName != "" {
-		return
-	}
 	i.ParameterGroupName = getParameterGroupName(i, p)
 }
 

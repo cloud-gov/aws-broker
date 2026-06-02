@@ -30,7 +30,6 @@ type RDSInstance struct {
 	DbSubnetGroup         string `gorm:"-"`
 	AllocatedStorage      int64  `sql:"size(255)"`
 	SecGroup              string `gorm:"-"`
-	EnableFunctions       bool   `gorm:"-"`
 	PubliclyAccessible    bool   `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
@@ -39,6 +38,7 @@ type RDSInstance struct {
 	DbVersion    string `sql:"size(255)"`
 	LicenseModel string `sql:"size(255)"`
 
+	EnableFunctions      bool   `sql:"size(255)"`
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         *bool  `sql:"size(255)"`
 	LongQueryTime        *float64

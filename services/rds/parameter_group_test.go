@@ -47,7 +47,7 @@ func TestGetParameterGroupName(t *testing.T) {
 		DbVersion: "18.3",
 	})
 	parameterGroupName := getParameterGroupName(i, p)
-	expectedParameterGroupName := "prefix-db1234-version-183"
+	expectedParameterGroupName := "prefix-db1234-version-18-3"
 	if parameterGroupName != expectedParameterGroupName {
 		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
 	}
@@ -1416,8 +1416,9 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				DbType:          "mysql",
 				BinaryLogFormat: "ROW",
 				Database:        "database1",
+				DbVersion:       "1.0",
 			},
-			expectedPGroupName: "prefix-database1",
+			expectedPGroupName: "prefix-database1-version-1-0",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds:                  &mockRDSClient{},
 				parameterGroupPrefix: "prefix-",
@@ -1453,7 +1454,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				},
 				parameterGroupPrefix: "prefix-",
 			},
-			expectedPGroupName: "prefix-database2",
+			expectedPGroupName: "prefix-database2-version-16",
 		},
 		"needs custom params, error": {
 			dbInstance: &RDSInstance{
@@ -1479,7 +1480,103 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 					describeDbParamsNumPages: 1,
 				},
 			},
-			expectedPGroupName: "group1",
+		},
+		"major version upgrade, has existing params": {
+			dbInstance: &RDSInstance{
+				DbType:                   "mysql",
+				BinaryLogFormat:          "ROW",
+				Database:                 "database1",
+				ParameterGroupName:       "group1",
+				AllowMajorVersionUpgrade: true,
+				DbVersion:                "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									EngineVersion: aws.String("8.4"),
+								},
+							},
+						},
+					},
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("mysql8.4"),
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+			expectedPGroupName: "prefix-database1-version-8-4",
+		},
+		"modify existing parameter group": {
+			dbInstance: &RDSInstance{
+				DbType:             "mysql",
+				BinaryLogFormat:    "ROW",
+				Database:           "database1",
+				ParameterGroupName: "group1",
+				DbVersion:          "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									EngineVersion: aws.String("8.4"),
+								},
+							},
+						},
+					},
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("mysql8.4"),
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+			expectedPGroupName: "prefix-database1-version-8-4",
 		},
 	}
 
@@ -1496,7 +1593,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if test.dbInstance.ParameterGroupName != test.expectedPGroupName {
+			if err == nil && test.dbInstance.ParameterGroupName != test.expectedPGroupName {
 				t.Fatalf("unexpected group name: %s, expected: %s", test.dbInstance.ParameterGroupName, test.expectedPGroupName)
 			}
 		})
