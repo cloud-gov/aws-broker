@@ -1609,6 +1609,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 								{
 									ParameterName:  aws.String("random-param"),
 									ParameterValue: aws.String("random-value"),
+									ApplyMethod:    rdsTypes.ApplyMethodImmediate,
 								},
 							},
 						},
