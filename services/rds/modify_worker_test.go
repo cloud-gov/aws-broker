@@ -131,7 +131,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockRDSClient{},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
-					returnErr: errors.New("fail"),
+					provisionOrModifyParamGroupErr: errors.New("fail"),
 				},
 				&RDSCredentialUtils{},
 			),
@@ -739,8 +739,8 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockRDSClient{},
 				nil,
 				&mockParameterGroupClient{
-					rds:       &mockRDSClient{},
-					returnErr: testErr,
+					rds:                            &mockRDSClient{},
+					provisionOrModifyParamGroupErr: testErr,
 				},
 				&mockCredentialUtils{},
 			),

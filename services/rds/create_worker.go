@@ -116,7 +116,7 @@ func (w *CreateWorker) prepareCreateDbInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err = w.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
+	err = w.parameterGroupClient.ProvisionNewCustomParameterGroup(i, rdsTags)
 	if err != nil {
 		return nil, err
 	}
