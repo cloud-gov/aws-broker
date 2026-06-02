@@ -1299,9 +1299,10 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 	modifyDbParamGroupErr := errors.New("modify DB params err")
 
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
-		expectedErr           error
-		parameterGroupAdapter *awsParameterGroupClient
+		dbInstance                 *RDSInstance
+		expectedErr                error
+		parameterGroupAdapter      *awsParameterGroupClient
+		shouldCreateParameterGroup bool
 	}{
 		"error getting parameter group family": {
 			dbInstance: &RDSInstance{
@@ -1317,6 +1318,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					describeEngVersionsErr: describeEngVersionsErr,
 				},
 			},
+			shouldCreateParameterGroup: true,
 		},
 		"error creating database parameter group": {
 			dbInstance: &RDSInstance{
@@ -1337,6 +1339,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					},
 				},
 			},
+			shouldCreateParameterGroup: true,
 		},
 		"error modifying database parameter group": {
 			dbInstance: &RDSInstance{
@@ -1378,7 +1381,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil)
+			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil, test.shouldCreateParameterGroup)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}

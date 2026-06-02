@@ -47,6 +47,10 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 	return nil
 }
 
+func (m *mockParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error {
+	return nil
+}
+
 type mockCredentialUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string
