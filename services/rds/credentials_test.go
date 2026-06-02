@@ -24,6 +24,18 @@ func TestFormatDBName(t *testing.T) {
 	}
 }
 
+func TestFormatOracleDBName(t *testing.T) {
+	dbIdentifier := "db" + helpers.RandStrNoCaps(15)
+	i := &RDSInstance{
+		Database: dbIdentifier,
+		DbType: "oracle-se2",
+	}
+	dbName := formatDBName(i.Database, i.DbType)
+	if dbName != "ORCL" {
+		t.Fatalf("database name should be %s", "ORCL")
+	}
+}
+
 func TestGetCredentials(t *testing.T) {
 	testCases := map[string]struct {
 		credentialUtils CredentialUtils
