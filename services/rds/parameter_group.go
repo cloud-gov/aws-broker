@@ -56,9 +56,6 @@ func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, set
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
 func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
-	var existingRDSParameters map[string]map[string]paramDetails
-	var err error
-
 	// we have a parameter group name in i.ParameterGroupName if one exists
 	// see reconcileDbState
 	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
@@ -69,40 +66,16 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 	fmt.Printf("parameter group name %s, exists: %t\n", i.ParameterGroupName, parameterGroupExists)
 
 	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
-	// if we're changing major versions, we need to create a new parameter group
-	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
-
-	fmt.Printf("shouldCreateParameterGroup %t\n", shouldCreateParameterGroup)
-
-	if needsNewParameterGroupVersion {
-		existingRDSParameters, err = p.getExistingParameters(i)
-		if err != nil {
-			return fmt.Errorf("encountered error getting existing parameters: %w", err)
-		}
-	}
 
 	if !p.needCustomParameters(i) && !needsNewParameterGroupVersion {
 		return nil
 	}
 
-	fmt.Printf("existing RDS parameters %+v\n", existingRDSParameters)
+	// if we're changing major versions, we need to create a new parameter group
+	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
+	fmt.Printf("shouldCreateParameterGroup %t\n", shouldCreateParameterGroup)
 
-	customRDSParameters, err := p.getCustomParameters(i)
-	if err != nil {
-		return fmt.Errorf("encountered error getting custom parameters: %w", err)
-	}
-
-	fmt.Printf("custom RDS parameters %+v\n", customRDSParameters)
-
-	// combine existing parameters with any new parameters being set
-	for dbType, dbParams := range existingRDSParameters {
-		for paramName, paramDetails := range dbParams {
-			// only add existing parameter if it is not being customized
-			if _, ok := customRDSParameters[dbType]; !ok {
-				customRDSParameters[dbType][paramName] = paramDetails
-			}
-		}
-	}
+	customRDSParameters, err := p.getAllCustomParameters(i, needsNewParameterGroupVersion)
 
 	setParameterGroupName(i, p)
 
@@ -116,28 +89,6 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 		return fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
 	return nil
-}
-
-func (p *awsParameterGroupClient) getExistingParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
-	existingRDSParameters := make(map[string]map[string]paramDetails)
-	output, err := p.rds.DescribeDBParameters(p.ctx, &rds.DescribeDBParametersInput{
-		DBParameterGroupName: &i.ParameterGroupName,
-		// only need to copy parameters that were modified by the broker or manually
-		Source: aws.String("user"),
-	})
-	if err != nil {
-		return existingRDSParameters, fmt.Errorf("encountered error describing parameter group: %w", err)
-	}
-	for _, param := range output.Parameters {
-		if existingRDSParameters[i.DbType] == nil {
-			existingRDSParameters[i.DbType] = make(map[string]paramDetails)
-		}
-		existingRDSParameters[i.DbType][*param.ParameterName] = paramDetails{
-			value:       *param.ParameterValue,
-			applyMethod: string(param.ApplyMethod),
-		}
-	}
-	return existingRDSParameters, nil
 }
 
 // CleanupCustomParameterGroups searches out all the parameter groups that we created and tries to clean them up
@@ -402,7 +353,69 @@ func (p *awsParameterGroupClient) getParameterValue(i *RDSInstance, parameterNam
 	return p.getDefaultEngineParameterValue(i, parameterName)
 }
 
-func (p *awsParameterGroupClient) getCustomParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
+func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchExistingParameters bool) (map[string]map[string]paramDetails, error) {
+	var existingRDSParameters map[string]map[string]paramDetails
+	var err error
+
+	existingRDSParameters = make(map[string]map[string]paramDetails)
+	customRDSParameters := make(map[string]map[string]paramDetails)
+
+	if fetchExistingParameters {
+		existingRDSParameters, err = p.getExistingParameters(i)
+		if err != nil {
+			return customRDSParameters, err
+		}
+		fmt.Printf("existing RDS parameters %+v\n", existingRDSParameters)
+	}
+
+	newRDSParameters, err := p.getNewParameters(i)
+	if err != nil {
+		return customRDSParameters, err
+	}
+
+	customRDSParameters = newRDSParameters
+
+	fmt.Printf("new RDS parameters %+v\n", customRDSParameters)
+
+	// combine existing parameters with any new parameters being set
+	for dbType, dbParams := range existingRDSParameters {
+		for paramName, paramDetails := range dbParams {
+			if _, ok := customRDSParameters[dbType]; ok {
+				// only add existing parameter if it is not being customized
+				if _, ok := customRDSParameters[dbType][paramName]; !ok {
+					customRDSParameters[dbType][paramName] = paramDetails
+				}
+			}
+		}
+	}
+
+	fmt.Printf("custom RDS parameters %+v\n", customRDSParameters)
+	return customRDSParameters, nil
+}
+
+func (p *awsParameterGroupClient) getExistingParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
+	existingRDSParameters := make(map[string]map[string]paramDetails)
+	output, err := p.rds.DescribeDBParameters(p.ctx, &rds.DescribeDBParametersInput{
+		DBParameterGroupName: &i.ParameterGroupName,
+		// only need to copy parameters that were modified by the broker or manually
+		Source: aws.String("user"),
+	})
+	if err != nil {
+		return existingRDSParameters, fmt.Errorf("encountered error describing parameter group: %w", err)
+	}
+	for _, param := range output.Parameters {
+		if existingRDSParameters[i.DbType] == nil {
+			existingRDSParameters[i.DbType] = make(map[string]paramDetails)
+		}
+		existingRDSParameters[i.DbType][*param.ParameterName] = paramDetails{
+			value:       *param.ParameterValue,
+			applyMethod: string(param.ApplyMethod),
+		}
+	}
+	return existingRDSParameters, nil
+}
+
+func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
 	customRDSParameters := make(map[string]map[string]paramDetails)
 
 	if i.DbType == "mysql" {

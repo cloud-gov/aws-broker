@@ -682,7 +682,7 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 	}
 }
 
-func TestGetCustomParameters(t *testing.T) {
+func TestGetNewParameters(t *testing.T) {
 	describeEngineParamsErr := errors.New("describe db engine params error")
 	describeDbParamsErr := errors.New("describe db params error")
 	testCases := map[string]struct {
@@ -1093,7 +1093,89 @@ func TestGetCustomParameters(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.parameterGroupAdapter.getCustomParameters(createTestRdsInstance(test.dbInstance))
+			params, err := test.parameterGroupAdapter.getNewParameters(createTestRdsInstance(test.dbInstance))
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if !reflect.DeepEqual(params, test.expectedParams) {
+				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
+			}
+		})
+	}
+}
+
+func TestGetAllCustomParameters(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance                    *RDSInstance
+		expectedParams                map[string]map[string]paramDetails
+		expectedErr                   error
+		parameterGroupAdapter         *awsParameterGroupClient
+		shouldFetchExistingParameters bool
+	}{
+		"includes existing parameters": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+				DbType:          "mysql",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "1",
+						applyMethod: "immediate",
+					},
+					"random-param": paramDetails{
+						value:       "random-value",
+						applyMethod: "immediate",
+					},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+									ApplyMethod:    rdsTypes.ApplyMethodImmediate,
+								},
+							},
+						},
+					},
+				},
+				settings: &config.Settings{
+					EnableFunctionsFeature: true,
+				},
+			},
+			shouldFetchExistingParameters: true,
+		},
+		"includes only new parameters": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+				DbType:          "mysql",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "1",
+						applyMethod: "immediate",
+					},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{},
+				settings: &config.Settings{
+					EnableFunctionsFeature: true,
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params, err := test.parameterGroupAdapter.getAllCustomParameters(createTestRdsInstance(test.dbInstance), test.shouldFetchExistingParameters)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
