@@ -30,9 +30,10 @@ func createTestRdsInstance(i *RDSInstance) *RDSInstance {
 }
 
 type mockParameterGroupClient struct {
-	rds              RDSClientInterface
-	customPgroupName string
-	returnErr        error
+	rds                     RDSClientInterface
+	customPgroupName        string
+	returnErr               error
+	deleteParameterGroupErr error
 }
 
 func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
@@ -48,7 +49,7 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 }
 
 func (m *mockParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error {
-	return nil
+	return m.deleteParameterGroupErr
 }
 
 type mockCredentialUtils struct {
