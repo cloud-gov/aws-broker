@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"strings"
+
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 )
 
@@ -75,7 +77,7 @@ func (p RDSPlan) CheckVersion(version string) bool {
 	}
 
 	for _, approvedVersion := range p.ApprovedMajorVersions {
-		if version == approvedVersion {
+		if version == approvedVersion || strings.Contains(version, approvedVersion) {
 			return true
 		}
 	}
