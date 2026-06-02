@@ -589,6 +589,53 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			ctx: t.Context(),
 		},
+		"error deleting old parameter group": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					deleteParameterGroupErr: errors.New("failed to delete"),
+				},
+				&RDSCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+			},
+			expectedState: base.InstanceNotModified,
+			expectErr:     true,
+			ctx:           t.Context(),
+		},
 	}
 
 	for name, test := range testCases {

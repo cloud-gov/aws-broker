@@ -43,9 +43,25 @@ func TestGetParameterGroupName(t *testing.T) {
 		parameterGroupPrefix: "prefix-",
 	}
 	i := createTestRdsInstance(&RDSInstance{
-		Database: "db1234",
+		Database:  "db1234",
+		DbVersion: "18.3",
 	})
 	parameterGroupName := getParameterGroupName(i, p)
+	expectedParameterGroupName := "prefix-db1234-version-18-3"
+	if parameterGroupName != expectedParameterGroupName {
+		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
+	}
+}
+
+func TestGetOldParameterGroupName(t *testing.T) {
+	p := &awsParameterGroupClient{
+		parameterGroupPrefix: "prefix-",
+	}
+	i := createTestRdsInstance(&RDSInstance{
+		Database:  "db1234",
+		DbVersion: "18.3",
+	})
+	parameterGroupName := getOldParameterGroupName(i, p)
 	expectedParameterGroupName := "prefix-db1234"
 	if parameterGroupName != expectedParameterGroupName {
 		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
@@ -65,16 +81,21 @@ func TestSetParameterGroupName(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Database:        "db1234",
 				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "1",
 			},
-			expectedParameterGroupName: "prefix-db1234",
+			expectedParameterGroupName: "prefix-db1234-version-1",
 		},
 		"has existing value": {
-			parameterGroupAdapter: &awsParameterGroupClient{},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+			},
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "param-group-1234",
 				credentialUtils:    &RDSCredentialUtils{},
+				Database:           "db1234",
+				DbVersion:          "1",
 			},
-			expectedParameterGroupName: "param-group-1234",
+			expectedParameterGroupName: "prefix-db1234-version-1",
 		},
 	}
 
@@ -661,7 +682,7 @@ func TestRemoveLibraryFromSharedPreloadLibraries(t *testing.T) {
 	}
 }
 
-func TestGetCustomParameters(t *testing.T) {
+func TestGetNewParameters(t *testing.T) {
 	describeEngineParamsErr := errors.New("describe db engine params error")
 	describeDbParamsErr := errors.New("describe db params error")
 	testCases := map[string]struct {
@@ -1072,7 +1093,89 @@ func TestGetCustomParameters(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			params, err := test.parameterGroupAdapter.getCustomParameters(createTestRdsInstance(test.dbInstance))
+			params, err := test.parameterGroupAdapter.getNewParameters(createTestRdsInstance(test.dbInstance))
+			if test.expectedErr == nil && err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if !errors.Is(err, test.expectedErr) {
+				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			}
+			if !reflect.DeepEqual(params, test.expectedParams) {
+				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
+			}
+		})
+	}
+}
+
+func TestGetAllCustomParameters(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance                    *RDSInstance
+		expectedParams                map[string]map[string]paramDetails
+		expectedErr                   error
+		parameterGroupAdapter         *awsParameterGroupClient
+		shouldFetchExistingParameters bool
+	}{
+		"includes existing parameters": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+				DbType:          "mysql",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "1",
+						applyMethod: "immediate",
+					},
+					"random-param": paramDetails{
+						value:       "random-value",
+						applyMethod: "immediate",
+					},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+									ApplyMethod:    rdsTypes.ApplyMethodImmediate,
+								},
+							},
+						},
+					},
+				},
+				settings: &config.Settings{
+					EnableFunctionsFeature: true,
+				},
+			},
+			shouldFetchExistingParameters: true,
+		},
+		"includes only new parameters": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+				DbType:          "mysql",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"mysql": {
+					"log_bin_trust_function_creators": paramDetails{
+						value:       "1",
+						applyMethod: "immediate",
+					},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{},
+				settings: &config.Settings{
+					EnableFunctionsFeature: true,
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			params, err := test.parameterGroupAdapter.getAllCustomParameters(createTestRdsInstance(test.dbInstance), test.shouldFetchExistingParameters)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1298,9 +1401,10 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 	modifyDbParamGroupErr := errors.New("modify DB params err")
 
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
-		expectedErr           error
-		parameterGroupAdapter *awsParameterGroupClient
+		dbInstance                 *RDSInstance
+		expectedErr                error
+		parameterGroupAdapter      *awsParameterGroupClient
+		shouldCreateParameterGroup bool
 	}{
 		"error getting parameter group family": {
 			dbInstance: &RDSInstance{
@@ -1316,6 +1420,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					describeEngVersionsErr: describeEngVersionsErr,
 				},
 			},
+			shouldCreateParameterGroup: true,
 		},
 		"error creating database parameter group": {
 			dbInstance: &RDSInstance{
@@ -1336,6 +1441,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					},
 				},
 			},
+			shouldCreateParameterGroup: true,
 		},
 		"error modifying database parameter group": {
 			dbInstance: &RDSInstance{
@@ -1377,7 +1483,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil)
+			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil, test.shouldCreateParameterGroup)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1412,8 +1518,9 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				DbType:          "mysql",
 				BinaryLogFormat: "ROW",
 				Database:        "database1",
+				DbVersion:       "1.0",
 			},
-			expectedPGroupName: "prefix-database1",
+			expectedPGroupName: "prefix-database1-version-1-0",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds:                  &mockRDSClient{},
 				parameterGroupPrefix: "prefix-",
@@ -1449,7 +1556,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 				},
 				parameterGroupPrefix: "prefix-",
 			},
-			expectedPGroupName: "prefix-database2",
+			expectedPGroupName: "prefix-database2-version-16",
 		},
 		"needs custom params, error": {
 			dbInstance: &RDSInstance{
@@ -1475,7 +1582,104 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 					describeDbParamsNumPages: 1,
 				},
 			},
-			expectedPGroupName: "group1",
+		},
+		"major version upgrade, has existing params": {
+			dbInstance: &RDSInstance{
+				DbType:                   "mysql",
+				BinaryLogFormat:          "ROW",
+				Database:                 "database1",
+				ParameterGroupName:       "group1",
+				AllowMajorVersionUpgrade: true,
+				DbVersion:                "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+									ApplyMethod:    rdsTypes.ApplyMethodImmediate,
+								},
+							},
+						},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									EngineVersion: aws.String("8.4"),
+								},
+							},
+						},
+					},
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("mysql8.4"),
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+			expectedPGroupName: "prefix-database1-version-8-4",
+		},
+		"modify existing parameter group": {
+			dbInstance: &RDSInstance{
+				DbType:             "mysql",
+				BinaryLogFormat:    "ROW",
+				Database:           "database1",
+				ParameterGroupName: "group1",
+				DbVersion:          "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									EngineVersion: aws.String("8.4"),
+								},
+							},
+						},
+					},
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("mysql8.4"),
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+			expectedPGroupName: "prefix-database1-version-8-4",
 		},
 	}
 
@@ -1492,7 +1696,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
 			}
-			if test.dbInstance.ParameterGroupName != test.expectedPGroupName {
+			if err == nil && test.dbInstance.ParameterGroupName != test.expectedPGroupName {
 				t.Fatalf("unexpected group name: %s, expected: %s", test.dbInstance.ParameterGroupName, test.expectedPGroupName)
 			}
 		})
@@ -1589,6 +1793,77 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 			}
 			if test.expectErr && err == nil {
 				t.Error("expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestDeleteOldParameterGroup(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance            *RDSInstance
+		expectErr             bool
+		dedicatedDBAdapter    *dedicatedDBAdapter
+		parameterGroupAdapter *awsParameterGroupClient
+	}{
+		"success": {
+			dbInstance: &RDSInstance{
+				DbType:    "mysql",
+				Database:  "database1",
+				DbVersion: "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"does not exist": {
+			dbInstance: &RDSInstance{
+				DbType:    "mysql",
+				Database:  "database1",
+				DbVersion: "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
+				},
+			},
+		},
+		"error on deletion": {
+			dbInstance: &RDSInstance{
+				DbType:    "mysql",
+				Database:  "database1",
+				DbVersion: "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					deleteDbParameterGroupErr: errors.New("failed to delete"),
+				},
+			},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := test.parameterGroupAdapter.DeleteOldParameterGroup(
+				test.dbInstance,
+			)
+
+			if !test.expectErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.expectErr && err == nil {
+				t.Fatal("expected error but got nil")
 			}
 		})
 	}
