@@ -14,11 +14,11 @@ func TestFormatDBName(t *testing.T) {
 	i := &RDSInstance{
 		Database: dbIdentifier,
 	}
-	dbName1 := formatDBName(i.Database)
+	dbName1 := formatDBName(i.Database, i.DbType)
 	if dbName1 != dbIdentifier {
 		t.Fatalf("database name should be %s", dbIdentifier)
 	}
-	dbName2 := formatDBName(i.Database)
+	dbName2 := formatDBName(i.Database, i.DbType)
 	if dbName1 != dbName2 {
 		t.Fatalf("database names should be the same")
 	}
