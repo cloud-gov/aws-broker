@@ -1796,3 +1796,74 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteOldParameterGroup(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance            *RDSInstance
+		expectErr             bool
+		dedicatedDBAdapter    *dedicatedDBAdapter
+		parameterGroupAdapter *awsParameterGroupClient
+	}{
+		"success": {
+			dbInstance: &RDSInstance{
+				DbType:    "mysql",
+				Database:  "database1",
+				DbVersion: "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"does not exist": {
+			dbInstance: &RDSInstance{
+				DbType:    "mysql",
+				Database:  "database1",
+				DbVersion: "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
+				},
+			},
+		},
+		"error on deletion": {
+			dbInstance: &RDSInstance{
+				DbType:    "mysql",
+				Database:  "database1",
+				DbVersion: "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					deleteDbParameterGroupErr: errors.New("failed to delete"),
+				},
+			},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := test.parameterGroupAdapter.DeleteOldParameterGroup(
+				test.dbInstance,
+			)
+
+			if !test.expectErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if test.expectErr && err == nil {
+				t.Fatal("expected error but got nil")
+			}
+		})
+	}
+}
