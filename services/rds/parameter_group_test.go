@@ -53,6 +53,21 @@ func TestGetParameterGroupName(t *testing.T) {
 	}
 }
 
+func TestGetOldParameterGroupName(t *testing.T) {
+	p := &awsParameterGroupClient{
+		parameterGroupPrefix: "prefix-",
+	}
+	i := createTestRdsInstance(&RDSInstance{
+		Database:  "db1234",
+		DbVersion: "18.3",
+	})
+	parameterGroupName := getOldParameterGroupName(i, p)
+	expectedParameterGroupName := "prefix-db1234"
+	if parameterGroupName != expectedParameterGroupName {
+		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
+	}
+}
+
 func TestSetParameterGroupName(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance                 *RDSInstance
@@ -66,16 +81,21 @@ func TestSetParameterGroupName(t *testing.T) {
 			dbInstance: &RDSInstance{
 				Database:        "db1234",
 				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "1",
 			},
-			expectedParameterGroupName: "prefix-db1234",
+			expectedParameterGroupName: "prefix-db1234-version-1",
 		},
 		"has existing value": {
-			parameterGroupAdapter: &awsParameterGroupClient{},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+			},
 			dbInstance: &RDSInstance{
 				ParameterGroupName: "param-group-1234",
 				credentialUtils:    &RDSCredentialUtils{},
+				Database:           "db1234",
+				DbVersion:          "1",
 			},
-			expectedParameterGroupName: "param-group-1234",
+			expectedParameterGroupName: "prefix-db1234-version-1",
 		},
 	}
 

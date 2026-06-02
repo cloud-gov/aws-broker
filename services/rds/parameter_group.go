@@ -555,12 +555,12 @@ func formatDBVersion(version string) string {
 	return strings.ReplaceAll(version, ".", "-")
 }
 
-func GetOldParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
+func getOldParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
 	return p.parameterGroupPrefix + formatDBName(i.Database)
 }
 
 func (p *awsParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error {
-	oldParameterGroupName := GetOldParameterGroupName(i, p)
+	oldParameterGroupName := getOldParameterGroupName(i, p)
 	exists, err := p.checkIfParameterGroupExists(oldParameterGroupName)
 	if err != nil {
 		return err
