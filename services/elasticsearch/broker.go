@@ -243,6 +243,14 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		)
 	}
 
+	if esInstance.State == base.InstanceInProgress {
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("a configuration change is currently in progress; please wait until it completes before making changes"),
+			http.StatusBadRequest,
+			"checking instance state",
+		)
+	}
+
 	if options.ElasticsearchVersion != "" {
 		if options.HasNonVersionChanges() {
 			return apiresponses.NewFailureResponse(
