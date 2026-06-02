@@ -63,24 +63,18 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 		return fmt.Errorf("checkIfParameterGroupExists err %w", err)
 	}
 
-	fmt.Printf("parameter group name %s, exists: %t\n", i.ParameterGroupName, parameterGroupExists)
-
 	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
 
 	if !p.needCustomParameters(i) && !needsNewParameterGroupVersion {
 		return nil
 	}
 
-	// if we're changing major versions, we need to create a new parameter group
-	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
-	fmt.Printf("shouldCreateParameterGroup %t\n", shouldCreateParameterGroup)
-
 	customRDSParameters, err := p.getAllCustomParameters(i, needsNewParameterGroupVersion)
 
 	setParameterGroupName(i, p)
 
-	fmt.Printf("new parameter group name: %s\n", i.ParameterGroupName)
-	fmt.Printf("updated custom RDS parameters %+v\n", customRDSParameters)
+	// if we're changing major versions, we need to create a new parameter group
+	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
@@ -365,7 +359,6 @@ func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchEx
 		if err != nil {
 			return customRDSParameters, err
 		}
-		fmt.Printf("existing RDS parameters %+v\n", existingRDSParameters)
 	}
 
 	newRDSParameters, err := p.getNewParameters(i)
@@ -374,8 +367,6 @@ func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchEx
 	}
 
 	customRDSParameters = newRDSParameters
-
-	fmt.Printf("new RDS parameters %+v\n", customRDSParameters)
 
 	// combine existing parameters with any new parameters being set
 	for dbType, dbParams := range existingRDSParameters {
@@ -389,7 +380,6 @@ func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchEx
 		}
 	}
 
-	fmt.Printf("custom RDS parameters %+v\n", customRDSParameters)
 	return customRDSParameters, nil
 }
 
