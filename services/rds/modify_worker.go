@@ -2,8 +2,10 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -104,24 +106,59 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		params.MasterUserPassword = aws.String(password)
 	}
 
-	rdsTags := ConvertTagsToRDSTags(i.getTags())
-
-	// If a custom parameter has been requested, and the feature is enabled,
-	// create/update a custom parameter group for our custom parameters.
-	err = w.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
-	if err != nil {
-		return nil, err
-	}
-	if i.ParameterGroupName != "" {
-		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
-	}
-
 	if len(i.EnabledCloudwatchLogGroupExports) > 0 {
 		params.CloudwatchLogsExportConfiguration = &rdsTypes.CloudwatchLogsExportConfiguration{
 			EnableLogTypes: i.EnabledCloudwatchLogGroupExports,
 		}
 	}
 	return params, nil
+}
+
+func (w *ModifyWorker) applyDbParameterGroupAndWait(ctx context.Context, modifyParams *rds.ModifyDBInstanceInput, i *RDSInstance) error {
+	rdsTags := ConvertTagsToRDSTags(i.getTags())
+
+	// If a custom parameter has been requested, and the feature is enabled,
+	// create/update a custom parameter group for our custom parameters.
+	err := w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
+	if err != nil {
+		return err
+	}
+	if i.ParameterGroupName == "" {
+		return nil
+	}
+
+	modifyParams.DBParameterGroupName = &i.ParameterGroupName
+	_, err = w.rds.ModifyDBInstance(ctx, modifyParams)
+
+	attempts := 1
+	maxRetries := int(w.settings.PollAwsMaxRetries)
+
+	var parameterGroupInSync bool
+
+	for !parameterGroupInSync && attempts <= maxRetries {
+		output, err := w.rds.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
+			DBInstanceIdentifier: &i.Database,
+		})
+		if err != nil {
+			return err
+		}
+		if len(output.DBInstances) == 0 {
+			return errors.New("could not describe database")
+		}
+		if len(output.DBInstances[0].DBParameterGroups) == 0 {
+			return errors.New("could not retrieve parameter group status")
+		}
+		status := *output.DBInstances[0].DBParameterGroups[0].ParameterApplyStatus
+		parameterGroupInSync = (status == "in-sync")
+		attempts += 1
+		time.Sleep(w.settings.PollAwsMinDelay)
+	}
+
+	if !parameterGroupInSync {
+		return errors.New("could not verify parameter group was applied to database")
+	}
+
+	return err
 }
 
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
@@ -147,6 +184,12 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
+	}
+
+	err = w.applyDbParameterGroupAndWait(ctx, modifyParams, i)
+	if err != nil {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying parameter group: %s", err))
+		return fmt.Errorf("asyncModifyDbInstance, error modifying parameter group: %w", err)
 	}
 
 	err = w.parameterGroupClient.DeleteOldParameterGroup(i)

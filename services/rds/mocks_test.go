@@ -30,15 +30,24 @@ func createTestRdsInstance(i *RDSInstance) *RDSInstance {
 }
 
 type mockParameterGroupClient struct {
-	rds                     RDSClientInterface
-	customPgroupName        string
-	returnErr               error
-	deleteParameterGroupErr error
+	rds                            RDSClientInterface
+	customPgroupName               string
+	provisionNewParamGroupErr      error
+	provisionOrModifyParamGroupErr error
+	deleteParameterGroupErr        error
 }
 
-func (m *mockParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
-	if m.returnErr != nil {
-		return m.returnErr
+func (m *mockParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	if m.provisionNewParamGroupErr != nil {
+		return m.provisionNewParamGroupErr
+	}
+	i.ParameterGroupName = m.customPgroupName
+	return nil
+}
+
+func (m *mockParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	if m.provisionOrModifyParamGroupErr != nil {
+		return m.provisionOrModifyParamGroupErr
 	}
 	i.ParameterGroupName = m.customPgroupName
 	return nil

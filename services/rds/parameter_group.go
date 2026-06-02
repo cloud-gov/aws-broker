@@ -22,7 +22,8 @@ const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
-	ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error
+	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
+	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomParameterGroups() error
 	DeleteOldParameterGroup(i *RDSInstance) error
 }
@@ -51,11 +52,28 @@ func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, set
 	}
 }
 
-// ProvisionCustomParameterGroupIfNecessary determines from the RDS instance struct whether
+func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	if !p.needCustomParameters(i) {
+		return nil
+	}
+
+	customRDSParameters, err := p.getAllCustomParameters(i, false)
+
+	setParameterGroupName(i, p)
+
+	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, true)
+	if err != nil {
+		log.Println(err.Error())
+		return fmt.Errorf("encountered error applying parameter group: %w", err)
+	}
+	return nil
+}
+
+// ProvisionOrModifyCustomParameterGroup determines from the RDS instance struct whether
 // there needs to be a custom parameter group for the instance. If so, the method will either
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
-func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
 	// we have a parameter group name in i.ParameterGroupName if one exists
 	// see reconcileDbState
 	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
@@ -63,24 +81,18 @@ func (p *awsParameterGroupClient) ProvisionCustomParameterGroupIfNecessary(i *RD
 		return fmt.Errorf("checkIfParameterGroupExists err %w", err)
 	}
 
-	fmt.Printf("parameter group name %s, exists: %t\n", i.ParameterGroupName, parameterGroupExists)
-
 	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
 
 	if !p.needCustomParameters(i) && !needsNewParameterGroupVersion {
 		return nil
 	}
 
-	// if we're changing major versions, we need to create a new parameter group
-	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
-	fmt.Printf("shouldCreateParameterGroup %t\n", shouldCreateParameterGroup)
-
 	customRDSParameters, err := p.getAllCustomParameters(i, needsNewParameterGroupVersion)
 
 	setParameterGroupName(i, p)
 
-	fmt.Printf("new parameter group name: %s\n", i.ParameterGroupName)
-	fmt.Printf("updated custom RDS parameters %+v\n", customRDSParameters)
+	// if we're changing major versions, we need to create a new parameter group
+	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
@@ -365,7 +377,6 @@ func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchEx
 		if err != nil {
 			return customRDSParameters, err
 		}
-		fmt.Printf("existing RDS parameters %+v\n", existingRDSParameters)
 	}
 
 	newRDSParameters, err := p.getNewParameters(i)
@@ -374,8 +385,6 @@ func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchEx
 	}
 
 	customRDSParameters = newRDSParameters
-
-	fmt.Printf("new RDS parameters %+v\n", customRDSParameters)
 
 	// combine existing parameters with any new parameters being set
 	for dbType, dbParams := range existingRDSParameters {
@@ -389,7 +398,6 @@ func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchEx
 		}
 	}
 
-	fmt.Printf("custom RDS parameters %+v\n", customRDSParameters)
 	return customRDSParameters, nil
 }
 

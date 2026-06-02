@@ -1685,7 +1685,7 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.ProvisionCustomParameterGroupIfNecessary(
+			err := test.parameterGroupAdapter.ProvisionOrModifyCustomParameterGroup(
 				createTestRdsInstance(test.dbInstance),
 				nil,
 			)
