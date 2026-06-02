@@ -43,10 +43,11 @@ func TestGetParameterGroupName(t *testing.T) {
 		parameterGroupPrefix: "prefix-",
 	}
 	i := createTestRdsInstance(&RDSInstance{
-		Database: "db1234",
+		Database:  "db1234",
+		DbVersion: "18.3",
 	})
 	parameterGroupName := getParameterGroupName(i, p)
-	expectedParameterGroupName := "prefix-db1234"
+	expectedParameterGroupName := "prefix-db1234-version-183"
 	if parameterGroupName != expectedParameterGroupName {
 		t.Errorf("got parameter group name: %s, expected %s", parameterGroupName, expectedParameterGroupName)
 	}

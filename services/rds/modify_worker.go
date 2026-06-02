@@ -149,6 +149,12 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
+	err = w.parameterGroupClient.DeleteOldParameterGroup(i)
+	if err != nil {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
+		return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+	}
+
 	err = updateDBTags(ctx, w.rds, i, *modifyOutput.DBInstance.DBInstanceArn)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))

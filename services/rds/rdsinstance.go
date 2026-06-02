@@ -89,7 +89,17 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	modifiedInstance.SecGroup = newPlan.SecurityGroup
 
 	if modifiedInstance.hasEngineVersionUpdate(options) {
+		// if modifiedInstance.DbType == "postgres" {
+		// 	currentMajorVersion := modifiedInstance.DbVersion[0:2]
+		// 	newMajorVersion := options.Version[0:2]
+
+		// 	if currentMajorVersion != newMajorVersion {
+		// 		modifiedInstance.Major
+		// 	}
+		// }
+
 		modifiedInstance.DbVersion = options.Version
+
 	}
 
 	if options.AllowMajorVersionUpgrade != nil && *options.AllowMajorVersionUpgrade {

@@ -352,6 +352,11 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 		reconciledInstance.DbVersion = *dbInstanceState.EngineVersion
 	}
 
+	// Capture any parameter groups created manually
+	if len(dbInstanceState.DBParameterGroups) > 0 {
+		reconciledInstance.ParameterGroupName = *dbInstanceState.DBParameterGroups[0].DBParameterGroupName
+	}
+
 	return &reconciledInstance, nil
 }
 
