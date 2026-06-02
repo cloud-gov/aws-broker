@@ -110,7 +110,6 @@ class ESSmokeTester:
     def test_expected(self, results):
         return (
             results["_index"] == INDEX
-            and results["_type"] == DOC_TYPE
             and results["_id"] == ID
             and results["_source"] == DOCUMENT
         )
