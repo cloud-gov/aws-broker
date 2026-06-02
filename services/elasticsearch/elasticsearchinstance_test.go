@@ -61,7 +61,7 @@ func TestUpdateInstance(t *testing.T) {
 				VolumeType: "gp3",
 			},
 		},
-		"version upgrade stages TargetElasticSearchVersion and sets VersionUpgradeInProgress": {
+		"version upgrade stages TargetElasticSearchVersion": {
 			options: ElasticsearchOptions{
 				ElasticsearchVersion: "OpenSearch_2.3",
 			},
@@ -71,10 +71,9 @@ func TestUpdateInstance(t *testing.T) {
 			expectedInstance: &ElasticsearchInstance{
 				ElasticsearchVersion:       "OpenSearch_1.3",
 				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
 			},
 		},
-		"same version does not set VersionUpgradeInProgress": {
+		"same version does not stage TargetElasticSearchVersion": {
 			options: ElasticsearchOptions{
 				ElasticsearchVersion: "OpenSearch_2.3",
 			},

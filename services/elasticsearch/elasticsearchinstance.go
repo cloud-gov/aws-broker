@@ -29,6 +29,7 @@ type ElasticsearchInstance struct {
 	IamPolicyARN                   string `sql:"size(255)"`
 	AccessControlPolicy            string `sql:"size(255)"`
 	ElasticsearchVersion           string `sql:"size(255)"`
+	TargetElasticsearchVersion     string `sql:"size(255)"`
 	MasterCount                    int    `sql:"size(255)"`
 	DataCount                      int    `sql:"size(255)"`
 	InstanceType                   string `sql:"size(255)"`
@@ -48,9 +49,7 @@ type ElasticsearchInstance struct {
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
 
-	ClearPassword              string `gorm:"-"`
-	VersionUpgradeInProgress   bool
-	TargetElasticsearchVersion string `sql:"size(255)"`
+	ClearPassword string `gorm:"-"`
 
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
@@ -205,7 +204,6 @@ func (i *ElasticsearchInstance) update(
 ) error {
 	if options.ElasticsearchVersion != "" && options.ElasticsearchVersion != i.ElasticsearchVersion {
 		i.TargetElasticsearchVersion = options.ElasticsearchVersion
-		i.VersionUpgradeInProgress = true
 	}
 
 	if options.VolumeType != i.VolumeType {
@@ -215,6 +213,10 @@ func (i *ElasticsearchInstance) update(
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	return nil
+}
+
+func (i *ElasticsearchInstance) versionUpgradeInProgress() bool {
+	return i.TargetElasticsearchVersion != ""
 }
 
 func (i *ElasticsearchInstance) setTags(

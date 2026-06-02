@@ -235,11 +235,11 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
 	}
 
-	if esInstance.VersionUpgradeInProgress {
+	if esInstance.versionUpgradeInProgress() {
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("a version upgrade is currently in progress; please wait until it completes before making changes"),
 			http.StatusBadRequest,
-			"checking VersionUpgradeInProgress",
+			"checking version upgrade in progress",
 		)
 	}
 

@@ -28,9 +28,6 @@ type mockOpensearchClient struct {
 
 	updateDomainConfigErr error
 
-	upgradeStatus    opensearchTypes.UpgradeStatus
-	upgradeStatusErr error
-
 	compatibleVersions    []opensearchTypes.CompatibleVersionsMap
 	compatibleVersionsErr error
 }
@@ -62,10 +59,6 @@ func (o *mockOpensearchClient) UpdateDomainConfig(ctx context.Context, params *o
 func (o *mockOpensearchClient) UpgradeDomain(ctx context.Context, params *opensearch.UpgradeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.UpgradeDomainOutput, error) {
 	o.upgradeDomainInput = params
 	return &opensearch.UpgradeDomainOutput{}, o.upgradeDomainErr
-}
-
-func (o *mockOpensearchClient) GetUpgradeStatus(ctx context.Context, params *opensearch.GetUpgradeStatusInput, optFns ...func(*opensearch.Options)) (*opensearch.GetUpgradeStatusOutput, error) {
-	return &opensearch.GetUpgradeStatusOutput{StepStatus: o.upgradeStatus}, o.upgradeStatusErr
 }
 
 func (o *mockOpensearchClient) GetCompatibleVersions(ctx context.Context, params *opensearch.GetCompatibleVersionsInput, optFns ...func(*opensearch.Options)) (*opensearch.GetCompatibleVersionsOutput, error) {

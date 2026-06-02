@@ -216,15 +216,17 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 	}
 }
 
-func domainStatus(processing bool) *opensearch.DescribeDomainOutput {
+func domainStatus(processing bool, upgradeProcessing bool, engineVersion string) *opensearch.DescribeDomainOutput {
 	return &opensearch.DescribeDomainOutput{
 		DomainStatus: &opensearchTypes.DomainStatus{
-			ARN:           aws.String("test-arn"),
-			ClusterConfig: &opensearchTypes.ClusterConfig{},
-			DomainId:      aws.String("test-id"),
-			DomainName:    aws.String(("test-domain")),
-			Created:       aws.Bool(true),
-			Processing:    aws.Bool(processing),
+			ARN:               aws.String("test-arn"),
+			ClusterConfig:     &opensearchTypes.ClusterConfig{},
+			DomainId:          aws.String("test-id"),
+			DomainName:        aws.String(("test-domain")),
+			Created:           aws.Bool(true),
+			Processing:        aws.Bool(processing),
+			UpgradeProcessing: aws.Bool(upgradeProcessing),
+			EngineVersion:     aws.String(engineVersion),
 		},
 	}
 }
@@ -233,95 +235,84 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 	testCases := map[string]struct {
 		instance                         *ElasticsearchInstance
 		describeDomainResults            []*opensearch.DescribeDomainOutput
-		upgradeStatus                    opensearchTypes.UpgradeStatus
-		upgradeStatusErr                 error
 		expectedState                    base.InstanceState
 		expectedVersionUpgradeInProgress bool
 		expectedESVersion                string
 		expectedTargetESVersion          string
 	}{
-		"Processing true keeps status as in progress": {
+		"UpgradeProcessing true keeps status as in progress": {
 			instance: &ElasticsearchInstance{
 				Instance:                   base.Instance{State: base.InstanceInProgress},
 				Domain:                     "test-domain",
 				ElasticsearchVersion:       "OpenSearch_1.3",
 				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(true)},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, true, "OpenSearch_1.3")},
 			expectedState:                    base.InstanceInProgress,
 			expectedVersionUpgradeInProgress: true,
 			expectedESVersion:                "OpenSearch_1.3",
 			expectedTargetESVersion:          "OpenSearch_2.3",
 		},
-		"upgrade succeeded promotes version and clears target": {
+		"upgrade done and EngineVersion matches target": {
 			instance: &ElasticsearchInstance{
 				Instance:                   base.Instance{State: base.InstanceInProgress},
 				Domain:                     "test-domain",
 				ElasticsearchVersion:       "OpenSearch_1.3",
 				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false)},
-			upgradeStatus:                    opensearchTypes.UpgradeStatusSucceeded,
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_2.3")},
 			expectedState:                    base.InstanceReady,
 			expectedVersionUpgradeInProgress: false,
 			expectedESVersion:                "OpenSearch_2.3",
 			expectedTargetESVersion:          "",
 		},
-		"upgrade succeeded with issues promotes version and clears target": {
+		"upgrade done but old EngineVersion reports failed and leaves versions unchanged": {
 			instance: &ElasticsearchInstance{
 				Instance:                   base.Instance{State: base.InstanceInProgress},
 				Domain:                     "test-domain",
 				ElasticsearchVersion:       "OpenSearch_1.3",
 				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false)},
-			upgradeStatus:                    opensearchTypes.UpgradeStatusSucceededWithIssues,
-			expectedState:                    base.InstanceReady,
-			expectedVersionUpgradeInProgress: false,
-			expectedESVersion:                "OpenSearch_2.3",
-			expectedTargetESVersion:          "",
-		},
-		"upgrade failed leaves version unchanged and clears target": {
-			instance: &ElasticsearchInstance{
-				Instance:                   base.Instance{State: base.InstanceInProgress},
-				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
-			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false)},
-			upgradeStatus:                    opensearchTypes.UpgradeStatusFailed,
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_1.3")},
 			expectedState:                    base.InstanceNotModified,
 			expectedVersionUpgradeInProgress: false,
 			expectedESVersion:                "OpenSearch_1.3",
 			expectedTargetESVersion:          "",
 		},
-		"upgrade still in progress keeps polling": {
+		"Processing false and UpgradeProcessing false returns ready": {
 			instance: &ElasticsearchInstance{
-				Instance:                   base.Instance{State: base.InstanceInProgress},
-				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
+				Instance:             base.Instance{State: base.InstanceInProgress},
+				Domain:               "test-domain",
+				ElasticsearchVersion: "OpenSearch_1.3",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false)},
-			upgradeStatus:                    opensearchTypes.UpgradeStatusInProgress,
-			expectedState:                    base.InstanceInProgress,
-			expectedVersionUpgradeInProgress: true,
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_1.3")},
+			expectedState:                    base.InstanceReady,
+			expectedVersionUpgradeInProgress: false,
 			expectedESVersion:                "OpenSearch_1.3",
-			expectedTargetESVersion:          "OpenSearch_2.3",
+			expectedTargetESVersion:          "",
 		},
-		"non-upgrade Processing false returns ready without calling": {
+		"Processing true keeps status as in progress": {
 			instance: &ElasticsearchInstance{
-				Instance:                 base.Instance{State: base.InstanceInProgress},
-				Domain:                   "test-domain",
-				ElasticsearchVersion:     "OpenSearch_1.3",
-				VersionUpgradeInProgress: false,
+				Instance:             base.Instance{State: base.InstanceInProgress},
+				Domain:               "test-domain",
+				ElasticsearchVersion: "OpenSearch_1.3",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false)},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(true, false, "OpenSearch_1.3")},
+			expectedState:                    base.InstanceInProgress,
+			expectedVersionUpgradeInProgress: false,
+			expectedESVersion:                "OpenSearch_1.3",
+		},
+		"nil Processing and UpgradeProcessing returns ready": {
+			instance: &ElasticsearchInstance{
+				Instance:             base.Instance{State: base.InstanceInProgress},
+				Domain:               "test-domain",
+				ElasticsearchVersion: "OpenSearch_1.3",
+			},
+			describeDomainResults: []*opensearch.DescribeDomainOutput{{
+				DomainStatus: &opensearchTypes.DomainStatus{
+					Created: aws.Bool(true),
+				},
+			}},
 			expectedState:                    base.InstanceReady,
 			expectedVersionUpgradeInProgress: false,
 			expectedESVersion:                "OpenSearch_1.3",
@@ -331,8 +322,6 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mock := &mockOpensearchClient{
 				describeDomainResults: test.describeDomainResults,
-				upgradeStatus:         test.upgradeStatus,
-				upgradeStatusErr:      test.upgradeStatusErr,
 			}
 			adapter := &dedicatedElasticsearchAdapter{
 				ctx:        context.Background(),
@@ -347,8 +336,8 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			if state != test.expectedState {
 				t.Errorf("expected state %v, got %v", test.expectedState, state)
 			}
-			if test.instance.VersionUpgradeInProgress != test.expectedVersionUpgradeInProgress {
-				t.Errorf("expected VersionUpgradeInProgress=%v, got %v", test.expectedVersionUpgradeInProgress, test.instance.VersionUpgradeInProgress)
+			if test.instance.versionUpgradeInProgress() != test.expectedVersionUpgradeInProgress {
+				t.Errorf("expected versionUpgradeInProgress()=%v, got %v", test.expectedVersionUpgradeInProgress, test.instance.versionUpgradeInProgress())
 			}
 			if test.expectedESVersion != "" && test.instance.ElasticsearchVersion != test.expectedESVersion {
 				t.Errorf("expected ElasticsearchVersion=%q, got %q", test.expectedESVersion, test.instance.ElasticsearchVersion)
@@ -373,7 +362,6 @@ func TestModifyElasticsearch(t *testing.T) {
 				Domain:                     "test-domain",
 				ElasticsearchVersion:       "OpenSearch_1.3",
 				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
 			},
 			expectUpgradeCalled: true,
 			expectedState:       base.InstanceInProgress,
@@ -383,7 +371,6 @@ func TestModifyElasticsearch(t *testing.T) {
 				Domain:                     "test-domain",
 				ElasticsearchVersion:       "OpenSearch_1.3",
 				TargetElasticsearchVersion: "OpenSearch_2.3",
-				VersionUpgradeInProgress:   true,
 			},
 			upgradeDomainErr:    errors.New("upgrade failed"),
 			expectUpgradeCalled: true,
@@ -392,8 +379,7 @@ func TestModifyElasticsearch(t *testing.T) {
 		},
 		"non-version modify calls UpdateDomainConfig": {
 			instance: &ElasticsearchInstance{
-				Domain:                   "test-domain",
-				VersionUpgradeInProgress: false,
+				Domain: "test-domain",
 			},
 			expectUpgradeCalled: false,
 			expectedState:       base.InstanceInProgress,
