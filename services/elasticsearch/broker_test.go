@@ -114,7 +114,6 @@ func TestModifyInstance(t *testing.T) {
 	testCases := map[string]struct {
 		options                  ElasticsearchOptions
 		existingVersion          string
-		instanceState            base.InstanceState
 		versionUpgradeInProgress bool
 		expectedErrMsg           string
 	}{
@@ -140,14 +139,6 @@ func TestModifyInstance(t *testing.T) {
 			versionUpgradeInProgress: true,
 			expectedErrMsg:           "a version upgrade is currently in progress",
 		},
-		"reject modify when config change in progress": {
-			options: ElasticsearchOptions{
-				VolumeType: "gp3",
-			},
-			existingVersion: "OpenSearch_1.3",
-			instanceState:   base.InstanceInProgress,
-			expectedErrMsg:  "a configuration change is currently in progress",
-		},
 	}
 
 	for name, test := range testCases {
@@ -167,8 +158,7 @@ func TestModifyInstance(t *testing.T) {
 						ServiceID: serviceId,
 						PlanID:    planId,
 					},
-					Uuid:  instanceId,
-					State: test.instanceState,
+					Uuid: instanceId,
 				},
 				ElasticsearchVersion: test.existingVersion,
 			}

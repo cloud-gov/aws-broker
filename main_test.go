@@ -1360,9 +1360,6 @@ func TestModifyElasticsearchInstanceParams(t *testing.T) {
 		t.Error("The instance should have the plan provided with the create request.")
 	}
 
-	// Simulate the instance becoming ready after the create
-	brokerDB.Model(&i).Update("state", base.InstanceReady)
-
 	urlUnacceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s", instanceUUID)
 	resp := requestHandler.doRequest(urlUnacceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyElasticsearchInstanceParamsReq))
 
