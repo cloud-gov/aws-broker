@@ -35,6 +35,7 @@ type mockParameterGroupClient struct {
 	provisionNewParamGroupErr      error
 	provisionOrModifyParamGroupErr error
 	deleteParameterGroupErr        error
+	didCreateNewParameterGroup     bool
 }
 
 func (m *mockParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
@@ -45,19 +46,19 @@ func (m *mockParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstan
 	return nil
 }
 
-func (m *mockParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+func (m *mockParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
 	if m.provisionOrModifyParamGroupErr != nil {
-		return m.provisionOrModifyParamGroupErr
+		return false, m.provisionOrModifyParamGroupErr
 	}
 	i.ParameterGroupName = m.customPgroupName
-	return nil
+	return m.didCreateNewParameterGroup, nil
 }
 
 func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 	return nil
 }
 
-func (m *mockParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error {
+func (m *mockParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName string) error {
 	return m.deleteParameterGroupErr
 }
 

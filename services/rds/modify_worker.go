@@ -114,17 +114,17 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 	return params, nil
 }
 
-func (w *ModifyWorker) applyDbParameterGroupAndWait(ctx context.Context, modifyParams *rds.ModifyDBInstanceInput, i *RDSInstance) error {
+func (w *ModifyWorker) applyDbParameterGroupAndWait(ctx context.Context, modifyParams *rds.ModifyDBInstanceInput, i *RDSInstance) (bool, error) {
 	rdsTags := ConvertTagsToRDSTags(i.getTags())
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err := w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
+	didCreateParameterGroup, err := w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
 	if err != nil {
-		return err
+		return didCreateParameterGroup, err
 	}
 	if i.ParameterGroupName == "" {
-		return nil
+		return didCreateParameterGroup, nil
 	}
 
 	modifyParams.DBParameterGroupName = &i.ParameterGroupName
@@ -140,13 +140,13 @@ func (w *ModifyWorker) applyDbParameterGroupAndWait(ctx context.Context, modifyP
 			DBInstanceIdentifier: &i.Database,
 		})
 		if err != nil {
-			return err
+			return didCreateParameterGroup, err
 		}
 		if len(output.DBInstances) == 0 {
-			return errors.New("could not describe database")
+			return didCreateParameterGroup, errors.New("could not describe database")
 		}
 		if len(output.DBInstances[0].DBParameterGroups) == 0 {
-			return errors.New("could not retrieve parameter group status")
+			return didCreateParameterGroup, errors.New("could not retrieve parameter group status")
 		}
 		status := *output.DBInstances[0].DBParameterGroups[0].ParameterApplyStatus
 		parameterGroupInSync = (status == "in-sync")
@@ -155,10 +155,10 @@ func (w *ModifyWorker) applyDbParameterGroupAndWait(ctx context.Context, modifyP
 	}
 
 	if !parameterGroupInSync {
-		return errors.New("could not verify parameter group was applied to database")
+		return didCreateParameterGroup, errors.New("could not verify parameter group was applied to database")
 	}
 
-	return err
+	return didCreateParameterGroup, err
 }
 
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
@@ -186,16 +186,19 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
-	err = w.applyDbParameterGroupAndWait(ctx, modifyParams, i)
+	existingParameterGroupName := i.ParameterGroupName
+	didCreateParameterGroup, err := w.applyDbParameterGroupAndWait(ctx, modifyParams, i)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying parameter group: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error modifying parameter group: %w", err)
 	}
 
-	err = w.parameterGroupClient.DeleteOldParameterGroup(i)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
-		return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+	if didCreateParameterGroup && existingParameterGroupName != "" {
+		err = w.parameterGroupClient.DeleteOldParameterGroup(existingParameterGroupName)
+		if err != nil {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
+			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+		}
 	}
 
 	err = updateDBTags(ctx, w.rds, i, *modifyOutput.DBInstance.DBInstanceArn)

@@ -647,273 +647,6 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectedState: base.InstanceReady,
 			ctx:           t.Context(),
 		},
-		"applies updated parameter group with retries": {
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-					PollAwsMaxRetries:  3,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											ParameterApplyStatus: aws.String("applying"),
-										},
-									},
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											ParameterApplyStatus: aws.String("applying"),
-										},
-									},
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											ParameterApplyStatus: aws.String("in-sync"),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				slog.New(&testutil.MockLogHandler{}),
-				&mockParameterGroupClient{
-					customPgroupName: "new-group",
-				},
-				&RDSCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{},
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database:        "db-1",
-				credentialUtils: &RDSCredentialUtils{},
-				DbVersion:       "9.0",
-			},
-			expectedState: base.InstanceReady,
-			ctx:           t.Context(),
-		},
-		"applying updated parameter group gives up after maximum retries": {
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-					PollAwsMaxRetries:  3,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											ParameterApplyStatus: aws.String("applying"),
-										},
-									},
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											ParameterApplyStatus: aws.String("applying"),
-										},
-									},
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											ParameterApplyStatus: aws.String("applying"),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				slog.New(&testutil.MockLogHandler{}),
-				&mockParameterGroupClient{
-					customPgroupName: "new-group",
-				},
-				&RDSCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{},
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database:        "db-1",
-				credentialUtils: &RDSCredentialUtils{},
-				DbVersion:       "9.0",
-			},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
-		},
-		"applying updated parameter could not get database status": {
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-					PollAwsMaxRetries:  3,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{},
-						},
-					},
-				},
-				slog.New(&testutil.MockLogHandler{}),
-				&mockParameterGroupClient{
-					customPgroupName: "new-group",
-				},
-				&RDSCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{},
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database:        "db-1",
-				credentialUtils: &RDSCredentialUtils{},
-				DbVersion:       "9.0",
-			},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
-		},
-		"applying updated parameter could not get parameter group status": {
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 1 * time.Millisecond,
-					PollAwsMaxRetries:  3,
-				},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBInstanceStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{},
-								},
-							},
-						},
-					},
-				},
-				slog.New(&testutil.MockLogHandler{}),
-				&mockParameterGroupClient{
-					customPgroupName: "new-group",
-				},
-				&RDSCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{},
-			dbInstance: &RDSInstance{
-				Instance: base.Instance{
-					Request: request.Request{
-						ServiceID: "service-1",
-					},
-					Uuid: "uuid-1",
-				},
-				Database:        "db-1",
-				credentialUtils: &RDSCredentialUtils{},
-				DbVersion:       "9.0",
-			},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
-		},
 		"error deleting old parameter group": {
 			worker: NewModifyWorker(
 				brokerDB,
@@ -941,7 +674,8 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
-					deleteParameterGroupErr: errors.New("failed to delete"),
+					didCreateNewParameterGroup: true,
+					deleteParameterGroupErr:    errors.New("failed to delete"),
 				},
 				&RDSCredentialUtils{},
 			),
@@ -953,9 +687,10 @@ func TestAsyncModifyDb(t *testing.T) {
 					},
 					Uuid: "uuid-1",
 				},
-				Database:        "db-1",
-				credentialUtils: &RDSCredentialUtils{},
-				DbVersion:       "9.0",
+				Database:           "db-1",
+				credentialUtils:    &RDSCredentialUtils{},
+				DbVersion:          "9.0",
+				ParameterGroupName: "existing-group",
 			},
 			expectedState: base.InstanceNotModified,
 			expectErr:     true,
@@ -998,7 +733,6 @@ func TestAsyncModifyDb(t *testing.T) {
 }
 
 func TestPrepareModifyDbInstanceInput(t *testing.T) {
-	testErr := errors.New("fail")
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
@@ -1013,68 +747,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		plan              *catalog.RDSPlan
 		isReplica         bool
 	}{
-		"expect returned group name": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-				DbVersion:             "8.0",
-			},
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				nil,
-				&mockParameterGroupClient{
-					customPgroupName: "foobar",
-					rds:              &mockRDSClient{},
-				},
-				&mockCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedGroupName: "foobar",
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-				DBParameterGroupName:     aws.String("foobar"),
-				EngineVersion:            aws.String("8.0"),
-			},
-		},
-		"expect error": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-			},
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				nil,
-				&mockParameterGroupClient{
-					rds:                            &mockRDSClient{},
-					provisionOrModifyParamGroupErr: testErr,
-				},
-				&mockCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedErr: testErr,
-		},
 		"update password": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
@@ -1295,6 +967,297 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				if diff := deep.Equal(params, test.expectedParams); diff != nil {
 					t.Error(diff)
 				}
+			}
+		})
+	}
+}
+
+func TestApplyDbParameterGroupAndWait(t *testing.T) {
+	testErr := errors.New("fail")
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		modifyParams                *rds.ModifyDBInstanceInput
+		dbInstance                  *RDSInstance
+		worker                      *ModifyWorker
+		expectedGroupName           string
+		expectErr                   bool
+		expectCreatedParameterGroup bool
+	}{
+		"applies updated parameter group": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+				DbVersion:             "8.0",
+			},
+			modifyParams: &rds.ModifyDBInstanceInput{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxRetries: 1,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("in-sync"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				nil,
+				&mockParameterGroupClient{
+					customPgroupName: "foobar",
+					rds:              &mockRDSClient{},
+				},
+				&mockCredentialUtils{},
+			),
+			expectedGroupName: "foobar",
+		},
+		"expect error": {
+			dbInstance: &RDSInstance{
+				BinaryLogFormat:       "ROW",
+				DbType:                "mysql",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+			},
+			modifyParams: &rds.ModifyDBInstanceInput{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					rds:                            &mockRDSClient{},
+					provisionOrModifyParamGroupErr: testErr,
+				},
+				&mockCredentialUtils{},
+			),
+			expectErr: true,
+		},
+		"applies updated parameter group with retries": {
+			modifyParams: &rds.ModifyDBInstanceInput{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxRetries: 3,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("applying"),
+										},
+									},
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("applying"),
+										},
+									},
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("in-sync"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					customPgroupName: "new-group",
+				},
+				&RDSCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+			},
+		},
+		"applying updated parameter group gives up after maximum retries": {
+			modifyParams: &rds.ModifyDBInstanceInput{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxRetries: 3,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("applying"),
+										},
+									},
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("applying"),
+										},
+									},
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("applying"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					customPgroupName: "new-group",
+				},
+				&RDSCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+			},
+			expectErr: true,
+		},
+		"applying updated parameter group could not get database status": {
+			modifyParams: &rds.ModifyDBInstanceInput{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxRetries: 3,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					customPgroupName: "new-group",
+				},
+				&RDSCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+			},
+			expectErr: true,
+		},
+		"applying updated parameter group could not get parameter group status": {
+			modifyParams: &rds.ModifyDBInstanceInput{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  3,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{},
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					customPgroupName: "new-group",
+				},
+				&RDSCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+			},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			didCreateNewParameterGroup, err := test.worker.applyDbParameterGroupAndWait(t.Context(), test.modifyParams, test.dbInstance)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			if didCreateNewParameterGroup != test.expectCreatedParameterGroup {
+				t.Fatalf("expected didCreateNewParameterGroup: %t, got: %t", test.expectCreatedParameterGroup, didCreateNewParameterGroup)
 			}
 		})
 	}
