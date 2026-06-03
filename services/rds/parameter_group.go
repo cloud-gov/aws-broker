@@ -62,11 +62,11 @@ func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstanc
 		return nil
 	}
 
-	customRDSParameters, err := p.getAllCustomParameters(i, false)
+	newRDSParameters, err := p.getNewParameters(i)
 
 	setParameterGroupName(i, p)
 
-	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, true)
+	err = p.createOrModifyCustomParameterGroup(i, rdsTags, newRDSParameters, true)
 	if err != nil {
 		log.Println(err.Error())
 		return fmt.Errorf("encountered error applying parameter group: %w", err)
