@@ -23,7 +23,7 @@ const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
-	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
+	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomParameterGroups() error
 	DeleteOldParameterGroup(oldParameterGroupName string) error
 	IsCustomParameterGroup(parameterGroupName string) bool
@@ -78,18 +78,18 @@ func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstanc
 // there needs to be a custom parameter group for the instance. If so, the method will either
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
-func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
+func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
 	// we have a parameter group name in i.ParameterGroupName if one exists
 	// see reconcileDbState
 	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
 	if err != nil {
-		return false, fmt.Errorf("checkIfParameterGroupExists err %w", err)
+		return fmt.Errorf("checkIfParameterGroupExists err %w", err)
 	}
 
 	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
 
 	if !p.needCustomParameters(i) && !needsNewParameterGroupVersion {
-		return false, nil
+		return nil
 	}
 
 	customRDSParameters, err := p.getAllCustomParameters(i, needsNewParameterGroupVersion)
@@ -103,9 +103,9 @@ func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSIn
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
 	if err != nil {
 		log.Println(err.Error())
-		return shouldCreateParameterGroup, fmt.Errorf("encountered error applying parameter group: %w", err)
+		return fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
-	return shouldCreateParameterGroup, nil
+	return nil
 }
 
 // CleanupCustomParameterGroups searches out all the parameter groups that we created and tries to clean them up

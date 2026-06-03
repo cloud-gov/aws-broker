@@ -674,8 +674,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
-					didCreateNewParameterGroup: true,
-					deleteParameterGroupErr:    errors.New("failed to delete"),
+					deleteParameterGroupErr: errors.New("failed to delete"),
 				},
 				&RDSCredentialUtils{},
 			),
@@ -1249,15 +1248,12 @@ func TestApplyDbParameterGroupAndWait(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			didCreateNewParameterGroup, err := test.worker.applyDbParameterGroupAndWait(t.Context(), test.modifyParams, test.dbInstance)
+			err := test.worker.applyDbParameterGroupAndWait(t.Context(), test.modifyParams, test.dbInstance)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error but received none")
-			}
-			if didCreateNewParameterGroup != test.expectCreatedParameterGroup {
-				t.Fatalf("expected didCreateNewParameterGroup: %t, got: %t", test.expectCreatedParameterGroup, didCreateNewParameterGroup)
 			}
 		})
 	}
