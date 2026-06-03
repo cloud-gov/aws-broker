@@ -79,11 +79,14 @@ func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstanc
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
 func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
-	// we have a parameter group name in i.ParameterGroupName if one exists
-	// see reconcileDbState
-	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
-	if err != nil {
-		return fmt.Errorf("checkIfParameterGroupExists err %w", err)
+	var parameterGroupExists bool
+	var err error
+
+	if i.ParameterGroupName != "" {
+		parameterGroupExists, err = p.checkIfParameterGroupExists(i.ParameterGroupName)
+		if err != nil {
+			return fmt.Errorf("checkIfParameterGroupExists err %w", err)
+		}
 	}
 
 	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
