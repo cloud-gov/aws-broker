@@ -584,10 +584,6 @@ func formatDBVersion(version string) string {
 	return strings.ReplaceAll(version, ".", "-")
 }
 
-func getOldParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
-	return p.parameterGroupPrefix + formatDBName(i.Database)
-}
-
 func (p *awsParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName string) error {
 	exists, err := p.checkIfParameterGroupExists(oldParameterGroupName)
 	if err != nil {
