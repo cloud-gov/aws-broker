@@ -954,6 +954,43 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				EngineVersion:            aws.String("9.0"),
 			},
 		},
+		"include parameter group": {
+			dbInstance: &RDSInstance{
+				DbType:                "mysql",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+				DbVersion:             "9.0",
+				ParameterGroupName:    "group1",
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+				EngineVersion:            aws.String("9.0"),
+				DBParameterGroupName:     aws.String("group1"),
+			},
+		},
 	}
 
 	for name, test := range testCases {

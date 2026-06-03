@@ -90,6 +90,10 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		BackupRetentionPeriod:    backupRetentionPeriod,
 	}
 
+	if i.ParameterGroupName != "" {
+		params.DBParameterGroupName = &i.ParameterGroupName
+	}
+
 	if i.DbVersion != "" {
 		params.EngineVersion = aws.String(i.DbVersion)
 	}
