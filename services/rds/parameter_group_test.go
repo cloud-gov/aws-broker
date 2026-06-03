@@ -1494,7 +1494,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 	}
 }
 
-func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
+func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 	modifyDbParamGroupErr := errors.New("create DB param group error")
 	testCases := map[string]struct {
 		customParams          map[string]map[string]string
@@ -1522,7 +1522,13 @@ func TestProvisionCustomParameterGroupIfNecessary(t *testing.T) {
 			},
 			expectedPGroupName: "prefix-database1-version-1-0",
 			parameterGroupAdapter: &awsParameterGroupClient{
-				rds:                  &mockRDSClient{},
+				rds: &mockRDSClient{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("family"),
+						},
+					},
+				},
 				parameterGroupPrefix: "prefix-",
 			},
 		},
