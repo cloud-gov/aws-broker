@@ -354,7 +354,10 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 
 	// Capture any parameter groups created manually
 	if len(dbInstanceState.DBParameterGroups) > 0 {
-		reconciledInstance.ParameterGroupName = *dbInstanceState.DBParameterGroups[0].DBParameterGroupName
+		parameterGroupName := *dbInstanceState.DBParameterGroups[0].DBParameterGroupName
+		if d.parameterGroupClient.IsCustomParameterGroup(parameterGroupName) {
+			reconciledInstance.ParameterGroupName = parameterGroupName
+		}
 	}
 
 	return &reconciledInstance, nil

@@ -67,3 +67,36 @@ func TestRDSServiceToToBrokerAPIService(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+func TestRDSPlanCheckVersion(t *testing.T) {
+	plan := RDSPlan{
+		ApprovedMajorVersions: []string{"8.4"},
+	}
+	if plan.CheckVersion("8.4.9") != true {
+		t.Fatal("specifying major version should return true")
+	}
+
+	plan = RDSPlan{
+		ApprovedMajorVersions: []string{"8.4"},
+	}
+	if plan.CheckVersion("8.4") != true {
+		t.Fatal("specifying minor version should return true")
+	}
+
+	plan = RDSPlan{
+		ApprovedMajorVersions: []string{"15", "16"},
+	}
+	if plan.CheckVersion("15.3") != true {
+		t.Fatal("specifying minor version should return true")
+	}
+
+	plan = RDSPlan{
+		ApprovedMajorVersions: []string{"15", "16"},
+	}
+	if plan.CheckVersion("17") != false {
+		t.Fatal("version should not be approved")
+	}
+	if plan.CheckVersion("17.3") != false {
+		t.Fatal("version should not be approved")
+	}
+}

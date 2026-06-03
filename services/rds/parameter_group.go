@@ -25,7 +25,8 @@ type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomParameterGroups() error
-	DeleteOldParameterGroup(i *RDSInstance) error
+	DeleteOldParameterGroup(oldParameterGroupName string) error
+	IsCustomParameterGroup(parameterGroupName string) bool
 }
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
@@ -50,6 +51,10 @@ func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, set
 		parameterGroupPrefix: "cg-aws-broker-",
 		logger:               logger,
 	}
+}
+
+func (p *awsParameterGroupClient) IsCustomParameterGroup(parameterGroupName string) bool {
+	return strings.HasPrefix(parameterGroupName, p.parameterGroupPrefix)
 }
 
 func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
@@ -580,8 +585,7 @@ func getOldParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string
 	return p.parameterGroupPrefix + formatDBName(i.Database, i.DbType)
 }
 
-func (p *awsParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error {
-	oldParameterGroupName := getOldParameterGroupName(i, p)
+func (p *awsParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName string) error {
 	exists, err := p.checkIfParameterGroupExists(oldParameterGroupName)
 	if err != nil {
 		return err

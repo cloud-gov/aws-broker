@@ -1800,17 +1800,13 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 
 func TestDeleteOldParameterGroup(t *testing.T) {
 	testCases := map[string]struct {
-		dbInstance            *RDSInstance
+		oldParameterGroupName string
 		expectErr             bool
 		dedicatedDBAdapter    *dedicatedDBAdapter
 		parameterGroupAdapter *awsParameterGroupClient
 	}{
 		"success": {
-			dbInstance: &RDSInstance{
-				DbType:    "mysql",
-				Database:  "database1",
-				DbVersion: "8.4",
-			},
+			oldParameterGroupName: "group",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
@@ -1827,11 +1823,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		},
 		"does not exist": {
-			dbInstance: &RDSInstance{
-				DbType:    "mysql",
-				Database:  "database1",
-				DbVersion: "8.4",
-			},
+			oldParameterGroupName: "group",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
@@ -1839,11 +1831,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		},
 		"error on deletion": {
-			dbInstance: &RDSInstance{
-				DbType:    "mysql",
-				Database:  "database1",
-				DbVersion: "8.4",
-			},
+			oldParameterGroupName: "group",
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
 					deleteDbParameterGroupErr: errors.New("failed to delete"),
@@ -1855,9 +1843,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.DeleteOldParameterGroup(
-				test.dbInstance,
-			)
+			err := test.parameterGroupAdapter.DeleteOldParameterGroup(test.oldParameterGroupName)
 
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
@@ -1867,4 +1853,24 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsCustomParameterGroup(t *testing.T) {
+	t.Run("is a custom parameter group", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		if parameterGroupClient.IsCustomParameterGroup("prefix-1234") != true {
+			t.Fatal("IsCustomParameterGroup should return true")
+		}
+	})
+
+	t.Run("is not a custom parameter group", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		if parameterGroupClient.IsCustomParameterGroup("1234") != false {
+			t.Fatal("IsCustomParameterGroup should return false")
+		}
+	})
 }

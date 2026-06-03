@@ -186,16 +186,19 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
+	existingParameterGroupName := i.ParameterGroupName
 	err = w.applyDbParameterGroupAndWait(ctx, modifyParams, i)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying parameter group: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error modifying parameter group: %w", err)
 	}
 
-	err = w.parameterGroupClient.DeleteOldParameterGroup(i)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
-		return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
+		err = w.parameterGroupClient.DeleteOldParameterGroup(existingParameterGroupName)
+		if err != nil {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
+			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+		}
 	}
 
 	err = updateDBTags(ctx, w.rds, i, *modifyOutput.DBInstance.DBInstanceArn)
