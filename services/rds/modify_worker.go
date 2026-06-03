@@ -90,6 +90,14 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		BackupRetentionPeriod:    backupRetentionPeriod,
 	}
 
+	rdsTags := ConvertTagsToRDSTags(i.getTags())
+
+	// If a custom parameter has been requested, and the feature is enabled,
+	// create/update a custom parameter group for our custom parameters.
+	err = w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
+	if err != nil {
+		return nil, err
+	}
 	if i.ParameterGroupName != "" {
 		params.DBParameterGroupName = &i.ParameterGroupName
 	}
@@ -178,6 +186,7 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
+	existingParameterGroupName := i.ParameterGroupName
 	modifyOutput, err := w.rds.ModifyDBInstance(ctx, modifyParams)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
@@ -190,12 +199,11 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
-	existingParameterGroupName := i.ParameterGroupName
-	err = w.applyDbParameterGroupAndWait(ctx, modifyParams, i)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying parameter group: %s", err))
-		return fmt.Errorf("asyncModifyDbInstance, error modifying parameter group: %w", err)
-	}
+	// err = w.applyDbParameterGroupAndWait(ctx, modifyParams, i)
+	// if err != nil {
+	// 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying parameter group: %s", err))
+	// 	return fmt.Errorf("asyncModifyDbInstance, error modifying parameter group: %w", err)
+	// }
 
 	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
 		err = w.parameterGroupClient.DeleteOldParameterGroup(existingParameterGroupName)
