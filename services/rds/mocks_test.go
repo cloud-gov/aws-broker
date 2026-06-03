@@ -61,6 +61,10 @@ func (m *mockParameterGroupClient) DeleteOldParameterGroup(i *RDSInstance) error
 	return m.deleteParameterGroupErr
 }
 
+func (m *mockParameterGroupClient) IsCustomParameterGroup(parameterGroupName string) bool {
+	return false
+}
+
 type mockCredentialUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string

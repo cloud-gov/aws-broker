@@ -1868,3 +1868,23 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 		})
 	}
 }
+
+func TestIsCustomParameterGroup(t *testing.T) {
+	t.Run("is a custom parameter group", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		if parameterGroupClient.IsCustomParameterGroup("prefix-1234") != true {
+			t.Fatal("IsCustomParameterGroup should return true")
+		}
+	})
+
+	t.Run("is not a custom parameter group", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		if parameterGroupClient.IsCustomParameterGroup("1234") != false {
+			t.Fatal("IsCustomParameterGroup should return false")
+		}
+	})
+}

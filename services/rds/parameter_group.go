@@ -26,6 +26,7 @@ type parameterGroupClient interface {
 	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomParameterGroups() error
 	DeleteOldParameterGroup(i *RDSInstance) error
+	IsCustomParameterGroup(parameterGroupName string) bool
 }
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
@@ -50,6 +51,10 @@ func NewAwsParameterGroupClient(ctx context.Context, rds RDSClientInterface, set
 		parameterGroupPrefix: "cg-aws-broker-",
 		logger:               logger,
 	}
+}
+
+func (p *awsParameterGroupClient) IsCustomParameterGroup(parameterGroupName string) bool {
+	return strings.HasPrefix(parameterGroupName, p.parameterGroupPrefix)
 }
 
 func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
