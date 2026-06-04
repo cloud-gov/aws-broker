@@ -126,11 +126,14 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
 	existingParameterGroupName := i.ParameterGroupName
+	fmt.Printf("existing parameter group name: %s\n", existingParameterGroupName)
 	modifyParams, err := w.prepareModifyDbInstanceInput(i, plan, database, isReplica)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
 	}
+
+	fmt.Printf("new parameter group name: %s\n", i.ParameterGroupName)
 
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, database)
 	if err != nil {
