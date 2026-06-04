@@ -45,6 +45,10 @@ fi
 
 cf create-service "${create_service_args[@]}"
 
+# Wait to make sure that the service instance has been successfully created.
+wait_for_service_instance_success "$SERVICE_NAME"
+
+# Wait to make sure that the service instance is bound to the application.
 wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
