@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -1742,7 +1743,7 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 							},
 						},
 					},
-					deleteDbParameterGroupErr: &rdsTypes.InvalidDBParameterGroupStateFault{},
+					deleteDbParameterGroupErrs: []error{&rdsTypes.InvalidDBParameterGroupStateFault{}},
 				},
 				settings:             &config.Settings{},
 				logger:               slog.New(&testutil.MockLogHandler{}),
@@ -1766,7 +1767,7 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 							},
 						},
 					},
-					deleteDbParameterGroupErr: &rdsTypes.DBParameterGroupNotFoundFault{},
+					deleteDbParameterGroupErrs: []error{&rdsTypes.DBParameterGroupNotFoundFault{}},
 				},
 				settings:             &config.Settings{},
 				logger:               slog.New(&testutil.MockLogHandler{}),
@@ -1790,60 +1791,184 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 }
 
 func TestDeleteOldParameterGroup(t *testing.T) {
-	testCases := map[string]struct {
-		oldParameterGroupName string
-		expectErr             bool
-		dedicatedDBAdapter    *dedicatedDBAdapter
-		parameterGroupAdapter *awsParameterGroupClient
-	}{
-		"success": {
-			oldParameterGroupName: "group",
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{
-					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
-						{
-							Parameters: []rdsTypes.Parameter{
-								{
-									ParameterName:  aws.String("random-param"),
-									ParameterValue: aws.String("random-value"),
-								},
+	t.Run("success", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{
+				PollAwsMaxRetries: 1,
+				PollAwsMinDelay:   1 * time.Millisecond,
+			},
+			rds: &mockRDSClient{
+				describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+					{
+						Parameters: []rdsTypes.Parameter{
+							{
+								ParameterName:  aws.String("random-param"),
+								ParameterValue: aws.String("random-value"),
 							},
 						},
 					},
 				},
-			},
-		},
-		"does not exist": {
-			oldParameterGroupName: "group",
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{
-					describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
+				deleteDbParameterGroupErrs: []error{
+					&rdsTypes.DBParameterGroupNotFoundFault{},
 				},
 			},
-		},
-		"error on deletion": {
-			oldParameterGroupName: "group",
-			parameterGroupAdapter: &awsParameterGroupClient{
-				rds: &mockRDSClient{
-					deleteDbParameterGroupErr: errors.New("failed to delete"),
+		}
+
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	})
+
+	t.Run("parameter group does not exist", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{},
+			rds: &mockRDSClient{
+				describeDbParamsErr: &rdsTypes.DBParameterGroupNotFoundFault{},
+			},
+		}
+
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	})
+
+	t.Run("parameter group does not exist", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{},
+			rds: &mockRDSClient{
+				deleteDbParameterGroupErrs: []error{errors.New("failed to delete")},
+			},
+		}
+
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+
+		if err == nil {
+			t.Error("expected error, received nil")
+		}
+	})
+
+	t.Run("success with retries", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{
+				PollAwsMaxRetries: 3,
+				PollAwsMinDelay:   1 * time.Millisecond,
+			},
+			rds: &mockRDSClient{
+				describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+					{
+						Parameters: []rdsTypes.Parameter{
+							{
+								ParameterName:  aws.String("random-param"),
+								ParameterValue: aws.String("random-value"),
+							},
+						},
+					},
+				},
+				deleteDbParameterGroupErrs: []error{
+					&rdsTypes.InvalidDBParameterGroupStateFault{},
+					&rdsTypes.InvalidDBParameterGroupStateFault{},
+					&rdsTypes.DBParameterGroupNotFoundFault{},
 				},
 			},
-			expectErr: true,
-		},
-	}
+		}
 
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.DeleteOldParameterGroup(test.oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
 
-			if !test.expectErr && err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
-			if test.expectErr && err == nil {
-				t.Fatal("expected error but got nil")
-			}
-		})
-	}
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	})
+
+	t.Run("gives up after maximum retries", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{
+				PollAwsMaxRetries: 3,
+				PollAwsMinDelay:   1 * time.Millisecond,
+			},
+			rds: &mockRDSClient{
+				describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+					{
+						Parameters: []rdsTypes.Parameter{
+							{
+								ParameterName:  aws.String("random-param"),
+								ParameterValue: aws.String("random-value"),
+							},
+						},
+					},
+				},
+				deleteDbParameterGroupErrs: []error{
+					&rdsTypes.InvalidDBParameterGroupStateFault{},
+					&rdsTypes.InvalidDBParameterGroupStateFault{},
+					&rdsTypes.InvalidDBParameterGroupStateFault{},
+				},
+			},
+		}
+
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+
+		if err == nil {
+			t.Error("expected error but received nil")
+		}
+	})
+
+	t.Run("returns unexpected error", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{
+				PollAwsMaxRetries: 3,
+				PollAwsMinDelay:   1 * time.Millisecond,
+			},
+			rds: &mockRDSClient{
+				describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+					{
+						Parameters: []rdsTypes.Parameter{
+							{
+								ParameterName:  aws.String("random-param"),
+								ParameterValue: aws.String("random-value"),
+							},
+						},
+					},
+				},
+				deleteDbParameterGroupErrs: []error{
+					&rdsTypes.AuthorizationNotFoundFault{},
+				},
+			},
+		}
+
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+
+		if err == nil {
+			t.Error("expected error but received nil")
+		}
+	})
+
+	t.Run("returns error from describing database", func(t *testing.T) {
+		oldParameterGroupName := "group"
+		parameterGroupAdapter := &awsParameterGroupClient{
+			settings: &config.Settings{
+				PollAwsMaxRetries: 3,
+				PollAwsMinDelay:   1 * time.Millisecond,
+			},
+			rds: &mockRDSClient{
+				describeDbParamsErr: errors.New("error describing database"),
+			},
+		}
+
+		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+
+		if err == nil {
+			t.Error("expected error but received nil")
+		}
+	})
 }
 
 func TestIsCustomParameterGroup(t *testing.T) {

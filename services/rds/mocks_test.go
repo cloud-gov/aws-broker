@@ -115,7 +115,8 @@ type mockRDSClient struct {
 	addTagsToResourceErr                error
 	describeDBParameterGroupsOutput     []*rds.DescribeDBParameterGroupsOutput
 	describeDBParameterGroupsCallNum    int
-	deleteDbParameterGroupErr           error
+	deleteDbParameterGroupErrs          []error
+	deleteDbParameterGroupCallNum       int
 }
 
 func (m *mockRDSClient) AddTagsToResource(ctx context.Context, params *rds.AddTagsToResourceInput, optFns ...func(*rds.Options)) (*rds.AddTagsToResourceOutput, error) {
@@ -161,7 +162,12 @@ func (m *mockRDSClient) DeleteDBInstance(ctx context.Context, params *rds.Delete
 }
 
 func (m *mockRDSClient) DeleteDBParameterGroup(ctx context.Context, params *rds.DeleteDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.DeleteDBParameterGroupOutput, error) {
-	return nil, m.deleteDbParameterGroupErr
+	var err error
+	if len(m.deleteDbParameterGroupErrs) > 0 && m.deleteDbParameterGroupErrs[m.deleteDbParameterGroupCallNum] != nil {
+		err = m.deleteDbParameterGroupErrs[m.deleteDbParameterGroupCallNum]
+	}
+	m.deleteDbParameterGroupCallNum++
+	return nil, err
 }
 
 func (m *mockRDSClient) DescribeDBEngineVersions(ctx context.Context, params *rds.DescribeDBEngineVersionsInput, optFns ...func(*rds.Options)) (*rds.DescribeDBEngineVersionsOutput, error) {
