@@ -160,8 +160,10 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: instanceId,
 				},
-				ElasticsearchVersion:     test.existingVersion,
-				VersionUpgradeInProgress: test.versionUpgradeInProgress,
+				ElasticsearchVersion: test.existingVersion,
+			}
+			if test.versionUpgradeInProgress {
+				existingInstance.TargetElasticsearchVersion = "OpenSearch_2.3"
 			}
 			if err := brokerDb.Create(&base.Instance{Uuid: instanceId, Request: existingInstance.Request}).Error; err != nil {
 				t.Fatal((err))

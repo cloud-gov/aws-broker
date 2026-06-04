@@ -20,7 +20,6 @@ type OpensearchClientInterface interface {
 	DescribeDomain(ctx context.Context, params *opensearch.DescribeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeDomainOutput, error)
 	UpdateDomainConfig(ctx context.Context, params *opensearch.UpdateDomainConfigInput, optFns ...func(*opensearch.Options)) (*opensearch.UpdateDomainConfigOutput, error)
 	UpgradeDomain(ctx context.Context, params *opensearch.UpgradeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.UpgradeDomainOutput, error)
-	GetUpgradeStatus(ctx context.Context, params *opensearch.GetUpgradeStatusInput, optFns ...func(*opensearch.Options)) (*opensearch.GetUpgradeStatusOutput, error)
 	GetCompatibleVersions(ctx context.Context, params *opensearch.GetCompatibleVersionsInput, optFns ...func(*opensearch.Options)) (*opensearch.GetCompatibleVersionsOutput, error)
 }
 
