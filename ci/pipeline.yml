@@ -680,7 +680,7 @@ jobs:
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-mysql
-                OLD_VERSION: 8.0.44
+                OLD_VERSION: 8.0.46
                 NEW_VERSION: 8.4.9
                 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["general"]'
                 DB_TYPE: mysql
