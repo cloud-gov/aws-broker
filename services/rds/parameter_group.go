@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -592,9 +593,36 @@ func (p *awsParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName 
 	if !exists {
 		return nil
 	}
-	_, err = p.rds.DeleteDBParameterGroup(p.ctx, &rds.DeleteDBParameterGroupInput{
-		DBParameterGroupName: &oldParameterGroupName,
-	})
+
+	attempts := 1
+	maxRetries := int(p.settings.PollAwsMaxRetries)
+
+	var parameterGroupIsDeleted bool
+
+	for !parameterGroupIsDeleted && attempts <= maxRetries {
+		_, err = p.rds.DeleteDBParameterGroup(p.ctx, &rds.DeleteDBParameterGroupInput{
+			DBParameterGroupName: &oldParameterGroupName,
+		})
+		if err != nil {
+			var invalidParameterGroupStateErr *rdsTypes.InvalidDBParameterGroupStateFault
+			if errors.As(err, &invalidParameterGroupStateErr) {
+				attempts += 1
+				time.Sleep(p.settings.PollAwsMinDelay)
+				continue
+			}
+			var notFoundErr *rdsTypes.DBParameterGroupNotFoundFault
+			if errors.As(err, &notFoundErr) {
+				parameterGroupIsDeleted = true
+				return nil
+			}
+			return err
+		}
+	}
+
+	if !parameterGroupIsDeleted {
+		return errors.New("could not verify deletion of parameter group")
+	}
+
 	return err
 }
 
