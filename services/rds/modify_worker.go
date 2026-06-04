@@ -151,7 +151,7 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 	}
 
 	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
-		err = w.parameterGroupClient.DeleteOldParameterGroup(existingParameterGroupName)
+		err = w.parameterGroupClient.DeleteParameterGroup(existingParameterGroupName)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
 			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
