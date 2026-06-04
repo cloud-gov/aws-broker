@@ -26,7 +26,7 @@ type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomParameterGroups() error
-	DeleteOldParameterGroup(oldParameterGroupName string) error
+	DeleteParameterGroup(parameterGroupName string) error
 	IsCustomParameterGroup(parameterGroupName string) bool
 }
 
@@ -585,8 +585,13 @@ func formatDBVersion(version string) string {
 	return strings.ReplaceAll(version, ".", "-")
 }
 
-func (p *awsParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName string) error {
-	exists, err := p.checkIfParameterGroupExists(oldParameterGroupName)
+func (p *awsParameterGroupClient) DeleteParameterGroup(parameterGroupName string) error {
+	if parameterGroupName == "" {
+		p.logger.Info("could not delete parameter group: parameter group name was empty")
+		return nil
+	}
+
+	exists, err := p.checkIfParameterGroupExists(parameterGroupName)
 	if err != nil {
 		return err
 	}
@@ -601,7 +606,7 @@ func (p *awsParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName 
 
 	for !parameterGroupIsDeleted && attempts <= maxRetries {
 		_, err = p.rds.DeleteDBParameterGroup(p.ctx, &rds.DeleteDBParameterGroupInput{
-			DBParameterGroupName: &oldParameterGroupName,
+			DBParameterGroupName: &parameterGroupName,
 		})
 		if err != nil {
 			var invalidParameterGroupStateErr *rdsTypes.InvalidDBParameterGroupStateFault
