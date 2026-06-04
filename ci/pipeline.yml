@@ -670,7 +670,7 @@ jobs:
                 DB_TYPE: postgres
 
             - task: smoke-tests-mysql-update-major-with-param-group
-              file: aws-broker-app/ci/run-smoke-tests.yml
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
               image: general-task
               params:
                 BROKER_NAME: ((development-broker-name))
