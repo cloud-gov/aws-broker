@@ -330,7 +330,9 @@ func TestAsyncDeleteDB(t *testing.T) {
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
-				&mockRDSClient{},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
 					deleteParameterGroupErr: errors.New("error deleting parameter group"),
