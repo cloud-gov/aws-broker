@@ -699,6 +699,20 @@ jobs:
                 SERVICE_PLAN: medium-oracle-se2
                 DB_TYPE: oracle-se2
 
+            - task: smoke-tests-mysql-update-major-with-param-group
+              file: aws-broker-app/ci/run-smoke-tests.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-cf-organization))
+                CF_SPACE: ((development-cf-space))
+                SERVICE_PLAN: micro-mysql
+                OLD_VERSION: 8.0.44
+                NEW_VERSION: 8.4.9
+                ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["general"]'
     on_failure:
       put: slack
       params:
