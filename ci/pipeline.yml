@@ -526,7 +526,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4.4"
+                DB_VERSION: "8.4.8"
 
             - task: smoke-tests-mysql-update-storage
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1113,7 +1113,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4.4"
+                DB_VERSION: "8.4.8"
 
             - task: smoke-tests-mysql-update-small-to-medium
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1806,7 +1806,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: small-mysql
                 DB_TYPE: mysql
-                DB_VERSION: "8.4.4"
+                DB_VERSION: "8.4.8"
 
             - task: smoke-tests-mysql-update-small-to-medium
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
