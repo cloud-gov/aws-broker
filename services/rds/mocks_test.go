@@ -57,7 +57,7 @@ func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
 	return nil
 }
 
-func (m *mockParameterGroupClient) DeleteOldParameterGroup(oldParameterGroupName string) error {
+func (m *mockParameterGroupClient) DeleteParameterGroup(oldParameterGroupName string) error {
 	return m.deleteParameterGroupErr
 }
 

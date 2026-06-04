@@ -1790,7 +1790,7 @@ func TestCleanupCustomParameterGroups(t *testing.T) {
 	}
 }
 
-func TestDeleteOldParameterGroup(t *testing.T) {
+func TestDeleteParameterGroup(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		oldParameterGroupName := "group"
 		parameterGroupAdapter := &awsParameterGroupClient{
@@ -1815,7 +1815,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1831,7 +1831,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1847,7 +1847,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err == nil {
 			t.Error("expected error, received nil")
@@ -1880,7 +1880,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1913,7 +1913,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err == nil {
 			t.Error("expected error but received nil")
@@ -1944,7 +1944,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err == nil {
 			t.Error("expected error but received nil")
@@ -1963,7 +1963,7 @@ func TestDeleteOldParameterGroup(t *testing.T) {
 			},
 		}
 
-		err := parameterGroupAdapter.DeleteOldParameterGroup(oldParameterGroupName)
+		err := parameterGroupAdapter.DeleteParameterGroup(oldParameterGroupName)
 
 		if err == nil {
 			t.Error("expected error but received nil")
