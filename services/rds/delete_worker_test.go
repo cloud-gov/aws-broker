@@ -321,6 +321,36 @@ func TestAsyncDeleteDB(t *testing.T) {
 			},
 			expectedState: base.InstanceGone,
 		},
+		"error deleting parameter group": {
+			ctx:       t.Context(),
+			expectErr: true,
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					deleteParameterGroupErr: errors.New("error deleting parameter group"),
+				},
+				&mockCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState:       base.InstanceNotGone,
+			expectedRecordCount: 1,
+		},
 	}
 
 	for name, test := range testCases {
