@@ -668,6 +668,21 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+
+            - task: smoke-tests-mysql-update-major-with-param-group
+              file: aws-broker-app/ci/run-smoke-tests.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: micro-mysql
+                OLD_VERSION: 8.0.44
+                NEW_VERSION: 8.4.9
+                ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["general"]'
     on_failure:
       put: slack
       params:
