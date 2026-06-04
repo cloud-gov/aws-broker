@@ -73,7 +73,7 @@ func TestRDSPlanCheckVersion(t *testing.T) {
 		ApprovedMajorVersions: []string{"8.4"},
 	}
 	if plan.CheckVersion("8.4.9") != true {
-		t.Fatal("specifying major version should return true")
+		t.Fatal("specifying minor version for major version should return true")
 	}
 
 	plan = RDSPlan{
@@ -87,7 +87,7 @@ func TestRDSPlanCheckVersion(t *testing.T) {
 		ApprovedMajorVersions: []string{"15", "16"},
 	}
 	if plan.CheckVersion("15.3") != true {
-		t.Fatal("specifying minor version should return true")
+		t.Fatal("specifying minor version for major version should return true")
 	}
 
 	plan = RDSPlan{
