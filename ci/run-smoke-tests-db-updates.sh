@@ -25,7 +25,7 @@ cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
 delete_existing_service "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
-pushd aws-broker-app/databases/aws-rds
+pushd aws-broker-app/ci/smoke-tests/aws-rds
 cf push "$APP_NAME" -f manifest.yml --var rds-service="$SERVICE_NAME" --no-start
 
 # set some variables that it needs
