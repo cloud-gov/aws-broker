@@ -90,18 +90,15 @@ func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSIn
 		}
 	}
 
-	needsNewParameterGroupVersion := parameterGroupExists && i.AllowMajorVersionUpgrade
-
-	if !p.needCustomParameters(i) && !needsNewParameterGroupVersion {
+	if !p.needCustomParameters(i) {
 		return nil
 	}
 
-	customRDSParameters, err := p.getAllCustomParameters(i, needsNewParameterGroupVersion)
+	customRDSParameters, err := p.getAllCustomParameters(i, parameterGroupExists)
 
+	existingParameterGroupName := i.ParameterGroupName
 	setParameterGroupName(i, p)
-
-	// if we're changing major versions, we need to create a new parameter group
-	shouldCreateParameterGroup := !parameterGroupExists || needsNewParameterGroupVersion
+	shouldCreateParameterGroup := !parameterGroupExists && i.ParameterGroupName != existingParameterGroupName
 
 	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
@@ -346,8 +343,6 @@ func (p *awsParameterGroupClient) getCustomParameterValue(i *RDSInstance, parame
 		DBParameterGroupName: aws.String(i.ParameterGroupName),
 		Source:               aws.String("user"),
 	}
-	// We have to use a channel to get the parameter value from the anonymous function to DescribeDBParametersPages
-	// because the code is executed asychronously
 	paginator := rds.NewDescribeDBParametersPaginator(p.rds, dbParametersInput)
 	for paginator.HasMorePages() {
 		result, err := paginator.NextPage(p.ctx)
@@ -374,14 +369,14 @@ func (p *awsParameterGroupClient) getParameterValue(i *RDSInstance, parameterNam
 	return p.getDefaultEngineParameterValue(i, parameterName)
 }
 
-func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, fetchExistingParameters bool) (map[string]map[string]paramDetails, error) {
+func (p *awsParameterGroupClient) getAllCustomParameters(i *RDSInstance, parameterGroupExists bool) (map[string]map[string]paramDetails, error) {
 	var existingRDSParameters map[string]map[string]paramDetails
 	var err error
 
 	existingRDSParameters = make(map[string]map[string]paramDetails)
 	customRDSParameters := make(map[string]map[string]paramDetails)
 
-	if fetchExistingParameters {
+	if parameterGroupExists {
 		existingRDSParameters, err = p.getExistingParameters(i)
 		if err != nil {
 			return customRDSParameters, err
