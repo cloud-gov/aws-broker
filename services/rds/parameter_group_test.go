@@ -1419,10 +1419,10 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 	modifyDbParamGroupErr := errors.New("modify DB params err")
 
 	testCases := map[string]struct {
-		dbInstance                 *RDSInstance
-		expectedErr                error
-		parameterGroupAdapter      *awsParameterGroupClient
-		shouldCreateParameterGroup bool
+		dbInstance                  *RDSInstance
+		expectedErr                 error
+		parameterGroupAdapter       *awsParameterGroupClient
+		expectParameterGroupCreated bool
 	}{
 		"error getting parameter group family": {
 			dbInstance: &RDSInstance{
@@ -1438,7 +1438,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					describeEngVersionsErr: describeEngVersionsErr,
 				},
 			},
-			shouldCreateParameterGroup: true,
+			expectParameterGroupCreated: true,
 		},
 		"error creating database parameter group": {
 			dbInstance: &RDSInstance{
@@ -1459,7 +1459,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 					},
 				},
 			},
-			shouldCreateParameterGroup: true,
+			expectParameterGroupCreated: true,
 		},
 		"error modifying database parameter group": {
 			dbInstance: &RDSInstance{
@@ -1501,7 +1501,7 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil, test.shouldCreateParameterGroup)
+			err := test.parameterGroupAdapter.createOrModifyCustomParameterGroup(createTestRdsInstance(test.dbInstance), nil, nil, test.expectParameterGroupCreated)
 			if test.expectedErr == nil && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -1515,12 +1515,13 @@ func TestCreateOrModifyCustomParameterGroup(t *testing.T) {
 func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 	modifyDbParamGroupErr := errors.New("create DB param group error")
 	testCases := map[string]struct {
-		customParams          map[string]map[string]string
-		dbInstance            *RDSInstance
-		expectedPGroupName    string
-		expectedErr           error
-		dedicatedDBAdapter    *dedicatedDBAdapter
-		parameterGroupAdapter *awsParameterGroupClient
+		customParams                map[string]map[string]string
+		dbInstance                  *RDSInstance
+		expectedPGroupName          string
+		expectedErr                 error
+		dedicatedDBAdapter          *dedicatedDBAdapter
+		parameterGroupAdapter       *awsParameterGroupClient
+		expectParameterGroupCreated bool
 	}{
 		"does not need custom params": {
 			dbInstance: &RDSInstance{
@@ -1637,7 +1638,8 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 				},
 				parameterGroupPrefix: "prefix-",
 			},
-			expectedPGroupName: "prefix-database2-version-16",
+			expectedPGroupName:          "prefix-database2-version-16",
+			expectParameterGroupCreated: true,
 		},
 		"error modifying existing parameter group": {
 			dbInstance: &RDSInstance{
@@ -1723,7 +1725,8 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 					describeDbParamsNumPages: 1,
 				},
 			},
-			expectedPGroupName: "prefix-database1-version-8-4",
+			expectedPGroupName:          "prefix-database1-version-8-4",
+			expectParameterGroupCreated: true,
 		},
 		"modify existing parameter group, same database version": {
 			dbInstance: &RDSInstance{
@@ -1807,13 +1810,14 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 					describeDbParamsNumPages: 1,
 				},
 			},
-			expectedPGroupName: "prefix-database1-version-8-4-9",
+			expectParameterGroupCreated: true,
+			expectedPGroupName:          "prefix-database1-version-8-4-9",
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.parameterGroupAdapter.ProvisionOrModifyCustomParameterGroup(
+			didCreateParameterGroup, err := test.parameterGroupAdapter.ProvisionOrModifyCustomParameterGroup(
 				createTestRdsInstance(test.dbInstance),
 				nil,
 			)
@@ -1826,6 +1830,9 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 			}
 			if err == nil && test.dbInstance.ParameterGroupName != test.expectedPGroupName {
 				t.Fatalf("unexpected group name: %s, expected: %s", test.dbInstance.ParameterGroupName, test.expectedPGroupName)
+			}
+			if didCreateParameterGroup != test.expectParameterGroupCreated {
+				t.Errorf("expected parameter group created to be %t, got %t", test.expectParameterGroupCreated, didCreateParameterGroup)
 			}
 		})
 	}

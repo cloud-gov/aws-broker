@@ -92,7 +92,7 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
-	err = w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
+	_, err = w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
 	if err != nil {
 		return nil, err
 	}

@@ -45,12 +45,12 @@ func (m *mockParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstan
 	return nil
 }
 
-func (m *mockParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+func (m *mockParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
 	if m.provisionOrModifyParamGroupErr != nil {
-		return m.provisionOrModifyParamGroupErr
+		return false, m.provisionOrModifyParamGroupErr
 	}
 	i.ParameterGroupName = m.customPgroupName
-	return nil
+	return false, nil
 }
 
 func (m *mockParameterGroupClient) CleanupCustomParameterGroups() error {
