@@ -1,0 +1,8 @@
+applications:
+  - name: aws-rds-smoke-test-suite-pg
+    buildpacks:
+      - go_buildpack
+    env:
+      GOPACKAGENAME: aws-rds
+      SERVICE_NAME: ((rds-service))
+      DB_TYPE: postgresql # valid types are postgresql and mysql

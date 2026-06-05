@@ -334,7 +334,6 @@ jobs:
           steps:
             - get: aws-broker-app
               resource: aws-broker-app-development
-            - get: aws-db-test
             - get: search-app-development
               passed:
                 - deploy-aws-broker-development
@@ -396,7 +395,6 @@ jobs:
       - in_parallel:
           - get: aws-broker-app
             resource: aws-broker-app-development
-          - get: aws-db-test
           - get: db-app-development
             passed:
               - deploy-aws-broker-development
@@ -958,7 +956,6 @@ jobs:
               passed:
                 - deploy-aws-broker-staging
               trigger: true
-            - get: aws-db-test
             - get: general-task
       - in_parallel:
           steps:
@@ -1227,7 +1224,6 @@ jobs:
               passed:
                 - deploy-aws-broker-staging
               trigger: true
-            - get: aws-db-test
             - get: general-task
       - in_parallel:
           steps:
@@ -1304,7 +1300,6 @@ jobs:
               passed:
                 - deploy-aws-broker-staging
               trigger: true
-            - get: aws-db-test
             - get: general-task
       - in_parallel:
           steps:
@@ -1651,7 +1646,6 @@ jobs:
           - get: aws-broker-app
             passed: [deploy-aws-broker-prod]
             trigger: true
-          - get: aws-db-test
           - get: general-task
       - in_parallel:
           steps:
@@ -2085,13 +2079,6 @@ resources:
         - services/elasticsearch/*
       uri: https://github.com/cloud-gov/aws-broker
     type: git
-
-  - name: aws-db-test
-    type: git
-    source:
-      uri: https://github.com/cloud-gov/laboratory
-      branch: main
-      commit_verification_keys: ((cloud-gov-pgp-keys))
 
   - name: deploy-aws-broker-development
     type: cf
