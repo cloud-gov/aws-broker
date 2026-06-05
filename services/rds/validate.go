@@ -58,7 +58,7 @@ func validatePgQueryLogging(opts *PgQueryLoggingOptions) error {
 		return fmt.Errorf("log_statement_sample_rate must be between 0.0 and 1.0, got %v", *opts.LogStatementSampleRate)
 	}
 	if opts.LogConnections != nil {
-		allValidLogConnectionsValues := append(validLogConnectionsStringValues, validLogConnectionsStringValues...)
+		allValidLogConnectionsValues := append(validLogConnectionsBoolValues, validLogConnectionsStringValues...)
 		valid := slices.Contains(allValidLogConnectionsValues, *opts.LogConnections)
 		if !valid {
 			return fmt.Errorf("log_connections must be one of %v, got %q", allValidLogConnectionsValues, *opts.LogConnections)

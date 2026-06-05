@@ -24,7 +24,7 @@ const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 
 type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
-	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
+	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
 	CleanupCustomParameterGroups() error
 	DeleteParameterGroup(parameterGroupName string) error
 	IsCustomParameterGroup(parameterGroupName string) bool
@@ -79,34 +79,31 @@ func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstanc
 // there needs to be a custom parameter group for the instance. If so, the method will either
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
-func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
-	var parameterGroupExists bool
-	var err error
-
-	if i.ParameterGroupName != "" {
-		parameterGroupExists, err = p.checkIfParameterGroupExists(i.ParameterGroupName)
-		if err != nil {
-			return fmt.Errorf("checkIfParameterGroupExists err %w", err)
-		}
+func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
+	if !p.needCustomParameters(i) {
+		return false, nil
 	}
 
-	if !p.needCustomParameters(i) {
-		return nil
+	if i.ParameterGroupName == "" {
+		return true, p.ProvisionNewCustomParameterGroup(i, rdsTags)
+	}
+
+	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
+	if err != nil {
+		return false, fmt.Errorf("checkIfParameterGroupExists err %w", err)
 	}
 
 	customRDSParameters, err := p.getAllCustomParameters(i, parameterGroupExists)
-
 	existingParameterGroupName := i.ParameterGroupName
 	setParameterGroupName(i, p)
-	shouldCreateParameterGroup := !parameterGroupExists && i.ParameterGroupName != existingParameterGroupName
+	shouldCreateParameterGroup := !parameterGroupExists || i.ParameterGroupName != existingParameterGroupName
 
-	// apply parameter group
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
 	if err != nil {
-		log.Println(err.Error())
-		return fmt.Errorf("encountered error applying parameter group: %w", err)
+		return false, fmt.Errorf("encountered error applying parameter group: %w", err)
 	}
-	return nil
+
+	return shouldCreateParameterGroup, nil
 }
 
 // CleanupCustomParameterGroups searches out all the parameter groups that we created and tries to clean them up
