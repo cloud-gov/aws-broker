@@ -95,7 +95,7 @@ type mockRDSClient struct {
 	createDBInstanceReadReplicaCallNum  int
 	dbEngineVersions                    []rdsTypes.DBEngineVersion
 	describeEngVersionsErr              error
-	describeDbParamsErr                 error
+	describeDbParamsErrs                []error
 	createDbParamGroupErr               error
 	deleteDBInstancesCallNum            int
 	deleteDbInstancesErrs               []error
@@ -207,15 +207,16 @@ func (m *mockRDSClient) DescribeEngineDefaultParameters(ctx context.Context, par
 }
 
 func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.DescribeDBParametersInput, optFns ...func(*rds.Options)) (*rds.DescribeDBParametersOutput, error) {
-	if m.describeDbParamsErr != nil {
-		return nil, m.describeDbParamsErr
+	var err error
+	var result *rds.DescribeDBParametersOutput
+	if len(m.describeDbParamsErrs) > m.describeDbParamsPageNum && m.describeDbParamsErrs[m.describeDbParamsPageNum] != nil {
+		err = m.describeDbParamsErrs[m.describeDbParamsPageNum]
 	}
-	if m.describeDbParamsResults != nil {
-		result := m.describeDbParamsResults[m.describeDbParamsPageNum]
-		m.describeDbParamsPageNum++
-		return result, nil
+	if len(m.describeDbParamsResults) > m.describeDbParamsPageNum && m.describeDbParamsResults[m.describeDbParamsPageNum] != nil {
+		result = m.describeDbParamsResults[m.describeDbParamsPageNum]
 	}
-	return nil, nil
+	m.describeDbParamsPageNum++
+	return result, err
 }
 
 func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {

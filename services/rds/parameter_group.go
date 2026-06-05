@@ -88,15 +88,26 @@ func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSIn
 		return true, p.ProvisionNewCustomParameterGroup(i, rdsTags)
 	}
 
-	parameterGroupExists, err := p.checkIfParameterGroupExists(i.ParameterGroupName)
+	existingParameterGroupName := i.ParameterGroupName
+	parameterGroupExists, err := p.checkIfParameterGroupExists(existingParameterGroupName)
 	if err != nil {
 		return false, fmt.Errorf("checkIfParameterGroupExists err %w", err)
 	}
 
+	// if a parameter group with the current name already exists, include its parameters
+	// in the parameters to be set
 	customRDSParameters, err := p.getAllCustomParameters(i, parameterGroupExists)
-	existingParameterGroupName := i.ParameterGroupName
+
+	// set the parameter group name, which may or may not change depending on if there is a
+	// new database version
 	setParameterGroupName(i, p)
-	shouldCreateParameterGroup := !parameterGroupExists || i.ParameterGroupName != existingParameterGroupName
+
+	// check if a parameter group exists for the updated name
+	parameterGroupExists, err = p.checkIfParameterGroupExists(i.ParameterGroupName)
+	if err != nil {
+		return false, fmt.Errorf("checkIfParameterGroupExists err %w", err)
+	}
+	shouldCreateParameterGroup := !parameterGroupExists && i.ParameterGroupName != existingParameterGroupName
 
 	err = p.createOrModifyCustomParameterGroup(i, rdsTags, customRDSParameters, shouldCreateParameterGroup)
 	if err != nil {
