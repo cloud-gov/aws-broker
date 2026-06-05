@@ -681,7 +681,73 @@ func TestReconcileDbState(t *testing.T) {
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
-									EngineVersion: aws.String("15.14"),
+									EngineVersion:    aws.String("15.14"),
+									AllocatedStorage: aws.Int32(30),
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: RDSInstance{
+				DbVersion:        "15",
+				AllocatedStorage: 20,
+			},
+			expectedInstance: &RDSInstance{
+				DbVersion:        "15.14",
+				AllocatedStorage: 30,
+			},
+		},
+		"reconcile custom parameter group": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											DBParameterGroupName: aws.String("custom-group"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{
+					isCustomParameterGroup: true,
+				},
+			),
+			dbInstance: RDSInstance{
+				DbVersion: "15",
+			},
+			expectedInstance: &RDSInstance{
+				DbVersion:          "15",
+				ParameterGroupName: "custom-group",
+			},
+		},
+		"ignore not custom parameter group": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											DBParameterGroupName: aws.String("not-custom-group"),
+										},
+									},
 								},
 							},
 						},
@@ -693,7 +759,7 @@ func TestReconcileDbState(t *testing.T) {
 				DbVersion: "15",
 			},
 			expectedInstance: &RDSInstance{
-				DbVersion: "15.14",
+				DbVersion: "15",
 			},
 		},
 		"error describing database": {

@@ -35,6 +35,7 @@ type mockParameterGroupClient struct {
 	provisionNewParamGroupErr      error
 	provisionOrModifyParamGroupErr error
 	deleteParameterGroupErr        error
+	isCustomParameterGroup         bool
 }
 
 func (m *mockParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
@@ -62,7 +63,7 @@ func (m *mockParameterGroupClient) DeleteParameterGroup(oldParameterGroupName st
 }
 
 func (m *mockParameterGroupClient) IsCustomParameterGroup(parameterGroupName string) bool {
-	return false
+	return m.isCustomParameterGroup
 }
 
 type mockCredentialUtils struct {

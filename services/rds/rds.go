@@ -348,7 +348,7 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 	// Sometimes, the database version tracked by the broker may be out of sync
 	// with the actual version of the database. If that is the case, then update
 	// the database version tracked by the broker
-	if reconciledInstance.DbVersion != *dbInstanceState.EngineVersion {
+	if dbInstanceState.EngineVersion != nil && reconciledInstance.DbVersion != *dbInstanceState.EngineVersion {
 		reconciledInstance.DbVersion = *dbInstanceState.EngineVersion
 	}
 
@@ -358,6 +358,11 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 		if d.parameterGroupClient.IsCustomParameterGroup(parameterGroupName) {
 			reconciledInstance.ParameterGroupName = parameterGroupName
 		}
+	}
+
+	// reconcile storage with actual instance storage, if necessary
+	if dbInstanceState.AllocatedStorage != nil && reconciledInstance.AllocatedStorage != int64(*dbInstanceState.AllocatedStorage) {
+		reconciledInstance.AllocatedStorage = int64(*dbInstanceState.AllocatedStorage)
 	}
 
 	return &reconciledInstance, nil
