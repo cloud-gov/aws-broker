@@ -360,6 +360,11 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 		}
 	}
 
+	// reconcile storage with actual instance storage, if necessary
+	if reconciledInstance.AllocatedStorage != int64(*dbInstanceState.AllocatedStorage) {
+		reconciledInstance.AllocatedStorage = int64(*dbInstanceState.AllocatedStorage)
+	}
+
 	return &reconciledInstance, nil
 }
 
