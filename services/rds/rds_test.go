@@ -681,7 +681,8 @@ func TestReconcileDbState(t *testing.T) {
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
-									EngineVersion: aws.String("15.14"),
+									EngineVersion:    aws.String("15.14"),
+									AllocatedStorage: aws.Int32(30),
 								},
 							},
 						},
@@ -690,10 +691,12 @@ func TestReconcileDbState(t *testing.T) {
 				&mockParameterGroupClient{},
 			),
 			dbInstance: RDSInstance{
-				DbVersion: "15",
+				DbVersion:        "15",
+				AllocatedStorage: 20,
 			},
 			expectedInstance: &RDSInstance{
-				DbVersion: "15.14",
+				DbVersion:        "15.14",
+				AllocatedStorage: 30,
 			},
 		},
 		"error describing database": {
