@@ -943,18 +943,20 @@ func TestModifyInstance(t *testing.T) {
 				},
 			},
 			existingInstance: &RDSInstance{
+				DbVersion: "17.10",
 				PgQueryLogging: &PgQueryLoggingOptions{
 					LogStatement:            aws.String("ddl"),
 					LogMinDurationStatement: aws.Int64(500),
-					LogConnections:          aws.Bool(true),
+					LogConnections:          aws.String("true"),
 				},
 				Tags: map[string]string{},
 			},
 			expectedInstance: &RDSInstance{
+				DbVersion: "17.10",
 				PgQueryLogging: &PgQueryLoggingOptions{
 					LogStatement:            aws.String("all"),
 					LogMinDurationStatement: aws.Int64(500),
-					LogConnections:          aws.Bool(true),
+					LogConnections:          aws.String("true"),
 				},
 				Tags: map[string]string{},
 			},
@@ -1227,4 +1229,74 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 	if diff := deep.Equal(i, unmarshaledInstance); diff != nil {
 		t.Fatal(diff)
 	}
+}
+
+func TestSetPgQueryLogging(t *testing.T) {
+	t.Run("returns error for missing database versions", func(t *testing.T) {
+		i := &RDSInstance{}
+		err := i.setPgQueryLogging(Options{
+			PgQueryLogging: &PgQueryLoggingOptions{
+				LogConnections: aws.String("all"),
+			},
+		})
+		if err == nil {
+			t.Error("expected err but received nil")
+		}
+	})
+
+	t.Run("set log_connections from valid bool for Postgres < 18", func(t *testing.T) {
+		i := &RDSInstance{
+			DbVersion: "17.10",
+		}
+		err := i.setPgQueryLogging(Options{
+			PgQueryLogging: &PgQueryLoggingOptions{
+				LogConnections: aws.String("true"),
+			},
+		})
+		if err != nil {
+			t.Errorf("expected err to be nil, got %s", err)
+		}
+	})
+
+	t.Run("rejects non-bool as log_connections for Postgres < 18", func(t *testing.T) {
+		i := &RDSInstance{
+			DbVersion: "17.10",
+		}
+		err := i.setPgQueryLogging(Options{
+			PgQueryLogging: &PgQueryLoggingOptions{
+				LogConnections: aws.String("all"),
+			},
+		})
+		if err == nil {
+			t.Error("expected err but received nil")
+		}
+	})
+
+	t.Run("set log_connections from valid string for Postgres 18+", func(t *testing.T) {
+		i := &RDSInstance{
+			DbVersion: "18.3",
+		}
+		err := i.setPgQueryLogging(Options{
+			PgQueryLogging: &PgQueryLoggingOptions{
+				LogConnections: aws.String("all"),
+			},
+		})
+		if err != nil {
+			t.Errorf("expected err to be nil, got %s", err)
+		}
+	})
+
+	t.Run("rejects non-string as log_connections for Postgres 18+", func(t *testing.T) {
+		i := &RDSInstance{
+			DbVersion: "18.3",
+		}
+		err := i.setPgQueryLogging(Options{
+			PgQueryLogging: &PgQueryLoggingOptions{
+				LogConnections: aws.String("false"),
+			},
+		})
+		if err == nil {
+			t.Error("expected err but received nil")
+		}
+	})
 }

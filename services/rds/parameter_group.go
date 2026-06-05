@@ -508,7 +508,7 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 		if q := i.PgQueryLogging; q != nil {
 			if q.LogConnections != nil {
 				customRDSParameters["postgres"]["log_connections"] = paramDetails{
-					value:       boolToParamvalue(*q.LogConnections),
+					value:       logConnectionsToParamValue(*q.LogConnections),
 					applyMethod: "immediate",
 				}
 			}
@@ -565,6 +565,16 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 	}
 
 	return customRDSParameters, nil
+}
+
+func logConnectionsToParamValue(logConnections string) string {
+	if logConnections == "true" {
+		return "1"
+	}
+	if logConnections == "false" {
+		return "0"
+	}
+	return logConnections
 }
 
 func boolToParamvalue(b bool) string {

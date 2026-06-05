@@ -1047,7 +1047,7 @@ func TestGetNewParameters(t *testing.T) {
 			dbInstance: &RDSInstance{
 				DbType: "postgres",
 				PgQueryLogging: &PgQueryLoggingOptions{
-					LogConnections:          aws.Bool(true),
+					LogConnections:          aws.String("true"),
 					LogDisconnections:       aws.Bool(true),
 					LogCheckpoints:          aws.Bool(false),
 					LogLockWaits:            aws.Bool(true),
@@ -1069,6 +1069,23 @@ func TestGetNewParameters(t *testing.T) {
 					"log_statement":              {value: "mod", applyMethod: "immediate"},
 					"log_statement_sample_rate":  {value: "0.25", applyMethod: "immediate"},
 					"log_statement_stats":        {value: "1", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
+			},
+		},
+		"postgres with custom log connections value": {
+			dbInstance: &RDSInstance{
+				DbType: "postgres",
+				PgQueryLogging: &PgQueryLoggingOptions{
+					LogConnections: aws.String("all"),
+				},
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"postgres": {
+					"log_connections": {value: "all", applyMethod: "immediate"},
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
