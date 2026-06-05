@@ -1624,6 +1624,7 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
 				rds: &mockRDSClient{
+					describeDbParamsErrs: []error{&rdsTypes.DBParameterGroupNotFoundFault{}},
 					describeEngineDefaultParamsResults: []*rds.DescribeEngineDefaultParametersOutput{
 						{
 							EngineDefaults: &rdsTypes.EngineDefaults{
@@ -1895,6 +1896,41 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 				},
 			},
 			expectedPGroupName: "prefix-database1-version-8-4",
+		},
+		"create new parameter group: current group exists": {
+			dbInstance: &RDSInstance{
+				DbType:                   "mysql",
+				BinaryLogFormat:          "ROW",
+				Database:                 "database1",
+				AllowMajorVersionUpgrade: true,
+				DbVersion:                "18.3",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+				rds: &mockRDSClient{
+					describeDbParamsErrs: []error{nil, nil, &rdsTypes.DBParameterGroupNotFoundFault{}},
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+									ApplyMethod:    rdsTypes.ApplyMethodImmediate,
+								},
+							},
+						},
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPGroupName: "prefix-database1-version-18-3",
 		},
 	}
 
