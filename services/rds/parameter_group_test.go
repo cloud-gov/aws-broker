@@ -1114,7 +1114,7 @@ func TestGetAllCustomParameters(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance                    *RDSInstance
 		expectedParams                map[string]map[string]paramDetails
-		expectedErr                   error
+		expectErr                     bool
 		parameterGroupAdapter         *awsParameterGroupClient
 		shouldFetchExistingParameters bool
 	}{
@@ -1155,6 +1155,21 @@ func TestGetAllCustomParameters(t *testing.T) {
 			},
 			shouldFetchExistingParameters: true,
 		},
+		"error getting existing parameters": {
+			dbInstance: &RDSInstance{
+				EnableFunctions: true,
+				DbType:          "mysql",
+			},
+			expectedParams: map[string]map[string]paramDetails{},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					describeDbParamsErr: errors.New("error getting parameters"),
+				},
+				settings: &config.Settings{},
+			},
+			shouldFetchExistingParameters: true,
+			expectErr:                     true,
+		},
 		"includes only new parameters": {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
@@ -1179,11 +1194,11 @@ func TestGetAllCustomParameters(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			params, err := test.parameterGroupAdapter.getAllCustomParameters(createTestRdsInstance(test.dbInstance), test.shouldFetchExistingParameters)
-			if test.expectedErr == nil && err != nil {
+			if !test.expectErr && err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if !errors.Is(err, test.expectedErr) {
-				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)
+			if test.expectErr && err == nil {
+				t.Error("expected error but received nil")
 			}
 			if !reflect.DeepEqual(params, test.expectedParams) {
 				t.Fatalf("expected %s, got: %s", test.expectedParams, params)
