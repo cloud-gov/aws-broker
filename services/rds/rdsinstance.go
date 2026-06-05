@@ -280,11 +280,11 @@ func (i *RDSInstance) setPgQueryLogging(options Options) error {
 			}
 			if dbVersionInt < 18 {
 				if !slices.Contains(validLogConnectionsBoolValues, *i.PgQueryLogging.LogConnections) {
-					return fmt.Errorf("log_connections must be one of on %v Postgres versions < 18", validLogConnectionsBoolValues)
+					return fmt.Errorf("log_connections must be one of %v on Postgres versions < 18", validLogConnectionsBoolValues)
 				}
 			} else {
 				if !slices.Contains(validLogConnectionsStringValues, *i.PgQueryLogging.LogConnections) {
-					return fmt.Errorf("log_connections must be one of on %v Postgres versions > 18, got %s", validLogConnectionsStringValues, *i.PgQueryLogging.LogConnections)
+					return fmt.Errorf("log_connections must be one of %v on Postgres versions > 18, got %s", validLogConnectionsStringValues, *i.PgQueryLogging.LogConnections)
 				}
 			}
 		}
