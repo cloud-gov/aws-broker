@@ -35,6 +35,7 @@ func validateLongQueryTime(v *float64) error {
 }
 
 var validLogStatementValues = []string{"none", "ddl", "mod", "all"}
+var validLogConnectionsValues = []string{"true", "false", "receipt", "authentication", "authorization", "setup_durations", "all"}
 
 func validatePgQueryLogging(opts *PgQueryLoggingOptions) error {
 	if opts == nil {
@@ -54,6 +55,12 @@ func validatePgQueryLogging(opts *PgQueryLoggingOptions) error {
 	}
 	if opts.LogStatementSampleRate != nil && (*opts.LogStatementSampleRate < 0.0 || *opts.LogStatementSampleRate > 1.0) {
 		return fmt.Errorf("log_statement_sample_rate must be between 0.0 and 1.0, got %v", *opts.LogStatementSampleRate)
+	}
+	if opts.LogConnections != nil {
+		valid := slices.Contains(validLogConnectionsValues, *opts.LogConnections)
+		if !valid {
+			return fmt.Errorf("log_connections must be one of %v, got %q", validLogConnectionsValues, *opts.LogConnections)
+		}
 	}
 
 	return nil
