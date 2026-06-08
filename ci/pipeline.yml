@@ -483,7 +483,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                PG_QUERY_LOGGING: '{"log_connections": true, "log_disconnections": true, "log_checkpoints": true, "log_lock_waits": true, "log_min_duration_sample": 500, "log_min_duration_statement": 1000, "log_statement": "all", "log_statement_sample_rate": 0.5, "log_statement_stats": false}'
+                PG_QUERY_LOGGING: '{"log_connections": "all", "log_disconnections": true, "log_checkpoints": true, "log_lock_waits": true, "log_min_duration_sample": 500, "log_min_duration_statement": 1000, "log_statement": "all", "log_statement_sample_rate": 0.5, "log_statement_stats": false}'
 
             - task: smoke-tests-mysql
               file: aws-broker-app/ci/run-smoke-tests.yml
@@ -1040,7 +1040,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                PG_QUERY_LOGGING: '{"log_connections": true, "log_disconnections": true, "log_checkpoints": true, "log_lock_waits": true, "log_min_duration_sample": 500, "log_min_duration_statement": 1000, "log_statement": "all", "log_statement_sample_rate": 0.5, "log_statement_stats": false}'
+                PG_QUERY_LOGGING: '{"log_connections": "all", "log_disconnections": true, "log_checkpoints": true, "log_lock_waits": true, "log_min_duration_sample": 500, "log_min_duration_statement": 1000, "log_statement": "all", "log_statement_sample_rate": 0.5, "log_statement_stats": false}'
 
             - task: smoke-tests-mysql
               file: aws-broker-app/ci/run-smoke-tests.yml
@@ -1730,7 +1730,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql
                 DB_TYPE: postgres
-                PG_QUERY_LOGGING: '{"log_connections": true, "log_disconnections": true, "log_checkpoints": true, "log_lock_waits": true, "log_min_duration_sample": 500, "log_min_duration_statement": 1000, "log_statement": "all", "log_statement_sample_rate": 0.5, "log_statement_stats": false}'
+                PG_QUERY_LOGGING: '{"log_connections": "all", "log_disconnections": true, "log_checkpoints": true, "log_lock_waits": true, "log_min_duration_sample": 500, "log_min_duration_statement": 1000, "log_statement": "all", "log_statement_sample_rate": 0.5, "log_statement_stats": false}'
 
             - task: smoke-tests-mysql
               file: aws-broker-app/ci/run-smoke-tests.yml
