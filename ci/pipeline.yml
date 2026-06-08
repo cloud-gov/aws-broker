@@ -692,8 +692,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: medium-oracle-se2
                 DB_TYPE: oracle-se2
 
@@ -705,8 +705,8 @@ jobs:
                 CF_API_URL: ((development-cf-api-url))
                 CF_USERNAME: ((development-cf-deploy-username))
                 CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-cf-organization))
-                CF_SPACE: ((development-cf-space))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-mysql
                 OLD_VERSION: 8.0.46
                 NEW_VERSION: 8.4.9

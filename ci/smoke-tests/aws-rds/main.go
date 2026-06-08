@@ -39,12 +39,12 @@ func main() {
 	}
 
 	switch {
-	case strings.Contains("psql", dbType):
+	case strings.Contains("postgres", dbType):
 		openAndTest("postgres", svc.Credentials["uri"].(string))
 	case strings.Contains("mysql", dbType):
 		openAndTest("mysql", fmtMysql(svc))
 	case strings.Contains("oracle", dbType):
-		openAndTest("goracle", svc.Credentials["uri"].(string))
+		openAndTest("oracle", svc.Credentials["uri"].(string))
 	}
 
 	fmt.Printf("tested %s database, things look good, starting web server now.", dbType)
