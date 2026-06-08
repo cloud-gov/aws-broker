@@ -44,7 +44,7 @@ func main() {
 	case strings.Contains("mysql", dbType):
 		openAndTest("mysql", fmtMysql(svc))
 	case strings.Contains("oracle", dbType):
-		openAndTest("goracle", svc.Credentials["uri"].(string))
+		openAndTest("oracle", svc.Credentials["uri"].(string))
 	}
 
 	fmt.Printf("tested %s database, things look good, starting web server now.", dbType)
