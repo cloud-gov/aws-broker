@@ -64,8 +64,6 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	switch i.DbType {
 	case "postgres", "mysql":
 		dbScheme = i.DbType
-	case "oracle-se2":
-		dbScheme = "oracle"
 	default:
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
