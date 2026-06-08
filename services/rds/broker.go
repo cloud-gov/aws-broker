@@ -26,7 +26,7 @@ import (
 // PgQqueryLoggingOptions contains optional PostgreSQL query logging parameters
 // that are applied via the RDS parameter group. Only supported in the modify instance flow.
 type PgQueryLoggingOptions struct {
-	LogConnections          *bool    `json:"log_connections"`
+	LogConnections          *string  `json:"log_connections"`
 	LogDisconnections       *bool    `json:"log_disconnections"`
 	LogCheckpoints          *bool    `json:"log_checkpoints"`
 	LogLockWaits            *bool    `json:"log_lock_waits"`

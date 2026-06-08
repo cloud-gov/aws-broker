@@ -699,6 +699,69 @@ func TestReconcileDbState(t *testing.T) {
 				AllocatedStorage: 30,
 			},
 		},
+		"reconcile custom parameter group": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											DBParameterGroupName: aws.String("custom-group"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{
+					isCustomParameterGroup: true,
+				},
+			),
+			dbInstance: RDSInstance{
+				DbVersion: "15",
+			},
+			expectedInstance: &RDSInstance{
+				DbVersion:          "15",
+				ParameterGroupName: "custom-group",
+			},
+		},
+		"ignore not custom parameter group": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											DBParameterGroupName: aws.String("not-custom-group"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: RDSInstance{
+				DbVersion: "15",
+			},
+			expectedInstance: &RDSInstance{
+				DbVersion: "15",
+			},
+		},
 		"error describing database": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				t.Context(),

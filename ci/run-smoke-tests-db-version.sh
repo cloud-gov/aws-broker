@@ -7,15 +7,16 @@ set -euxo pipefail
 # Log in to CF
 login
 
-APP_NAME="smoke-tests-db-version-$SERVICE_PLAN"
-SERVICE_NAME="rds-smoke-tests-db-version-$SERVICE_PLAN"
+TEST_ID="$RANDOM"
+APP_NAME="smoke-tests-db-version-$SERVICE_PLAN-$TEST_ID"
+SERVICE_NAME="rds-smoke-tests-db-version-$SERVICE_PLAN-$TEST_ID"
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-version-$SERVICE_PLAN"
 delete_existing_service "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
-pushd aws-db-test/databases/aws-rds
+pushd aws-broker-app/ci/smoke-tests/aws-rds
 cf push "$APP_NAME" -f manifest.yml --var rds-service="$SERVICE_NAME" --no-start
 
 # set some variables that it needs

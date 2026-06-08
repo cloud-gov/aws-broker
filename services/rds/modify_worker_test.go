@@ -131,7 +131,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockRDSClient{},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
-					returnErr: errors.New("fail"),
+					provisionOrModifyParamGroupErr: errors.New("fail"),
 				},
 				&RDSCredentialUtils{},
 			),
@@ -589,6 +589,112 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			ctx: t.Context(),
 		},
+		"applies updated parameter group": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+										{
+											ParameterApplyStatus: aws.String("in-sync"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					customPgroupName: "new-group",
+				},
+				&RDSCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+			},
+			expectedState: base.InstanceReady,
+			ctx:           t.Context(),
+		},
+		"error deleting old parameter group": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					deleteParameterGroupErr: errors.New("failed to delete"),
+				},
+				&RDSCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:           "db-1",
+				credentialUtils:    &RDSCredentialUtils{},
+				DbVersion:          "9.0",
+				ParameterGroupName: "existing-group",
+			},
+			expectedState: base.InstanceNotModified,
+			expectErr:     true,
+			ctx:           t.Context(),
+		},
 	}
 
 	for name, test := range testCases {
@@ -626,7 +732,6 @@ func TestAsyncModifyDb(t *testing.T) {
 }
 
 func TestPrepareModifyDbInstanceInput(t *testing.T) {
-	testErr := errors.New("fail")
 	brokerDB, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
@@ -641,68 +746,6 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 		plan              *catalog.RDSPlan
 		isReplica         bool
 	}{
-		"expect returned group name": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-				DbVersion:             "8.0",
-			},
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				nil,
-				&mockParameterGroupClient{
-					customPgroupName: "foobar",
-					rds:              &mockRDSClient{},
-				},
-				&mockCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedGroupName: "foobar",
-			expectedParams: &rds.ModifyDBInstanceInput{
-				AllocatedStorage:         aws.Int32(20),
-				ApplyImmediately:         aws.Bool(true),
-				DBInstanceClass:          aws.String("class"),
-				MultiAZ:                  aws.Bool(true),
-				DBInstanceIdentifier:     aws.String("db-name"),
-				AllowMajorVersionUpgrade: aws.Bool(false),
-				BackupRetentionPeriod:    aws.Int32(14),
-				DBParameterGroupName:     aws.String("foobar"),
-				EngineVersion:            aws.String("8.0"),
-			},
-		},
-		"expect error": {
-			dbInstance: &RDSInstance{
-				BinaryLogFormat:       "ROW",
-				DbType:                "mysql",
-				AllocatedStorage:      20,
-				Database:              "db-name",
-				BackupRetentionPeriod: 14,
-			},
-			worker: NewModifyWorker(
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{},
-				nil,
-				&mockParameterGroupClient{
-					rds:       &mockRDSClient{},
-					returnErr: testErr,
-				},
-				&mockCredentialUtils{},
-			),
-			plan: &catalog.RDSPlan{
-				InstanceClass: "class",
-				Redundant:     true,
-			},
-			expectedErr: testErr,
-		},
 		"update password": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
@@ -909,6 +952,44 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				BackupRetentionPeriod:    aws.Int32(14),
 				StorageType:              aws.String("gp3"),
 				EngineVersion:            aws.String("9.0"),
+			},
+		},
+		"include parameter group": {
+			dbInstance: &RDSInstance{
+				DbType:                "mysql",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+				DbVersion:             "9.0",
+				ParameterGroupName:    "group1",
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					customPgroupName: "group1",
+					rds:              &mockRDSClient{},
+				},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+				EngineVersion:            aws.String("9.0"),
+				DBParameterGroupName:     aws.String("group1"),
 			},
 		},
 	}

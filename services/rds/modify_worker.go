@@ -88,6 +88,18 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		BackupRetentionPeriod:    backupRetentionPeriod,
 	}
 
+	rdsTags := ConvertTagsToRDSTags(i.getTags())
+
+	// If a custom parameter has been requested, and the feature is enabled,
+	// create/update a custom parameter group for our custom parameters.
+	_, err = w.parameterGroupClient.ProvisionOrModifyCustomParameterGroup(i, rdsTags)
+	if err != nil {
+		return nil, err
+	}
+	if i.ParameterGroupName != "" {
+		params.DBParameterGroupName = &i.ParameterGroupName
+	}
+
 	if i.DbVersion != "" {
 		params.EngineVersion = aws.String(i.DbVersion)
 	}
@@ -104,18 +116,6 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		params.MasterUserPassword = aws.String(password)
 	}
 
-	rdsTags := ConvertTagsToRDSTags(i.getTags())
-
-	// If a custom parameter has been requested, and the feature is enabled,
-	// create/update a custom parameter group for our custom parameters.
-	err = w.parameterGroupClient.ProvisionCustomParameterGroupIfNecessary(i, rdsTags)
-	if err != nil {
-		return nil, err
-	}
-	if i.ParameterGroupName != "" {
-		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
-	}
-
 	if len(i.EnabledCloudwatchLogGroupExports) > 0 {
 		params.CloudwatchLogsExportConfiguration = &rdsTypes.CloudwatchLogsExportConfiguration{
 			EnableLogTypes: i.EnabledCloudwatchLogGroupExports,
@@ -125,30 +125,49 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 }
 
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
+	existingParameterGroupName := i.ParameterGroupName
 	modifyParams, err := w.prepareModifyDbInstanceInput(i, plan, database, isReplica)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
 	}
 
+	databaseOperationTarget := "primary database"
+	if isReplica {
+		databaseOperationTarget = "replica database"
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for %s to be ready", databaseOperationTarget))
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, database)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Modifying %s", databaseOperationTarget))
 	modifyOutput, err := w.rds.ModifyDBInstance(ctx, modifyParams)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
 	}
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for %s to be ready", databaseOperationTarget))
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, database)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
+	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting old %s parameter group", databaseOperationTarget))
+		err = w.parameterGroupClient.DeleteParameterGroup(existingParameterGroupName)
+		if err != nil {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
+			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+		}
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Updating %s tags", databaseOperationTarget))
 	err = updateDBTags(ctx, w.rds, i, *modifyOutput.DBInstance.DBInstanceArn)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error updating tags for database replica: %s", err))
@@ -163,6 +182,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 	serviceID := i.ServiceID
 	uuid := i.Uuid
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database instance")
 	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
@@ -171,6 +191,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 	}
 
 	if i.AddReadReplica {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database replica")
 		// Add new read replica
 		err = waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
 		if err != nil {
@@ -179,6 +200,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 			return river.JobCancel(fmt.Errorf("asyncModifyDb: error creating database replica %w ", err))
 		}
 	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database replica")
 		err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.ReplicaDatabase, true)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
@@ -188,6 +210,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 	}
 
 	if i.DeleteReadReplica {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 		err = deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))

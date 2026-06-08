@@ -16,6 +16,7 @@ NEW_SERVICE_PLAN=${NEW_SERVICE_PLAN:-""}
 NEW_STORAGE=${NEW_STORAGE:-""}
 ALLOW_MAJOR_VERSION_UPGRADE=${ALLOW_MAJOR_VERSION_UPGRADE:-""}
 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS=${ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS:-""}
+ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE=${ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE:-""}
 LONG_QUERY_TIME=${LONG_QUERY_TIME:-""}
 PG_QUERY_LOGGING=${PG_QUERY_LOGGING:-""}
 
@@ -24,7 +25,7 @@ cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
 delete_existing_service "$SERVICE_NAME"
 
 # change into the directory and push the app without starting it.
-pushd aws-db-test/databases/aws-rds
+pushd aws-broker-app/ci/smoke-tests/aws-rds
 cf push "$APP_NAME" -f manifest.yml --var rds-service="$SERVICE_NAME" --no-start
 
 # set some variables that it needs
@@ -38,8 +39,16 @@ if [ -n "$OLD_VERSION" ]; then
   create_service_args+=(-c '{"version": "'"$OLD_VERSION"'"}')
 fi
 
+if [ -n "$ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE" ]; then
+  create_service_args+=(-c "{\"enable_cloudwatch_log_groups_exports\": $ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE}")
+fi
+
 cf create-service "${create_service_args[@]}"
 
+# Wait to make sure that the service instance has been successfully created.
+wait_for_service_instance_success "$SERVICE_NAME"
+
+# Wait to make sure that the service instance is bound to the application.
 wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.

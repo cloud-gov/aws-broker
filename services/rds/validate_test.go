@@ -164,6 +164,19 @@ func TestValidatePgQueryLogging(t *testing.T) {
 			value:       &PgQueryLoggingOptions{LogStatementSampleRate: aws.Float64(1.1)},
 			expectedErr: true,
 		},
+		"valid log_connections as true": {
+			value: &PgQueryLoggingOptions{LogConnections: aws.String("true")},
+		},
+		"valid log_connections as false": {
+			value: &PgQueryLoggingOptions{LogConnections: aws.String("false")},
+		},
+		"valid log_connections": {
+			value: &PgQueryLoggingOptions{LogConnections: aws.String("all")},
+		},
+		"invalid log_connections": {
+			value:       &PgQueryLoggingOptions{LogConnections: aws.String("foo")},
+			expectedErr: true,
+		},
 	}
 
 	for name, test := range testCases {
