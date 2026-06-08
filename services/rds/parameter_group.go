@@ -261,7 +261,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(i.ParameterGroupName),
-			Description:            aws.String("aws broker parameter group for " + formatDBName(i.Database, i.DbType)),
+			Description:            aws.String("aws broker parameter group for " + formatDBName(i.Database)),
 			Tags:                   rdsTags,
 		}
 

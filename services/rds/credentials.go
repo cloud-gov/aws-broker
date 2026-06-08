@@ -19,14 +19,9 @@ type CredentialUtils interface {
 	generateCredentials(settings *config.Settings) (string, string, error)
 }
 
-func formatDBName(database string, dbType string) string {
-	switch dbType {
-	case "oracle-se1", "oracle-se2":
-		return "ORCL"
-	default:
-		re, _ := regexp.Compile("(i?)[^a-z0-9]")
-		return re.ReplaceAllString(database, "")
-	}
+func formatDBName(database string) string {
+	re, _ := regexp.Compile("(i?)[^a-z0-9]")
+	return re.ReplaceAllString(database, "")
 }
 
 type RDSCredentialUtils struct {
@@ -75,7 +70,7 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
 
-	dbName := formatDBName(i.Database, i.DbType)
+	dbName := formatDBName(i.Database)
 	uri := fmt.Sprintf(
 		"%s://%s:%s@%s:%d/%s",
 		dbScheme,
