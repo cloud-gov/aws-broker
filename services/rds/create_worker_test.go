@@ -167,7 +167,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				&mockRDSClient{},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
-					returnErr: errors.New("failed"),
+					provisionOrModifyParamGroupErr: errors.New("failed"),
 				},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
@@ -294,8 +294,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				settings: &config.Settings{},
 				rds:      &mockRDSClient{},
 				parameterGroupClient: &mockParameterGroupClient{
-					returnErr: testErr,
-					rds:       &mockRDSClient{},
+					provisionNewParamGroupErr: testErr,
+					rds:                       &mockRDSClient{},
 				},
 			},
 			plan:        &catalog.RDSPlan{},
@@ -477,7 +477,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				&mockRDSClient{},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{
-					returnErr: errors.New("failed"),
+					provisionNewParamGroupErr: errors.New("failed"),
 				},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",

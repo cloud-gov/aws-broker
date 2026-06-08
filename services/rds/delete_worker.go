@@ -129,6 +129,14 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance) error 
 		return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting database %w ", err))
 	}
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting parameter group")
+	err = w.parameterGroupClient.DeleteParameterGroup(i.ParameterGroupName)
+	if err != nil {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to delete parameter group: %s", err))
+		w.logger.Error("asyncDeleteDB: DeleteParameterGroup error", "err", err)
+		return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting parameter group %w ", err))
+	}
+
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up parameter groups")
 	err = w.parameterGroupClient.CleanupCustomParameterGroups()
 	if err != nil {

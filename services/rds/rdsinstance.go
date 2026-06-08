@@ -1,6 +1,9 @@
 package rds
 
 import (
+	"fmt"
+	"slices"
+	"strconv"
 	"sync"
 
 	"github.com/cloud-gov/aws-broker/base"
@@ -30,7 +33,6 @@ type RDSInstance struct {
 	DbSubnetGroup         string `gorm:"-"`
 	AllocatedStorage      int64  `sql:"size(255)"`
 	SecGroup              string `gorm:"-"`
-	EnableFunctions       bool   `gorm:"-"`
 	PubliclyAccessible    bool   `gorm:"-"`
 
 	Adapter string `sql:"size(255)"`
@@ -39,6 +41,7 @@ type RDSInstance struct {
 	DbVersion    string `sql:"size(255)"`
 	LicenseModel string `sql:"size(255)"`
 
+	EnableFunctions      bool   `sql:"size(255)"`
 	BinaryLogFormat      string `sql:"size(255)"`
 	EnablePgCron         *bool  `sql:"size(255)"`
 	LongQueryTime        *float64
@@ -145,13 +148,9 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		modifiedInstance.LongQueryTime = options.LongQueryTime
 	}
 
-	if options.PgQueryLogging != nil {
-		if modifiedInstance.PgQueryLogging == nil {
-			modifiedInstance.PgQueryLogging = options.PgQueryLogging
-		} else {
-			modifiedInstance.PgQueryLogging = modifiedInstance.PgQueryLogging.merge(options.PgQueryLogging)
-		}
-
+	err := modifiedInstance.setPgQueryLogging(options)
+	if err != nil {
+		return nil, err
 	}
 
 	if options.EnableFunctions != modifiedInstance.EnableFunctions {
@@ -247,7 +246,10 @@ func (i *RDSInstance) init(
 	i.BinaryLogFormat = options.BinaryLogFormat
 	i.EnablePgCron = options.EnablePgCron
 	i.LongQueryTime = options.LongQueryTime
-	i.PgQueryLogging = options.PgQueryLogging
+	err = i.setPgQueryLogging(options)
+	if err != nil {
+		return err
+	}
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
 
@@ -256,6 +258,37 @@ func (i *RDSInstance) init(
 		i.ReplicaDatabase = i.generateDatabaseReplicaName()
 	}
 
+	return nil
+}
+
+func (i *RDSInstance) setPgQueryLogging(options Options) error {
+	if options.PgQueryLogging != nil {
+		if i.PgQueryLogging == nil {
+			i.PgQueryLogging = options.PgQueryLogging
+		} else {
+			i.PgQueryLogging = i.PgQueryLogging.merge(options.PgQueryLogging)
+		}
+
+		if i.PgQueryLogging.LogConnections != nil {
+			if i.DbVersion == "" {
+				return errors.New("could not determine version of instance")
+			}
+
+			dbVersionInt, err := strconv.Atoi(i.DbVersion[:2])
+			if err != nil {
+				return err
+			}
+			if dbVersionInt < 18 {
+				if !slices.Contains(validLogConnectionsBoolValues, *i.PgQueryLogging.LogConnections) {
+					return fmt.Errorf("log_connections must be one of %v on Postgres versions < 18", validLogConnectionsBoolValues)
+				}
+			} else {
+				if !slices.Contains(validLogConnectionsStringValues, *i.PgQueryLogging.LogConnections) {
+					return fmt.Errorf("log_connections must be one of %v on Postgres versions > 18, got %s", validLogConnectionsStringValues, *i.PgQueryLogging.LogConnections)
+				}
+			}
+		}
+	}
 	return nil
 }
 
