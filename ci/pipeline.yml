@@ -682,6 +682,7 @@ jobs:
                 NEW_VERSION: 8.4.9
                 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["general"]'
                 DB_TYPE: mysql
+                ALLOW_MAJOR_VERSION_UPGRADE: true
     on_failure:
       put: slack
       params:
@@ -1223,6 +1224,7 @@ jobs:
                 NEW_VERSION: 8.4.9
                 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["general"]'
                 DB_TYPE: mysql
+                ALLOW_MAJOR_VERSION_UPGRADE: true
     on_failure:
       put: slack
       params:
@@ -2028,6 +2030,7 @@ jobs:
                 NEW_VERSION: 8.4.9
                 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["general"]'
                 DB_TYPE: mysql
+                ALLOW_MAJOR_VERSION_UPGRADE: true
     on_failure:
       put: slack
       params:
