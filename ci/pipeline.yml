@@ -189,6 +189,7 @@ jobs:
             aws-rds:small-mysql-redundant
             aws-rds:small-psql
             aws-rds:small-psql-redundant
+            aws-rds:medium-oracle-se2
             aws-elasticache-redis:redis-dev
             aws-elasticache-redis:redis-3node
             aws-elasticache-redis:redis-5node
@@ -652,6 +653,20 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+
+            - task: smoke-tests-oracle
+              file: aws-broker-app/ci/run-smoke-tests.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-cf-organization))
+                CF_SPACE: ((development-cf-space))
+                SERVICE_PLAN: medium-oracle-se2
+                DB_TYPE: oracle-se2
+
     on_failure:
       put: slack
       params:
