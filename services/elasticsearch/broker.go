@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
@@ -33,6 +34,11 @@ type ElasticsearchOptions struct {
 	Bucket               string                       `json:"bucket"`
 	AdvancedOptions      ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
 	VolumeType           string                       `json:"volume_type"`
+}
+
+func (o ElasticsearchOptions) HasNonVersionChanges() bool {
+	o.ElasticsearchVersion = ""
+	return !reflect.DeepEqual(o, ElasticsearchOptions{})
 }
 
 func (o ElasticsearchOptions) Validate(settings *config.Settings) error {
@@ -122,7 +128,7 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 		// Check to make sure that the version specified is allowed by the plan.
 		if !plan.CheckVersion(options.ElasticsearchVersion) {
 			return apiresponses.NewFailureResponse(
-				fmt.Errorf("%s is not a supported major version; major version must be one of: OpenSearch_2.3, OpenSearch_1.3, Elasticsearch_7.4", options.ElasticsearchVersion),
+				fmt.Errorf("%s is not a supported major version; major version must be one of: %v", options.ElasticsearchVersion, plan.ApprovedMajorVersions),
 				http.StatusBadRequest,
 				"checking Elasticsearch plan",
 			)
@@ -229,10 +235,25 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
 	}
 
+	if options.ElasticsearchVersion != "" {
+		if options.HasNonVersionChanges() {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("engine version upgrade cannot be combined with other configuration options; please make a separate update-service call"),
+				http.StatusBadRequest,
+				"checking Elasticsearch version",
+			)
+		}
+
+		if err := broker.adapter.checkCompatibleVersions(esInstance.Domain, options.ElasticsearchVersion); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "checking compatible versions")
+		}
+
+	}
+
 	err := esInstance.update(options)
 	if err != nil {
 		broker.logger.Error("Updating instance failed", "err", err)
-		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating servie instance")
+		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating service instance")
 	}
 
 	state, err := broker.adapter.modifyElasticsearch(&esInstance)

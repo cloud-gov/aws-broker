@@ -29,7 +29,7 @@ type ElasticsearchInstance struct {
 	IamPolicyARN                   string `sql:"size(255)"`
 	AccessControlPolicy            string `sql:"size(255)"`
 	ElasticsearchVersion           string `sql:"size(255)"`
-	CurrentESVersion               string `sql:"size(255)"`
+	TargetElasticsearchVersion     string `sql:"size(255)"`
 	MasterCount                    int    `sql:"size(255)"`
 	DataCount                      int    `sql:"size(255)"`
 	InstanceType                   string `sql:"size(255)"`
@@ -120,7 +120,7 @@ func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 			"access_key":                    i.AccessKey,
 			"secret_key":                    i.SecretKey,
 			"host":                          i.Host,
-			"current_elasticsearch_version": i.CurrentESVersion,
+			"current_elasticsearch_version": i.ElasticsearchVersion,
 			"bucket":                        i.Bucket,
 			"snapshotRoleARN":               i.SnapshotARN,
 		}
@@ -130,7 +130,7 @@ func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 			"access_key":                    i.AccessKey,
 			"secret_key":                    i.SecretKey,
 			"host":                          i.Host,
-			"current_elasticsearch_version": i.CurrentESVersion,
+			"current_elasticsearch_version": i.ElasticsearchVersion,
 		}
 	}
 	return credentials, nil
@@ -202,6 +202,10 @@ func (i *ElasticsearchInstance) init(
 func (i *ElasticsearchInstance) update(
 	options ElasticsearchOptions,
 ) error {
+	if options.ElasticsearchVersion != "" && options.ElasticsearchVersion != i.ElasticsearchVersion {
+		i.TargetElasticsearchVersion = options.ElasticsearchVersion
+	}
+
 	if options.VolumeType != i.VolumeType {
 		i.VolumeType = options.VolumeType
 	}
@@ -209,6 +213,10 @@ func (i *ElasticsearchInstance) update(
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
 	return nil
+}
+
+func (i *ElasticsearchInstance) versionUpgradeInProgress() bool {
+	return i.TargetElasticsearchVersion != ""
 }
 
 func (i *ElasticsearchInstance) setTags(

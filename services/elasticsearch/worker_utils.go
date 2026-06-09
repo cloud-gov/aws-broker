@@ -134,7 +134,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 		i.Host = resp.DomainStatus.Endpoints["vpc"]
 		i.ARN = *(resp.DomainStatus.ARN)
 		i.State = base.InstanceReady
-		i.CurrentESVersion = *(resp.DomainStatus.EngineVersion)
+		i.ElasticsearchVersion = *(resp.DomainStatus.EngineVersion)
 		// Should only be one regardless. Just return now.
 	}
 

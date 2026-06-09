@@ -52,33 +52,6 @@ func (m *mockEsApiClient) GetSnapshotStatus(repositoryName string, snapshotName 
 	return status, nil
 }
 
-type mockOpensearchClient struct {
-	describeDomainCallNum int
-	describeDomainErrs    []error
-	describeDomainResults []*opensearch.DescribeDomainOutput
-}
-
-func (o *mockOpensearchClient) CreateDomain(ctx context.Context, params *opensearch.CreateDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.CreateDomainOutput, error) {
-	return nil, nil
-}
-
-func (o *mockOpensearchClient) DeleteDomain(ctx context.Context, params *opensearch.DeleteDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DeleteDomainOutput, error) {
-	return nil, nil
-}
-
-func (o *mockOpensearchClient) DescribeDomain(ctx context.Context, params *opensearch.DescribeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeDomainOutput, error) {
-	if len(o.describeDomainErrs) > 0 && o.describeDomainErrs[o.describeDomainCallNum] != nil {
-		return nil, o.describeDomainErrs[o.describeDomainCallNum]
-	}
-	result := o.describeDomainResults[o.describeDomainCallNum]
-	o.describeDomainCallNum++
-	return result, nil
-}
-
-func (o *mockOpensearchClient) UpdateDomainConfig(ctx context.Context, params *opensearch.UpdateDomainConfigInput, optFns ...func(*opensearch.Options)) (*opensearch.UpdateDomainConfigOutput, error) {
-	return nil, nil
-}
-
 type mockS3Client struct {
 	putObjectErr error
 }
