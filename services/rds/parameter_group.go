@@ -725,7 +725,7 @@ func (p *awsParameterGroupClient) ReconcileRDSInstanceParameterGroup(dbInstanceS
 
 	dbParameters, ok := existingParameters[reconciledInstance.DbType]
 	if !ok {
-		return &i, nil
+		return &reconciledInstance, nil
 	}
 
 	addReconciledCloudwatchLogGroupExport := func(instance RDSInstance, enabledLogGroupName string) RDSInstance {
