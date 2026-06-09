@@ -357,6 +357,7 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 		parameterGroupName := *dbInstanceState.DBParameterGroups[0].DBParameterGroupName
 		if d.parameterGroupClient.IsCustomParameterGroup(parameterGroupName) {
 			reconciledInstance.ParameterGroupName = parameterGroupName
+			// reconciledInstance = d.parameterGroupClient.ReconcileRDSInstanceParameters()
 		}
 	}
 

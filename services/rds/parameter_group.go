@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/lib/pq"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -28,6 +29,7 @@ type parameterGroupClient interface {
 	CleanupCustomParameterGroups() error
 	DeleteParameterGroup(parameterGroupName string) error
 	IsCustomParameterGroup(parameterGroupName string) bool
+	ReconcileRDSInstanceParameters(parameters map[string]map[string]paramDetails, i RDSInstance) (*RDSInstance, error)
 }
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
@@ -701,4 +703,105 @@ func removeLibraryFromSharedPreloadLibraries(
 	customSharePreloadLibrariesParam := strings.Join(libraries, ",")
 	log.Printf("generated custom %s param: %s", sharedPreloadLibrariesParameterName, customSharePreloadLibrariesParam)
 	return customSharePreloadLibrariesParam
+}
+
+func (p *awsParameterGroupClient) ReconcileRDSInstanceParameters(parameters map[string]map[string]paramDetails, i RDSInstance) (*RDSInstance, error) {
+	dbParameters, ok := parameters[i.DbType]
+	if !ok {
+		return &i, nil
+	}
+
+	reconciledInstance := i
+
+	addReconciledCloudwatchLogGroupExport := func(instance RDSInstance, enabledLogGroupName string) RDSInstance {
+		if instance.EnabledCloudwatchLogGroupExports == nil {
+			instance.EnabledCloudwatchLogGroupExports = make(pq.StringArray, 0)
+		}
+		instance.EnabledCloudwatchLogGroupExports = append(instance.EnabledCloudwatchLogGroupExports, enabledLogGroupName)
+		return instance
+	}
+
+	initPgQueryLogging := func(instance RDSInstance) RDSInstance {
+		if instance.PgQueryLogging == nil {
+			instance.PgQueryLogging = &PgQueryLoggingOptions{}
+		}
+		return instance
+	}
+
+	for key, paramDetails := range dbParameters {
+		if key == "log_bin_trust_function_creators" {
+			reconciledInstance.EnableFunctions = (paramDetails.value == "1")
+		}
+		if key == "binlog_format" {
+			reconciledInstance.BinaryLogFormat = paramDetails.value
+		}
+		if key == "general_log" && paramDetails.value == "1" {
+			reconciledInstance = addReconciledCloudwatchLogGroupExport(reconciledInstance, "general")
+		}
+		if key == "slow_query_log" && paramDetails.value == "1" {
+			reconciledInstance = addReconciledCloudwatchLogGroupExport(reconciledInstance, "slowquery")
+		}
+		if key == "long_query_time" {
+			longQueryTime, err := strconv.ParseFloat(paramDetails.value, 64)
+			if err != nil {
+				return &reconciledInstance, err
+			}
+			reconciledInstance.LongQueryTime = &longQueryTime
+		}
+		if key == sharedPreloadLibrariesParameterName {
+			if strings.Contains(paramDetails.value, pgCronLibraryName) {
+				reconciledInstance.EnablePgCron = aws.Bool(true)
+			}
+		}
+		if key == "log_connections" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			reconciledInstance.PgQueryLogging.LogConnections = &paramDetails.value
+		}
+		if key == "log_disconnections" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			reconciledInstance.PgQueryLogging.LogDisconnections = aws.Bool(paramDetails.value == "1")
+		}
+		if key == "log_checkpoints" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			reconciledInstance.PgQueryLogging.LogCheckpoints = aws.Bool(paramDetails.value == "1")
+		}
+		if key == "log_lock_waits" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			reconciledInstance.PgQueryLogging.LogLockWaits = aws.Bool(paramDetails.value == "1")
+		}
+		if key == "log_min_duration_sample" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			logMinDurationSample, err := strconv.Atoi(paramDetails.value)
+			if err != nil {
+				return &reconciledInstance, err
+			}
+			reconciledInstance.PgQueryLogging.LogMinDurationSample = aws.Int64(int64(logMinDurationSample))
+		}
+		if key == "log_min_duration_statement" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			logMinDurationStatement, err := strconv.Atoi(paramDetails.value)
+			if err != nil {
+				return &reconciledInstance, err
+			}
+			reconciledInstance.PgQueryLogging.LogMinDurationStatement = aws.Int64(int64(logMinDurationStatement))
+		}
+		if key == "log_statement" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			reconciledInstance.PgQueryLogging.LogStatement = &paramDetails.value
+		}
+		if key == "log_statement_sample_rate" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			logStatementSampleRate, err := strconv.ParseFloat(paramDetails.value, 64)
+			if err != nil {
+				return &reconciledInstance, err
+			}
+			reconciledInstance.PgQueryLogging.LogStatementSampleRate = aws.Float64(logStatementSampleRate)
+		}
+		if key == "log_statement_stats" {
+			reconciledInstance = initPgQueryLogging(reconciledInstance)
+			reconciledInstance.PgQueryLogging.LogStatementStats = aws.Bool(paramDetails.value == "1")
+		}
+	}
+
+	return &reconciledInstance, nil
 }

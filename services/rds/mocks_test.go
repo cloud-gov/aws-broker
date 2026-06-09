@@ -66,6 +66,10 @@ func (m *mockParameterGroupClient) IsCustomParameterGroup(parameterGroupName str
 	return m.isCustomParameterGroup
 }
 
+func (m *mockParameterGroupClient) ReconcileRDSInstanceParameters(parameters map[string]map[string]paramDetails, i RDSInstance) (*RDSInstance, error) {
+	return nil, nil
+}
+
 type mockCredentialUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string

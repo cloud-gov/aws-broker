@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/go-test/deep"
+	"github.com/lib/pq"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -2249,6 +2251,151 @@ func TestIsCustomParameterGroup(t *testing.T) {
 		}
 		if parameterGroupClient.IsCustomParameterGroup("1234") != false {
 			t.Fatal("IsCustomParameterGroup should return false")
+		}
+	})
+}
+
+func TestReconcileRDSInstanceParameters(t *testing.T) {
+	t.Run("reconcile MySQL parameters", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		parameters := map[string]map[string]paramDetails{
+			"mysql": {
+				"log_bin_trust_function_creators": paramDetails{
+					value: "1",
+				},
+				"binlog_format": paramDetails{
+					value: "format",
+				},
+				"general_log": paramDetails{
+					value: "1",
+				},
+				"slow_query_log": paramDetails{
+					value: "1",
+				},
+				"long_query_time": paramDetails{
+					value: "0.5",
+				},
+			},
+		}
+		i := RDSInstance{
+			DbType: "mysql",
+		}
+		expectedInstance := &RDSInstance{
+			DbType:                           "mysql",
+			EnableFunctions:                  true,
+			BinaryLogFormat:                  "format",
+			EnabledCloudwatchLogGroupExports: pq.StringArray{"general", "slowquery"},
+			LongQueryTime:                    aws.Float64(0.5),
+		}
+		reconciledInstance, err := parameterGroupClient.ReconcileRDSInstanceParameters(parameters, i)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if diff := deep.Equal(i, expectedInstance); diff == nil {
+			t.Error("RDSInstance argument to ReconcileRDSInstanceParameters should not have been mutated")
+		}
+		if diff := deep.Equal(reconciledInstance, expectedInstance); diff != nil {
+			t.Error(diff)
+		}
+	})
+
+	t.Run("reconcile MySQL general log group", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		parameters := map[string]map[string]paramDetails{
+			"mysql": {
+				"general_log": paramDetails{
+					value: "1",
+				},
+			},
+		}
+		i := RDSInstance{
+			DbType: "mysql",
+		}
+		expectedInstance := &RDSInstance{
+			DbType:                           "mysql",
+			EnabledCloudwatchLogGroupExports: pq.StringArray{"general"},
+		}
+		reconciledInstance, err := parameterGroupClient.ReconcileRDSInstanceParameters(parameters, i)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if diff := deep.Equal(i, expectedInstance); diff == nil {
+			t.Error("RDSInstance argument to ReconcileRDSInstanceParameters should not have been mutated")
+		}
+		if diff := deep.Equal(reconciledInstance, expectedInstance); diff != nil {
+			t.Error(diff)
+		}
+	})
+
+	t.Run("reconcile PostgreSQL parameters", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		parameters := map[string]map[string]paramDetails{
+			"postgres": {
+				"shared_preload_libraries": paramDetails{
+					value: "foobar,pg_cron",
+				},
+				"log_connections": paramDetails{
+					value: "1",
+				},
+				"log_disconnections": paramDetails{
+					value: "1",
+				},
+				"log_min_duration_sample": paramDetails{
+					value: "500",
+				},
+				"log_min_duration_statement": paramDetails{
+					value: "700",
+				},
+				"log_checkpoints": paramDetails{
+					value: "1",
+				},
+				"log_lock_waits": paramDetails{
+					value: "1",
+				},
+				"log_statement": paramDetails{
+					value: "ddl",
+				},
+				"log_statement_sample_rate": paramDetails{
+					value: "0.7",
+				},
+				"log_statement_stats": paramDetails{
+					value: "1",
+				},
+			},
+		}
+		i := RDSInstance{
+			DbType: "postgres",
+		}
+		expectedInstance := &RDSInstance{
+			DbType:       "postgres",
+			EnablePgCron: aws.Bool(true),
+			PgQueryLogging: &PgQueryLoggingOptions{
+				LogConnections:          aws.String("1"),
+				LogDisconnections:       aws.Bool(true),
+				LogMinDurationSample:    aws.Int64(500),
+				LogMinDurationStatement: aws.Int64(700),
+				LogCheckpoints:          aws.Bool(true),
+				LogLockWaits:            aws.Bool(true),
+				LogStatement:            aws.String("ddl"),
+				LogStatementSampleRate:  aws.Float64(0.7),
+				LogStatementStats:       aws.Bool(true),
+			},
+		}
+		reconciledInstance, err := parameterGroupClient.ReconcileRDSInstanceParameters(parameters, i)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if diff := deep.Equal(i, expectedInstance); diff == nil {
+			t.Error("RDSInstance argument to ReconcileRDSInstanceParameters should not have been mutated")
+		}
+		if diff := deep.Equal(reconciledInstance, expectedInstance); diff != nil {
+			t.Error(diff)
 		}
 	})
 }
