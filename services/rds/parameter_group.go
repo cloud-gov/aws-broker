@@ -29,7 +29,7 @@ type parameterGroupClient interface {
 	CleanupCustomParameterGroups() error
 	DeleteParameterGroup(parameterGroupName string) error
 	IsCustomParameterGroup(parameterGroupName string) bool
-	ReconcileRDSInstanceParameters(parameters map[string]map[string]paramDetails, i RDSInstance) (*RDSInstance, error)
+	ReconcileRDSInstanceParameterGroup(dbInstanceState *rdsTypes.DBInstance, i RDSInstance) (*RDSInstance, error)
 }
 
 // awsParameterGroupClient provides abstractions for calls to the AWS RDS API for parameter groups
@@ -705,13 +705,26 @@ func removeLibraryFromSharedPreloadLibraries(
 	return customSharePreloadLibrariesParam
 }
 
-func (p *awsParameterGroupClient) ReconcileRDSInstanceParameters(parameters map[string]map[string]paramDetails, i RDSInstance) (*RDSInstance, error) {
-	dbParameters, ok := parameters[i.DbType]
-	if !ok {
+func (p *awsParameterGroupClient) ReconcileRDSInstanceParameterGroup(dbInstanceState *rdsTypes.DBInstance, i RDSInstance) (*RDSInstance, error) {
+	if len(dbInstanceState.DBParameterGroups) == 0 {
 		return &i, nil
 	}
 
 	reconciledInstance := i
+	parameterGroupName := *dbInstanceState.DBParameterGroups[0].DBParameterGroupName
+	if p.IsCustomParameterGroup(parameterGroupName) {
+		reconciledInstance.ParameterGroupName = parameterGroupName
+	}
+
+	existingParameters, err := p.getExistingParameters(&reconciledInstance)
+	if err != nil {
+		return &reconciledInstance, nil
+	}
+
+	dbParameters, ok := existingParameters[reconciledInstance.DbType]
+	if !ok {
+		return &i, nil
+	}
 
 	addReconciledCloudwatchLogGroupExport := func(instance RDSInstance, enabledLogGroupName string) RDSInstance {
 		if instance.EnabledCloudwatchLogGroupExports == nil {
