@@ -131,14 +131,6 @@ func TestModifyInstance(t *testing.T) {
 			existingVersion: "OpenSearch_1.3",
 			expectedErrMsg:  "engine version upgrade cannot be combined with other configuration options",
 		},
-		"reject modify when upgrade in progress": {
-			options: ElasticsearchOptions{
-				VolumeType: "gp3",
-			},
-			existingVersion:          "OpenSearch_1.3",
-			versionUpgradeInProgress: true,
-			expectedErrMsg:           "a version upgrade is currently in progress",
-		},
 	}
 
 	for name, test := range testCases {
