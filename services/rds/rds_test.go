@@ -722,6 +722,10 @@ func TestReconcileDbState(t *testing.T) {
 				},
 				&mockParameterGroupClient{
 					isCustomParameterGroup: true,
+					reconciledInstance: &RDSInstance{
+						DbVersion:          "15",
+						ParameterGroupName: "custom-group",
+					},
 				},
 			),
 			dbInstance: RDSInstance{
@@ -730,36 +734,6 @@ func TestReconcileDbState(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				DbVersion:          "15",
 				ParameterGroupName: "custom-group",
-			},
-		},
-		"ignore not custom parameter group": {
-			ctx: t.Context(),
-			dbAdapter: NewTestDedicatedDBAdapter(
-				t.Context(),
-				brokerDB,
-				&config.Settings{},
-				&mockRDSClient{
-					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
-						{
-							DBInstances: []rdsTypes.DBInstance{
-								{
-									DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
-										{
-											DBParameterGroupName: aws.String("not-custom-group"),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&mockParameterGroupClient{},
-			),
-			dbInstance: RDSInstance{
-				DbVersion: "15",
-			},
-			expectedInstance: &RDSInstance{
-				DbVersion: "15",
 			},
 		},
 		"error describing database": {

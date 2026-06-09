@@ -712,9 +712,11 @@ func (p *awsParameterGroupClient) ReconcileRDSInstanceParameterGroup(dbInstanceS
 
 	reconciledInstance := i
 	parameterGroupName := *dbInstanceState.DBParameterGroups[0].DBParameterGroupName
-	if p.IsCustomParameterGroup(parameterGroupName) {
-		reconciledInstance.ParameterGroupName = parameterGroupName
+	if !p.IsCustomParameterGroup(parameterGroupName) {
+		return &reconciledInstance, nil
 	}
+
+	reconciledInstance.ParameterGroupName = parameterGroupName
 
 	existingParameters, err := p.getExistingParameters(&reconciledInstance)
 	if err != nil {
@@ -730,7 +732,9 @@ func (p *awsParameterGroupClient) ReconcileRDSInstanceParameterGroup(dbInstanceS
 		if instance.EnabledCloudwatchLogGroupExports == nil {
 			instance.EnabledCloudwatchLogGroupExports = make(pq.StringArray, 0)
 		}
-		instance.EnabledCloudwatchLogGroupExports = append(instance.EnabledCloudwatchLogGroupExports, enabledLogGroupName)
+
+		idx, _ := slices.BinarySearch(instance.EnabledCloudwatchLogGroupExports, enabledLogGroupName)
+		instance.EnabledCloudwatchLogGroupExports = slices.Insert(instance.EnabledCloudwatchLogGroupExports, idx, enabledLogGroupName)
 		return instance
 	}
 

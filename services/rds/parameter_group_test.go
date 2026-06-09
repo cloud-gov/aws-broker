@@ -2256,6 +2256,35 @@ func TestIsCustomParameterGroup(t *testing.T) {
 }
 
 func TestReconcileRDSInstanceParameters(t *testing.T) {
+	t.Run("ignore non-custom parameter group", func(t *testing.T) {
+		parameterGroupClient := &awsParameterGroupClient{
+			parameterGroupPrefix: "prefix-",
+		}
+		dbInstanceState := &rdsTypes.DBInstance{
+			DBParameterGroups: []rdsTypes.DBParameterGroupStatus{
+				{
+					DBParameterGroupName: aws.String("not-custom-group"),
+				},
+			},
+		}
+		i := RDSInstance{
+			DbType: "mysql",
+		}
+		expectedInstance := &RDSInstance{
+			DbType: "mysql",
+		}
+		reconciledInstance, err := parameterGroupClient.ReconcileRDSInstanceParameterGroup(dbInstanceState, i)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if diff := deep.Equal(i, expectedInstance); diff == nil {
+			t.Error("RDSInstance argument to ReconcileRDSInstanceParameterGroup should not have been mutated")
+		}
+		if diff := deep.Equal(reconciledInstance, expectedInstance); diff != nil {
+			t.Error(diff)
+		}
+	})
+
 	t.Run("reconcile MySQL parameters", func(t *testing.T) {
 		parameterGroupClient := &awsParameterGroupClient{
 			parameterGroupPrefix: "prefix-",
