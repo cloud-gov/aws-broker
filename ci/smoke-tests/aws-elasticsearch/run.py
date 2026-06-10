@@ -121,7 +121,7 @@ def check_version(service_name, expected_version):
     credentials = get_es_credentials(service_name)
     actual_version = credentials.get("current_elasticsearch_version", "")
     if actual_version != expected_version:
-        print(f"Version mismatch: expected '{expected_version}', get '{actual_version}'")
+        print(f"Version mismatch: expected '{expected_version}', got '{actual_version}'")
         sys.exit(1)
     print(f"Version check passed: {actual_version}")
 
