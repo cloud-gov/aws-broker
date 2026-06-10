@@ -21,7 +21,7 @@ TEST_SERVICE="smoke-test-$SERVICE_PLAN-unbound-service"
 login
 
 # Clean up existing service if present
-delete_existing_service "$SERVICE_NAME"
+delete_existing_service "$TEST_SERVICE"
 
 # Create service
 cf create-service "$SERVICE_NAME" "$SERVICE_PLAN" "$TEST_SERVICE" -b "$BROKER_NAME"

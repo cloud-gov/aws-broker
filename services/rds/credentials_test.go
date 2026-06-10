@@ -14,25 +14,13 @@ func TestFormatDBName(t *testing.T) {
 	i := &RDSInstance{
 		Database: dbIdentifier,
 	}
-	dbName1 := formatDBName(i.Database, i.DbType)
+	dbName1 := formatDBName(i.Database)
 	if dbName1 != dbIdentifier {
 		t.Fatalf("database name should be %s", dbIdentifier)
 	}
-	dbName2 := formatDBName(i.Database, i.DbType)
+	dbName2 := formatDBName(i.Database)
 	if dbName1 != dbName2 {
 		t.Fatalf("database names should be the same")
-	}
-}
-
-func TestFormatOracleDBName(t *testing.T) {
-	dbIdentifier := "db" + helpers.RandStrNoCaps(15)
-	i := &RDSInstance{
-		Database: dbIdentifier,
-		DbType: "oracle-se2",
-	}
-	dbName := formatDBName(i.Database, i.DbType)
-	if dbName != "ORCL" {
-		t.Fatalf("database name should be %s", "ORCL")
 	}
 }
 
