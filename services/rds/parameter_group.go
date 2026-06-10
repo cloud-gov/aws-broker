@@ -594,7 +594,7 @@ func boolToParamvalue(b bool) string {
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
 	// formatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
-	return p.parameterGroupPrefix + formatDBName(i.Database, i.DbType) + "-version-" + formatDBVersion(i.DbVersion)
+	return p.parameterGroupPrefix + formatDBName(i.Database) + "-version-" + formatDBVersion(i.DbVersion)
 }
 
 func formatDBVersion(version string) string {
