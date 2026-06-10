@@ -13,7 +13,6 @@ SERVICE = "es"
 # Small example document to load
 INDEX = "movies"
 DOC_TYPE = "_doc"
-DOC_TYPE = "_doc"
 ID = "1"
 DOCUMENT = {
     "title": "Black Panther",
@@ -159,25 +158,10 @@ parser.add_argument(
     default=None,
 )
 
-parser.add_argument(
-    "--expected-version",
-    dest="expected_version",
-    type=str,
-    help="Expected value of elastic search version",
-    required=False,
-    default=None,
-)
-
-
 if __name__ == "__main__":
     args = parser.parse_args()
     service_name = args.service_name
     region_name = args.region_name
-
-    # Verify engine version
-    if args.expected_version:
-        check_version(service_name, args.expected_version)
-
 
     # Verify engine version
     if args.expected_version:
