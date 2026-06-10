@@ -24,7 +24,7 @@ login
 
 # Clean up existing app and service if present
 cf delete -f "$TEST_APP"
-delete_existing_service "$SERVICE_NAME"
+delete_existing_service "$TEST_SERVICE"
 
 # change into the directory and push the app without starting it.
 pushd "$TASK_DIRECTORY"
