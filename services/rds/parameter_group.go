@@ -82,7 +82,8 @@ func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstanc
 // create a new parameter group or modify an existing one with the correct parameters for the
 // instance
 func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
-	if !p.needCustomParameters(i) {
+	hasExistingCustomParameterGroup := i.ParameterGroupName != "" && p.IsCustomParameterGroup(i.ParameterGroupName)
+	if !p.needCustomParameters(i) && !hasExistingCustomParameterGroup {
 		return false, nil
 	}
 
