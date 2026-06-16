@@ -1934,6 +1934,57 @@ func TestProvisionOrModifyCustomParameterGroup(t *testing.T) {
 			},
 			expectedPGroupName: "prefix-database1-version-18-3",
 		},
+		"create new parameter group: update database major version, current group exists, needCustomParameters() returned false": {
+			dbInstance: &RDSInstance{
+				DbType:                   "mysql",
+				Database:                 "database1",
+				ParameterGroupName:       "prefix-database1-version-8-0",
+				AllowMajorVersionUpgrade: true,
+				DbVersion:                "8.4",
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				parameterGroupPrefix: "prefix-",
+				rds: &mockRDSClient{
+					describeDbParamsErrs: []error{nil, nil, &rdsTypes.DBParameterGroupNotFoundFault{}},
+					describeDbParamsResults: []*rds.DescribeDBParametersOutput{
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+								},
+							},
+						},
+						{
+							Parameters: []rdsTypes.Parameter{
+								{
+									ParameterName:  aws.String("random-param"),
+									ParameterValue: aws.String("random-value"),
+									ApplyMethod:    rdsTypes.ApplyMethodImmediate,
+								},
+							},
+						},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									EngineVersion: aws.String("8.4"),
+								},
+							},
+						},
+					},
+					dbEngineVersions: []rdsTypes.DBEngineVersion{
+						{
+							DBParameterGroupFamily: aws.String("mysql8.4"),
+						},
+					},
+					describeDbParamsNumPages: 1,
+				},
+			},
+			expectedPGroupName:          "prefix-database1-version-8-4",
+			expectParameterGroupCreated: true,
+		},
 	}
 
 	for name, test := range testCases {
