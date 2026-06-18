@@ -61,8 +61,9 @@ func initializeAdapter(
 	rdsClient := rds.NewFromConfig(cfg)
 
 	parameterGroupClient := NewAwsParameterGroupClient(ctx, rdsClient, s, logger)
+	optionGroupClient := NewAwsOptionGroupClient(ctx, rdsClient, s, logger)
 
-	dbAdapter := NewRdsDedicatedDBAdapter(ctx, s, db, rdsClient, parameterGroupClient, logger, riverClient)
+	dbAdapter := NewRdsDedicatedDBAdapter(ctx, s, db, rdsClient, parameterGroupClient, optionGroupClient, logger, riverClient)
 	return dbAdapter, nil
 }
 
@@ -72,6 +73,7 @@ func NewRdsDedicatedDBAdapter(
 	db *gorm.DB,
 	rdsClient RDSClientInterface,
 	parameterGroupClient parameterGroupClient,
+	optionGroupClient optionGroupClient,
 	logger *slog.Logger,
 	riverClient *river.Client[*sql.Tx],
 ) *dedicatedDBAdapter {
@@ -80,6 +82,7 @@ func NewRdsDedicatedDBAdapter(
 		settings:             *s,
 		rds:                  rdsClient,
 		parameterGroupClient: parameterGroupClient,
+		optionGroupClient:    optionGroupClient,
 		db:                   db,
 		logger:               logger,
 		riverClient:          riverClient,
@@ -146,6 +149,7 @@ type dedicatedDBAdapter struct {
 	settings             config.Settings
 	rds                  RDSClientInterface
 	parameterGroupClient parameterGroupClient
+	optionGroupClient    optionGroupClient
 	db                   *gorm.DB
 	logger               *slog.Logger
 	riverClient          *river.Client[*sql.Tx]
@@ -355,6 +359,14 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 	// Capture any parameter groups created manually
 	reconciledInstanceWithParameters, err := d.parameterGroupClient.ReconcileRDSInstanceParameterGroup(dbInstanceState, reconciledInstance)
 	reconciledInstance = *reconciledInstanceWithParameters
+	if err != nil {
+		return &reconciledInstance, err
+	}
+
+	// Capture any custom option groups (e.g. a manually attached MariaDB audit plugin)
+	// so it can be rebuilt for the target version on a major version upgrade
+	reconciledInstanceWithOptions, err := d.optionGroupClient.ReconcileRDSInstanceOptionGroup(dbInstanceState, reconciledInstance)
+	reconciledInstance = *reconciledInstanceWithOptions
 	if err != nil {
 		return &reconciledInstance, err
 	}
