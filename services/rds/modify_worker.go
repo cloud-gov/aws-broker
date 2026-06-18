@@ -35,6 +35,7 @@ type ModifyWorker struct {
 	rds                  RDSClientInterface
 	logger               *slog.Logger
 	parameterGroupClient parameterGroupClient
+	optionGroupClient    optionGroupClient
 	credentialUtils      CredentialUtils
 }
 
@@ -44,6 +45,7 @@ func NewModifyWorker(
 	rds RDSClientInterface,
 	logger *slog.Logger,
 	parameterGroupClient parameterGroupClient,
+	optionGroupClient optionGroupClient,
 	credentialUtils CredentialUtils,
 ) *ModifyWorker {
 	return &ModifyWorker{
@@ -52,6 +54,7 @@ func NewModifyWorker(
 		rds:                  rds,
 		logger:               logger,
 		parameterGroupClient: parameterGroupClient,
+		optionGroupClient:    optionGroupClient,
 		credentialUtils:      credentialUtils,
 	}
 }
@@ -100,6 +103,16 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		params.DBParameterGroupName = &i.ParameterGroupName
 	}
 
+	// if the instance has a custom option group and there is a major version upgrade
+	// rebuild an equivalent group for new major version
+	_, err = w.optionGroupClient.ProvisionOrModifyCustomOptionGroup(i, rdsTags)
+	if err != nil {
+		return nil, err
+	}
+	if i.OptionGroupName != "" {
+		params.OptionGroupName = &i.OptionGroupName
+	}
+
 	if i.DbVersion != "" {
 		params.EngineVersion = aws.String(i.DbVersion)
 	}
@@ -126,6 +139,8 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
 	existingParameterGroupName := i.ParameterGroupName
+	existingOptionGroupName := i.OptionGroupName
+
 	modifyParams, err := w.prepareModifyDbInstanceInput(i, plan, database, isReplica)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
@@ -164,6 +179,15 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
 			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+		}
+	}
+
+	if existingOptionGroupName != "" && i.OptionGroupName != existingOptionGroupName {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting old %s option group", databaseOperationTarget))
+		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
+		if err != nil {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting option group: %s", err))
+			return fmt.Errorf("asyncModifyDb, error updating replica tags: %w", err)
 		}
 	}
 
