@@ -30,13 +30,18 @@ import (
 	"github.com/cloud-gov/aws-broker/testutil"
 )
 
-func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config.Settings, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient) *dedicatedDBAdapter {
+func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config.Settings, rdsClient RDSClientInterface, parameterGroupClient parameterGroupClient, optionGroupClients ...optionGroupClient) *dedicatedDBAdapter {
 	logger := slog.New(&testutil.MockLogHandler{})
 
+	var optionGroupClient optionGroupClient = &mockOptionGroupClient{}
+	if len(optionGroupClients) > 0 {
+		optionGroupClient = optionGroupClients[0]
+	}
+
 	workers := river.NewWorkers()
-	river.AddWorker(workers, NewCreateWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))
-	river.AddWorker(workers, NewModifyWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))
-	river.AddWorker(workers, NewDeleteWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, &mockCredentialUtils{}))
+	river.AddWorker(workers, NewCreateWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, optionGroupClient, &mockCredentialUtils{}))
+	river.AddWorker(workers, NewModifyWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, optionGroupClient, &mockCredentialUtils{}))
+	river.AddWorker(workers, NewDeleteWorker(brokerDB, s, rdsClient, logger, parameterGroupClient, optionGroupClient, &mockCredentialUtils{}))
 
 	if s.DbConfig == nil {
 		s.DbConfig = &db.DBConfig{
@@ -49,7 +54,7 @@ func NewTestDedicatedDBAdapter(ctx context.Context, brokerDB *gorm.DB, s *config
 		log.Fatal(fmt.Errorf("error creating river client: %w", err))
 	}
 
-	return NewRdsDedicatedDBAdapter(ctx, s, brokerDB, rdsClient, parameterGroupClient, logger, riverClient)
+	return NewRdsDedicatedDBAdapter(ctx, s, brokerDB, rdsClient, parameterGroupClient, optionGroupClient, logger, riverClient)
 }
 
 func TestCreateDb(t *testing.T) {
@@ -734,6 +739,43 @@ func TestReconcileDbState(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				DbVersion:          "15",
 				ParameterGroupName: "custom-group",
+			},
+		},
+		"reconcile custom option group": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									OptionGroupMemberships: []rdsTypes.OptionGroupMembership{
+										{
+											OptionGroupName: aws.String("my-audit-group"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{
+					reconciledInstance: &RDSInstance{
+						DbVersion:       "8.0",
+						OptionGroupName: "my-audit-group",
+					},
+				},
+			),
+			dbInstance: RDSInstance{
+				DbVersion: "8.0",
+			},
+			expectedInstance: &RDSInstance{
+				DbVersion:       "8.0",
+				OptionGroupName: "my-audit-group",
 			},
 		},
 		"error describing database": {

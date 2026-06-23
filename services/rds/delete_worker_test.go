@@ -63,6 +63,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			expectedState: base.InstanceReady,
@@ -114,6 +115,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -140,6 +142,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -168,6 +171,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -196,6 +200,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -225,6 +230,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -253,6 +259,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -281,6 +288,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -307,6 +315,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -337,6 +346,7 @@ func TestAsyncDeleteDB(t *testing.T) {
 				&mockParameterGroupClient{
 					deleteParameterGroupErr: errors.New("error deleting parameter group"),
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
