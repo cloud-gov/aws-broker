@@ -48,6 +48,7 @@ type RDSInstance struct {
 	PgQueryLogging       *PgQueryLoggingOptions `gorm:"serializer:json"`
 	ParameterGroupFamily string                 `gorm:"-"`
 	ParameterGroupName   string                 `sql:"size(255)"`
+	OptionGroupName      string                 `sql:"size(255)"`
 
 	EnabledCloudwatchLogGroupExports pq.StringArray `gorm:"type:text[]"`
 
