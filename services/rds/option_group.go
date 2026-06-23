@@ -73,7 +73,7 @@ func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, e
 		return "", err
 	}
 	if len(defaultEngineInfo.DBEngineVersions) == 0 || defaultEngineInfo.DBEngineVersions[0].MajorEngineVersion == nil {
-		return "", fmt.Errorf("could not determine major engine version for $s, $s", i.DbType, i.DbVersion)
+		return "", fmt.Errorf("could not determine major engine version for %s, %s", i.DbType, i.DbVersion)
 	}
 
 	return *defaultEngineInfo.DBEngineVersions[0].MajorEngineVersion, nil

@@ -82,6 +82,7 @@ func TestModifyWorkerWork(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			expectedState: base.InstanceReady,
@@ -133,6 +134,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockParameterGroupClient{
 					provisionOrModifyParamGroupErr: errors.New("fail"),
 				},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -159,6 +161,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -185,6 +188,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -229,6 +233,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{},
@@ -296,6 +301,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -360,6 +366,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -413,6 +420,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -460,6 +468,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -516,6 +525,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -561,6 +571,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{},
@@ -630,6 +641,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockParameterGroupClient{
 					customPgroupName: "new-group",
 				},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{},
@@ -676,6 +688,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				&mockParameterGroupClient{
 					deleteParameterGroupErr: errors.New("failed to delete"),
 				},
+				&mockOptionGroupClient{},
 				&RDSCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{},
@@ -763,6 +776,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -798,6 +812,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{
@@ -832,6 +847,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{
@@ -850,6 +866,46 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				EngineVersion:            aws.String("9.0"),
 			},
 		},
+		"sets option gruop for an instance with a custom option group": {
+			dbInstance: &RDSInstance{
+				DbType:                "mysql",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+				DbVersion:             "8.4.9",
+				OptionGroupName:       "my-audit-group",
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				&mockOptionGroupClient{
+					optionGroupName: "cg-aws-broker-db-name-option-8-4",
+				},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+				Redundant:     true,
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(true),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+				EngineVersion:            aws.String("8.4.9"),
+				OptionGroupName:          aws.String("cg-aws-broker-db-name-option-8-4"),
+			},
+		},
 		"does not update password for replica": {
 			dbInstance: &RDSInstance{
 				BinaryLogFormat:       "ROW",
@@ -866,6 +922,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{
@@ -899,6 +956,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{
@@ -936,6 +994,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				&mockParameterGroupClient{
 					rds: &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{
@@ -973,6 +1032,7 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 					customPgroupName: "group1",
 					rds:              &mockRDSClient{},
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{
