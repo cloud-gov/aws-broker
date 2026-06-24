@@ -7,7 +7,6 @@ import (
 	"log"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -243,31 +242,14 @@ func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error 
 		return nil
 	}
 
-	attempts := 1
-	maxRetries := int(o.settings.PollAwsMaxRetries)
-
-	for attempts <= maxRetries {
-		_, err = o.rds.DeleteOptionGroup(o.ctx, &rds.DeleteOptionGroupInput{
-			OptionGroupName: &optionGroupName,
-		})
-		if err == nil {
-			return nil
-		}
-
-		var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
-		if errors.As(err, &invalidStateErr) {
-			attempts += 1
-			time.Sleep(o.settings.PollAwsMinDelay)
-			continue
-		}
-		var notFoundErr *rdsTypes.OptionGroupNotFoundFault
-		if errors.As(err, &notFoundErr) {
-			return nil
-		}
-		return err
+	_, err = o.rds.DeleteOptionGroup(o.ctx, &rds.DeleteOptionGroupInput{
+		OptionGroupName: &optionGroupName,
+	})
+	if err == nil {
+		return nil
 	}
 
-	return errors.New("could not verify deletion of option group")
+	return err
 }
 
 // Deletes any broker-created option groups that are no longer in use. Groups still attached
@@ -293,6 +275,7 @@ func (o *awsOptionsGroupClient) CleanupCustomOptionGroups() error {
 				var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
 				if errors.As(err, &invalidStateErr) {
 					o.logger.Debug(fmt.Sprintf("could not clean up option group %s: %s", *optionGroup.OptionGroupName, err))
+					continue
 				}
 				var notFoundErr *rdsTypes.OptionGroupNotFoundFault
 				if errors.As(err, &notFoundErr) {

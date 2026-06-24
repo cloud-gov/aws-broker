@@ -184,10 +184,11 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 
 	if existingOptionGroupName != "" && i.OptionGroupName != existingOptionGroupName {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting old %s option group", databaseOperationTarget))
+		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
 		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting option group: %s", err))
-			return fmt.Errorf("asyncModifyDb, error updating replica tags: %w", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup"))
+			w.logger.Warn("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup", "optionGroup", existingOptionGroupName, "err", err)
 		}
 	}
 
