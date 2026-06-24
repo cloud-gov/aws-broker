@@ -275,6 +275,7 @@ func (o *awsOptionsGroupClient) CleanupCustomOptionGroups() error {
 				var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
 				if errors.As(err, &invalidStateErr) {
 					o.logger.Debug(fmt.Sprintf("could not clean up option group %s: %s", *optionGroup.OptionGroupName, err))
+					continue
 				}
 				var notFoundErr *rdsTypes.OptionGroupNotFoundFault
 				if errors.As(err, &notFoundErr) {
