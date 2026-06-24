@@ -132,6 +132,9 @@ func optionsFromGroup(optionGroup *rdsTypes.OptionGroup) []rdsTypes.OptionConfig
 			if setting.Name == nil || setting.Value == nil {
 				continue
 			}
+			if setting.IsModifiable != nil && !*setting.IsModifiable {
+				continue
+			}
 			optionConfig.OptionSettings = append(optionConfig.OptionSettings, rdsTypes.OptionSetting{
 				Name:  setting.Name,
 				Value: setting.Value,
