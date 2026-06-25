@@ -79,15 +79,16 @@ func run(ctx context.Context, out io.Writer) error {
 	// RDS workers
 	rdsClient := awsRds.NewFromConfig(cfg)
 	parameterGroupClient := rds.NewAwsParameterGroupClient(ctx, rdsClient, &settings, logger)
+	optionGroupClient := rds.NewAwsOptionGroupClient(ctx, rdsClient, &settings, logger)
 	credentialUtils := &rds.RDSCredentialUtils{}
 	river.AddWorker(workers, rds.NewCreateWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+		db, &settings, rdsClient, logger, parameterGroupClient, optionGroupClient, credentialUtils,
 	))
 	river.AddWorker(workers, rds.NewModifyWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+		db, &settings, rdsClient, logger, parameterGroupClient, optionGroupClient, credentialUtils,
 	))
 	river.AddWorker(workers, rds.NewDeleteWorker(
-		db, &settings, rdsClient, logger, parameterGroupClient, credentialUtils,
+		db, &settings, rdsClient, logger, parameterGroupClient, optionGroupClient, credentialUtils,
 	))
 
 	// ElastiCache workers

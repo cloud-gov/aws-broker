@@ -82,6 +82,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -148,6 +149,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -169,6 +171,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				&mockParameterGroupClient{
 					provisionOrModifyParamGroupErr: errors.New("failed"),
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -202,6 +205,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -235,6 +239,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -479,6 +484,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				&mockParameterGroupClient{
 					provisionNewParamGroupErr: errors.New("failed"),
 				},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -512,6 +518,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -545,6 +552,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -595,6 +603,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -651,6 +660,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -703,6 +713,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockClearPassword: "fake-pw",
 				},
@@ -736,6 +747,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				&mockRDSClient{},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{
 					mockGetPassworrdErr: errors.New("error getting password"),
 				},
@@ -939,6 +951,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -978,6 +991,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{
@@ -1018,6 +1032,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			plan: &catalog.RDSPlan{},
@@ -1065,6 +1080,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
 			dbInstance: &RDSInstance{

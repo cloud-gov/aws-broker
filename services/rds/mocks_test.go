@@ -74,6 +74,53 @@ func (m *mockParameterGroupClient) ReconcileRDSInstanceParameterGroup(dbInstance
 	return &i, nil
 }
 
+type mockOptionGroupClient struct {
+	optionGroupName              string
+	provisionOrModifyCalled      bool
+	provisionOrModifyCreated     bool
+	provisionOrModifyOptGroupErr error
+	deleteOptionGroupErr         error
+	deletedOptionGroupName       string
+	isCustomOptionGroup          bool
+	isBrokerOptionGroup          bool
+	reconciledInstance           *RDSInstance
+}
+
+func (m *mockOptionGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
+	m.provisionOrModifyCalled = true
+	if m.provisionOrModifyOptGroupErr != nil {
+		return false, m.provisionOrModifyOptGroupErr
+	}
+	if m.optionGroupName != "" {
+		i.OptionGroupName = m.optionGroupName
+	}
+	return m.provisionOrModifyCreated, nil
+}
+
+func (m *mockOptionGroupClient) CleanupCustomOptionGroups() error {
+	return nil
+}
+
+func (m *mockOptionGroupClient) DeleteOptionGroup(optionGroupName string) error {
+	m.deletedOptionGroupName = optionGroupName
+	return m.deleteOptionGroupErr
+}
+
+func (m *mockOptionGroupClient) IsCustomOptionGroup(optionGroupName string) bool {
+	return m.isCustomOptionGroup
+}
+
+func (m *mockOptionGroupClient) IsBrokerOptionGroup(optionGroupName string) bool {
+	return m.isBrokerOptionGroup
+}
+
+func (m *mockOptionGroupClient) ReconcileRDSInstanceOptionGroup(dbInstanceState *rdsTypes.DBInstance, i RDSInstance) (*RDSInstance, error) {
+	if m.reconciledInstance != nil {
+		return m.reconciledInstance, nil
+	}
+	return &i, nil
+}
+
 type mockCredentialUtils struct {
 	mockSalt              string
 	mockEncryptedPassword string
@@ -126,6 +173,53 @@ type mockRDSClient struct {
 	describeDBParameterGroupsCallNum    int
 	deleteDbParameterGroupErrs          []error
 	deleteDbParameterGroupCallNum       int
+	describeOptionGroupsResults         []*rds.DescribeOptionGroupsOutput
+	describeOptionGroupsErrs            []error
+	describeOptionGroupsCallNum         int
+	createOptionGroupInput              *rds.CreateOptionGroupInput
+	createOptionGroupErr                error
+	modifyOptionGroupInput              *rds.ModifyOptionGroupInput
+	modifyOptionGroupErr                error
+	deleteOptionGroupErrs               []error
+	deleteOptionGroupCallNum            int
+}
+
+func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.CreateOptionGroupInput, optFns ...func(*rds.Options)) (*rds.CreateOptionGroupOutput, error) {
+	m.createOptionGroupInput = params
+	if m.createOptionGroupErr != nil {
+		return nil, m.createOptionGroupErr
+	}
+	return nil, nil
+}
+
+func (m *mockRDSClient) ModifyOptionGroup(ctx context.Context, params *rds.ModifyOptionGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyOptionGroupOutput, error) {
+	m.modifyOptionGroupInput = params
+	if m.modifyOptionGroupErr != nil {
+		return nil, m.modifyOptionGroupErr
+	}
+	return nil, nil
+}
+
+func (m *mockRDSClient) DeleteOptionGroup(ctx context.Context, params *rds.DeleteOptionGroupInput, optFns ...func(*rds.Options)) (*rds.DeleteOptionGroupOutput, error) {
+	var err error
+	if len(m.deleteOptionGroupErrs) > m.deleteOptionGroupCallNum && m.deleteOptionGroupErrs[m.deleteOptionGroupCallNum] != nil {
+		err = m.deleteOptionGroupErrs[m.deleteOptionGroupCallNum]
+	}
+	m.deleteOptionGroupCallNum++
+	return nil, err
+}
+
+func (m *mockRDSClient) DescribeOptionGroups(ctx context.Context, params *rds.DescribeOptionGroupsInput, optFns ...func(*rds.Options)) (*rds.DescribeOptionGroupsOutput, error) {
+	var err error
+	if len(m.describeOptionGroupsErrs) > m.describeOptionGroupsCallNum && m.describeOptionGroupsErrs[m.describeOptionGroupsCallNum] != nil {
+		err = m.describeOptionGroupsErrs[m.describeOptionGroupsCallNum]
+	}
+	var result *rds.DescribeOptionGroupsOutput
+	if len(m.describeOptionGroupsResults) > m.describeOptionGroupsCallNum {
+		result = m.describeOptionGroupsResults[m.describeOptionGroupsCallNum]
+	}
+	m.describeOptionGroupsCallNum++
+	return result, err
 }
 
 func (m *mockRDSClient) AddTagsToResource(ctx context.Context, params *rds.AddTagsToResourceInput, optFns ...func(*rds.Options)) (*rds.AddTagsToResourceOutput, error) {

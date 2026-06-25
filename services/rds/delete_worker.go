@@ -30,6 +30,7 @@ type DeleteWorker struct {
 	rds                  RDSClientInterface
 	logger               *slog.Logger
 	parameterGroupClient parameterGroupClient
+	optionGroupClient    optionGroupClient
 	credentialUtils      CredentialUtils
 }
 
@@ -39,6 +40,7 @@ func NewDeleteWorker(
 	rds RDSClientInterface,
 	logger *slog.Logger,
 	parameterGroupClient parameterGroupClient,
+	optionGroupClient optionGroupClient,
 	credentialUtils CredentialUtils,
 ) *DeleteWorker {
 	return &DeleteWorker{
@@ -47,6 +49,7 @@ func NewDeleteWorker(
 		rds:                  rds,
 		logger:               logger,
 		parameterGroupClient: parameterGroupClient,
+		optionGroupClient:    optionGroupClient,
 		credentialUtils:      credentialUtils,
 	}
 }
@@ -143,6 +146,21 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance) error 
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("Failed to cleanup parameter groups: %s", err))
 		w.logger.Error("asyncDeleteDB: CleanupCustomParameterGroups error", "err", err)
 		return river.JobCancel(fmt.Errorf("asyncDeleteDB: error deleting parameter groups %w ", err))
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting option group")
+	err = w.optionGroupClient.DeleteOptionGroup(i.OptionGroupName)
+	if err != nil {
+		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup"))
+		w.logger.Warn("asyncDeleteDb: deletion of option group failed; leaving for later cleanup", "err", err)
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Cleaning up option groups")
+	err = w.optionGroupClient.CleanupCustomOptionGroups()
+	if err != nil {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Failed to cleanup option groups: %s", err))
+		w.logger.Warn("asyncDeleteDB: CleanupCustomOptionGroups error", "err", err)
 	}
 
 	err = w.db.Unscoped().Delete(i).Error

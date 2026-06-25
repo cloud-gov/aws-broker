@@ -37,6 +37,7 @@ type CreateWorker struct {
 	rds                  RDSClientInterface
 	logger               *slog.Logger
 	parameterGroupClient parameterGroupClient
+	optionGroupClient    optionGroupClient
 	credentialUtils      CredentialUtils
 }
 
@@ -46,6 +47,7 @@ func NewCreateWorker(
 	rds RDSClientInterface,
 	logger *slog.Logger,
 	parameterGroupClient parameterGroupClient,
+	optionGroupClient optionGroupClient,
 	credentialUtils CredentialUtils,
 ) *CreateWorker {
 	return &CreateWorker{
@@ -54,6 +56,7 @@ func NewCreateWorker(
 		rds:                  rds,
 		logger:               logger,
 		parameterGroupClient: parameterGroupClient,
+		optionGroupClient:    optionGroupClient,
 		credentialUtils:      credentialUtils,
 	}
 }
