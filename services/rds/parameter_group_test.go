@@ -1342,6 +1342,17 @@ func TestGetParameterGroupFamily(t *testing.T) {
 				rds: &mockRDSClient{},
 			},
 		},
+		"no engine versions are returned": {
+			dbInstance: &RDSInstance{
+				DbVersion: "15.12",
+			},
+			expectedErr: "no engine versions were returned for version 15.12",
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds: &mockRDSClient{
+					dbEngineVersions: []rdsTypes.DBEngineVersion{},
+				},
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
