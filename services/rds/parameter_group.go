@@ -216,6 +216,10 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 		return err
 	}
 
+	if len(defaultEngineInfo.DBEngineVersions) == 0 {
+		return fmt.Errorf("no engine versions were returned for version %s", i.DbVersion)
+	}
+
 	// The value from the engine info is a string pointer, so we must
 	// retrieve its actual value.
 	parameterGroupFamily = *defaultEngineInfo.DBEngineVersions[0].DBParameterGroupFamily
