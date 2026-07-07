@@ -65,6 +65,7 @@ func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, e
 	dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
 		Engine:        aws.String(i.DbType),
 		EngineVersion: aws.String(i.DbVersion),
+		IncludeAll:    aws.Bool(true), // Shows all engine versions (including deprecated ones)
 	}
 
 	defaultEngineInfo, err := o.rds.DescribeDBEngineVersions(o.ctx, dbEngineVersionsInput)
