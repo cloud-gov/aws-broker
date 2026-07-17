@@ -229,6 +229,15 @@ func (i *RDSInstance) init(
 	i.Database = generateDatabaseName(settings)
 	i.Username = buildUsername()
 
+	// Fail-closed identifier validation before any AWS call (#524, #535). The
+	// per-engine baseline enforces engine constraints (e.g. Oracle SID <=8 upper,
+	// master username 8..30 non-reserved). Unknown engines: no-op.
+	if b, ok := baselineFor(i.DbType); ok {
+		if err := b.ValidateIdentifiers(b.FormatDBName(i.Database), i.Username); err != nil {
+			return err
+		}
+	}
+
 	err := i.generateCredentials(settings)
 	if err != nil {
 		return err

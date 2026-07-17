@@ -65,6 +65,12 @@ type RDSBaseline interface {
 	// with a broker-managed custom parameter group by default (Oracle: true —
 	// it is born hardened; MySQL/Postgres: false — custom params are opt-in).
 	BornHardened() bool
+
+	// ValidateIdentifiers checks broker-generated identifiers (DBName/SID and
+	// master username) against engine constraints, before any AWS call. Returns a
+	// non-nil error describing the first violation. Engines with no special
+	// constraints return nil.
+	ValidateIdentifiers(dbName, username string) error
 }
 
 // baselineRegistry maps every supported engine string to its baseline. Oracle's

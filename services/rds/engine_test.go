@@ -106,3 +106,54 @@ func TestIsOracleEngine(t *testing.T) {
 		}
 	}
 }
+
+func TestOracleValidateIdentifiers(t *testing.T) {
+	b := oracle19cBaseline{}
+
+	valid := []struct{ dbName, user string }{
+		{"ORCL", "uabcdef01234567"}, // broker-generated username shape: "u"+15 = 16 chars
+		{"ORCL", "APP_USER"},        // 8 chars
+		{"ORCLPDB1", "user1234"},    // SID exactly 8 chars is allowed
+		{"AB1", "admin123"},         // "admin123" is not the reserved word "ADMIN"
+	}
+	for _, v := range valid {
+		if err := b.ValidateIdentifiers(v.dbName, v.user); err != nil {
+			t.Errorf("ValidateIdentifiers(%q,%q) unexpected error: %v", v.dbName, v.user, err)
+		}
+	}
+
+	bad := []struct{ name, dbName, user string }{
+		{"sid 9 chars", "ORCLPDB12", "APP_USER"},
+		{"sid lowercase", "orclpdb", "APP_USER"},
+		{"sid empty", "", "APP_USER"},
+		{"sid non-alnum", "OR-CL", "APP_USER"},
+		{"user too short", "ORCL", "usr1234"},                        // 7 chars
+		{"user too long", "ORCL", "u234567890123456789012345678901"}, // 31 chars
+		{"user bad start", "ORCL", "1username"},                      // starts with digit
+		{"user bad charset", "ORCL", "user-name"},                    // hyphen
+		{"user reserved SYSTEM", "ORCL", "SYSTEM"},                   // reserved, 6 chars but reserved check
+		{"user reserved RDSADMIN", "ORCL", "RDSADMIN"},               // reserved, 8 chars → isolates reserved check
+		{"user reserved rdsadmin lowercase", "ORCL", "rdsadmin"},     // case-insensitive reserved
+	}
+	for _, tc := range bad {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := b.ValidateIdentifiers(tc.dbName, tc.user); err == nil {
+				t.Errorf("ValidateIdentifiers(%q,%q) expected error, got nil", tc.dbName, tc.user)
+			}
+		})
+	}
+
+	// Isolate the reserved-word check from the length check: RDSADMIN is 8 chars
+	// (passes length) so its rejection proves the reserved list works.
+	if err := b.ValidateIdentifiers("ORCL", "RDSADMIN"); err == nil {
+		t.Error("RDSADMIN (8 chars) must be rejected by the reserved-word check")
+	}
+}
+
+func TestNonOracleValidateIdentifiersIsNoop(t *testing.T) {
+	for _, b := range []RDSBaseline{postgresBaseline{}, mysqlBaseline{}} {
+		if err := b.ValidateIdentifiers("anything-goes", "x"); err != nil {
+			t.Errorf("%s ValidateIdentifiers should be no-op, got %v", b.Engine(), err)
+		}
+	}
+}

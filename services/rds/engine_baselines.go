@@ -1,6 +1,10 @@
 package rds
 
-import "regexp"
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
 
 // engine_baselines.go — concrete RDSBaseline implementations (epic #519, WS3 #523).
 //
@@ -26,6 +30,11 @@ func (postgresBaseline) FormatDBName(database string) string {
 }
 func (postgresBaseline) SupportsEngineVersionUpdate() bool { return true }
 func (postgresBaseline) BornHardened() bool                { return false }
+func (postgresBaseline) ValidateIdentifiers(string, string) error {
+	// No broker-imposed engine constraints beyond the shared generator; RDS
+	// enforces the rest.
+	return nil
+}
 
 // ---------------------------------------------------------------------------
 // MySQL
@@ -41,6 +50,9 @@ func (mysqlBaseline) FormatDBName(database string) string {
 }
 func (mysqlBaseline) SupportsEngineVersionUpdate() bool { return true }
 func (mysqlBaseline) BornHardened() bool                { return false }
+func (mysqlBaseline) ValidateIdentifiers(string, string) error {
+	return nil
+}
 
 // ---------------------------------------------------------------------------
 // Oracle 19c (oracle-ee / oracle-se2)
@@ -77,3 +89,39 @@ func (oracle19cBaseline) SupportsEngineVersionUpdate() bool { return false }
 // BornHardened: Oracle is provisioned with a broker-managed hardened parameter
 // group by default (ADR-0003; unlike the MySQL/Postgres opt-in pattern).
 func (oracle19cBaseline) BornHardened() bool { return true }
+
+// oracleReservedUsernames are identifiers RDS rejects (or reserves) as the Oracle
+// master username. RDS explicitly disallows these; provisioning with one fails at
+// the AWS call, so we reject fail-closed before that (#535).
+var oracleReservedUsernames = map[string]struct{}{
+	"SYS": {}, "SYSTEM": {}, "ADMIN": {}, "RDSADMIN": {}, "RDS_ADMIN": {},
+	"PUBLIC": {}, "OUTLN": {}, "DBSNMP": {}, "AUDSYS": {}, "GSMADMIN_INTERNAL": {},
+}
+
+// oracleUsernameRe: RDS Oracle master username must start with a letter and
+// contain only letters, digits, and underscores.
+var oracleUsernameRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+
+// ValidateIdentifiers enforces RDS Oracle constraints fail-closed before the AWS
+// call: DBName/SID <=8 uppercase alnum; master username 8..30 chars, valid charset,
+// not a reserved word (#524, #535).
+func (oracle19cBaseline) ValidateIdentifiers(dbName, username string) error {
+	if len(dbName) == 0 || len(dbName) > 8 {
+		return fmt.Errorf("oracle SID/DBName %q must be 1..8 characters", dbName)
+	}
+	for _, r := range dbName {
+		if !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') {
+			return fmt.Errorf("oracle SID/DBName %q must be uppercase alphanumeric", dbName)
+		}
+	}
+	if l := len(username); l < 8 || l > 30 {
+		return fmt.Errorf("oracle master username must be 8..30 characters, got %d", l)
+	}
+	if !oracleUsernameRe.MatchString(username) {
+		return fmt.Errorf("oracle master username %q must start with a letter and contain only letters, digits, underscores", username)
+	}
+	if _, reserved := oracleReservedUsernames[strings.ToUpper(username)]; reserved {
+		return fmt.Errorf("oracle master username %q is reserved and cannot be used", username)
+	}
+	return nil
+}
