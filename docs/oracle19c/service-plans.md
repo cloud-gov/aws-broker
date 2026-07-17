@@ -27,6 +27,13 @@ Defined in `catalog-template.yml` / `catalog-test.yml`:
 > Provisioning requires `meta.aws_broker.oracle_security_group` to be defined in
 > the environment (mirrors the postgres/mysql security-group pattern).
 
+> **Feature-gated.** Oracle provisioning is disabled unless the broker environment
+> sets `ENABLE_ORACLE` (`EnableOracleFeature`). This is a fail-closed safeguard for
+> the master-credential-reuse limitation ([#534](https://github.com/cloud-gov/aws-broker/issues/534)):
+> the Oracle RDS master user holds DBA and is currently returned to every binding.
+> `cf create-service … oracle-19c-dev …` returns an error pointing to #534 when the
+> flag is unset.
+
 ## Create parameters
 
 The Oracle baseline is applied automatically (born hardened). Tenant-supplied

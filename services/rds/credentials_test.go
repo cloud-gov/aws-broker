@@ -164,6 +164,54 @@ func TestGetCredentials(t *testing.T) {
 	}
 }
 
+// TestPostgresMySQLCredentialsUnchangedByRefactor is a behavior-preservation
+// guard (ADR-0003, PR review scope_steward finding): the RDSBaseline refactor must
+// not change the postgres/mysql binding payloads. These are the exact shapes the
+// broker produced before the refactor; a future change that alters them fails here.
+func TestPostgresMySQLCredentialsUnchangedByRefactor(t *testing.T) {
+	u := &RDSCredentialUtils{}
+	cases := map[string]struct {
+		dbType string
+		port   int64
+		want   map[string]string
+	}{
+		"postgres": {
+			dbType: "postgres", port: 5432,
+			want: map[string]string{
+				"uri":      "postgres://user-1:fake-pw@host:5432/db1",
+				"username": "user-1", "password": "fake-pw", "host": "host",
+				"port": "5432", "db_name": "db1", "name": "db1",
+			},
+		},
+		"mysql": {
+			dbType: "mysql", port: 3306,
+			want: map[string]string{
+				"uri":      "mysql://user-1:fake-pw@host:3306/db1",
+				"username": "user-1", "password": "fake-pw", "host": "host",
+				"port": "3306", "db_name": "db1", "name": "db1",
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			i := &RDSInstance{
+				DbType:          tc.dbType,
+				Username:        "user-1",
+				Instance:        base.Instance{Host: "host", Port: tc.port},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+			}
+			got, err := u.getCredentials(i, "fake-pw")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := deep.Equal(got, tc.want); diff != nil {
+				t.Errorf("%s credentials changed by refactor: %v", name, diff)
+			}
+		})
+	}
+}
+
 // TestOracleBindingDoesNotLeakAdminMarkers guards the STIG concern (#534): the
 // Oracle binding payload must not advertise itself as an admin/master credential
 // or leak any admin-only key, even though it currently reuses the master user.

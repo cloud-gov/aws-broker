@@ -134,6 +134,9 @@ func TestOracleValidateIdentifiers(t *testing.T) {
 		{"user reserved SYSTEM", "ORCL", "SYSTEM"},                   // reserved, 6 chars but reserved check
 		{"user reserved RDSADMIN", "ORCL", "RDSADMIN"},               // reserved, 8 chars → isolates reserved check
 		{"user reserved rdsadmin lowercase", "ORCL", "rdsadmin"},     // case-insensitive reserved
+		{"user reserved CTXSYS builtin", "ORCL", "CTXSYS"},           // built-in schema (6 chars but reserved)
+		{"user reserved LBACSYS builtin", "ORCL", "LBACSYS"},         // 7 chars, reserved
+		{"user reserved SYSBACKUP", "ORCL", "SYSBACKUP"},             // 9 chars → isolates reserved from length
 	}
 	for _, tc := range bad {
 		t.Run(tc.name, func(t *testing.T) {
@@ -147,6 +150,13 @@ func TestOracleValidateIdentifiers(t *testing.T) {
 	// (passes length) so its rejection proves the reserved list works.
 	if err := b.ValidateIdentifiers("ORCL", "RDSADMIN"); err == nil {
 		t.Error("RDSADMIN (8 chars) must be rejected by the reserved-word check")
+	}
+	// Built-in Oracle schema accounts (>=8 chars to pass length) must be rejected
+	// so a binding username cannot shadow them (PR review finding).
+	for _, u := range []string{"SYSBACKUP", "GSMADMIN_INTERNAL", "APPQOSSYS"} {
+		if err := b.ValidateIdentifiers("ORCL", u); err == nil {
+			t.Errorf("built-in schema %q (>=8 chars) must be rejected by the reserved-word check", u)
+		}
 	}
 }
 

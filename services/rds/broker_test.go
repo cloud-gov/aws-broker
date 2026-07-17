@@ -388,6 +388,56 @@ func TestCreateInstanceSuccess(t *testing.T) {
 	}
 }
 
+// TestCreateInstanceOracleFeatureGate verifies Oracle provisioning is gated behind
+// EnableOracleFeature (#534, PR review): blocked when off, allowed when on.
+func TestCreateInstanceOracleFeatureGate(t *testing.T) {
+	oracleCatalog := &catalog.Catalog{
+		RdsService: catalog.RDSService{
+			RDSPlans: []catalog.RDSPlan{
+				{
+					ServicePlan: domain.ServicePlan{ID: "oracle-plan"},
+					DbType:      "oracle-ee",
+				},
+			},
+		},
+	}
+
+	testCases := map[string]struct {
+		enableOracle bool
+		wantErr      bool
+	}{
+		"oracle disabled by default is blocked": {enableOracle: false, wantErr: true},
+		"oracle enabled is allowed":             {enableOracle: true, wantErr: false},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				catalog:    oracleCatalog,
+				tagManager: &mocks.MockTagGenerator{},
+				settings: &config.Settings{
+					EncryptionKey:       helpers.RandStr(32),
+					Environment:         "test",
+					EnableOracleFeature: tc.enableOracle,
+				},
+				dbAdapter: &mockDBAdapter{},
+			}
+			err = broker.CreateInstance(helpers.RandStr(10), domain.ProvisionDetails{PlanID: "oracle-plan"})
+			if tc.wantErr && err == nil {
+				t.Fatal("expected Oracle provisioning to be blocked, got nil error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected Oracle provisioning to succeed, got %v", err)
+			}
+		})
+	}
+}
+
 func TestModify(t *testing.T) {
 	brokerDB, err := testDBInit()
 	if err != nil {

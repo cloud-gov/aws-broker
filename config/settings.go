@@ -23,6 +23,13 @@ type Settings struct {
 	Region                    string
 	PubliclyAccessibleFeature bool
 	EnableFunctionsFeature    bool
+	// EnableOracleFeature gates Oracle 19c provisioning. Oracle RDS master user
+	// holds the DBA role and the broker currently returns the master credential
+	// for every binding (#534); until a per-binding least-privilege user exists,
+	// Oracle is opt-in per environment so it cannot be enabled by accident. The
+	// PR review (catfish + scope_steward) flagged ungated Oracle master-cred reuse
+	// as a critical/high finding.
+	EnableOracleFeature       bool
 	SnapshotsBucketName       string
 	SnapshotsRepoName         string
 	LastSnapshotName          string
@@ -118,6 +125,16 @@ func (s *Settings) LoadFromEnv() error {
 		s.EnableFunctionsFeature = true
 	} else {
 		s.EnableFunctionsFeature = false
+	}
+
+	// Feature flag to allow Oracle 19c provisioning. Off by default: Oracle RDS
+	// master user holds DBA and the broker returns the master credential for every
+	// binding today (#534). Requires an explicit opt-in per environment until a
+	// per-binding least-privilege Oracle user exists.
+	if _, ok := os.LookupEnv("ENABLE_ORACLE"); ok {
+		s.EnableOracleFeature = true
+	} else {
+		s.EnableOracleFeature = false
 	}
 
 	// set the bucketname created by TF, empty string is ok.

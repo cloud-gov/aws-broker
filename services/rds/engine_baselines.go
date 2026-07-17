@@ -98,12 +98,27 @@ func (oracle19cBaseline) SupportsEngineVersionUpdate() bool { return false }
 // group by default (ADR-0003; unlike the MySQL/Postgres opt-in pattern).
 func (oracle19cBaseline) BornHardened() bool { return true }
 
-// oracleReservedUsernames are identifiers RDS rejects (or reserves) as the Oracle
-// master username. RDS explicitly disallows these; provisioning with one fails at
-// the AWS call, so we reject fail-closed before that (#535).
+// oracleReservedUsernames are identifiers RDS rejects/reserves as the Oracle
+// master username, plus Oracle-supplied built-in schema accounts a tenant must not
+// be able to shadow (privilege/schema-search-path risk). RDS blocks some of these
+// server-side, but we reject fail-closed before the AWS call (#524, #535, PR review
+// findings). Case-insensitive. Not exhaustive of all 100+ Oracle internal schemas,
+// but covers the privileged/security-relevant and commonly-present ones.
 var oracleReservedUsernames = map[string]struct{}{
+	// RDS / master-adjacent
 	"SYS": {}, "SYSTEM": {}, "ADMIN": {}, "RDSADMIN": {}, "RDS_ADMIN": {},
 	"PUBLIC": {}, "OUTLN": {}, "DBSNMP": {}, "AUDSYS": {}, "GSMADMIN_INTERNAL": {},
+	// Security / privileged option schemas
+	"DVSYS": {}, "DVF": {}, "LBACSYS": {}, "OLS$INTERNAL": {}, "SYSKM": {},
+	"SYSBACKUP": {}, "SYSDG": {}, "SYSRAC": {}, "SYS$UMF": {}, "REMOTE_SCHEDULER_AGENT": {},
+	// Built-in feature schemas (shadowing risk)
+	"CTXSYS": {}, "MDSYS": {}, "XDB": {}, "ORDSYS": {}, "ORDDATA": {}, "ORDPLUGINS": {},
+	"SI_INFORMTN_SCHEMA": {}, "WMSYS": {}, "OJVMSYS": {}, "OLAPSYS": {}, "DMSYS": {},
+	"EXFSYS": {}, "APEX_PUBLIC_USER": {}, "APEX_INSTANCE_ADMIN_USER": {},
+	"FLOWS_FILES": {}, "MDDATA": {}, "SPATIAL_CSW_ADMIN_USR": {}, "SPATIAL_WFS_ADMIN_USR": {},
+	"ANONYMOUS": {}, "DIP": {}, "ORACLE_OCM": {}, "XS$NULL": {}, "GGSYS": {},
+	"DGPDB_INT": {}, "GSMCATUSER": {}, "GSMUSER": {}, "GSMROOTUSER": {},
+	"APPQOSSYS": {}, "AUDSYS$": {}, "PDBADMIN": {},
 }
 
 // oracleUsernameRe: RDS Oracle master username must start with a letter and
