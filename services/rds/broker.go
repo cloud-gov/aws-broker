@@ -333,6 +333,24 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	}
 
+	// Oracle guards also apply on UPDATE (#519 review H1): the ENABLE_ORACLE gate
+	// and the create-parameter allowlist must not be bypassable via
+	// cf update-service. Without this, an operator disabling ENABLE_ORACLE would
+	// not stop updates to existing Oracle instances, and a customer could pass
+	// MySQL/Postgres-only or baseline-weakening params on update.
+	if isOracleEngine(existingInstance.DbType) {
+		if !broker.settings.EnableOracleFeature {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("oracle plans are not enabled in this environment; the Oracle offering is gated pending per-binding least-privilege credentials (see cloud-gov/aws-broker#534). Set ENABLE_ORACLE to opt in"),
+				http.StatusBadRequest,
+				"oracle feature disabled",
+			)
+		}
+		if err := validateOracleOptions(options); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate oracle parameters")
+		}
+	}
+
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Update,
 		broker.catalog.RdsService.Name,

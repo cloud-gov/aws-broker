@@ -2581,3 +2581,72 @@ func TestReconcileRDSInstanceParameters(t *testing.T) {
 		}
 	})
 }
+
+// TestOracleBornHardenedParamsReachAWS is the integration test the review (M1)
+// flagged as missing: it drives ProvisionNewCustomParameterGroup for an Oracle
+// instance and asserts the STIG-hardened parameters actually land on the captured
+// ModifyDBParameterGroup call with the correct apply methods, and that a parameter
+// group name is set on the instance (so prepareCreateDbInput attaches it).
+func TestOracleBornHardenedParamsReachAWS(t *testing.T) {
+	mock := &mockRDSClient{
+		dbEngineVersions: []rdsTypes.DBEngineVersion{
+			{DBParameterGroupFamily: aws.String("oracle-ee-19")},
+		},
+	}
+	p := NewAwsParameterGroupClient(
+		t.Context(),
+		mock,
+		&config.Settings{},
+		slog.New(&testutil.MockLogHandler{}),
+	)
+	i := &RDSInstance{
+		DbType:          "oracle-ee",
+		DbVersion:       "19.0.0.0",
+		Database:        "db1",
+		credentialUtils: &RDSCredentialUtils{},
+	}
+
+	if err := p.ProvisionNewCustomParameterGroup(i, nil); err != nil {
+		t.Fatalf("ProvisionNewCustomParameterGroup: %v", err)
+	}
+
+	if i.ParameterGroupName == "" {
+		t.Fatal("expected a custom parameter group name to be set on the Oracle instance")
+	}
+	if len(mock.capturedModifyParamGroupInputs) == 0 {
+		t.Fatal("expected ModifyDBParameterGroup to be called for the Oracle baseline")
+	}
+
+	// Collect the parameters that were actually sent to AWS.
+	got := map[string]rdsTypes.Parameter{}
+	for _, in := range mock.capturedModifyParamGroupInputs {
+		for _, param := range in.Parameters {
+			got[aws.ToString(param.ParameterName)] = param
+		}
+	}
+
+	want := map[string]struct {
+		value       string
+		applyMethod rdsTypes.ApplyMethod
+	}{
+		"audit_trail":               {"DB,EXTENDED", rdsTypes.ApplyMethodPendingReboot},
+		"audit_sys_operations":      {"TRUE", rdsTypes.ApplyMethodPendingReboot},
+		"sec_case_sensitive_logon":  {"TRUE", rdsTypes.ApplyMethodImmediate},
+		"remote_login_passwordfile": {"NONE", rdsTypes.ApplyMethodPendingReboot},
+		"resource_limit":            {"TRUE", rdsTypes.ApplyMethodImmediate},
+		"sql92_security":            {"TRUE", rdsTypes.ApplyMethodPendingReboot},
+	}
+	for name, w := range want {
+		p, ok := got[name]
+		if !ok {
+			t.Errorf("hardened parameter %q never reached ModifyDBParameterGroup", name)
+			continue
+		}
+		if aws.ToString(p.ParameterValue) != w.value {
+			t.Errorf("param %q value = %q, want %q", name, aws.ToString(p.ParameterValue), w.value)
+		}
+		if p.ApplyMethod != w.applyMethod {
+			t.Errorf("param %q applyMethod = %q, want %q", name, p.ApplyMethod, w.applyMethod)
+		}
+	}
+}

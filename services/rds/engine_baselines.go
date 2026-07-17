@@ -35,7 +35,7 @@ func (postgresBaseline) ValidateIdentifiers(string, string) error {
 	// enforces the rest.
 	return nil
 }
-func (postgresBaseline) DefaultLogExports() []string { return nil }
+func (postgresBaseline) DefaultLogExports() ([]string, error) { return nil, nil }
 func (postgresBaseline) DefaultParameters() (map[string]paramDetails, error) {
 	return map[string]paramDetails{}, nil
 }
@@ -57,7 +57,7 @@ func (mysqlBaseline) BornHardened() bool                { return false }
 func (mysqlBaseline) ValidateIdentifiers(string, string) error {
 	return nil
 }
-func (mysqlBaseline) DefaultLogExports() []string { return nil }
+func (mysqlBaseline) DefaultLogExports() ([]string, error) { return nil, nil }
 func (mysqlBaseline) DefaultParameters() (map[string]paramDetails, error) {
 	return map[string]paramDetails{}, nil
 }
@@ -75,6 +75,10 @@ const oracleSID = "ORCL"
 
 type oracle19cBaseline struct{}
 
+// Engine reports the canonical Oracle engine string. Both oracle-ee and
+// oracle-se2 are handled by this baseline; Engine() returns the EE identifier as
+// the canonical label. Runtime dispatch keys on the instance's actual DbType
+// (i.DbType), never on Engine(), so SE2 instances are provisioned as SE2.
 func (oracle19cBaseline) Engine() string { return EngineOracleEE }
 func (oracle19cBaseline) SupportsEngine(dbType string) bool {
 	return isOracleEngine(dbType)
@@ -150,16 +154,15 @@ func (oracle19cBaseline) ValidateIdentifiers(dbName, username string) error {
 }
 
 // DefaultLogExports returns the Oracle default CloudWatch log-export set from the
-// embedded baseline (baselines/oracle19c/log_exports.yml, WS7 #527).
-func (oracle19cBaseline) DefaultLogExports() []string {
+// embedded baseline (baselines/oracle19c/log_exports.yml, WS7 #527). Unlike a
+// silent nil, a parse failure is returned as an error so the provision path fails
+// closed rather than provisioning with no audit-log posture (#519 review C5).
+func (oracle19cBaseline) DefaultLogExports() ([]string, error) {
 	f, err := loadOracleLogExports()
 	if err != nil {
-		// The baseline is embedded at build time; a parse error is a programming
-		// error surfaced by tests (TestOracleBaselineFilesParse), not a runtime
-		// condition. Return nil rather than panicking in the provision path.
-		return nil
+		return nil, err
 	}
-	return f.DefaultExports
+	return f.DefaultExports, nil
 }
 
 // DefaultParameters returns the Oracle hardened parameter-group baseline from the

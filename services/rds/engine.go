@@ -74,8 +74,10 @@ type RDSBaseline interface {
 
 	// DefaultLogExports returns the CloudWatch Logs export types enabled by default
 	// for this engine (e.g. Oracle: alert/audit/listener), or nil for engines with
-	// no broker-imposed default.
-	DefaultLogExports() []string
+	// no broker-imposed default. Returns an error if a born-hardened engine's
+	// embedded baseline cannot be loaded — callers must fail closed rather than
+	// silently provision with no audit-log posture (#519 review C5).
+	DefaultLogExports() ([]string, error)
 
 	// DefaultParameters returns the broker-managed custom parameter-group entries
 	// this engine is born with (Oracle hardened baseline), keyed by parameter name.

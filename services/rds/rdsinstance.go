@@ -167,7 +167,6 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	}
 
 	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
-
 	if newPlan.ReadReplica && !newPlan.Redundant {
 		return nil, errors.New("database plan must be multi-AZ in order to support read replicas")
 	}
@@ -262,6 +261,12 @@ func (i *RDSInstance) init(
 	}
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+	// At create only, fall back to the engine's default log-export set when the
+	// customer supplied none (Oracle STIG posture). Not applied on modify (#519 H2).
+	// Fails closed if the born-hardened baseline cannot be loaded (#519 C5).
+	if err := i.applyDefaultLogExportsIfUnset(); err != nil {
+		return err
+	}
 
 	if plan.ReadReplica {
 		i.AddReadReplica = true
@@ -366,15 +371,31 @@ func (i *RDSInstance) getTags() map[string]string {
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
 	if len(enabledLogGroups) > 0 {
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
+	}
+	return nil
+}
+
+// applyDefaultLogExportsIfUnset applies the engine's default CloudWatch log-export
+// set (Oracle: alert/audit/listener — part of the STIG posture, WS7 #527) ONLY
+// when the instance has none set. It is called at create/init, NOT on modify:
+// applying defaults on every modify would silently re-add exports a customer had
+// removed on a later unrelated update (#519 review H2). Engines with no default
+// (postgres/mysql) are unaffected. Fails closed if a born-hardened engine's
+// embedded baseline cannot be loaded (#519 review C5).
+func (i *RDSInstance) applyDefaultLogExportsIfUnset() error {
+	if len(i.EnabledCloudwatchLogGroupExports) > 0 {
 		return nil
 	}
-	// When the tenant specifies no log exports, apply the engine's default set
-	// (Oracle: alert/audit/listener — part of the STIG posture, WS7 #527). Engines
-	// with no default (postgres/mysql) leave this empty, preserving prior behavior.
-	if b, ok := baselineFor(i.DbType); ok {
-		if defaults := b.DefaultLogExports(); len(defaults) > 0 {
-			i.EnabledCloudwatchLogGroupExports = defaults
-		}
+	b, ok := baselineFor(i.DbType)
+	if !ok {
+		return nil
+	}
+	defaults, err := b.DefaultLogExports()
+	if err != nil {
+		return fmt.Errorf("resolving default log exports for %s: %w", i.DbType, err)
+	}
+	if len(defaults) > 0 {
+		i.EnabledCloudwatchLogGroupExports = defaults
 	}
 	return nil
 }

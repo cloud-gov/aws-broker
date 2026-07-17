@@ -126,13 +126,20 @@ func TestOracleBaselineWiredIntoEngine(t *testing.T) {
 		t.Errorf("audit_trail applyMethod = %q, want pending-reboot", p.applyMethod)
 	}
 	// DefaultLogExports must reflect the embedded file.
-	exports := b.DefaultLogExports()
+	exports, err := b.DefaultLogExports()
+	if err != nil {
+		t.Fatalf("oracle DefaultLogExports error: %v", err)
+	}
 	if !slices.Contains(exports, "audit") {
 		t.Errorf("oracle DefaultLogExports = %v, want to include audit", exports)
 	}
 	// Non-Oracle engines have no defaults (behavior preserved).
 	pg, _ := baselineFor("postgres")
-	if len(pg.DefaultLogExports()) != 0 {
+	pgExports, err := pg.DefaultLogExports()
+	if err != nil {
+		t.Fatalf("postgres DefaultLogExports error: %v", err)
+	}
+	if len(pgExports) != 0 {
 		t.Error("postgres must have no default log exports")
 	}
 	pgParams, _ := pg.DefaultParameters()
