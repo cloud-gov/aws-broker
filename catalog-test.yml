@@ -326,7 +326,8 @@ rds:
     # ------------------------------------------------------------------------
     # Oracle Database 19c (dev/test plan) — epic #519, WS2 #522.
     # NOT production-ready. BYOL (ADR-0004); private-only + encrypted; born with
-    # a hardened parameter/option-group baseline (ADR-0003). STIG posture is
+    # a hardened parameter-group baseline (ADR-0003; option-group provisioning is
+    # a follow-up, #526). STIG posture is
     # validated out-of-band by cg-oracle-database-19c-stig-overlay (ADR-0002),
     # never by this broker. `dbType: oracle-ee` and RDS accepts licenseModel
     # `bring-your-own-license` for Oracle (verified against aws-sdk-go-v2 RDS

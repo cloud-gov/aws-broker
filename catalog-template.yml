@@ -1442,7 +1442,8 @@ rds:
     # ----------------------------------------------------------------------
     # Oracle Database 19c (dev/test) — epic cloud-gov/aws-broker#519.
     # DEV/TEST ONLY, not production-ready. BYOL (ADR-0004); private-only +
-    # encrypted; hardened baseline parameter/option groups (ADR-0003). STIG
+    # encrypted; hardened parameter-group baseline (ADR-0003; option groups are a
+    # follow-up, #526). STIG
     # posture validated out-of-band by cg-oracle-database-19c-stig-overlay
     # (ADR-0002). Requires meta.aws_broker.oracle_security_group to be defined
     # in the environment before this plan can provision.

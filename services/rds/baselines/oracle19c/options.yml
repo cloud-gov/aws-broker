@@ -1,9 +1,14 @@
 # Oracle Database 19c — broker-managed option-group options (epic #519, WS6 #526).
 #
 # RDS Oracle uses OPTION GROUPS (distinct from parameter groups) for certain
-# features. This file lists the options the broker attaches to the Oracle baseline
-# option group. Unlike MySQL (where the broker only passively migrates a
-# user-attached group), Oracle is provisioned WITH a broker-managed option group.
+# features. This file lists the options the broker WOULD attach to an Oracle
+# baseline option group.
+#
+# CURRENT STATE (#519 review H3): the create path does NOT yet provision an Oracle
+# option group — it only creates the parameter group. Because this list is empty,
+# there is nothing to attach today, so the gap is latent. Wiring option-group
+# provisioning at create (gated on a non-empty list) is tracked in #526; do NOT
+# assume adding an option here takes effect until that lands.
 #
 # HONESTY / SCOPE:
 #   - Every option below MUST be verified as available in AWS GovCloud for the

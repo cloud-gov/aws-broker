@@ -46,6 +46,7 @@ STIG posture is validated out-of-band by the
 | Encryption | at rest (KMS) | STIG / SC-28 |
 | Network | private only | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md); no public accessibility |
 | Parameter group | broker-managed hardened baseline (born hardened) | [ADR-0003](../decisions/ADR-0003-design-oracle-baseline-for-future-csb-portability.md), [#525](https://github.com/cloud-gov/aws-broker/issues/525) |
+| Option group | none at provision yet (follow-up) | [#526](https://github.com/cloud-gov/aws-broker/issues/526) |
 | Log exports | `alert`, `audit`, `listener` by default | audit generation, [#527](https://github.com/cloud-gov/aws-broker/issues/527) |
 | SID / DBName | `ORCL` (fixed, ≤8 upper) | RDS Oracle constraint |
 | Port | 1521 | Oracle default |

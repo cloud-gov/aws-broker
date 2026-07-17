@@ -34,6 +34,11 @@ Empty by default. **No attack-surface options** (Oracle XML DB HTTP listener,
 external procedures / `extproc`, Java VM, APEX) are enabled
 ([#535](https://github.com/cloud-gov/aws-broker/issues/535)). A test asserts this.
 
+> **Not yet wired at provision (#526):** the create path currently provisions the
+> parameter group only, not an option group. Because the list is empty this is a
+> latent gap; option-group provisioning at create is a tracked follow-up. Do not
+> assume adding an option here takes effect until #526 lands.
+
 ## SQL-level hardening (overlay, not the broker)
 
 Profiles, default-account lockout, unified audit policies, and detect-first
