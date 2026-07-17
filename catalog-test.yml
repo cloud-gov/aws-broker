@@ -323,3 +323,47 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
+    # ------------------------------------------------------------------------
+    # Oracle Database 19c (dev/test plan) — epic #519, WS2 #522.
+    # NOT production-ready. BYOL (ADR-0004); private-only + encrypted; born with
+    # a hardened parameter/option-group baseline (ADR-0003). STIG posture is
+    # validated out-of-band by cg-oracle-database-19c-stig-overlay (ADR-0002),
+    # never by this broker. `dbType: oracle-ee` and RDS accepts licenseModel
+    # `bring-your-own-license` for Oracle (verified against aws-sdk-go-v2 RDS
+    # CreateDBInstance docs). SID/DBName is Oracle-constrained (<=8, uppercase).
+    # ------------------------------------------------------------------------
+    - id: "b48f5f9e-7f8a-4c2b-9a1d-0f4e8c2a7d10"
+      name: "oracle-19c-dev"
+      description: "Dedicated RDS Oracle Database 19c (DEV/TEST ONLY — STIG hardening in progress, not production-ready)"
+      metadata:
+        bullets:
+          - "Dedicated RDS Oracle Database 19c instance"
+          - "Enterprise Edition, bring-your-own-license (BYOL)"
+          - "Private-only, encrypted at rest"
+          - "STIG-hardened baseline (validation via cg-oracle-database-19c-stig-overlay)"
+          - "DEV/TEST plan — not production-ready"
+        costs:
+          - amount:
+              usd: 0
+            unit: "HOURLY"
+        displayName: "Dedicated Oracle 19c (dev)"
+      free: false
+      adapter: dedicated
+      instanceClass: db.t3.medium
+      dbType: oracle-ee
+      dbVersion: "19.0.0.0.ru-2024-07.rur-2024-07.r1"
+      licenseModel: bring-your-own-license
+      allocatedStorage: 20
+      approvedMajorVersions: &rds-oracle-approved-major-versions
+        - "19"
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp3
+      backup_retention_period: 14
+      securityGroup: oracle-sg-123456
+      subnetGroup: subnet-group
+      tags:
+        environment: "cf-env"
+        client: "the client"
+        service: "aws-broker"

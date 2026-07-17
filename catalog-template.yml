@@ -1426,19 +1426,62 @@ rds:
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
-      dbType: mysql
-      plan_updateable: true
-      redundant: true
-      read_replica: true
-      encrypted: true
-      storage_type: gp3
-      backup_retention_period: 14
-      securityGroup: (( grab meta.aws_broker.mysql_security_group ))
-      subnetGroup: (( grab meta.aws_broker.subnet_group ))
-      tags:
-        environment: (( grab meta.environment ))
-        client: "paas-cf"
-        broker: "AWS broker"
+       dbType: mysql
+       plan_updateable: true
+       redundant: true
+       read_replica: true
+       encrypted: true
+       storage_type: gp3
+       backup_retention_period: 14
+       securityGroup: (( grab meta.aws_broker.mysql_security_group ))
+       subnetGroup: (( grab meta.aws_broker.subnet_group ))
+       tags:
+         environment: (( grab meta.environment ))
+         client: "paas-cf"
+         broker: "AWS broker"
+     # ----------------------------------------------------------------------
+     # Oracle Database 19c (dev/test) — epic cloud-gov/aws-broker#519.
+     # DEV/TEST ONLY, not production-ready. BYOL (ADR-0004); private-only +
+     # encrypted; hardened baseline parameter/option groups (ADR-0003). STIG
+     # posture validated out-of-band by cg-oracle-database-19c-stig-overlay
+     # (ADR-0002). Requires meta.aws_broker.oracle_security_group to be defined
+     # in the environment before this plan can provision.
+     # ----------------------------------------------------------------------
+     - id: "b48f5f9e-7f8a-4c2b-9a1d-0f4e8c2a7d10"
+       name: "oracle-19c-dev"
+       description: "Dedicated RDS Oracle Database 19c (DEV/TEST ONLY — STIG hardening in progress, not production-ready)"
+       metadata:
+         bullets:
+           - "Dedicated RDS Oracle Database 19c instance"
+           - "Enterprise Edition, bring-your-own-license (BYOL)"
+           - "Private-only, encrypted at rest"
+           - "STIG-hardened baseline (validation via cg-oracle-database-19c-stig-overlay)"
+           - "DEV/TEST plan — not production-ready"
+         costs:
+           - amount:
+               usd: 0
+             unit: "HOURLY"
+         displayName: "Dedicated Oracle 19c (dev)"
+       free: false
+       adapter: dedicated
+       instanceClass: db.t3.medium
+       dbType: oracle-ee
+       dbVersion: "19.0.0.0.ru-2024-07.rur-2024-07.r1"
+       licenseModel: bring-your-own-license
+       allocatedStorage: 20
+       approvedMajorVersions:
+         - "19"
+       plan_updateable: true
+       redundant: false
+       encrypted: true
+       storage_type: gp3
+       backup_retention_period: 14
+       securityGroup: (( grab meta.aws_broker.oracle_security_group ))
+       subnetGroup: (( grab meta.aws_broker.subnet_group ))
+       tags:
+         environment: (( grab meta.environment ))
+         client: "paas-cf"
+         broker: "AWS broker"
 redis:
   id: "cda65825-e357-4a93-a24b-9ab138d97815"
   name: "aws-elasticache-redis"
