@@ -366,6 +366,15 @@ func (i *RDSInstance) getTags() map[string]string {
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
 	if len(enabledLogGroups) > 0 {
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
+		return nil
+	}
+	// When the tenant specifies no log exports, apply the engine's default set
+	// (Oracle: alert/audit/listener — part of the STIG posture, WS7 #527). Engines
+	// with no default (postgres/mysql) leave this empty, preserving prior behavior.
+	if b, ok := baselineFor(i.DbType); ok {
+		if defaults := b.DefaultLogExports(); len(defaults) > 0 {
+			i.EnabledCloudwatchLogGroupExports = defaults
+		}
 	}
 	return nil
 }

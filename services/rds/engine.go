@@ -71,6 +71,16 @@ type RDSBaseline interface {
 	// non-nil error describing the first violation. Engines with no special
 	// constraints return nil.
 	ValidateIdentifiers(dbName, username string) error
+
+	// DefaultLogExports returns the CloudWatch Logs export types enabled by default
+	// for this engine (e.g. Oracle: alert/audit/listener), or nil for engines with
+	// no broker-imposed default.
+	DefaultLogExports() []string
+
+	// DefaultParameters returns the broker-managed custom parameter-group entries
+	// this engine is born with (Oracle hardened baseline), keyed by parameter name.
+	// Engines that are not born hardened return an empty map.
+	DefaultParameters() (map[string]paramDetails, error)
 }
 
 // baselineRegistry maps every supported engine string to its baseline. Oracle's

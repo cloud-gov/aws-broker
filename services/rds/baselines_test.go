@@ -1,0 +1,173 @@
+package rds
+
+import (
+	"slices"
+	"testing"
+)
+
+// baselines_test.go — the embedded Oracle 19c baseline files must parse and carry
+// the expected STIG-relevant content (epic #519, WS5/6/7). These run offline; they
+// are development signal for the values, not compliance evidence (ADR-0005).
+
+func TestOracleBaselineFilesParse(t *testing.T) {
+	if _, err := loadOracleParameters(); err != nil {
+		t.Fatalf("parameters.yml: %v", err)
+	}
+	if _, err := loadOracleLogExports(); err != nil {
+		t.Fatalf("log_exports.yml: %v", err)
+	}
+	if _, err := loadOracleOptions(); err != nil {
+		t.Fatalf("options.yml: %v", err)
+	}
+}
+
+func TestOracleParameterBaselineContent(t *testing.T) {
+	f, err := loadOracleParameters()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byName := map[string]oracleParameter{}
+	for _, p := range f.Parameters {
+		byName[p.Name] = p
+		// apply_method must be one of the two RDS values, and resolvable.
+		if p.ApplyMethod != "immediate" && p.ApplyMethod != "pending-reboot" {
+			t.Errorf("param %q has invalid apply_method %q", p.Name, p.ApplyMethod)
+		}
+		if _, err := getRdsApplyMethodEnum(p.ApplyMethod); err != nil {
+			t.Errorf("param %q apply_method not resolvable: %v", p.Name, err)
+		}
+		if p.Value == "" {
+			t.Errorf("param %q has empty value", p.Name)
+		}
+		if p.StigIntent == "" {
+			t.Errorf("param %q missing stig_intent (reviewability)", p.Name)
+		}
+	}
+	// Core STIG-relevant parameters must be present and hardened.
+	wantHardened := map[string]string{
+		"audit_trail":               "DB,EXTENDED",
+		"audit_sys_operations":      "TRUE",
+		"sec_case_sensitive_logon":  "TRUE",
+		"remote_login_passwordfile": "NONE",
+		"resource_limit":            "TRUE",
+		"sql92_security":            "TRUE",
+	}
+	for name, want := range wantHardened {
+		got, ok := byName[name]
+		if !ok {
+			t.Errorf("missing required hardened parameter %q", name)
+			continue
+		}
+		if got.Value != want {
+			t.Errorf("parameter %q = %q, want hardened %q", name, got.Value, want)
+		}
+	}
+	// audit_trail is a static parameter — must be pending-reboot.
+	if byName["audit_trail"].ApplyMethod != "pending-reboot" {
+		t.Errorf("audit_trail must be pending-reboot (static), got %q", byName["audit_trail"].ApplyMethod)
+	}
+}
+
+func TestOracleLogExportsBaseline(t *testing.T) {
+	f, err := loadOracleLogExports()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"alert", "audit", "listener"} {
+		if !slices.Contains(f.DefaultExports, want) {
+			t.Errorf("default log exports missing %q", want)
+		}
+	}
+	// Every default must be in the supported set.
+	for _, d := range f.DefaultExports {
+		if !slices.Contains(f.Supported, d) {
+			t.Errorf("default export %q not in supported set %v", d, f.Supported)
+		}
+	}
+	// High-volume/opt-in exports must NOT be on by default.
+	for _, notDefault := range []string{"trace", "oemagent"} {
+		if slices.Contains(f.DefaultExports, notDefault) {
+			t.Errorf("%q should not be a default export", notDefault)
+		}
+	}
+}
+
+func TestOracleOptionsBaselineHasNoAttackSurfaceOptions(t *testing.T) {
+	f, err := loadOracleOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// #535: the baseline must not enable attack-surface options.
+	forbidden := []string{"XMLDB", "HTTP", "EXTPROC", "JVM", "JAVAVM", "APEX"}
+	for _, opt := range f.Options {
+		up := opt.Name
+		for _, bad := range forbidden {
+			if len(up) >= len(bad) && containsFold(up, bad) {
+				t.Errorf("option %q looks like an attack-surface option (%q); must be justified", opt.Name, bad)
+			}
+		}
+	}
+}
+
+func TestOracleBaselineWiredIntoEngine(t *testing.T) {
+	b, ok := baselineFor("oracle-ee")
+	if !ok {
+		t.Fatal("oracle-ee baseline missing")
+	}
+	// DefaultParameters must reflect the embedded file.
+	params, err := b.DefaultParameters()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := params["audit_trail"]; !ok {
+		t.Error("oracle DefaultParameters missing audit_trail")
+	}
+	if p := params["audit_trail"]; p.applyMethod != "pending-reboot" {
+		t.Errorf("audit_trail applyMethod = %q, want pending-reboot", p.applyMethod)
+	}
+	// DefaultLogExports must reflect the embedded file.
+	exports := b.DefaultLogExports()
+	if !slices.Contains(exports, "audit") {
+		t.Errorf("oracle DefaultLogExports = %v, want to include audit", exports)
+	}
+	// Non-Oracle engines have no defaults (behavior preserved).
+	pg, _ := baselineFor("postgres")
+	if len(pg.DefaultLogExports()) != 0 {
+		t.Error("postgres must have no default log exports")
+	}
+	pgParams, _ := pg.DefaultParameters()
+	if len(pgParams) != 0 {
+		t.Error("postgres must have no born-hardened default parameters")
+	}
+}
+
+// containsFold reports whether s contains substr, case-insensitively.
+func containsFold(s, substr string) bool {
+	return len(substr) == 0 ||
+		len(s) >= len(substr) &&
+			indexFold(s, substr) >= 0
+}
+
+func indexFold(s, substr string) int {
+	ls, lsub := len(s), len(substr)
+	for i := 0; i+lsub <= ls; i++ {
+		match := true
+		for j := 0; j < lsub; j++ {
+			cs, cb := s[i+j], substr[j]
+			if 'a' <= cs && cs <= 'z' {
+				cs -= 'a' - 'A'
+			}
+			if 'a' <= cb && cb <= 'z' {
+				cb -= 'a' - 'A'
+			}
+			if cs != cb {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
+}

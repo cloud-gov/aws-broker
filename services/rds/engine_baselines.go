@@ -35,6 +35,10 @@ func (postgresBaseline) ValidateIdentifiers(string, string) error {
 	// enforces the rest.
 	return nil
 }
+func (postgresBaseline) DefaultLogExports() []string { return nil }
+func (postgresBaseline) DefaultParameters() (map[string]paramDetails, error) {
+	return map[string]paramDetails{}, nil
+}
 
 // ---------------------------------------------------------------------------
 // MySQL
@@ -52,6 +56,10 @@ func (mysqlBaseline) SupportsEngineVersionUpdate() bool { return true }
 func (mysqlBaseline) BornHardened() bool                { return false }
 func (mysqlBaseline) ValidateIdentifiers(string, string) error {
 	return nil
+}
+func (mysqlBaseline) DefaultLogExports() []string { return nil }
+func (mysqlBaseline) DefaultParameters() (map[string]paramDetails, error) {
+	return map[string]paramDetails{}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -124,4 +132,34 @@ func (oracle19cBaseline) ValidateIdentifiers(dbName, username string) error {
 		return fmt.Errorf("oracle master username %q is reserved and cannot be used", username)
 	}
 	return nil
+}
+
+// DefaultLogExports returns the Oracle default CloudWatch log-export set from the
+// embedded baseline (baselines/oracle19c/log_exports.yml, WS7 #527).
+func (oracle19cBaseline) DefaultLogExports() []string {
+	f, err := loadOracleLogExports()
+	if err != nil {
+		// The baseline is embedded at build time; a parse error is a programming
+		// error surfaced by tests (TestOracleBaselineFilesParse), not a runtime
+		// condition. Return nil rather than panicking in the provision path.
+		return nil
+	}
+	return f.DefaultExports
+}
+
+// DefaultParameters returns the Oracle hardened parameter-group baseline from the
+// embedded baseline (baselines/oracle19c/parameters.yml, WS5 #525), keyed by name.
+func (oracle19cBaseline) DefaultParameters() (map[string]paramDetails, error) {
+	f, err := loadOracleParameters()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]paramDetails, len(f.Parameters))
+	for _, p := range f.Parameters {
+		out[p.Name] = paramDetails{
+			value:       p.Value,
+			applyMethod: p.ApplyMethod,
+		}
+	}
+	return out, nil
 }

@@ -134,6 +134,26 @@ func TestNeedCustomParameters(t *testing.T) {
 			},
 			expectedOk: false,
 		},
+		"oracle is born hardened": {
+			dbInstance: &RDSInstance{
+				DbType:          "oracle-ee",
+				credentialUtils: &RDSCredentialUtils{},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+			expectedOk: true,
+		},
+		"oracle se2 is born hardened": {
+			dbInstance: &RDSInstance{
+				DbType:          "oracle-se2",
+				credentialUtils: &RDSCredentialUtils{},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+			expectedOk: true,
+		},
 		"instance functions enabled, settings disabled": {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
@@ -696,6 +716,25 @@ func TestGetNewParameters(t *testing.T) {
 				settings: &config.Settings{
 					EnableFunctionsFeature: true,
 				},
+			},
+		},
+		"oracle born-hardened baseline": {
+			dbInstance: &RDSInstance{
+				DbType: "oracle-ee",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"oracle-ee": {
+					"audit_trail":               paramDetails{value: "DB,EXTENDED", applyMethod: "pending-reboot"},
+					"audit_sys_operations":      paramDetails{value: "TRUE", applyMethod: "pending-reboot"},
+					"sec_case_sensitive_logon":  paramDetails{value: "TRUE", applyMethod: "immediate"},
+					"remote_login_passwordfile": paramDetails{value: "NONE", applyMethod: "pending-reboot"},
+					"resource_limit":            paramDetails{value: "TRUE", applyMethod: "immediate"},
+					"sql92_security":            paramDetails{value: "TRUE", applyMethod: "pending-reboot"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
 			},
 		},
 		"instance functions disabled, settings enabled": {

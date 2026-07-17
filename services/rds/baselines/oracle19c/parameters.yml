@@ -1,0 +1,69 @@
+# Oracle Database 19c — broker-managed RDS parameter-group baseline (epic #519, WS5 #525).
+#
+# Oracle is "born hardened" (ADR-0003): every brokered Oracle instance gets a
+# broker-managed custom parameter group with these STIG-relevant parameters, unlike
+# the MySQL/Postgres opt-in pattern. This file is the reviewable source of truth for
+# those values; it is embedded into the broker at build time (baselines.go) and is
+# directly reusable by a future CSB brokerpak (ADR-0003).
+#
+# SCOPE / HONESTY:
+#   - These are DB-parameter-level controls only. OS/listener/host controls are
+#     AWS-inherited on managed RDS (ADR-0004) and validated as such by the overlay,
+#     not here.
+#   - Every parameter below MUST be verified as supported+modifiable on the RDS
+#     Oracle 19c parameter-group family before a live deploy (WS15, gated). Values
+#     are the STIG-recommended posture; if RDS rejects a parameter it is surfaced,
+#     not silently dropped.
+#   - apply_method: "immediate" (dynamic) or "pending-reboot" (static). Static
+#     parameters require a reboot to take effect; the broker surfaces pending-reboot
+#     state via the existing async/modify path.
+#
+# STIG references are the Oracle 19c STIG rule intent; the authoritative mapping
+# lives in the overlay control->layer map (aws_rds_parameter_group layer, #530).
+
+engine_family_prefix: "oracle-ee-19"   # informational; actual family resolved via DescribeDBEngineVersions
+
+parameters:
+  # Unified/standard auditing must be enabled and capture privileged operations.
+  # audit_trail is STATIC on Oracle (requires reboot).
+  - name: audit_trail
+    value: "DB,EXTENDED"
+    apply_method: pending-reboot
+    stig_intent: "Enable database auditing (SRG-APP-000089 / audit generation)."
+  - name: audit_sys_operations
+    value: "TRUE"
+    apply_method: pending-reboot
+    stig_intent: "Audit privileged SYS operations."
+
+  # Enforce case-sensitive password authentication.
+  - name: sec_case_sensitive_logon
+    value: "TRUE"
+    apply_method: immediate
+    stig_intent: "Case-sensitive passwords (authenticator strength)."
+
+  # Restrict OS/remote password-file authentication.
+  - name: remote_login_passwordfile
+    value: "NONE"
+    apply_method: pending-reboot
+    stig_intent: "Disable remote OS password-file authentication (SRG-APP-000516)."
+
+  # Enforce user resource limits defined via profiles (needed for failed-login /
+  # password-lifetime STIG controls to take effect).
+  - name: resource_limit
+    value: "TRUE"
+    apply_method: immediate
+    stig_intent: "Enforce profile resource limits (account lockout / lifetime)."
+
+  # ANSI SQL92 security: require SELECT privilege for UPDATE/DELETE with predicates.
+  - name: sql92_security
+    value: "TRUE"
+    apply_method: pending-reboot
+    stig_intent: "SQL92 security semantics (least privilege on DML predicates)."
+
+  # Limit the number of concurrent connections a login may hold (defense in depth).
+  # Left commented — value is deployment-specific and must be sized against app
+  # concurrency during the dev proof (WS15) before enabling.
+  # - name: sessions_per_user
+  #   value: "10"
+  #   apply_method: immediate
+  #   stig_intent: "Limit concurrent sessions per user."

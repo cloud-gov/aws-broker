@@ -1,0 +1,29 @@
+# Oracle Database 19c — broker-managed option-group options (epic #519, WS6 #526).
+#
+# RDS Oracle uses OPTION GROUPS (distinct from parameter groups) for certain
+# features. This file lists the options the broker attaches to the Oracle baseline
+# option group. Unlike MySQL (where the broker only passively migrates a
+# user-attached group), Oracle is provisioned WITH a broker-managed option group.
+#
+# HONESTY / SCOPE:
+#   - Every option below MUST be verified as available in AWS GovCloud for the
+#     RDS Oracle 19c engine before a live deploy (WS15, gated). GovCloud option
+#     availability differs from commercial regions.
+#   - Do NOT enable attack-surface options (e.g. Oracle XML DB HTTP listener,
+#     external procedures / extproc, Java VM, APEX) unless explicitly required and
+#     justified (#535). None are enabled here.
+#   - The authoritative STIG mapping lives in the overlay control->layer map
+#     (aws_rds_option_group layer, #530).
+#
+# NOTE: several Oracle security controls that would be options on self-managed
+# Oracle (e.g. Native Network Encryption) are configured differently or are
+# AWS-managed on RDS; those are validated by the overlay as inherited/NA, not set
+# here. This list is intentionally conservative for the first iteration and may be
+# empty until the dev proof confirms which options RDS Oracle 19c in GovCloud both
+# supports and requires for the STIG posture.
+
+options: []
+  # Example shape (verify availability + necessity before enabling):
+  # - name: NATIVE_NETWORK_ENCRYPTION
+  #   stig_intent: "Encrypt Oracle client/server traffic (SRG-APP-000441/442)."
+  #   notes: "Confirm GovCloud availability + settings; may overlap RDS TLS."
