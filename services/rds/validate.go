@@ -67,3 +67,47 @@ func validatePgQueryLogging(opts *PgQueryLoggingOptions) error {
 
 	return nil
 }
+
+// validOracleLogExports is the allowlist of CloudWatch log-export types a
+// customer may request for an Oracle instance (RDS Oracle supported set).
+var validOracleLogExports = []string{"alert", "audit", "listener", "trace", "oemagent"}
+
+// validateOracleOptions enforces an ALLOWLIST for Oracle create/update parameters
+// (#535). Oracle is a self-service, born-hardened offering; a customer must not be
+// able to (a) use MySQL/Postgres-only knobs that don't apply, (b) weaken the STIG
+// baseline, or (c) turn on public accessibility. Unknown-but-harmless params are
+// tolerated; the ones below are the meaningful footguns. This is called only for
+// Oracle engines, so postgres/mysql behavior is unchanged.
+func validateOracleOptions(o Options) error {
+	// Attack-surface / STIG-baseline protection: publicly_accessible must never be
+	// set true for Oracle (plan is private-only, ADR-0004).
+	if o.PubliclyAccessible {
+		return fmt.Errorf("publicly_accessible is not permitted for Oracle instances (private-only)")
+	}
+	// MySQL-only knobs are meaningless on Oracle — reject to avoid silent no-ops
+	// that mislead a self-service customer.
+	if o.EnableFunctions {
+		return fmt.Errorf("enable_functions is a MySQL-only option and is not supported for Oracle")
+	}
+	if o.BinaryLogFormat != "" {
+		return fmt.Errorf("binary_log_format is a MySQL-only option and is not supported for Oracle")
+	}
+	// PostgreSQL-only knobs.
+	if o.EnablePgCron != nil {
+		return fmt.Errorf("enable_pg_cron is a PostgreSQL-only option and is not supported for Oracle")
+	}
+	if o.PgQueryLogging != nil {
+		return fmt.Errorf("pg_query_logging is a PostgreSQL-only option and is not supported for Oracle")
+	}
+	// In-place version change is not supported for Oracle yet (#524 follow-up).
+	if o.Version != "" {
+		return fmt.Errorf("version selection is not yet supported for Oracle; the plan pins the engine version")
+	}
+	// Log exports must be within the Oracle-supported allowlist.
+	for _, e := range o.EnableCloudWatchLogGroupExports {
+		if !slices.Contains(validOracleLogExports, e) {
+			return fmt.Errorf("unsupported Oracle CloudWatch log export %q; valid options: %v", e, validOracleLogExports)
+		}
+	}
+	return nil
+}

@@ -182,6 +182,16 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 		)
 	}
 
+	// Oracle create-parameter allowlist (#535): reject MySQL/Postgres-only knobs,
+	// version selection, public accessibility, and out-of-allowlist log exports so
+	// a self-service customer cannot weaken the born-hardened baseline or get a
+	// misleading silent no-op. Runs only for Oracle; other engines unaffected.
+	if isOracleEngine(plan.DbType) {
+		if err := validateOracleOptions(options); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate oracle parameters")
+		}
+	}
+
 	// make sure it's a valid major version.
 	if options.Version != "" {
 		// Check to make sure that the version specified is allowed by the plan.

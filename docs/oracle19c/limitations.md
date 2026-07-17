@@ -12,15 +12,16 @@
 
 ## Known limitations
 
-1. **Master credential reused per binding**
-   ([#534](https://github.com/cloud-gov/aws-broker/issues/534)). The broker returns
-   the instance master credential for every binding (parity with existing RDS
-   engines). For Oracle this credential holds the **DBA** role, so bound apps are
-   over-privileged relative to STIG least-privilege intent. **Because of this,
-   Oracle provisioning is gated behind an explicit `ENABLE_ORACLE` feature flag**
-   (`config.Settings.EnableOracleFeature`) and fails closed by default — an
-   operator must opt in per environment. A per-binding least-privilege Oracle app
-   user is the tracked fix that will lift the gate.
+1. **Master credential reused per binding — `ENABLE_ORACLE`-gated, #534 is a
+   pre-release blocker.** The broker returns the instance master credential for
+   every binding (parity with existing engines), but the Oracle RDS master user
+   holds the **DBA** role. Because Oracle is **self-service** (no operator in the
+   bind path), a customer binding N apps hands DBA to all N, and any bound app can
+   `ALTER SYSTEM` / `DROP AUDIT POLICY` to disable the STIG hardening. Interim
+   safeguard: Oracle provisioning is gated behind `ENABLE_ORACLE` (fail-closed) and
+   dev-tier only. The per-binding least-privilege Oracle app user
+   ([#534](https://github.com/cloud-gov/aws-broker/issues/534)) is a **must-fix
+   before any non-dev Oracle plan**, not a nice-to-have.
 2. **No in-place engine-version update** for Oracle yet
    (`oracle19cBaseline.SupportsEngineVersionUpdate()` returns false). Version is
    pinned by the plan; major-version handling for parameter/option groups is a

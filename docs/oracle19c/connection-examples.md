@@ -34,6 +34,32 @@ After `cf bind-service my-app my-oracle`, the binding credentials appear in
 cf env my-app   # inspect VCAP_SERVICES.aws-rds[0].credentials
 ```
 
+## Space egress (first-time setup)
+
+By default every Cloud.gov space is **closed-egress** — an app cannot reach its
+brokered database until you open egress. This is a self-service step (no operator
+needed), same as the documented psql/mysql flow:
+
+```bash
+cf bind-security-group trusted_local_networks_egress <ORG> --space <SPACE>
+```
+
+Without it you'll see `connection refused` / connection-timeout errors.
+
+## Connecting from your laptop (SSH tunnel)
+
+Cloud.gov databases are **not reachable directly from your machine** — connect
+through an SSH tunnel (same as psql/mysql):
+
+```bash
+# open a tunnel (keep it running):
+cf ssh -N -L 1521:<host>:1521 my-app
+# then use localhost:1521 with SQLcl / sqlplus / your client, e.g.:
+sql APP_USER/"$PASSWORD"@//localhost:1521/ORCL
+```
+
+`<host>`, `username`, `password` come from `cf env my-app`.
+
 ## JDBC (Java)
 
 ```java

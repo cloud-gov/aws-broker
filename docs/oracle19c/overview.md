@@ -8,16 +8,34 @@
 ## What it is
 
 A STIG-hardened **Oracle Database 19c** offering delivered through the existing
-Cloud.gov `aws-broker` as an RDS service plan (`oracle-19c-dev`). A tenant does:
+Cloud.gov `aws-broker` as an RDS service plan (`oracle-19c-dev`). It is consumed
+**self-service by application developers** — not Cloud Foundry operators — exactly
+like the documented `micro-psql` / `small-mysql` plans:
 
 ```
 cf create-service aws-rds oracle-19c-dev my-oracle
 cf bind-service my-app my-oracle
+cf bind-security-group trusted_local_networks_egress <ORG> --space <SPACE>   # open egress
 ```
 
-and receives Oracle connection details in `VCAP_SERVICES`. The broker provisions a
-private, encrypted, **born-hardened** RDS Oracle instance; STIG posture is validated
-out-of-band by the [`cg-oracle-database-19c-stig-overlay`](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay).
+The broker provisions a private, encrypted, **born-hardened** RDS Oracle instance;
+STIG posture is validated out-of-band by the
+[`cg-oracle-database-19c-stig-overlay`](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay).
+
+### Self-service model (what the customer can/can't do)
+
+- **Can**, without an operator: create/update/bind/unbind, rotate credentials
+  (`-c '{"rotate_credentials": true}'`), open space egress, tunnel via `cf ssh`,
+  and set the allowlisted `-c` params (`storage`, `backup_retention_period`,
+  `storage_type`, `enable_cloudwatch_log_groups_exports`). See
+  [service-plans.md](service-plans.md).
+- **Cannot** (by design): get `SYS`/`SYSDBA` (RDS gives a master user); weaken the
+  STIG baseline or pass MySQL/Postgres-only knobs (rejected fail-closed, #535);
+  reach the DB directly from a laptop (tunnel required); force a reboot for
+  pending-reboot parameter changes or restore a backup — those go through
+  cloud.gov support, same as psql/mysql.
+- **Operator-controlled**: whether the Oracle offering is switched on at all
+  (`ENABLE_ORACLE`, a platform rollout switch — not a per-request approval).
 
 ## Key properties
 

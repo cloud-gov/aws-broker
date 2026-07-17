@@ -7,12 +7,29 @@ bindings (current model, [#534](https://github.com/cloud-gov/aws-broker/issues/5
 
 ## Rotate
 
-1. Re-provision or `cf update-service` to regenerate the credential (broker
-   generates a new random password, re-encrypts, updates RDS master password).
-2. Re-bind affected apps: `cf unbind-service` → `cf bind-service` →
-   `cf restage --strategy rolling`.
-3. A stale credential is denied (fail-closed) until the app re-reads
-   `VCAP_SERVICES`.
+Self-service (matches the documented psql/mysql flow — no operator needed):
+
+1. Rotate the master password:
+   ```bash
+   cf update-service my-oracle -c '{"rotate_credentials": true}'
+   ```
+2. Re-bind so the app receives the new credential (wait ~1 min between unbind/bind):
+   ```bash
+   cf unbind-service my-app my-oracle
+   cf bind-service my-app my-oracle
+   ```
+3. Recreate any service keys:
+   ```bash
+   cf delete-service-key my-oracle my-key
+   cf create-service-key my-oracle my-key
+   ```
+4. Restage (rolling to stay available):
+   ```bash
+   cf restage my-app --strategy rolling
+   ```
+
+> Rotating credentials can incur brief downtime depending on how the app pools
+> connections — same caveat cloud.gov documents for psql/mysql.
 
 ## Notes
 

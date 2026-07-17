@@ -331,6 +331,19 @@ rds:
     # never by this broker. `dbType: oracle-ee` and RDS accepts licenseModel
     # `bring-your-own-license` for Oracle (verified against aws-sdk-go-v2 RDS
     # CreateDBInstance docs). SID/DBName is Oracle-constrained (<=8, uppercase).
+    #
+    # CUSTOMER MODEL: consumed self-service by app developers (not operators) via
+    # `cf create-service aws-rds oracle-19c-dev my-db` + `cf bind-service`, exactly
+    # like the documented micro-psql/small-mysql plans. This is a DEV-tier plan
+    # (…-dev suffix mirrors the sandbox-only micro-psql/small-mysql tier). Future
+    # production plans follow the documented family naming: small-oracle,
+    # medium-oracle, …-redundant / …-replica — added only AFTER the live dev proof
+    # (WS15) and the per-binding least-privilege user (#534, a pre-release blocker
+    # for any non-dev Oracle plan because the Oracle RDS master user holds DBA and
+    # is currently handed to every self-service binding).
+    #
+    # Oracle provisioning is additionally gated behind the broker's ENABLE_ORACLE
+    # rollout switch (platform-level, not per-customer approval) until #534 lands.
     # ------------------------------------------------------------------------
     - id: "b48f5f9e-7f8a-4c2b-9a1d-0f4e8c2a7d10"
       name: "oracle-19c-dev"
