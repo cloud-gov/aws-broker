@@ -89,7 +89,7 @@ func (w *CreateWorker) prepareCreateDbInput(
 		// Instance class is defined by the plan
 		DBInstanceClass:         &plan.InstanceClass,
 		DBInstanceIdentifier:    &i.Database,
-		DBName:                  aws.String(formatDBName(i.Database)),
+		DBName:                  aws.String(formatDBNameForEngine(i.DbType, i.Database)),
 		Engine:                  aws.String(i.DbType),
 		MasterUserPassword:      &password,
 		MasterUsername:          &i.Username,

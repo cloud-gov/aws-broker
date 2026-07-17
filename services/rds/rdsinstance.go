@@ -294,8 +294,15 @@ func (i *RDSInstance) setPgQueryLogging(options Options) error {
 }
 
 func (i *RDSInstance) hasEngineVersionUpdate(options Options) bool {
-	// Currently only supported for MySQL and PostgreSQL instances.
-	return (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != ""
+	// Delegates to the per-engine RDSBaseline (WS3 #523). Postgres/MySQL support
+	// version updates; Oracle does not in this iteration. Unknown engines: no.
+	if options.Version == "" {
+		return false
+	}
+	if b, ok := baselineFor(i.DbType); ok {
+		return b.SupportsEngineVersionUpdate()
+	}
+	return false
 }
 
 func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
