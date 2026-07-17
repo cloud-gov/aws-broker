@@ -1,0 +1,12 @@
+# Free AWS RDS control-plane mock for broker flow tests (WS10/11, #529).
+# moto is control-plane ONLY (no Oracle engine). Point the broker/tests at
+# http://localhost:5000 via the aws-sdk-go-v2 rds BaseEndpoint override.
+# Known gap: moto does not implement create_db_subnet_group (stub that path).
+services:
+  moto:
+    image: motoserver/moto:latest
+    container_name: cg-moto-rds
+    ports:
+      - "5000:5000"
+    environment:
+      MOTO_PORT: "5000"

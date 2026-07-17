@@ -17,3 +17,6 @@ go.work
 go.work.sum
 
 *.sqlite*
+
+# Local Oracle hardening harness output (WS10/11, dev signal only)
+local/reports/

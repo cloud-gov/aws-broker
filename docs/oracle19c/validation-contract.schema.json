@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cloud-gov/aws-broker/docs/oracle19c/validation-contract.schema.json",
+  "title": "Oracle 19c broker validation contract",
+  "description": "Broker-produced description of a provisioned RDS Oracle 19c instance, consumed by cg-oracle-database-19c-stig-overlay to run + layer STIG validation (epic #519, WS12/13 #530, ADR-0002). MUST NOT contain secrets: no plaintext passwords, AWS secret keys, admin credentials, or customer data. Credentials are referenced by opaque ref only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "service_instance_id",
+    "broker",
+    "plan",
+    "environment",
+    "aws_partition",
+    "aws_region",
+    "engine",
+    "engine_version",
+    "endpoint",
+    "port",
+    "storage_encrypted",
+    "publicly_accessible",
+    "cloudwatch_log_exports"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version of this contract."
+    },
+    "service_instance_id": { "type": "string", "minLength": 1 },
+    "broker": { "type": "string", "const": "aws-broker" },
+    "plan": { "type": "string", "minLength": 1, "examples": ["oracle-19c-dev"] },
+    "environment": {
+      "type": "string",
+      "enum": ["local-dev", "aws-broker-rds-dev", "aws-broker-rds-prod-like"],
+      "description": "Lets the overlay distinguish local dev signal from real RDS evidence (ADR-0005)."
+    },
+    "aws_partition": { "type": "string", "examples": ["aws-us-gov"] },
+    "aws_region": { "type": "string", "examples": ["us-gov-west-1"] },
+    "engine": { "type": "string", "enum": ["oracle-ee", "oracle-se2"] },
+    "engine_version": { "type": "string", "examples": ["19.0.0.0.ru-2024-07.rur-2024-07.r1"] },
+    "endpoint": {
+      "type": "string",
+      "description": "RDS endpoint host (or tunnel host for the overlay). Not a secret."
+    },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 1521 },
+    "service_name": { "type": "string", "examples": ["ORCL"] },
+    "db_name": { "type": "string", "examples": ["ORCL"] },
+    "parameter_group": { "type": "string" },
+    "option_group": { "type": "string" },
+    "kms_key_id": {
+      "type": "string",
+      "description": "KMS key ARN/id used for encryption at rest. An identifier, not key material."
+    },
+    "storage_encrypted": { "type": "boolean" },
+    "publicly_accessible": { "type": "boolean", "const": false, "description": "Oracle plan is private-only (ADR-0004)." },
+    "multi_az": { "type": "boolean" },
+    "backup_retention_period": { "type": "integer", "minimum": 0 },
+    "deletion_protection": { "type": "boolean" },
+    "cloudwatch_log_exports": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["alert", "audit", "listener", "trace", "oemagent"] },
+      "description": "Enabled CloudWatch Logs export types."
+    },
+    "assessment_credential_ref": {
+      "type": "string",
+      "description": "OPAQUE reference (e.g. binding GUID / secret-store path) the operator resolves out-of-band to obtain the assessment DB credential. NEVER the credential itself."
+    },
+    "app_credential_ref": {
+      "type": "string",
+      "description": "OPAQUE reference to the application binding credential. NEVER the credential itself."
+    },
+    "tags": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "$comment": "Forbidden keys (enforced by tests, not schema): password, master_password, master_username, aws_secret_access_key, secret_access_key, admin_password. The renderer must fail closed if any appear."
+}
