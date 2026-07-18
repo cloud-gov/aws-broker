@@ -13,8 +13,10 @@ import (
 // the per-engine differences easy to review side by side.
 
 // nonAlnumLower strips everything that is not [a-z0-9]; this is the historical
-// formatDBName behavior for postgres/mysql (see credentials.go).
-var nonAlnumLower = regexp.MustCompile(`(i?)[^a-z0-9]`)
+// formatDBName behavior for postgres/mysql (see credentials.go). The prior code
+// carried a `(i?)` prefix — a no-op capturing group (not the `(?i)` inline flag),
+// dropped here since the class already excludes uppercase; behavior is unchanged.
+var nonAlnumLower = regexp.MustCompile(`[^a-z0-9]`)
 
 // ---------------------------------------------------------------------------
 // PostgreSQL
