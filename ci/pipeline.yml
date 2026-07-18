@@ -189,7 +189,6 @@ jobs:
             aws-rds:small-mysql-redundant
             aws-rds:small-psql
             aws-rds:small-psql-redundant
-            aws-rds:oracle-19c-dev
             aws-elasticache-redis:redis-dev
             aws-elasticache-redis:redis-3node
             aws-elasticache-redis:redis-5node
@@ -701,28 +700,45 @@ jobs:
                 DB_TYPE: mysql
                 ALLOW_MAJOR_VERSION_UPGRADE: true
 
+            # ---------------------------------------------------------------
             # Oracle 19c dev smoke test (epic #519; supersedes stalled PR #500).
-            # Exercises provision + bind + connect for the STIG-hardened Oracle
-            # plan and confirms the born-hardened CloudWatch audit exports are
-            # requested on create. Requires ENABLE_ORACLE in the development broker
-            # env (Oracle is feature-gated for the master-cred limitation, #534).
-            # Oracle is BYOL: the cloud.gov dev account must itself be Oracle-
-            # licensed for this test to run lawfully (we do not manage customer
-            # licenses — see docs/oracle19c/licensing.md). Enable the plan below
-            # only once the dev account's own entitlement is confirmed.
-            - task: smoke-tests-oracle
-              file: aws-broker-app/ci/run-smoke-tests.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-tests-cf-organization))
-                CF_SPACE: ((development-tests-cf-space))
-                SERVICE_PLAN: oracle-19c-dev
-                DB_TYPE: oracle-ee
-                ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["alert","audit","listener"]'
+            # DISABLED / template — do NOT uncomment until ALL preconditions hold,
+            # or it will red the shared acceptance job (adversarial review C1/C2):
+            #   1. ENABLE_ORACLE is set in the development broker env (Oracle is
+            #      feature-gated for the master-cred limitation, #534).
+            #   2. meta.aws_broker.oracle_security_group exists in the dev secrets
+            #      so the Oracle plan renders + the broker registers it (otherwise
+            #      enable-service-access / spruce merge fails for ALL services).
+            #   3. oracle-19c-dev is added to the `update-broker` SERVICES list
+            #      above (kept out on purpose until 1+2 are true).
+            #   4. The smoke app can actually connect: goracle.v2 dlopens Oracle
+            #      Instant Client (libclntsh) at runtime, which the go_buildpack
+            #      rootfs does NOT provide and which is NOT vendored today
+            #      (ci/smoke-tests/aws-rds/include/ is absent). Vendor Instant
+            #      Client (+ LD_LIBRARY_PATH) or move the smoke app to a pure-Go
+            #      path first (#519/WS15 follow-up).
+            #   5. The cloud.gov dev account is itself Oracle-licensed (BYOL — we
+            #      do not manage customer licenses; docs/oracle19c/licensing.md).
+            # When enabling, use run-smoke-tests-db-updates.yml (not
+            # run-smoke-tests.yml) if you want ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_
+            # ON_CREATE to actually take effect — run-smoke-tests.sh ignores it.
+            # Wrap in a Concourse `ensure:` teardown to avoid leaking a live EE
+            # Oracle instance + 14-day backups if the run fails mid-way.
+            #
+            # - task: smoke-tests-oracle
+            #   file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+            #   image: general-task
+            #   params:
+            #     BROKER_NAME: ((development-broker-name))
+            #     CF_API_URL: ((development-cf-api-url))
+            #     CF_USERNAME: ((development-cf-deploy-username))
+            #     CF_PASSWORD: ((development-cf-deploy-password))
+            #     CF_ORGANIZATION: ((development-tests-cf-organization))
+            #     CF_SPACE: ((development-tests-cf-space))
+            #     SERVICE_PLAN: oracle-19c-dev
+            #     DB_TYPE: oracle-ee
+            #     ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["alert","audit","listener"]'
+            # ---------------------------------------------------------------
     on_failure:
       put: slack
       params:

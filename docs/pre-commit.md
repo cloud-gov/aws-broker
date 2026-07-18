@@ -38,9 +38,15 @@ aws-broker had **no prior lint gate** (CI was `go test ./...` only) and carries
 ~53 pre-existing golangci-lint findings (errcheck/ineffassign/unused/staticcheck)
 in code this branch did not write. Turning on a whole-repo gate would block every
 commit on inherited debt, which trains people to `--no-verify`. So
-`scripts/lint-oracle-go.sh` runs the full linter suite but fails only on findings
-in the files this branch authored (`engine.go`, `engine_baselines.go`,
-`baselines.go`, and their tests). Those must stay clean.
+`scripts/lint-oracle-go.sh` runs the full linter suite on `services/rds/` and then
+**attributes each finding to the git commit that last touched that line**: a
+finding fails the commit only if its commit is on this branch (or is uncommitted
+working-tree changes). This covers **every Oracle file we authored *or modified*** —
+including the security-critical `broker.go` (ENABLE_ORACLE gate), `validate.go`
+(allowlist), and `credentials.go` (binding payload) — not just brand-new files.
+Inherited debt is excluded by **authorship**, not a filename allowlist. The gate
+**fails closed** if golangci-lint itself errors (crash/missing binary), so it can
+never report a false green.
 
 **Follow-up (tracked):** burn down the inherited findings, then widen the gate to
 `./...`. Until then, whole-repo debt is visible via `golangci-lint run ./...` but

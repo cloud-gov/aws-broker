@@ -73,14 +73,15 @@ repos:
         pass_filenames: false
 
       - id: golangci-lint-oracle
-        name: golangci-lint (Oracle-19c files)
+        name: golangci-lint (Oracle-19c changes)
         description: >-
-          Full linter suite gated to the Go files this branch authored for the
-          Oracle work (scripts/lint-oracle-go.sh). Whole-repo golangci-lint
-          currently reports ~53 pre-existing inherited findings (no prior lint
-          gate existed); a tracked follow-up burns those down and widens to ./... .
-          Package-level run (single-file mode breaks typecheck for cross-file
-          types); fails only on findings in our authored Oracle files.
+          Full linter suite gated to findings this branch introduced, attributed
+          by git blame provenance (scripts/lint-oracle-go.sh) — covers every
+          Oracle file we authored OR modified (broker/validate/credentials/…),
+          not just new files. Inherited debt (~53 pre-existing findings, no prior
+          lint gate) is excluded by authorship, not a filename allowlist. Fails
+          closed if golangci-lint itself errors. A tracked follow-up widens to
+          whole-repo after debt burn-down.
         entry: bash scripts/lint-oracle-go.sh
         language: system
         pass_filenames: false

@@ -20,3 +20,6 @@ go.work.sum
 
 # Local Oracle hardening harness output (WS10/11, dev signal only)
 local/reports/
+
+# compiled smoke-test binary (build artifact)
+ci/smoke-tests/aws-rds/aws-rds
