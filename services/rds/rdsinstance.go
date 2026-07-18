@@ -368,11 +368,10 @@ func (i *RDSInstance) getTags() map[string]string {
 	return i.Tags
 }
 
-func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
+func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) {
 	if len(enabledLogGroups) > 0 {
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
 	}
-	return nil
 }
 
 // applyDefaultLogExportsIfUnset applies the engine's default CloudWatch log-export

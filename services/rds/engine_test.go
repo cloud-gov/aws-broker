@@ -81,7 +81,7 @@ func TestFormatDBNameOracleIsFixedUppercaseSID(t *testing.T) {
 		t.Errorf("oracleSID %q must be 1..8 chars", oracleSID)
 	}
 	for _, r := range oracleSID {
-		if !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') {
+		if (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			t.Errorf("oracleSID %q must be uppercase alnum", oracleSID)
 		}
 	}

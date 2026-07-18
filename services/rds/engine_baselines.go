@@ -139,7 +139,7 @@ func (oracle19cBaseline) ValidateIdentifiers(dbName, username string) error {
 		return fmt.Errorf("oracle SID/DBName %q must be 1..8 characters", dbName)
 	}
 	for _, r := range dbName {
-		if !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') {
+		if (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return fmt.Errorf("oracle SID/DBName %q must be uppercase alphanumeric", dbName)
 		}
 	}
