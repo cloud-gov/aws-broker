@@ -34,6 +34,11 @@ Defined in `catalog-template.yml` / `catalog-test.yml`:
 > `cf create-service … oracle-19c-dev …` returns an error pointing to #534 when the
 > flag is unset.
 
+> **BYOL — customer must be licensed.** This plan is `bring-your-own-license`; AWS
+> does not supply the Oracle license. A customer's org must have (or provide proof
+> of) an Oracle EE license covering the instance's vCPUs before Oracle is enabled
+> for them. See [licensing.md](licensing.md) and gate [#536](https://github.com/cloud-gov/aws-broker/issues/536).
+
 ## Create parameters
 
 The Oracle baseline is applied automatically (born hardened). Because Oracle is a

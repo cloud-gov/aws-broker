@@ -39,12 +39,22 @@ func main() {
 	}
 
 	switch {
-	case strings.Contains("postgres", dbType):
+	// NOTE: use strings.Contains(dbType, keyword) — the args were previously
+	// reversed (strings.Contains("oracle", dbType)), which asks whether the
+	// literal "oracle" contains e.g. "oracle-ee" → false, so the DB test silently
+	// never ran and the smoke test passed without touching the database. Oracle
+	// plans pass DB_TYPE=oracle-ee (epic #519), which exposed the bug.
+	case strings.Contains(dbType, "postgres"):
 		openAndTest("postgres", svc.Credentials["uri"].(string))
-	case strings.Contains("mysql", dbType):
+	case strings.Contains(dbType, "mysql"):
 		openAndTest("mysql", fmtMysql(svc))
-	case strings.Contains("oracle", dbType):
-		openAndTest("oracle", svc.Credentials["uri"].(string))
+	case strings.Contains(dbType, "oracle"):
+		// The goracle driver registers itself under the name "goracle" and expects
+		// an EZConnect DSN (user/pass@host:port/service), NOT the oracle:// URI the
+		// broker emits. Build it from the discrete binding fields (epic #519).
+		openAndTest("goracle", fmtOracle(svc))
+	default:
+		panic("unsupported DB_TYPE: " + dbType)
 	}
 
 	fmt.Printf("tested %s database, things look good, starting web server now.", dbType)
@@ -71,6 +81,34 @@ func fmtMysql(svc *cfenv.Service) string {
 	cfg.Addr = fmt.Sprintf("%s", svc.Credentials["host"].(string))
 
 	return cfg.FormatDSN()
+}
+
+// fmtOracle builds an EZConnect DSN for the goracle driver from the broker's
+// Oracle binding fields (username/password/host/port/service_name), rather than
+// the oracle:// URI (which goracle does not parse). Epic #519.
+func fmtOracle(svc *cfenv.Service) string {
+	user, ok := svc.CredentialString("username")
+	if !ok {
+		panic("cannot parse username in oracle config")
+	}
+	pass, ok := svc.CredentialString("password")
+	if !ok {
+		panic("cannot parse password in oracle config")
+	}
+	host, ok := svc.CredentialString("host")
+	if !ok {
+		panic("cannot parse host in oracle config")
+	}
+	port, ok := svc.CredentialString("port")
+	if !ok {
+		panic("cannot parse port in oracle config")
+	}
+	service, ok := svc.CredentialString("service_name")
+	if !ok {
+		panic("cannot parse service_name in oracle config")
+	}
+	// goracle EZConnect: user/password@host:port/service_name
+	return fmt.Sprintf("%s/%s@%s:%s/%s", user, pass, host, port, service)
 }
 
 func openAndTest(dbType string, dsn interface{}) {
