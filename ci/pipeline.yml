@@ -705,10 +705,11 @@ jobs:
             # Exercises provision + bind + connect for the STIG-hardened Oracle
             # plan and confirms the born-hardened CloudWatch audit exports are
             # requested on create. Requires ENABLE_ORACLE in the development broker
-            # env (Oracle is feature-gated, #534) and a BYOL entitlement in the dev
-            # account (see docs/oracle19c/licensing.md). Until those preconditions
-            # are met the platform team keeps oracle-19c-dev out of the enabled dev
-            # plans list above, so this task no-ops on an unprovisionable plan.
+            # env (Oracle is feature-gated for the master-cred limitation, #534).
+            # Oracle is BYOL: the cloud.gov dev account must itself be Oracle-
+            # licensed for this test to run lawfully (we do not manage customer
+            # licenses — see docs/oracle19c/licensing.md). Enable the plan below
+            # only once the dev account's own entitlement is confirmed.
             - task: smoke-tests-oracle
               file: aws-broker-app/ci/run-smoke-tests.yml
               image: general-task

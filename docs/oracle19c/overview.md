@@ -42,7 +42,7 @@ STIG posture is validated out-of-band by the
 | Property | Value | Why |
 |----------|-------|-----|
 | Engine | `oracle-ee` 19c | Enterprise Edition ([ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md)) |
-| License | **BYOL** (bring-your-own-license) | GovCloud policy ([ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md), gate [#536](https://github.com/cloud-gov/aws-broker/issues/536)) |
+| License | **BYOL** (bring-your-own-license) — customer-licensed, not broker-enforced ([licensing.md](licensing.md)) | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md) |
 | Encryption | at rest (KMS) | STIG / SC-28 |
 | Network | private only | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md); no public accessibility |
 | Parameter group | broker-managed hardened baseline (born hardened) | [ADR-0003](../decisions/ADR-0003-design-oracle-baseline-for-future-csb-portability.md), [#525](https://github.com/cloud-gov/aws-broker/issues/525) |

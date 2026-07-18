@@ -23,9 +23,11 @@ editions/regions, and a cloud.gov cost/policy question) or **Bring-Your-Own-Lice
 1. **Target standard Amazon RDS for Oracle 19c first.** Escalate to RDS Custom or
    self-managed EC2 **only if** a STIG gap analysis proves standard RDS cannot meet
    the required control posture.
-2. **License model: BYOL** (`licenseModel: bring-your-own-license`). Documented in
-   the catalog plan and customer docs; a license-evidence gate is tracked in
-   [#536](https://github.com/cloud-gov/aws-broker/issues/536).
+2. **License model: BYOL** (`licenseModel: bring-your-own-license`). The customer
+   is solely responsible for holding a valid Oracle license; **cloud.gov does not
+   manage, supply, verify, or enforce it** and does not gate provisioning on
+   license evidence. Customer instructions live in
+   [licensing.md](../oracle19c/licensing.md).
 3. **Edition:** default `oracle-ee` for 19c unless a SE2 gap analysis shows SE2
    suffices; the choice is recorded in the catalog plan and can be revisited.
 
@@ -35,14 +37,16 @@ editions/regions, and a cloud.gov cost/policy question) or **Bring-Your-Own-Lice
   hardening), a smaller broker responsibility surface, and the standard RDS
   lifecycle the broker already drives. STIG controls cleanly split into
   broker/param/option/SQL/inherited layers (mapped in the overlay).
-- **Positive (BYOL):** avoids brokering unlicensed Oracle and License-Included
-  availability/cost uncertainty in GovCloud; the tenant/org owns the license.
+- **Positive (BYOL):** avoids License-Included availability/cost uncertainty in
+  GovCloud; the customer owns the license (and the responsibility for it), which is
+  the correct boundary — cloud.gov is not in the Oracle-licensing business.
 - **Negative:** ~33 overlay controls are OS/listener-level and **cannot** be
   validated on RDS — they must be marked `aws_inherited` / `not_applicable_rds`
   (overlay [#1](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/1)),
   not failed.
-- **Negative (BYOL):** requires a license-evidence process before provisioning
-  ([#536](https://github.com/cloud-gov/aws-broker/issues/536)).
+- **Negative (BYOL):** the customer must arrange their own Oracle entitlement
+  before use; we provide clear instructions ([licensing.md](../oracle19c/licensing.md))
+  rather than a broker-enforced gate.
 - **Escalation trigger:** if the STIG gap analysis ([#530](https://github.com/cloud-gov/aws-broker/issues/530))
   finds required controls that standard RDS cannot satisfy, re-open the RDS-Custom
   vs EC2 decision as a new ADR.

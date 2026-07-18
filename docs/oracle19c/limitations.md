@@ -33,10 +33,12 @@
    hardened baseline is the STIG-recommended posture; each value must be confirmed
    supported+modifiable on the actual RDS Oracle 19c family before production
    (WS15). Unsupported values surface, not silently dropped.
-5. **BYOL license gate not yet enforced**
-   ([#536](https://github.com/cloud-gov/aws-broker/issues/536)). The plan is marked
-   `bring-your-own-license`; a license-evidence gate before provisioning is a
-   follow-up.
+5. **BYOL — customer-licensed, not broker-enforced (by design, not a gap).** The
+   plan is `bring-your-own-license`; the customer is solely responsible for holding
+   a valid Oracle license. cloud.gov does not manage, verify, or enforce it and
+   does not gate provisioning on license evidence — we provide instructions
+   ([licensing.md](licensing.md)) instead. This is an intentional responsibility
+   boundary, not an unfinished feature.
 6. **Option group empty.** No option-group options are enabled by default; some
    Oracle security features (e.g. native network encryption) may need options once
    GovCloud availability is confirmed ([#526](https://github.com/cloud-gov/aws-broker/issues/526)).
