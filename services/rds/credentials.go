@@ -128,9 +128,10 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 // oracleCredentials builds the Oracle-specific binding payload (WS9 #528).
 // It returns machine-readable connection details for a bound app: a URI using
 // the "oracle" scheme with the service name as the path, a JDBC thin URL, the
-// service name/SID, and ssl_required. NOTE (#534): the broker currently returns
-// the instance master credential for every binding; a per-binding least-privilege
-// Oracle app user is a tracked follow-up. No admin/master flag is exposed here.
+// service name/SID, and ssl_required. Like the postgres/mysql plans, the broker
+// returns the instance master credential per binding; the customer is expected to
+// create their own least-privilege in-database users (the intended shared-
+// responsibility boundary). No admin/master marker key is exposed here.
 func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) map[string]string {
 	// EZConnect-style URI: oracle://user:pass@host:port/SERVICE_NAME
 	uri := fmt.Sprintf(

@@ -169,14 +169,14 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching RDS plan")
 	}
 
-	// Oracle is gated behind an explicit per-environment feature flag (#534, PR
-	// review): the Oracle RDS master user holds DBA and the broker currently
-	// returns the master credential for every binding. Fail closed unless the
-	// operator has opted in via ENABLE_ORACLE. This prevents accidental Oracle
-	// provisioning with the known master-credential-reuse limitation.
+	// Oracle provisioning is behind a staged-rollout switch (ENABLE_ORACLE) — a new
+	// offering not yet validated on a live foundation, so operators control when it
+	// appears. This is NOT a security/boundary control: Oracle uses the same
+	// credential model as the postgres/mysql plans (master credential per binding;
+	// the customer creates their own least-privilege in-database users).
 	if isOracleEngine(plan.DbType) && !broker.settings.EnableOracleFeature {
 		return apiresponses.NewFailureResponse(
-			fmt.Errorf("oracle plans are not enabled in this environment; the Oracle offering is gated pending per-binding least-privilege credentials (see cloud-gov/aws-broker#534). Set ENABLE_ORACLE to opt in"),
+			fmt.Errorf("oracle plans are not enabled in this environment; set ENABLE_ORACLE to opt in (staged rollout of a new offering)"),
 			http.StatusBadRequest,
 			"oracle feature disabled",
 		)
@@ -333,15 +333,16 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	}
 
-	// Oracle guards also apply on UPDATE (#519 review H1): the ENABLE_ORACLE gate
-	// and the create-parameter allowlist must not be bypassable via
-	// cf update-service. Without this, an operator disabling ENABLE_ORACLE would
-	// not stop updates to existing Oracle instances, and a customer could pass
-	// MySQL/Postgres-only or baseline-weakening params on update.
+	// Oracle guards also apply on UPDATE (#519 review H1): the ENABLE_ORACLE
+	// staged-rollout switch and the create-parameter allowlist must not be
+	// bypassable via cf update-service. Without this, an operator who has not
+	// enabled Oracle could still have existing Oracle instances updated, and a
+	// customer could pass MySQL/Postgres-only or baseline-weakening params on
+	// update.
 	if isOracleEngine(existingInstance.DbType) {
 		if !broker.settings.EnableOracleFeature {
 			return apiresponses.NewFailureResponse(
-				fmt.Errorf("oracle plans are not enabled in this environment; the Oracle offering is gated pending per-binding least-privilege credentials (see cloud-gov/aws-broker#534). Set ENABLE_ORACLE to opt in"),
+				fmt.Errorf("oracle plans are not enabled in this environment; set ENABLE_ORACLE to opt in (staged rollout of a new offering)"),
 				http.StatusBadRequest,
 				"oracle feature disabled",
 			)

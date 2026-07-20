@@ -27,12 +27,13 @@ Defined in `catalog-template.yml` / `catalog-test.yml`:
 > Provisioning requires `meta.aws_broker.oracle_security_group` to be defined in
 > the environment (mirrors the postgres/mysql security-group pattern).
 
-> **Feature-gated.** Oracle provisioning is disabled unless the broker environment
-> sets `ENABLE_ORACLE` (`EnableOracleFeature`). This is a fail-closed safeguard for
-> the master-credential-reuse limitation ([#534](https://github.com/cloud-gov/aws-broker/issues/534)):
-> the Oracle RDS master user holds DBA and is currently returned to every binding.
-> `cf create-service … oracle-19c-dev …` returns an error pointing to #534 when the
-> flag is unset.
+> **Staged rollout.** Oracle provisioning is disabled unless the broker environment
+> sets `ENABLE_ORACLE` (`EnableOracleFeature`). This is a rollout control for a new
+> offering not yet validated on a live foundation — **not** a security/boundary
+> control. Oracle uses the same credential model as the postgres/mysql plans
+> (master credential per binding; the customer creates their own least-privilege
+> in-database users). `cf create-service … oracle-19c-dev …` returns an
+> opt-in-required error when the flag is unset.
 
 > **BYOL — customer-licensed.** This plan is `bring-your-own-license`; AWS does not
 > supply the Oracle license and **cloud.gov does not manage, verify, or enforce it**.
@@ -69,10 +70,9 @@ plan for now). Broker-generated identifiers are validated before the AWS call
 `micro-psql`/`small-mysql` tier). Production plans will follow the documented RDS
 family naming customers already use — `small-oracle`, `medium-oracle`,
 `large-oracle`, and `*-redundant` / `*-replica` variants — and are added **only
-after** (a) the live dev-RDS proof (WS15) and (b) the per-binding least-privilege
-Oracle user (**#534**), which is a **pre-release blocker** for any non-dev plan
-because the Oracle RDS master user holds DBA and is currently handed to every
-self-service binding.
+after** the live dev-RDS proof (WS15) confirms the parameter/option/log posture on
+the real engine. Production plans use the same credential model as the other RDS
+plans (master credential per binding; customer creates least-privilege users).
 
 ## Production plans
 

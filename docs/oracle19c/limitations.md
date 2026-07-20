@@ -10,43 +10,53 @@
   smoke, and a local Oracle SQL-hardening loop — **development signal, not
   compliance evidence** ([ADR-0005](../decisions/ADR-0005-local-testing-is-development-signal-only.md)).
 
+## Credential model (intended boundary — not a limitation)
+
+The broker returns the instance **master credential** per binding, the **same
+model as the postgres/mysql RDS plans**. Creating least-privilege application
+users *inside* the database is the **customer's** responsibility — the intended
+shared-responsibility boundary (the platform does not reach into a customer's data
+plane to mint DB principals). See [binding.md](binding.md) and the STIG guidance in
+[hardening-baseline.md](hardening-baseline.md).
+
+> **STIG note (Oracle-specific):** the Oracle RDS master user is more privileged
+> than a postgres/mysql master (it carries the DBA-style role RDS grants). Bind
+> apps to a **least-privilege user you create**, not to the master credential.
+> This is customer guidance, not a broker-enforced gate. Broker-managed
+> per-binding users are possible future hardening ([#534](https://github.com/cloud-gov/aws-broker/issues/534)),
+> beyond the current documented boundary.
+
 ## Known limitations
 
-1. **Master credential reused per binding — `ENABLE_ORACLE`-gated, #534 is a
-   pre-release blocker.** The broker returns the instance master credential for
-   every binding (parity with existing engines), but the Oracle RDS master user
-   holds the **DBA** role. Because Oracle is **self-service** (no operator in the
-   bind path), a customer binding N apps hands DBA to all N, and any bound app can
-   `ALTER SYSTEM` / `DROP AUDIT POLICY` to disable the STIG hardening. Interim
-   safeguard: Oracle provisioning is gated behind `ENABLE_ORACLE` (fail-closed) and
-   dev-tier only. The per-binding least-privilege Oracle app user
-   ([#534](https://github.com/cloud-gov/aws-broker/issues/534)) is a **must-fix
-   before any non-dev Oracle plan**, not a nice-to-have.
-2. **No in-place engine-version update** for Oracle yet
+1. **No in-place engine-version update** for Oracle yet
    (`oracle19cBaseline.SupportsEngineVersionUpdate()` returns false). Version is
    pinned by the plan; major-version handling for parameter/option groups is a
    follow-up.
-3. **Fixed SID `ORCL`.** RDS Oracle constrains DBName/SID to ≤8 uppercase chars; the
+2. **Fixed SID `ORCL`.** RDS Oracle constrains DBName/SID to ≤8 uppercase chars; the
    broker uses a stable `ORCL`. The unique per-instance identifier is the
    `DBInstanceIdentifier` (random `db<...>`), not the SID.
-4. **Parameter/option/log support is unverified on live RDS GovCloud.** The
+3. **Parameter/option/log support is unverified on live RDS GovCloud.** The
    hardened baseline is the STIG-recommended posture; each value must be confirmed
    supported+modifiable on the actual RDS Oracle 19c family before production
    (WS15). Unsupported values surface, not silently dropped.
-5. **BYOL — customer-licensed, not broker-enforced (by design, not a gap).** The
+4. **BYOL — customer-licensed, not broker-enforced (by design, not a gap).** The
    plan is `bring-your-own-license`; the customer is solely responsible for holding
    a valid Oracle license. cloud.gov does not manage, verify, or enforce it and
    does not gate provisioning on license evidence — we provide instructions
    ([licensing.md](licensing.md)) instead. This is an intentional responsibility
    boundary, not an unfinished feature.
-6. **Option group empty.** No option-group options are enabled by default; some
+5. **Option group empty.** No option-group options are enabled by default; some
    Oracle security features (e.g. native network encryption) may need options once
    GovCloud availability is confirmed ([#526](https://github.com/cloud-gov/aws-broker/issues/526)).
-7. **OS/listener STIG controls are AWS-inherited / not applicable** on managed RDS
+6. **OS/listener STIG controls are AWS-inherited / not applicable** on managed RDS
    (~33 controls). They are classified in the overlay's `control-layers.yml`, not
    remediated here. Any that cannot be met become POA&M candidates.
-8. **A residual set of controls require manual review** (e.g. audit-log retention
+7. **A residual set of controls require manual review** (e.g. audit-log retention
    as a CloudWatch policy decision).
+8. **`ENABLE_ORACLE` staged-rollout switch.** Oracle provisioning is off until an
+   operator opts in. This is a rollout control for a new, not-yet-live-validated
+   offering — **not** a security/boundary control (the credential model matches
+   postgres/mysql).
 
 ## Not goals (by design)
 

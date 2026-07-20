@@ -389,8 +389,8 @@ func TestCreateInstanceSuccess(t *testing.T) {
 	}
 }
 
-// TestCreateInstanceOracleFeatureGate verifies Oracle provisioning is gated behind
-// EnableOracleFeature (#534, PR review): blocked when off, allowed when on.
+// TestCreateInstanceOracleFeatureGate verifies Oracle provisioning is behind the
+// EnableOracleFeature staged-rollout switch: blocked when off, allowed when on.
 func TestCreateInstanceOracleFeatureGate(t *testing.T) {
 	oracleCatalog := &catalog.Catalog{
 		RdsService: catalog.RDSService{

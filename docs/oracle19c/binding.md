@@ -13,13 +13,28 @@ binding payload into `VCAP_SERVICES` (keys documented in
 (1521), `service_name`/`sid` (`ORCL`), `ssl_required=true`. No admin/master marker
 keys are present (asserted by `TestOracleBindingDoesNotLeakAdminMarkers`).
 
-## Credential model (current + planned)
+## Credential model (intended shared-responsibility boundary)
 
-- **Current:** the binding returns the instance **master credential** (parity with
-  existing RDS engines). Encrypted at rest in the broker DB.
-- **Planned ([#534](https://github.com/cloud-gov/aws-broker/issues/534)):** a
-  per-binding least-privilege Oracle application user so apps never receive master
-  creds; unbind drops the binding user.
+The binding returns the instance **master credential** — the **same model as the
+postgres/mysql RDS plans**. Creating least-privilege application users inside the
+database is the **customer's** responsibility; the platform does not reach into the
+customer's data plane to create DB principals. Credentials are encrypted at rest in
+the broker DB.
+
+> **STIG note:** the Oracle master user is privileged (DBA-style). Do **not** point
+> production apps at the master credential — connect as the master once, create a
+> least-privilege schema/user for your app, and use that. Example:
+>
+> ```sql
+> -- as the master user (from the binding), one time:
+> CREATE USER app_ro IDENTIFIED BY "<strong-pw>";
+> GRANT CREATE SESSION TO app_ro;
+> GRANT SELECT ON your_schema.your_table TO app_ro;
+> ```
+>
+> Broker-managed per-binding users are possible future hardening
+> ([#534](https://github.com/cloud-gov/aws-broker/issues/534)) — beyond the current
+> documented boundary, not a gap.
 
 ## Unbind & rotation
 

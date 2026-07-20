@@ -718,8 +718,8 @@ jobs:
             #   - `ensure:` teardown below prevents leaking a live EE instance.
             #
             # ENVIRONMENT preconditions to confirm BEFORE merging to main:
-            #   1. ENABLE_ORACLE set in the development broker env (Oracle is
-            #      feature-gated for the master-cred limitation, #534).
+            #   1. ENABLE_ORACLE set in the development broker env (staged-rollout
+            #      switch for the new offering).
             #   2. meta.aws_broker.oracle_security_group defined in the dev secrets
             #      (the plan + the enabled-plans entry above both need it, or
             #      spruce merge / enable-service-access fails for ALL services).

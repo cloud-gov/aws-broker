@@ -23,17 +23,16 @@ type Settings struct {
 	Region                    string
 	PubliclyAccessibleFeature bool
 	EnableFunctionsFeature    bool
-	// EnableOracleFeature gates Oracle 19c provisioning. This is a PLATFORM-LEVEL
-	// rollout switch (like sandbox-only plan restrictions), NOT a per-customer
-	// approval workflow: once an operator sets ENABLE_ORACLE in the broker
-	// environment, app developers self-serve Oracle via `cf create-service` like
-	// any other RDS plan. It exists because the Oracle RDS master user holds the
-	// DBA role and the broker currently returns the master credential for every
-	// binding (#534) — with no operator in the self-service bind path to
-	// compensate. Oracle stays gated (and dev-tier only) until the per-binding
-	// least-privilege user (#534) lands, which is a pre-release blocker for any
-	// non-dev Oracle plan.
-	EnableOracleFeature       bool
+	// EnableOracleFeature gates Oracle 19c provisioning. This is a STAGED-ROLLOUT
+	// switch (like sandbox-only plan restrictions), NOT a security or boundary
+	// control: Oracle follows the SAME credential model as the postgres/mysql RDS
+	// plans (the broker returns the instance master credential per binding; the
+	// customer creates their own least-privilege in-database users — the intended
+	// shared-responsibility boundary). The flag exists only because Oracle is a
+	// brand-new offering not yet validated against a live foundation, so operators
+	// want explicit control over when it appears. Once an operator sets
+	// ENABLE_ORACLE, app developers self-serve Oracle like any other RDS plan.
+	EnableOracleFeature bool
 	SnapshotsBucketName       string
 	SnapshotsRepoName         string
 	LastSnapshotName          string
@@ -131,10 +130,10 @@ func (s *Settings) LoadFromEnv() error {
 		s.EnableFunctionsFeature = false
 	}
 
-	// Feature flag to allow Oracle 19c provisioning. Off by default: Oracle RDS
-	// master user holds DBA and the broker returns the master credential for every
-	// binding today (#534). Requires an explicit opt-in per environment until a
-	// per-binding least-privilege Oracle user exists.
+	// Feature flag to allow Oracle 19c provisioning. Off by default: Oracle is a
+	// new offering not yet validated on a live foundation, so its rollout is
+	// operator-controlled (staged-rollout switch, not a security gate — the
+	// credential model matches the postgres/mysql plans).
 	if _, ok := os.LookupEnv("ENABLE_ORACLE"); ok {
 		s.EnableOracleFeature = true
 	} else {

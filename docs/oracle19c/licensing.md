@@ -57,11 +57,11 @@ is no key to paste into RDS and nothing the broker installs. Steps:
 
 ## Why the broker still has an `ENABLE_ORACLE` switch (not a license gate)
 
-Oracle provisioning is disabled unless the operator sets `ENABLE_ORACLE`
-([#534](https://github.com/cloud-gov/aws-broker/issues/534)). **This is a technical
-safeguard for the current master-credential-reuse limitation, not a licensing
-checkpoint.** cloud.gov does not condition Oracle availability on license evidence
-and does not collect it. Once the offering is enabled, provisioning is
+Oracle provisioning is disabled unless the operator sets `ENABLE_ORACLE`. **This is
+a staged-rollout switch for a new offering, not a licensing checkpoint** (and not a
+security/boundary control — Oracle uses the same credential model as the
+postgres/mysql plans). cloud.gov does not condition Oracle availability on license
+evidence and does not collect it. Once the offering is enabled, provisioning is
 self-service; licensing remains entirely your responsibility.
 
 ## What to tell us vs. what to handle yourself
