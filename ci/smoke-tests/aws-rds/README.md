@@ -1,17 +1,25 @@
 ## aws-rds
 
-Quick and dirty Go program used in database broker smoke tests.
+Quick and dirty Go program used in database broker smoke tests. Provisioning a
+brokered database, binding this app to it, and having the app start successfully
+proves the service is usable.
 
 ### Usage
 
-1. `cf create-service <service> <oracle-plan-name> <oracle-instance-name>
-1. `cf create-service <service> <posgres-plan-name> <posgres-instance-name>
+1. `cf create-service <service> <plan-name> <instance-name>`
 1. wait for service creation to finish
-1. `cf push --var oracle-service=<oracle-instance-name> --var pg-service=<postgres-instance-name>`
-1. If the app starts successfully, your brokered database service was able to be written to.
+1. `cf push <app> --var rds-service=<instance-name>` with `DB_TYPE` set to the
+   engine (`postgres`, `mysql`, or `oracle-ee` / `oracle-se2`)
+1. If the app starts successfully, your brokered database service was able to be
+   written to.
 
-### Notes
+### Drivers
 
-This tool vendors some Oracle binaries, which are licensed separately. You can find them under the `include/oracle` library, and the license at `include/oracle/BASIC_LICENSE`.
-
-This repo requires `git lfs` - be sure to `git lfs install` before trying to push any apps
+- PostgreSQL: `github.com/lib/pq`
+- MySQL: `github.com/go-sql-driver/mysql`
+- Oracle: `github.com/sijms/go-ora/v2` — a **pure-Go** driver (registers as
+  `oracle`). It needs **no** Oracle Instant Client / native libraries, so the app
+  builds and runs on a plain `go_buildpack` with `CGO_ENABLED=0`. (This replaced
+  `gopkg.in/goracle.v2`, which was cgo and required `libclntsh` at runtime plus
+  vendored Oracle binaries under `include/` and `git lfs` — that path had rotted
+  and the smoke test could never connect. Epic #519.)

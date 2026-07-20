@@ -1,10 +1,10 @@
-// #cgo LDFLAGS: -L${SRCDIR}/include
 package main
 
 import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +13,11 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "gopkg.in/goracle.v2"
+	// Pure-Go Oracle driver (registers as "oracle"). Replaces gopkg.in/goracle.v2,
+	// which was cgo + required the Oracle Instant Client (libclntsh) at runtime —
+	// unavailable in the go_buildpack rootfs and not vendored, so the Oracle smoke
+	// test could never connect (epic #519). go-ora needs no native client.
+	_ "github.com/sijms/go-ora/v2"
 )
 
 func main() {
@@ -49,10 +53,11 @@ func main() {
 	case strings.Contains(dbType, "mysql"):
 		openAndTest("mysql", fmtMysql(svc))
 	case strings.Contains(dbType, "oracle"):
-		// The goracle driver registers itself under the name "goracle" and expects
-		// an EZConnect DSN (user/pass@host:port/service), NOT the oracle:// URI the
-		// broker emits. Build it from the discrete binding fields (epic #519).
-		openAndTest("goracle", fmtOracle(svc))
+		// go-ora registers as "oracle" and accepts the oracle:// URI the broker
+		// emits directly (oracle://user:pass@host:port/service_name) — no Instant
+		// Client, no cgo. Build the URL from the discrete binding fields so
+		// special characters are properly escaped (epic #519).
+		openAndTest("oracle", fmtOracle(svc))
 	default:
 		panic("unsupported DB_TYPE: " + dbType)
 	}
@@ -83,9 +88,10 @@ func fmtMysql(svc *cfenv.Service) string {
 	return cfg.FormatDSN()
 }
 
-// fmtOracle builds an EZConnect DSN for the goracle driver from the broker's
-// Oracle binding fields (username/password/host/port/service_name), rather than
-// the oracle:// URI (which goracle does not parse). Epic #519.
+// fmtOracle builds the oracle:// URL that go-ora accepts, from the broker's
+// Oracle binding fields. Uses net/url so any special characters in the password
+// are percent-escaped (defensive: broker passwords are alnum today, but do not
+// rely on that here). Epic #519.
 func fmtOracle(svc *cfenv.Service) string {
 	user, ok := svc.CredentialString("username")
 	if !ok {
@@ -107,8 +113,14 @@ func fmtOracle(svc *cfenv.Service) string {
 	if !ok {
 		panic("cannot parse service_name in oracle config")
 	}
-	// goracle EZConnect: user/password@host:port/service_name
-	return fmt.Sprintf("%s/%s@%s:%s/%s", user, pass, host, port, service)
+	// go-ora URL form: oracle://user:pass@host:port/service_name
+	u := &url.URL{
+		Scheme: "oracle",
+		User:   url.UserPassword(user, pass),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+		Path:   "/" + service,
+	}
+	return u.String()
 }
 
 func openAndTest(dbType string, dsn interface{}) {
@@ -117,7 +129,7 @@ func openAndTest(dbType string, dsn interface{}) {
 		panic(err)
 	}
 
-	if dbType == "goracle" {
+	if dbType == "oracle" {
 		oracleSql(db)
 		return
 	}

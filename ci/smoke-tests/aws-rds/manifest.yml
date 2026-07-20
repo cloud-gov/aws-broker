@@ -5,4 +5,4 @@ applications:
     env:
       GOPACKAGENAME: aws-rds
       SERVICE_NAME: ((rds-service))
-      DB_TYPE: postgresql # valid types are postgresql and mysql
+      DB_TYPE: postgres # valid types: postgres, mysql, oracle-ee, oracle-se2

@@ -189,6 +189,7 @@ jobs:
             aws-rds:small-mysql-redundant
             aws-rds:small-psql
             aws-rds:small-psql-redundant
+            aws-rds:oracle-19c-dev
             aws-elasticache-redis:redis-dev
             aws-elasticache-redis:redis-3node
             aws-elasticache-redis:redis-5node
@@ -702,43 +703,57 @@ jobs:
 
             # ---------------------------------------------------------------
             # Oracle 19c dev smoke test (epic #519; supersedes stalled PR #500).
-            # DISABLED / template — do NOT uncomment until ALL preconditions hold,
-            # or it will red the shared acceptance job (adversarial review C1/C2):
-            #   1. ENABLE_ORACLE is set in the development broker env (Oracle is
-            #      feature-gated for the master-cred limitation, #534).
-            #   2. meta.aws_broker.oracle_security_group exists in the dev secrets
-            #      so the Oracle plan renders + the broker registers it (otherwise
-            #      enable-service-access / spruce merge fails for ALL services).
-            #   3. oracle-19c-dev is added to the `update-broker` SERVICES list
-            #      above (kept out on purpose until 1+2 are true).
-            #   4. The smoke app can actually connect: goracle.v2 dlopens Oracle
-            #      Instant Client (libclntsh) at runtime, which the go_buildpack
-            #      rootfs does NOT provide and which is NOT vendored today
-            #      (ci/smoke-tests/aws-rds/include/ is absent). Vendor Instant
-            #      Client (+ LD_LIBRARY_PATH) or move the smoke app to a pure-Go
-            #      path first (#519/WS15 follow-up).
-            #   5. The cloud.gov dev account is itself Oracle-licensed (BYOL — we
-            #      do not manage customer licenses; docs/oracle19c/licensing.md).
-            # When enabling, use run-smoke-tests-db-updates.yml (not
-            # run-smoke-tests.yml) if you want ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_
-            # ON_CREATE to actually take effect — run-smoke-tests.sh ignores it.
-            # Wrap in a Concourse `ensure:` teardown to avoid leaking a live EE
-            # Oracle instance + 14-day backups if the run fails mid-way.
             #
-            # - task: smoke-tests-oracle
-            #   file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
-            #   image: general-task
-            #   params:
-            #     BROKER_NAME: ((development-broker-name))
-            #     CF_API_URL: ((development-cf-api-url))
-            #     CF_USERNAME: ((development-cf-deploy-username))
-            #     CF_PASSWORD: ((development-cf-deploy-password))
-            #     CF_ORGANIZATION: ((development-tests-cf-organization))
-            #     CF_SPACE: ((development-tests-cf-space))
-            #     SERVICE_PLAN: oracle-19c-dev
-            #     DB_TYPE: oracle-ee
-            #     ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["alert","audit","listener"]'
+            # ⚠️ ENABLED FOR BRANCH VALIDATION — DO NOT MERGE TO main UNTIL THIS
+            # HAS BEEN VALIDATED against the development foundation. It is safe to
+            # RUN on a test branch; it must not land on main until the remaining
+            # ENVIRONMENT preconditions below are confirmed, or it will red the
+            # shared acceptance job for everyone.
+            #
+            # Code preconditions (resolved on this branch):
+            #   - Smoke app uses the pure-Go go-ora driver (no Oracle Instant
+            #     Client needed) — the earlier goracle.v2/libclntsh blocker is gone.
+            #   - Uses run-smoke-tests-db-updates.yml so the
+            #     enable_cloudwatch_log_groups_exports param is actually applied.
+            #   - `ensure:` teardown below prevents leaking a live EE instance.
+            #
+            # ENVIRONMENT preconditions to confirm BEFORE merging to main:
+            #   1. ENABLE_ORACLE set in the development broker env (Oracle is
+            #      feature-gated for the master-cred limitation, #534).
+            #   2. meta.aws_broker.oracle_security_group defined in the dev secrets
+            #      (the plan + the enabled-plans entry above both need it, or
+            #      spruce merge / enable-service-access fails for ALL services).
+            #   3. The cloud.gov dev account is itself Oracle-licensed (BYOL — we
+            #      do not manage customer licenses; docs/oracle19c/licensing.md).
             # ---------------------------------------------------------------
+            - task: smoke-tests-oracle
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: oracle-19c-dev
+                DB_TYPE: oracle-ee
+                ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE: '["alert","audit","listener"]'
+              ensure:
+                # Best-effort teardown so a mid-run failure cannot leak a live EE
+                # Oracle instance + its 14-day backups. run-smoke-tests-db-updates.sh
+                # also deletes on success; this covers the failure path.
+                task: cleanup-oracle-smoke
+                file: aws-broker-app/ci/cleanup-smoke-service.yml
+                image: general-task
+                params:
+                  BROKER_NAME: ((development-broker-name))
+                  CF_API_URL: ((development-cf-api-url))
+                  CF_USERNAME: ((development-cf-deploy-username))
+                  CF_PASSWORD: ((development-cf-deploy-password))
+                  CF_ORGANIZATION: ((development-tests-cf-organization))
+                  CF_SPACE: ((development-tests-cf-space))
+                  SERVICE_PLAN: oracle-19c-dev
     on_failure:
       put: slack
       params:
