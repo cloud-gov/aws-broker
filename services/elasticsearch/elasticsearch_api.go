@@ -57,6 +57,16 @@ type Snapshots struct {
 	Snapshots []Snapshot `json:"snapshots"`
 }
 
+// Audit categories exlucded (per AWS guidance) to prevent ballooning of log volume.
+var disabledAuditCategories = []string{"GRANTED_PRIVILEGES", "AUTHENTICATED"}
+
+func auditApiBasePath(engineVersion string) string {
+	if strings.HasPrefix(engineVersion, "Opensearch") {
+		return "/_plugins/_security/api/audit"
+	}
+	return "/_opendistro/_security/api/audit"
+}
+
 func NewSnapshotRepo(bucketname string, path string, region string, rolearn string) *SnapshotRepo {
 	sr := &SnapshotRepo{}
 	sr.Type = "s3"
@@ -195,4 +205,88 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 	}
 
 	return snapshots.Snapshots[0].State, nil
+}
+
+// EnableAuditLogging turns on audit logging via the OpenSearch REST API
+func (es *EsApiHandler) EnableAuditLogging(engineVersion string) error {
+	base := auditApiBasePath(engineVersion)
+
+	config, err := es.getAuditConfig(base)
+	if err != nil {
+		return err
+	}
+
+	config["enabled"] = true
+	auditSection, ok := config["audit"].(map[string]any)
+	if !ok {
+		auditSection = map[string]any{}
+	}
+	auditSection["enable_rest"] = true
+	auditSection["enable_transport"] = true
+	auditSection["disabled_rest_categories"] = disabledAuditCategories
+	auditSection["disabled_transport_categories"] = disabledAuditCategories
+	config["audit"] = auditSection
+
+	return es.putAuditConfig(base+"/config", config)
+
+}
+
+// getAuditConfig gets the domain's current audit configuration
+func (es *EsApiHandler) getAuditConfig(base string) (map[string]any, error) {
+	req, err := http.NewRequestWithContext(es.ctx, http.MethodGet, base, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getAuditConfig: error building request: %w", err)
+	}
+
+	res, err := es.opensearchClient.Perform(req)
+	if err != nil {
+		return nil, fmt.Errorf("getAuditConfig: error performing request: %w", err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("getAuditConfig: error reading response: %w", err)
+	}
+	if res.StatusCode >= http.StatusBadRequest {
+		return nil, fmt.Errorf("getAuditConfig: failed with status %d: %s", res.StatusCode, string(body))
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("getAuditConfig: error parsing reponse: %w", err)
+	}
+
+	if config, ok := payload["config"].(map[string]any); ok {
+		return config, nil
+	}
+
+	return payload, nil
+}
+
+// putAuditConfig writes the audit configuration to the domain
+func (es *EsApiHandler) putAuditConfig(path string, config map[string]any) error {
+	body, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("putAuditConfig: error marshaling config: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(es.ctx, http.MethodPut, path, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("putAuditConfig: error building request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := es.opensearchClient.Perform(req)
+	if err != nil {
+		return fmt.Errorf("putAuditConfig: error performing request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= http.StatusBadRequest {
+		respBody, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("putAuditConfig: failed with status %d: %s", res.StatusCode, string(respBody))
+	}
+
+	return nil
 }
