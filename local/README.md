@@ -18,8 +18,9 @@ Two independent local layers so you can iterate without AWS:
    real AWS. It does **not** run an Oracle engine (no local tool does for RDS).
 2. **`gvenzl/oracle-free`** (native arm64) — a real Oracle engine to develop and
    idempotency-test the SQL hardening scripts against, and to run the overlay's
-   `oracledb_session` controls. Edition/version/privilege differ from RDS Oracle
-   19c EE (see caveats), so this is signal, not proof.
+   `oracledb_session` controls. Edition/version/privilege differ from the brokered
+   RDS engine (Oracle SE2 19c); the local self-built 19c-EE image is a stricter
+   upper bound. So this is signal, not proof.
 
 ## Caveats (what local CANNOT tell you)
 

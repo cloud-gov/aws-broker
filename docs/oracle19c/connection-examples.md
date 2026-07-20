@@ -91,6 +91,14 @@ conn = oracledb.connect(user=username, password=password,
 
 ## TLS
 
-`ssl_required` is `true`. Configure your driver to require/verify TLS to the RDS
-endpoint (Oracle native network encryption / TLS is validated as an
-inherited/option-group control by the overlay, not toggled by the app).
+`ssl_required` is `true` — configure your driver to require/verify TLS to the RDS
+endpoint. TLS to the RDS endpoint is an AWS/RDS-inherited concern the overlay is
+*designed to* validate (pending live validation, WS15); option-group-based Oracle
+network-encryption options are a follow-up ([#526](https://github.com/cloud-gov/aws-broker/issues/526))
+and are **not** provisioned yet.
+
+> **Use a least-privilege user, not the master.** The bound credential is the
+> instance master, which on Oracle is **DBA-class**. Connect as the master once to
+> create a least-privilege application user, then run your app as that user — see
+> [binding.md](binding.md). Creating in-database users is the customer's
+> responsibility.

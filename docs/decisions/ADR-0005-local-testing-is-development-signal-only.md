@@ -51,6 +51,7 @@ available local tools have known fidelity gaps (researched 2026-07-17):
 |-------|------|
 | Broker unit tests | Go + mocked `RDSClientInterface` (no network) |
 | Broker control-flow | `motoserver/moto` (free), Go SDK `BaseEndpoint` override |
+| CI branch-validation smoke app | pure-Go `github.com/sijms/go-ora/v2` (no Oracle Instant Client) |
 | Fast SQL hardening | `gvenzl/oracle-free:23-slim-faststart` (native arm64) |
 | RDS fidelity check | self-built `oracle/database:19.3.0-ee` (arm64) |
 | Overlay runner | `cinc-auditor` + Oracle Instant Client sqlplus (or exec in container) |

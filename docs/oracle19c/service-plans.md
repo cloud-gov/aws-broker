@@ -48,8 +48,11 @@ Defined in `catalog-template.yml` / `catalog-test.yml`:
 The Oracle baseline is applied automatically (born hardened). Because Oracle is a
 **self-service** offering (app developers, not operators, run `cf create-service`),
 the broker enforces an **allowlist** of customer-suppliable `-c` parameters and
-rejects the rest fail-closed (#535) — so a customer cannot silently weaken the STIG
-baseline or pass a MySQL/Postgres-only knob that would be a no-op.
+rejects the rest fail-closed (#535) — so a customer cannot pass an out-of-allowlist
+parameter or a MySQL/Postgres-only knob that would be a silent no-op. (This guards
+the *broker parameters*; it does not prevent an app connected with the DBA-class
+master credential from changing settings in-database — see the least-privilege note
+under [binding.md](binding.md).)
 
 **Supported for Oracle** (same shape customers already know from psql/mysql):
 

@@ -25,15 +25,20 @@ STIG posture is validated out-of-band by the
 ### Self-service model (what the customer can/can't do)
 
 - **Can**, without an operator: create/update/bind/unbind, rotate credentials
-  (`-c '{"rotate_credentials": true}'`), open space egress, tunnel via `cf ssh`,
-  and set the allowlisted `-c` params (`storage`, `backup_retention_period`,
-  `storage_type`, `enable_cloudwatch_log_groups_exports`). See
-  [service-plans.md](service-plans.md).
-- **Cannot** (by design): get `SYS`/`SYSDBA` (RDS gives a master user); weaken the
-  STIG baseline or pass MySQL/Postgres-only knobs (rejected fail-closed, #535);
+  (`-c '{"rotate_credentials": true}'`, then re-bind + restage — same flow and
+  downtime caveat as the other RDS engines; see
+  [ops/oracle19c/credential-rotation.md](../../ops/oracle19c/credential-rotation.md)),
+  open space egress, tunnel via `cf ssh`, and set the allowlisted `-c` params
+  (`storage`, `backup_retention_period`, `storage_type`,
+  `enable_cloudwatch_log_groups_exports`). See [service-plans.md](service-plans.md).
+- **Cannot** (by design): get `SYS`/`SYSDBA` (RDS gives a master user); pass
+  out-of-allowlist or MySQL/Postgres-only `-c` params (rejected fail-closed, #535);
   reach the DB directly from a laptop (tunnel required); force a reboot for
   pending-reboot parameter changes or restore a backup — those go through
-  cloud.gov support, same as psql/mysql.
+  cloud.gov support, same as psql/mysql. (The broker's `#535` allowlist prevents
+  *weakening the baseline via broker params*; it does not stop an app that binds to
+  the DBA-class master from altering the DB in-session — hence the least-privilege
+  guidance below.)
 - **Operator-controlled**: whether the Oracle offering is switched on at all
   (`ENABLE_ORACLE`, a platform rollout switch — not a per-request approval).
 

@@ -15,14 +15,17 @@ async lifecycle (see [current-state-analysis.md](current-state-analysis.md) §2)
 4. The worker builds `CreateDBInstanceInput`: `Engine=oracle-se2`, pinned
    `EngineVersion`, `LicenseModel=license-included`, `StorageEncrypted`,
    private (no public accessibility), backup retention, default CloudWatch log
-   exports (`alert`/`audit`/`listener`), and attaches the **born-hardened**
-   parameter group.
+   exports (`alert`/`audit`/`listener`), and attaches the **born-hardened
+   parameter group**. (No option group is provisioned yet — the Oracle option
+   baseline is empty; tracked in [#526](https://github.com/cloud-gov/aws-broker/issues/526).)
 5. On ready, the instance is marked available; bind is synchronous.
 
-Verified against a **moto** RDS control-plane mock: `create-db-instance` (oracle-se2
-19c, encrypted, License Included, private), `create-db-parameter-group` (`oracle-se2-19`), and
-`create-option-group` (oracle-se2 19) are all accepted — control-flow signal, not
-compliance evidence ([ADR-0005](../decisions/ADR-0005-local-testing-is-development-signal-only.md)).
+Exercised against a **moto** RDS control-plane mock (control-flow signal, **not**
+compliance evidence — [ADR-0005](../decisions/ADR-0005-local-testing-is-development-signal-only.md)):
+the `create-db-instance` (oracle-se2 19c, encrypted, License Included, private) and
+`create-db-parameter-group` (`oracle-se2-19`) calls are accepted by the AWS API.
+This confirms the broker's request *shape*, not real RDS behavior; no live GovCloud
+provisioning has run (WS15).
 
 ## Deprovision
 

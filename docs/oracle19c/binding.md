@@ -10,7 +10,7 @@ binding payload into `VCAP_SERVICES` (keys documented in
 ## What the app receives
 
 `uri` (oracle scheme), `jdbcUrl` (thin), `username`, `password`, `host`, `port`
-(1521), `service_name`/`sid` (`ORCL`), `ssl_required=true`. No admin/master marker
+(1521), `service_name`/`sid` (`ORCL`), `db_name`, `name`, `ssl_required=true`. No admin/master marker
 keys are present (asserted by `TestOracleBindingDoesNotLeakAdminMarkers`).
 
 ## Credential model (intended shared-responsibility boundary)
@@ -38,6 +38,8 @@ the broker DB.
 
 ## Unbind & rotation
 
-`cf unbind-service` removes the binding. To rotate: re-provision / update and
-re-bind, then `cf restage --strategy rolling`. A stale credential is denied
-(fail-closed). See [ops/oracle19c/credential-rotation.md](../../ops/oracle19c/credential-rotation.md).
+`cf unbind-service` removes the binding. Rotation is customer-initiated
+(`cf update-service -c '{"rotate_credentials": true}'`) and then requires
+unbind → bind → recreate service keys → `cf restage --strategy rolling` — the same
+flow (and downtime caveat) as the other RDS engines. A stale credential is denied
+(fail-closed). Full steps: [ops/oracle19c/credential-rotation.md](../../ops/oracle19c/credential-rotation.md).
