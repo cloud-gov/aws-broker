@@ -1,34 +1,58 @@
-# Oracle Database 19c — broker-managed option-group options (epic #519, WS6 #526).
+# Oracle Database 19c — broker-managed RDS OPTION-GROUP baseline (epic #519, WS6 #526).
 #
-# RDS Oracle uses OPTION GROUPS (distinct from parameter groups) for certain
-# features. This file lists the options the broker WOULD attach to an Oracle
-# baseline option group.
-#
-# CURRENT STATE (#519 review H3): the create path does NOT yet provision an Oracle
-# option group — it only creates the parameter group. Because this list is empty,
-# there is nothing to attach today, so the gap is latent. Wiring option-group
-# provisioning at create (gated on a non-empty list) is tracked in #526; do NOT
-# assume adding an option here takes effect until that lands.
+# Unlike parameter groups (born-hardened, always applied), option-group options are
+# listed here and provisioned at CREATE time. This file now carries the SSL option
+# that enables FedRAMP-Moderate encryption-in-transit (SC-8 / SC-8(1) / SC-13) —
+# see #538 and ADR-0004.
 #
 # HONESTY / SCOPE:
-#   - Every option below MUST be verified as available in AWS GovCloud for the
-#     RDS Oracle 19c engine before a live deploy (WS15, gated). GovCloud option
-#     availability differs from commercial regions.
-#   - Do NOT enable attack-surface options (e.g. Oracle XML DB HTTP listener,
-#     external procedures / extproc, Java VM, APEX) unless explicitly required and
-#     justified (#535). None are enabled here.
-#   - The authoritative STIG mapping lives in the overlay control->layer map
-#     (aws_rds_option_group layer, #530).
-#
-# NOTE: several Oracle security controls that would be options on self-managed
-# Oracle (e.g. Native Network Encryption) are configured differently or are
-# AWS-managed on RDS; those are validated by the overlay as inherited/NA, not set
-# here. This list is intentionally conservative for the first iteration and may be
-# empty until the dev proof confirms which options RDS Oracle 19c in GovCloud both
-# supports and requires for the STIG posture.
+#   - RDS Oracle serves TLS on a SEPARATE TCPS listener port (2484), provisioned via
+#     the SSL option below — unlike postgres/mysql which negotiate TLS on their
+#     standard port. This port divergence is an unavoidable AWS/Oracle architecture
+#     fact, not a broker inconsistency.
+#   - The broker attaches this option group + expresses the SSL intent (Port 2484,
+#     the plan security group), but it CANNOT make the connection TLS-only: opening
+#     2484 ingress and DENYING plaintext 1521 is an EC2 security-group change owned
+#     by the platform (cg-provision/Terraform), outside the broker's IAM. Leaving
+#     1521 open alongside 2484 is an SC-8 assessor finding, so the plan is NOT
+#     customer-ready until the platform SG rule lands (#538 / platform issue).
+#   - TLS version ceiling: RDS Oracle SSL supports TLS 1.2 only (no 1.3). 1.2 is
+#     acceptable for FedRAMP Moderate; documented for the SSP.
+#   - Cipher/CA compatibility: the default RDS CA is RSA (rds-ca-rsa2048-g1), which
+#     is compatible with the ECDHE_RSA cipher below. ECDSA-only ciphers would
+#     require the ECC CA and are rejected fail-closed before the AWS call.
+#   - Every value MUST be verified on the live RDS Oracle SE2 19c engine in GovCloud
+#     before customer exposure (WS15, gated).
+#   - NO attack-surface options (XML DB HTTP, external procedures, Java VM, APEX).
 
-options: []
-  # Example shape (verify availability + necessity before enabling):
-  # - name: NATIVE_NETWORK_ENCRYPTION
-  #   stig_intent: "Encrypt Oracle client/server traffic (SRG-APP-000441/442)."
-  #   notes: "Confirm GovCloud availability + settings; may overlap RDS TLS."
+# The SSL/TCPS listener port RDS Oracle exposes for TLS connections.
+ssl_port: 2484
+
+# The RDS CA family the instance uses. Governs cipher compatibility: an "rsa" CA is
+# compatible with TLS_ECDHE_RSA_* suites; an ECDSA-only suite would need "ecc".
+ca_cert_family: rsa
+
+options:
+  # SSL option — certificate-based TLS on a TCPS listener (SC-8 / SC-13).
+  # Provisioned + attached at create; the binding publishes port 2484 + a TCPS URL.
+  - name: SSL
+    port: 2484
+    stig_intent: >-
+      Encryption-in-transit via certificate-based TLS (SC-8/SC-8(1)); FIPS-validated
+      crypto (SC-13). DISA Oracle 19c STIG V-270579 (SC-8(2)) + V-270571 (SC-13).
+    notes: >-
+      TLS 1.2 (RDS Oracle ceiling); FedRAMP+FIPS AEAD cipher; FIPS mode on. Requires
+      the plan security group to allow 2484 and (for TLS-only) deny 1521 — platform
+      dependency (#538).
+    settings:
+      # TLS 1.2 only. RDS Oracle does not support 1.3 via the SSL option.
+      - name: SQLNET.SSL_VERSION
+        value: "1.2"
+      # FedRAMP-compliant + FIPS + RSA-CA-compatible AEAD suite (AES-256 preferred),
+      # AES-128 GCM as a negotiable fallback (also FedRAMP + FIPS + RSA-compatible).
+      - name: SQLNET.CIPHER_SUITE
+        value: "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      # Force the RDS Oracle crypto module into FIPS 140 mode (writes fips.ora
+      # SSLFIPS_140=TRUE). STIG V-270571 checks for this.
+      - name: FIPS.SSLFIPS_140
+        value: "TRUE"

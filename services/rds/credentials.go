@@ -125,44 +125,58 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	return credentials, nil
 }
 
-// oracleCredentials builds the Oracle-specific binding payload (WS9 #528).
-// It returns machine-readable connection details for a bound app: a URI using
-// the "oracle" scheme with the service name as the path, a JDBC thin URL, the
-// service name/SID, and ssl_required. Like the postgres/mysql plans, the broker
-// returns the instance master credential per binding; the customer is expected to
-// create their own least-privilege in-database users (the intended shared-
-// responsibility boundary). No admin/master marker key is exposed here.
+// oracleCredentials builds the Oracle-specific binding payload (WS9 #528, TLS #538).
+// It returns machine-readable connection details for a bound app over TLS/TCPS:
+// the SSL port (2484), a TCPS connect descriptor (uri + jdbcUrl with PROTOCOL=TCPS
+// and SSL_SERVER_CERT_DN), ssl_server_dn_match, and the GovCloud RDS CA bundle URL
+// the client must trust. Like the postgres/mysql plans, the broker returns the
+// instance master credential per binding; the customer creates their own
+// least-privilege in-database users (the intended shared-responsibility boundary).
+// No admin/master marker key is exposed here.
+//
+// NOTE (#538): TLS-on-2484 requires the broker-provisioned SSL option group AND a
+// platform security-group rule allowing 2484 / denying 1521 (a cg-provision
+// dependency the broker cannot satisfy). The plan is not customer-ready until that
+// SG rule lands; ssl_required=true reflects the intended+configured posture.
 func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) map[string]string {
-	// EZConnect-style URI: oracle://user:pass@host:port/SERVICE_NAME
-	uri := fmt.Sprintf(
-		"%s://%s:%s@%s:%d/%s",
-		scheme,
-		i.Username,
-		password,
-		i.Host,
-		i.Port,
-		serviceName,
+	// TLS listener port from the embedded SSL option baseline (2484); fall back to
+	// the endpoint port only if the baseline is unavailable.
+	sslPort := int64(oracleSSLPort())
+	if sslPort == 0 {
+		sslPort = i.Port
+	}
+
+	// Server cert DN for RDS Oracle TLS: the RDS-issued cert CN is the endpoint.
+	// Enables ssl_server_dn_match to verify server identity (not just encrypt).
+	certDN := fmt.Sprintf("C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=%s", i.Host)
+
+	// TCPS connect descriptor (URI form) with DN match — EZConnect cannot express
+	// PROTOCOL=TCPS or the cert DN, so we use the full DESCRIPTION form.
+	descriptor := fmt.Sprintf(
+		"(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=%s)(PORT=%d))"+
+			"(CONNECT_DATA=(SID=%s))"+
+			"(SECURITY=(SSL_SERVER_CERT_DN=\"%s\")))",
+		i.Host, sslPort, serviceName, certDN,
 	)
-	// JDBC thin service-name form: jdbc:oracle:thin:@//host:port/SERVICE_NAME
-	jdbcURL := fmt.Sprintf(
-		"jdbc:oracle:thin:@//%s:%d/%s",
-		i.Host,
-		i.Port,
-		serviceName,
-	)
+	uri := fmt.Sprintf("%s://%s:%s@%s", scheme, i.Username, password, descriptor)
+	jdbcURL := fmt.Sprintf("jdbc:oracle:thin:@%s", descriptor)
 
 	return map[string]string{
-		"uri":          uri,
-		"jdbcUrl":      jdbcURL,
-		"username":     i.Username,
-		"password":     password,
-		"host":         i.Host,
-		"port":         strconv.FormatInt(i.Port, 10),
-		"service_name": serviceName,
-		"sid":          serviceName,
-		"db_name":      serviceName,
-		"name":         serviceName,
-		"ssl_required": "true",
+		"uri":                 uri,
+		"jdbcUrl":             jdbcURL,
+		"username":            i.Username,
+		"password":            password,
+		"host":                i.Host,
+		"port":                strconv.FormatInt(sslPort, 10),
+		"protocol":            "tcps",
+		"service_name":        serviceName,
+		"sid":                 serviceName,
+		"db_name":             serviceName,
+		"name":                serviceName,
+		"ssl_required":        "true",
+		"ssl_server_dn_match": "true",
+		"ssl_server_cert_dn":  certDN,
+		"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
 	}
 }
 

@@ -2,7 +2,10 @@ package rds
 
 import (
 	"slices"
+	"strings"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 // baselines_test.go — the embedded Oracle 19c baseline files must parse and carry
@@ -105,6 +108,84 @@ func TestOracleOptionsBaselineHasNoAttackSurfaceOptions(t *testing.T) {
 			if len(up) >= len(bad) && containsFold(up, bad) {
 				t.Errorf("option %q looks like an attack-surface option (%q); must be justified", opt.Name, bad)
 			}
+		}
+	}
+}
+
+func TestOracleSSLOptionBaseline(t *testing.T) {
+	f, err := loadOracleOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.SSLPort != 2484 {
+		t.Errorf("ssl_port = %d, want 2484", f.SSLPort)
+	}
+	if f.CACertFamily != "rsa" {
+		t.Errorf("ca_cert_family = %q, want rsa", f.CACertFamily)
+	}
+	// The SSL option must carry TLS 1.2, a FedRAMP+FIPS+RSA-compatible cipher, and FIPS on.
+	var ssl *oracleOption
+	for i := range f.Options {
+		if f.Options[i].Name == "SSL" {
+			ssl = &f.Options[i]
+		}
+	}
+	if ssl == nil {
+		t.Fatal("SSL option missing from oracle options baseline")
+	}
+	if ssl.Port != 2484 {
+		t.Errorf("SSL option port = %d, want 2484", ssl.Port)
+	}
+	want := map[string]string{
+		"SQLNET.SSL_VERSION":  "1.2",
+		"SQLNET.CIPHER_SUITE": "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+		"FIPS.SSLFIPS_140":    "TRUE",
+	}
+	got := map[string]string{}
+	for _, s := range ssl.Settings {
+		got[s.Name] = s.Value
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("SSL setting %s = %q, want %q", k, got[k], v)
+		}
+	}
+	// The chosen cipher must be an ECDHE_RSA suite (RSA-CA compatible), not ECDSA-only.
+	if strings.Contains(got["SQLNET.CIPHER_SUITE"], "_ECDSA_") {
+		t.Errorf("SSL cipher %q is ECDSA-only; incompatible with the RSA CA", got["SQLNET.CIPHER_SUITE"])
+	}
+}
+
+func TestOracleBaselineOptionsBuild(t *testing.T) {
+	b, ok := baselineFor("oracle-se2")
+	if !ok {
+		t.Fatal("oracle-se2 baseline missing")
+	}
+	i := &RDSInstance{DbType: "oracle-se2"}
+	i.SecGroup = "sg-abc123"
+	opts, err := b.BaselineOptions(i)
+	if err != nil {
+		t.Fatalf("BaselineOptions error: %v", err)
+	}
+	if len(opts) != 1 {
+		t.Fatalf("expected 1 baseline option (SSL), got %d", len(opts))
+	}
+	ssl := opts[0]
+	if aws.ToString(ssl.OptionName) != "SSL" {
+		t.Errorf("option name = %q, want SSL", aws.ToString(ssl.OptionName))
+	}
+	if aws.ToInt32(ssl.Port) != 2484 {
+		t.Errorf("option port = %d, want 2484", aws.ToInt32(ssl.Port))
+	}
+	if len(ssl.VpcSecurityGroupMemberships) != 1 || ssl.VpcSecurityGroupMemberships[0] != "sg-abc123" {
+		t.Errorf("SSL option must reference the instance SG, got %v", ssl.VpcSecurityGroupMemberships)
+	}
+	// pg/mysql have no baseline options.
+	for _, eng := range []string{"postgres", "mysql"} {
+		pgb, _ := baselineFor(eng)
+		o, err := pgb.BaselineOptions(&RDSInstance{DbType: eng})
+		if err != nil || len(o) != 0 {
+			t.Errorf("%s BaselineOptions = (%v,%v), want (nil,nil)", eng, o, err)
 		}
 	}
 }

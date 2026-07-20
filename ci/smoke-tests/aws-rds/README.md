@@ -19,7 +19,4 @@ proves the service is usable.
 - MySQL: `github.com/go-sql-driver/mysql`
 - Oracle: `github.com/sijms/go-ora/v2` — a **pure-Go** driver (registers as
   `oracle`). It needs **no** Oracle Instant Client / native libraries, so the app
-  builds and runs on a plain `go_buildpack` with `CGO_ENABLED=0`. (This replaced
-  `gopkg.in/goracle.v2`, which was cgo and required `libclntsh` at runtime plus
-  vendored Oracle binaries under `include/` and `git lfs` — that path had rotted
-  and the smoke test could never connect. Epic #519.)
+  builds and runs on a plain `go_buildpack` with `CGO_ENABLED=0`.

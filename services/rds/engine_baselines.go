@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 )
 
 // engine_baselines.go — concrete RDSBaseline implementations (epic #519, WS3 #523).
@@ -41,6 +44,9 @@ func (postgresBaseline) DefaultLogExports() ([]string, error) { return nil, nil 
 func (postgresBaseline) DefaultParameters() (map[string]paramDetails, error) {
 	return map[string]paramDetails{}, nil
 }
+func (postgresBaseline) BaselineOptions(*RDSInstance) ([]rdsTypes.OptionConfiguration, error) {
+	return nil, nil
+}
 
 // ---------------------------------------------------------------------------
 // MySQL
@@ -62,6 +68,9 @@ func (mysqlBaseline) ValidateIdentifiers(string, string) error {
 func (mysqlBaseline) DefaultLogExports() ([]string, error) { return nil, nil }
 func (mysqlBaseline) DefaultParameters() (map[string]paramDetails, error) {
 	return map[string]paramDetails{}, nil
+}
+func (mysqlBaseline) BaselineOptions(*RDSInstance) ([]rdsTypes.OptionConfiguration, error) {
+	return nil, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -181,4 +190,65 @@ func (oracle19cBaseline) DefaultParameters() (map[string]paramDetails, error) {
 		}
 	}
 	return out, nil
+}
+
+// BaselineOptions builds the Oracle SSL option (TLS/TCPS) from the embedded
+// baseline (baselines/oracle19c/options.yml, #519/#538), referencing the
+// instance's security group for the TCPS listener. Includes a fail-closed
+// cipher/CA compatibility guard: an ECDSA-only cipher requires the ECC CA, so
+// pairing it with the default RSA CA is rejected before the AWS call (which would
+// otherwise fail opaquely at option-group associate time). Returns nil for an
+// empty baseline.
+func (oracle19cBaseline) BaselineOptions(i *RDSInstance) ([]rdsTypes.OptionConfiguration, error) {
+	f, err := loadOracleOptions()
+	if err != nil {
+		return nil, err
+	}
+	if len(f.Options) == 0 {
+		return nil, nil
+	}
+
+	// Fail-closed cipher/CA guard (#538 review): ECDSA-only ciphers need the ECC
+	// CA; the RDS default is RSA. Reject the mismatch here rather than letting the
+	// AWS associate call fail.
+	if cipher, ok := f.cipherSuiteFor("SSL"); ok {
+		if strings.Contains(cipher, "_ECDSA_") && strings.EqualFold(f.CACertFamily, "rsa") {
+			return nil, fmt.Errorf(
+				"oracle SSL cipher %q is ECDSA-only but the instance CA family is %q (RSA); "+
+					"use an ECDHE_RSA cipher or an ECC CA", cipher, f.CACertFamily)
+		}
+	}
+
+	out := make([]rdsTypes.OptionConfiguration, 0, len(f.Options))
+	for _, opt := range f.Options {
+		cfg := rdsTypes.OptionConfiguration{
+			OptionName: aws.String(opt.Name),
+		}
+		if opt.Port != 0 {
+			cfg.Port = aws.Int32(opt.Port)
+		}
+		// The SSL/TCPS listener is gated by the instance's security group.
+		if i != nil && i.SecGroup != "" {
+			cfg.VpcSecurityGroupMemberships = []string{i.SecGroup}
+		}
+		for _, s := range opt.Settings {
+			cfg.OptionSettings = append(cfg.OptionSettings, rdsTypes.OptionSetting{
+				Name:  aws.String(s.Name),
+				Value: aws.String(s.Value),
+			})
+		}
+		out = append(out, cfg)
+	}
+	return out, nil
+}
+
+// oracleSSLPort returns the TCPS port from the embedded options baseline (2484),
+// or 0 if unavailable. Used by the binding to publish the TLS port instead of the
+// plaintext endpoint port.
+func oracleSSLPort() int32 {
+	f, err := loadOracleOptions()
+	if err != nil {
+		return 0
+	}
+	return f.SSLPort
 }

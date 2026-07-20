@@ -13,10 +13,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	// Pure-Go Oracle driver (registers as "oracle"). Replaces gopkg.in/goracle.v2,
-	// which was cgo + required the Oracle Instant Client (libclntsh) at runtime —
-	// unavailable in the go_buildpack rootfs and not vendored, so the Oracle smoke
-	// test could never connect (epic #519). go-ora needs no native client.
+	// Pure-Go Oracle driver (registers as "oracle"); needs no Oracle Instant Client.
 	_ "github.com/sijms/go-ora/v2"
 )
 
@@ -43,20 +40,11 @@ func main() {
 	}
 
 	switch {
-	// NOTE: use strings.Contains(dbType, keyword) — the args were previously
-	// reversed (strings.Contains("oracle", dbType)), which asks whether the
-	// literal "oracle" contains e.g. "oracle-ee" → false, so the DB test silently
-	// never ran and the smoke test passed without touching the database. Oracle
-	// plans pass DB_TYPE=oracle-ee (epic #519), which exposed the bug.
 	case strings.Contains(dbType, "postgres"):
 		openAndTest("postgres", svc.Credentials["uri"].(string))
 	case strings.Contains(dbType, "mysql"):
 		openAndTest("mysql", fmtMysql(svc))
 	case strings.Contains(dbType, "oracle"):
-		// go-ora registers as "oracle" and accepts the oracle:// URI the broker
-		// emits directly (oracle://user:pass@host:port/service_name) — no Instant
-		// Client, no cgo. Build the URL from the discrete binding fields so
-		// special characters are properly escaped (epic #519).
 		openAndTest("oracle", fmtOracle(svc))
 	default:
 		panic("unsupported DB_TYPE: " + dbType)
@@ -90,8 +78,7 @@ func fmtMysql(svc *cfenv.Service) string {
 
 // fmtOracle builds the oracle:// URL that go-ora accepts, from the broker's
 // Oracle binding fields. Uses net/url so any special characters in the password
-// are percent-escaped (defensive: broker passwords are alnum today, but do not
-// rely on that here). Epic #519.
+// are percent-escaped.
 func fmtOracle(svc *cfenv.Service) string {
 	user, ok := svc.CredentialString("username")
 	if !ok {

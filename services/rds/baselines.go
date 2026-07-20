@@ -35,15 +35,39 @@ type oracleLogExportsFile struct {
 	Supported      []string `yaml:"supported"`
 }
 
-// oracleOptionsFile lists broker-managed option-group options.
+// oracleOptionsFile lists broker-managed option-group options + TLS metadata.
 type oracleOptionsFile struct {
-	Options []oracleOption `yaml:"options"`
+	SSLPort      int32          `yaml:"ssl_port"`
+	CACertFamily string         `yaml:"ca_cert_family"`
+	Options      []oracleOption `yaml:"options"`
 }
 
 type oracleOption struct {
-	Name       string `yaml:"name"`
-	StigIntent string `yaml:"stig_intent"`
-	Notes      string `yaml:"notes"`
+	Name       string                `yaml:"name"`
+	Port       int32                 `yaml:"port"`
+	StigIntent string                `yaml:"stig_intent"`
+	Notes      string                `yaml:"notes"`
+	Settings   []oracleOptionSetting `yaml:"settings"`
+}
+
+type oracleOptionSetting struct {
+	Name  string `yaml:"name"`
+	Value string `yaml:"value"`
+}
+
+// cipherSuiteFor returns the SQLNET.CIPHER_SUITE value from the SSL option, if any.
+func (f *oracleOptionsFile) cipherSuiteFor(optionName string) (string, bool) {
+	for _, o := range f.Options {
+		if o.Name != optionName {
+			continue
+		}
+		for _, s := range o.Settings {
+			if s.Name == "SQLNET.CIPHER_SUITE" {
+				return s.Value, true
+			}
+		}
+	}
+	return "", false
 }
 
 // loadOracleParameters parses baselines/oracle19c/parameters.yml.

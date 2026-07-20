@@ -20,6 +20,7 @@ const defaultOptionGroupPrefix = "default:"
 
 type optionGroupClient interface {
 	ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
+	ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomOptionGroups() error
 	DeleteOptionGroup(optionGroupName string) error
 	IsCustomOptionGroup(optionGroupName string) bool
@@ -148,6 +149,63 @@ func optionsFromGroup(optionGroup *rdsTypes.OptionGroup) []rdsTypes.OptionConfig
 		optionConfigs = append(optionConfigs, optionConfig)
 	}
 	return optionConfigs
+}
+
+// ProvisionBaselineOptionGroup creates + attaches a broker-managed option group at
+// CREATE time for engines that ship a baseline option set (Oracle SE2: the SSL
+// option for FedRAMP-Moderate TLS — #519/#538). Unlike ProvisionOrModifyCustomOptionGroup
+// (which only reconciles an already-attached group on major-version upgrade), this
+// runs on a brand-new instance. It is a no-op for engines with an empty baseline
+// (postgres/mysql), so their create path is unchanged.
+//
+// On success it sets i.OptionGroupName so the create worker attaches it via
+// CreateDBInstanceInput.OptionGroupName. Fails closed: any AWS error aborts the
+// provision rather than leaving an instance without its baseline options.
+func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	baseline, ok := baselineFor(i.DbType)
+	if !ok {
+		return nil
+	}
+	opts, err := baseline.BaselineOptions(i)
+	if err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
+	}
+	if len(opts) == 0 {
+		return nil // engine has no baseline option group (postgres/mysql)
+	}
+
+	majorVersion, err := o.getMajorEngineVersion(i)
+	if err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
+	}
+	groupName := o.getOptionGroupName(i, majorVersion)
+
+	existing, err := o.describeOptionGroup(groupName)
+	if err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
+	}
+	if existing == nil {
+		if _, err := o.rds.CreateOptionGroup(o.ctx, &rds.CreateOptionGroupInput{
+			OptionGroupName:        aws.String(groupName),
+			EngineName:             aws.String(i.DbType),
+			MajorEngineVersion:     aws.String(majorVersion),
+			OptionGroupDescription: aws.String("aws broker option group for " + formatDBName(i.Database)),
+			Tags:                   rdsTags,
+		}); err != nil {
+			return fmt.Errorf("ProvisionBaselineOptionGroup: create option group: %w", err)
+		}
+	}
+
+	if _, err := o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
+		OptionGroupName:  aws.String(groupName),
+		OptionsToInclude: opts,
+		ApplyImmediately: aws.Bool(true),
+	}); err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: add options: %w", err)
+	}
+
+	i.OptionGroupName = groupName
+	return nil
 }
 
 // Ensures that an instance with a custom option group keeps a valid one for its target database version.

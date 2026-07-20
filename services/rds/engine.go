@@ -1,5 +1,7 @@
 package rds
 
+import rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+
 // engine.go — per-engine baseline abstraction (epic #519, WS3 #523).
 //
 // Historically the broker expressed engine behavior with the bare DbType string
@@ -86,6 +88,14 @@ type RDSBaseline interface {
 	// this engine is born with (Oracle hardened baseline), keyed by parameter name.
 	// Engines that are not born hardened return an empty map.
 	DefaultParameters() (map[string]paramDetails, error)
+
+	// BaselineOptions returns the option-group options this engine is provisioned
+	// with at CREATE time (Oracle SE2: the SSL option for TLS). Returns an empty
+	// slice for engines with no baseline option group (postgres/mysql). The SSL
+	// option references the instance's security group (i.SecGroup) for its TCPS
+	// listener. Returns an error if the embedded baseline is invalid or a
+	// fail-closed guard trips (e.g. cipher/CA incompatibility).
+	BaselineOptions(i *RDSInstance) ([]rdsTypes.OptionConfiguration, error)
 }
 
 // baselineRegistry maps every supported engine string to its baseline.
