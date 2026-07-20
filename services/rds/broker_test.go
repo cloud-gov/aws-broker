@@ -397,7 +397,7 @@ func TestCreateInstanceOracleFeatureGate(t *testing.T) {
 			RDSPlans: []catalog.RDSPlan{
 				{
 					ServicePlan: domain.ServicePlan{ID: "oracle-plan"},
-					DbType:      "oracle-ee",
+					DbType:      "oracle-se2",
 				},
 			},
 		},
@@ -1080,7 +1080,7 @@ func TestModifyInstanceOracleGuards(t *testing.T) {
 			RDSPlans: []catalog.RDSPlan{
 				{
 					ServicePlan: domain.ServicePlan{ID: "oracle-plan", PlanUpdatable: aws.Bool(true)},
-					DbType:      "oracle-ee",
+					DbType:      "oracle-se2",
 				},
 			},
 		},
@@ -1100,7 +1100,7 @@ func TestModifyInstanceOracleGuards(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			inst := createTestRdsInstance(&RDSInstance{
-				DbType: "oracle-ee",
+				DbType: "oracle-se2",
 				Instance: base.Instance{
 					Uuid:    uuid.NewString(),
 					Request: request.Request{ServiceID: "service-1", PlanID: "oracle-plan"},

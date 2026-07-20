@@ -9,7 +9,7 @@ proves the service is usable.
 1. `cf create-service <service> <plan-name> <instance-name>`
 1. wait for service creation to finish
 1. `cf push <app> --var rds-service=<instance-name>` with `DB_TYPE` set to the
-   engine (`postgres`, `mysql`, or `oracle-ee` / `oracle-se2`)
+   engine (`postgres`, `mysql`, or `oracle-se2`)
 1. If the app starts successfully, your brokered database service was able to be
    written to.
 

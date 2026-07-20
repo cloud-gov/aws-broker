@@ -110,9 +110,9 @@ func TestOracleOptionsBaselineHasNoAttackSurfaceOptions(t *testing.T) {
 }
 
 func TestOracleBaselineWiredIntoEngine(t *testing.T) {
-	b, ok := baselineFor("oracle-ee")
+	b, ok := baselineFor("oracle-se2")
 	if !ok {
-		t.Fatal("oracle-ee baseline missing")
+		t.Fatal("oracle-se2 baseline missing")
 	}
 	// DefaultParameters must reflect the embedded file.
 	params, err := b.DefaultParameters()

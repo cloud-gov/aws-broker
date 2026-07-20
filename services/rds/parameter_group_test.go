@@ -136,7 +136,7 @@ func TestNeedCustomParameters(t *testing.T) {
 		},
 		"oracle is born hardened": {
 			dbInstance: &RDSInstance{
-				DbType:          "oracle-ee",
+				DbType:          "oracle-se2",
 				credentialUtils: &RDSCredentialUtils{},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{

@@ -16,8 +16,8 @@ func TestBaselineFor(t *testing.T) {
 	}{
 		{"postgres", true, EnginePostgres, "postgres", true, false},
 		{"mysql", true, EngineMySQL, "mysql", true, false},
-		{"oracle-ee", true, EngineOracleSE2, "oracle", false, true},
 		{"oracle-se2", true, EngineOracleSE2, "oracle", false, true},
+		{"oracle-ee", false, "", "", false, false}, // EE not offered (SE2 + License Included only)
 		{"mariadb", false, "", "", false, false},
 		{"", false, "", "", false, false},
 	}
@@ -69,11 +69,9 @@ func TestFormatDBNamePreservesLegacyBehaviorForPgMysql(t *testing.T) {
 }
 
 func TestFormatDBNameOracleIsFixedUppercaseSID(t *testing.T) {
-	for _, eng := range []string{"oracle-ee", "oracle-se2"} {
-		for _, in := range []string{"db12345abcdef01", "anything", ""} {
-			if got := formatDBNameForEngine(eng, in); got != oracleSID {
-				t.Errorf("formatDBNameForEngine(%q,%q) = %q, want %q", eng, in, got, oracleSID)
-			}
+	for _, in := range []string{"db12345abcdef01", "anything", ""} {
+		if got := formatDBNameForEngine("oracle-se2", in); got != oracleSID {
+			t.Errorf("formatDBNameForEngine(oracle-se2,%q) = %q, want %q", in, got, oracleSID)
 		}
 	}
 	// Oracle SID must satisfy RDS constraints: <=8 chars, uppercase alnum.
@@ -92,17 +90,20 @@ func TestUnknownEngineFallsBackToLegacyFormatDBName(t *testing.T) {
 	if got := formatDBNameForEngine("sqlserver-ex", "DB-x_9"); got != "x9" {
 		t.Errorf("fallback formatDBNameForEngine = %q, want %q", got, "x9")
 	}
+	// oracle-ee is NOT offered (no baseline) → falls back to the legacy stripper,
+	// NOT the SE2 SID. Guards against re-introducing an EE baseline by accident.
+	if got := formatDBNameForEngine("oracle-ee", "DB-x_9"); got != "x9" {
+		t.Errorf("oracle-ee (unsupported) formatDBNameForEngine = %q, want legacy %q", got, "x9")
+	}
 }
 
 func TestIsOracleEngine(t *testing.T) {
-	for _, eng := range []string{"oracle-ee", "oracle-se2"} {
-		if !isOracleEngine(eng) {
-			t.Errorf("isOracleEngine(%q) = false, want true", eng)
-		}
+	if !isOracleEngine("oracle-se2") {
+		t.Error("isOracleEngine(oracle-se2) = false, want true")
 	}
-	for _, eng := range []string{"postgres", "mysql", "oracle", ""} {
+	for _, eng := range []string{"oracle-ee", "postgres", "mysql", "oracle", ""} {
 		if isOracleEngine(eng) {
-			t.Errorf("isOracleEngine(%q) = true, want false", eng)
+			t.Errorf("isOracleEngine(%q) = true, want false (only oracle-se2 is supported)", eng)
 		}
 	}
 }

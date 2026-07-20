@@ -16,17 +16,20 @@ package rds
 // new baseline rather than new conditionals.
 
 // Engine identifiers as they appear in catalog `dbType` and the AWS RDS `Engine`
-// field. Oracle uses AWS's engine strings ("oracle-ee"/"oracle-se2").
+// field. Oracle uses AWS's engine string "oracle-se2": the offering is Standard
+// Edition 2 + License Included (ADR-0004). Enterprise Edition (oracle-ee) is NOT
+// offered — License Included is SE2-only on RDS and EE is BYOL-only, which we
+// deliberately do not do.
 const (
 	EnginePostgres  = "postgres"
 	EngineMySQL     = "mysql"
-	EngineOracleEE  = "oracle-ee"
 	EngineOracleSE2 = "oracle-se2"
 )
 
-// isOracleEngine reports whether an engine string is any supported Oracle edition.
+// isOracleEngine reports whether an engine string is the supported Oracle edition
+// (SE2). EE is intentionally not supported.
 func isOracleEngine(dbType string) bool {
-	return dbType == EngineOracleEE || dbType == EngineOracleSE2
+	return dbType == EngineOracleSE2
 }
 
 // RDSBaseline is the per-engine strategy the broker delegates engine-specific
@@ -44,7 +47,7 @@ type RDSBaseline interface {
 	Engine() string
 
 	// SupportsEngine reports whether this baseline handles the given dbType.
-	// (Oracle's baseline handles both oracle-ee and oracle-se2.)
+	// (Oracle's baseline handles oracle-se2 — the shipped SE2 offering.)
 	SupportsEngine(dbType string) bool
 
 	// URIScheme returns the connection-URI scheme used in binding credentials
@@ -85,8 +88,7 @@ type RDSBaseline interface {
 	DefaultParameters() (map[string]paramDetails, error)
 }
 
-// baselineRegistry maps every supported engine string to its baseline. Oracle's
-// two editions share one baseline instance.
+// baselineRegistry maps every supported engine string to its baseline.
 var baselineRegistry = func() map[string]RDSBaseline {
 	m := map[string]RDSBaseline{}
 	for _, b := range []RDSBaseline{
@@ -94,8 +96,8 @@ var baselineRegistry = func() map[string]RDSBaseline {
 		mysqlBaseline{},
 		oracle19cBaseline{},
 	} {
-		// Register the canonical engine plus any alias the baseline supports.
-		for _, eng := range []string{EnginePostgres, EngineMySQL, EngineOracleEE, EngineOracleSE2} {
+		// Register each engine the baseline supports.
+		for _, eng := range []string{EnginePostgres, EngineMySQL, EngineOracleSE2} {
 			if b.SupportsEngine(eng) {
 				m[eng] = b
 			}
