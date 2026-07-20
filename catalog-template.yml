@@ -1440,35 +1440,41 @@ rds:
         client: "paas-cf"
         broker: "AWS broker"
     # ----------------------------------------------------------------------
-    # Oracle Database 19c (dev/test) — epic cloud-gov/aws-broker#519.
-    # DEV/TEST ONLY, not production-ready. BYOL (ADR-0004); private-only +
-    # encrypted; hardened parameter-group baseline (ADR-0003; option groups are a
-    # follow-up, #526). STIG
-    # posture validated out-of-band by cg-oracle-database-19c-stig-overlay
-    # (ADR-0002). Requires meta.aws_broker.oracle_security_group to be defined
-    # in the environment before this plan can provision.
+    # Oracle Database 19c — SE2, License Included (dev/test) — epic #519.
+    # DEV/TEST ONLY, not production-ready. SE2 + License Included (ADR-0004): AWS
+    # holds the Oracle license (bundled into the instance price) so there is no
+    # unlicensed state. License Included is SE2-only on RDS. SE2 STIG deviations
+    # (no Oracle-native TDE — rely on RDS-KMS at rest; no FGA — standard/unified
+    # auditing) are documented in docs/oracle19c/licensing.md (ISSO-accepted).
+    # Private-only + encrypted; hardened parameter-group baseline (ADR-0003;
+    # option groups are a follow-up, #526). STIG posture validated out-of-band by
+    # cg-oracle-database-19c-stig-overlay (ADR-0002). Requires
+    # meta.aws_broker.oracle_security_group defined in the environment.
     # ----------------------------------------------------------------------
     - id: "b48f5f9e-7f8a-4c2b-9a1d-0f4e8c2a7d10"
-      name: "oracle-19c-dev"
-      description: "Dedicated RDS Oracle Database 19c (DEV/TEST ONLY — STIG hardening in progress, not production-ready)"
+      name: "oracle-se2-license-included-dev"
+      description: "Dedicated RDS Oracle Database 19c Standard Edition 2, License Included (DEV/TEST ONLY — STIG hardening in progress, not production-ready)"
       metadata:
         bullets:
           - "Dedicated RDS Oracle Database 19c instance"
-          - "Enterprise Edition, bring-your-own-license (BYOL)"
+          - "Standard Edition 2 (SE2), License Included — Oracle license bundled by AWS"
           - "Private-only, encrypted at rest"
           - "STIG-hardened baseline (validation via cg-oracle-database-19c-stig-overlay)"
           - "DEV/TEST plan — not production-ready"
         costs:
+          # TODO(cost): set the real GovCloud SE2 License-Included db.t3.medium
+          # monthly rate (License Included bundles the Oracle license → non-zero,
+          # higher than an OSS-engine plan). Passed through as cloud.gov credits.
           - amount:
-              usd: 0
-            unit: "HOURLY"
-        displayName: "Dedicated Oracle 19c (dev)"
+              usd: 0 # TODO(cost): placeholder — replace with real SE2-LI monthly rate
+            unit: "MONTHLY"
+        displayName: "Dedicated Oracle 19c SE2 (License Included, dev)"
       free: false
       adapter: dedicated
       instanceClass: db.t3.medium
-      dbType: oracle-ee
+      dbType: oracle-se2
       dbVersion: "19.0.0.0.ru-2024-07.rur-2024-07.r1"
-      licenseModel: bring-your-own-license
+      licenseModel: license-included
       allocatedStorage: 20
       approvedMajorVersions:
         - "19"

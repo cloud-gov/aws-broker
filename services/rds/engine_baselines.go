@@ -77,11 +77,13 @@ const oracleSID = "ORCL"
 
 type oracle19cBaseline struct{}
 
-// Engine reports the canonical Oracle engine string. Both oracle-ee and
-// oracle-se2 are handled by this baseline; Engine() returns the EE identifier as
-// the canonical label. Runtime dispatch keys on the instance's actual DbType
-// (i.DbType), never on Engine(), so SE2 instances are provisioned as SE2.
-func (oracle19cBaseline) Engine() string { return EngineOracleEE }
+// Engine reports the canonical Oracle engine string. Both oracle-se2 and oracle-ee
+// are handled by this baseline; Engine() returns the SE2 identifier as the
+// canonical label because the shipped offering is SE2 + License Included (ADR-0004
+// — License Included is SE2-only on RDS; EE is BYOL-only and not offered). Runtime
+// dispatch keys on the instance's actual DbType (i.DbType), never on Engine(), so
+// an oracle-ee instance (should one ever be configured) is still provisioned as EE.
+func (oracle19cBaseline) Engine() string { return EngineOracleSE2 }
 func (oracle19cBaseline) SupportsEngine(dbType string) bool {
 	return isOracleEngine(dbType)
 }

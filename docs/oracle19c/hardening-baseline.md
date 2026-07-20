@@ -23,6 +23,21 @@ exports.
 `pending-reboot` parameters take effect after a reboot; the broker surfaces
 pending-reboot state via the existing async/modify path.
 
+> **SE2 applicability.** Every parameter in this baseline (`audit_trail`,
+> `audit_sys_operations`, `sec_case_sensitive_logon`, `remote_login_passwordfile`,
+> `resource_limit`, `sql92_security`) is a **base Oracle init parameter available in
+> Standard Edition 2 (SE2)** — none are Enterprise-Edition-only — so the
+> born-hardened parameter baseline **fully applies** on the SE2 + License Included
+> offering ([ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md)).
+>
+> **Not part of the SE2 posture (EE-only):** Oracle-native **Transparent Data
+> Encryption (TDE)** and **Fine-Grained Auditing (FGA)** are Enterprise-Edition
+> features and are **not** available on SE2. At-rest encryption is instead provided
+> by **RDS storage-level encryption (AES-256 / KMS)** (edition-independent, `encrypted:
+> true`), and auditing by **standard / unified auditing** via `audit_trail` +
+> CloudWatch `audit` export. These SE2 deviations are documented and ISSO-accepted —
+> see [licensing.md](licensing.md).
+
 ## Log exports (`baselines/oracle19c/log_exports.yml`)
 
 Default: `alert`, `audit`, `listener`. `trace` and `oemagent` are opt-in

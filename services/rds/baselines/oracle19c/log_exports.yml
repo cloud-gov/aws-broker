@@ -9,7 +9,7 @@
 # support can vary by engine/version/region. Unsupported exports are surfaced with
 # a rationale, never silently dropped.
 
-# Enabled by default for the oracle-19c-dev plan.
+# Enabled by default for the oracle-se2-license-included-dev plan.
 default_exports:
   - alert      # database alert log (errors, startup/shutdown)
   - audit      # unified/standard audit records (SRG-APP audit generation)

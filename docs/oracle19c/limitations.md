@@ -39,21 +39,28 @@ plane to mint DB principals). See [binding.md](binding.md) and the STIG guidance
    hardened baseline is the STIG-recommended posture; each value must be confirmed
    supported+modifiable on the actual RDS Oracle 19c family before production
    (WS15). Unsupported values surface, not silently dropped.
-4. **BYOL — customer-licensed, not broker-enforced (by design, not a gap).** The
-   plan is `bring-your-own-license`; the customer is solely responsible for holding
-   a valid Oracle license. cloud.gov does not manage, verify, or enforce it and
-   does not gate provisioning on license evidence — we provide instructions
-   ([licensing.md](licensing.md)) instead. This is an intentional responsibility
-   boundary, not an unfinished feature.
-5. **Option group empty.** No option-group options are enabled by default; some
+4. **License Included (SE2) — Oracle license bundled by AWS; no unlicensed state.**
+   The plan is `license-included`: AWS holds the Oracle Database license and bundles
+   it into the instance price, so there is **no unlicensed state** — cloud.gov never
+   facilitates an unlicensed Oracle DB. Customers do not buy or bring a license; the
+   bundled cost is passed through as cloud.gov resource credits. License Included is
+   SE2-only on RDS. Details: [licensing.md](licensing.md).
+5. **SE2 lacks the EE-only features.** Standard Edition 2 does not include
+   Oracle-native TDE, Fine-Grained Auditing (FGA), VPD, Label Security, Data
+   Redaction, Partitioning, or Data Guard. At-rest encryption is provided by
+   RDS-KMS storage encryption and auditing by standard/unified auditing; the
+   residual TDE/FGA control interpretation is handled as documented ISSO
+   risk/deviation acceptances ([licensing.md](licensing.md)). Not an unfinished
+   feature — an accepted deviation of the chosen edition.
+6. **Option group empty.** No option-group options are enabled by default; some
    Oracle security features (e.g. native network encryption) may need options once
    GovCloud availability is confirmed ([#526](https://github.com/cloud-gov/aws-broker/issues/526)).
-6. **OS/listener STIG controls are AWS-inherited / not applicable** on managed RDS
+7. **OS/listener STIG controls are AWS-inherited / not applicable** on managed RDS
    (~33 controls). They are classified in the overlay's `control-layers.yml`, not
    remediated here. Any that cannot be met become POA&M candidates.
-7. **A residual set of controls require manual review** (e.g. audit-log retention
+8. **A residual set of controls require manual review** (e.g. audit-log retention
    as a CloudWatch policy decision).
-8. **`ENABLE_ORACLE` staged-rollout switch.** Oracle provisioning is off until an
+9. **`ENABLE_ORACLE` staged-rollout switch.** Oracle provisioning is off until an
    operator opts in. This is a rollout control for a new, not-yet-live-validated
    offering — **not** a security/boundary control (the credential model matches
    postgres/mysql).

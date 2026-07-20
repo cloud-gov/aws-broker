@@ -720,10 +720,10 @@ func TestGetNewParameters(t *testing.T) {
 		},
 		"oracle born-hardened baseline": {
 			dbInstance: &RDSInstance{
-				DbType: "oracle-ee",
+				DbType: "oracle-se2",
 			},
 			expectedParams: map[string]map[string]paramDetails{
-				"oracle-ee": {
+				"oracle-se2": {
 					"audit_trail":               paramDetails{value: "DB,EXTENDED", applyMethod: "pending-reboot"},
 					"audit_sys_operations":      paramDetails{value: "TRUE", applyMethod: "pending-reboot"},
 					"sec_case_sensitive_logon":  paramDetails{value: "TRUE", applyMethod: "immediate"},
@@ -2590,7 +2590,7 @@ func TestReconcileRDSInstanceParameters(t *testing.T) {
 func TestOracleBornHardenedParamsReachAWS(t *testing.T) {
 	mock := &mockRDSClient{
 		dbEngineVersions: []rdsTypes.DBEngineVersion{
-			{DBParameterGroupFamily: aws.String("oracle-ee-19")},
+			{DBParameterGroupFamily: aws.String("oracle-se2-19")},
 		},
 	}
 	p := NewAwsParameterGroupClient(
@@ -2600,7 +2600,7 @@ func TestOracleBornHardenedParamsReachAWS(t *testing.T) {
 		slog.New(&testutil.MockLogHandler{}),
 	)
 	i := &RDSInstance{
-		DbType:          "oracle-ee",
+		DbType:          "oracle-se2",
 		DbVersion:       "19.0.0.0",
 		Database:        "db1",
 		credentialUtils: &RDSCredentialUtils{},

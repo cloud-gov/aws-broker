@@ -8,12 +8,12 @@
 ## What it is
 
 A STIG-hardened **Oracle Database 19c** offering delivered through the existing
-Cloud.gov `aws-broker` as an RDS service plan (`oracle-19c-dev`). It is consumed
+Cloud.gov `aws-broker` as an RDS service plan (`oracle-se2-license-included-dev`). It is consumed
 **self-service by application developers** — not Cloud Foundry operators — exactly
 like the documented `micro-psql` / `small-mysql` plans:
 
 ```
-cf create-service aws-rds oracle-19c-dev my-oracle
+cf create-service aws-rds oracle-se2-license-included-dev my-oracle
 cf bind-service my-app my-oracle
 cf bind-security-group trusted_local_networks_egress <ORG> --space <SPACE>   # open egress
 ```
@@ -41,8 +41,8 @@ STIG posture is validated out-of-band by the
 
 | Property | Value | Why |
 |----------|-------|-----|
-| Engine | `oracle-ee` 19c | Enterprise Edition ([ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md)) |
-| License | **BYOL** (bring-your-own-license) — customer-licensed, not broker-enforced ([licensing.md](licensing.md)) | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md) |
+| Engine | `oracle-se2` 19c | Standard Edition 2 ([ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md)) |
+| License | **License Included** (bundled by AWS) — no unlicensed state, cost passed through as credits ([licensing.md](licensing.md)) | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md) |
 | Encryption | at rest (KMS) | STIG / SC-28 |
 | Network | private only | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md); no public accessibility |
 | Parameter group | broker-managed hardened baseline (born hardened) | [ADR-0003](../decisions/ADR-0003-design-oracle-baseline-for-future-csb-portability.md), [#525](https://github.com/cloud-gov/aws-broker/issues/525) |

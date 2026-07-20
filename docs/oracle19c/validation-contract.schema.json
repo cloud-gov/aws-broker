@@ -29,7 +29,7 @@
     },
     "service_instance_id": { "type": "string", "minLength": 1 },
     "broker": { "type": "string", "const": "aws-broker" },
-    "plan": { "type": "string", "minLength": 1, "examples": ["oracle-19c-dev"] },
+    "plan": { "type": "string", "minLength": 1, "examples": ["oracle-se2-license-included-dev"] },
     "environment": {
       "type": "string",
       "enum": ["local-dev", "aws-broker-rds-dev", "aws-broker-rds-prod-like"],
@@ -37,7 +37,7 @@
     },
     "aws_partition": { "type": "string", "examples": ["aws-us-gov"] },
     "aws_region": { "type": "string", "examples": ["us-gov-west-1"] },
-    "engine": { "type": "string", "enum": ["oracle-ee", "oracle-se2"] },
+    "engine": { "type": "string", "enum": ["oracle-ee", "oracle-se2"], "examples": ["oracle-se2"] },
     "engine_version": { "type": "string", "examples": ["19.0.0.0.ru-2024-07.rur-2024-07.r1"] },
     "endpoint": {
       "type": "string",

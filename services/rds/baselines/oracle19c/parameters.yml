@@ -10,10 +10,12 @@
 #   - These are DB-parameter-level controls only. OS/listener/host controls are
 #     AWS-inherited on managed RDS (ADR-0004) and validated as such by the overlay,
 #     not here.
-#   - Every parameter below MUST be verified as supported+modifiable on the RDS
-#     Oracle 19c parameter-group family before a live deploy (WS15, gated). Values
-#     are the STIG-recommended posture; if RDS rejects a parameter it is surfaced,
-#     not silently dropped.
+#   - Every parameter below is a BASE Oracle init parameter available in Standard
+#     Edition 2 (SE2) — none are EE-only — so the offering (SE2 + License Included,
+#     ADR-0004) applies the full baseline. Each MUST still be verified as
+#     supported+modifiable on the RDS Oracle SE2 19c parameter-group family before a
+#     live deploy (WS15, gated). Values are the STIG-recommended posture; if RDS
+#     rejects a parameter it is surfaced, not silently dropped.
 #   - apply_method: "immediate" (dynamic) or "pending-reboot" (static). Static
 #     parameters require a reboot to take effect; the broker surfaces pending-reboot
 #     state via the existing async/modify path.
@@ -21,7 +23,7 @@
 # STIG references are the Oracle 19c STIG rule intent; the authoritative mapping
 # lives in the overlay control->layer map (aws_rds_parameter_group layer, #530).
 
-engine_family_prefix: "oracle-ee-19"   # informational; actual family resolved via DescribeDBEngineVersions
+engine_family_prefix: "oracle-se2-19"   # informational; actual family resolved via DescribeDBEngineVersions
 
 parameters:
   # Unified/standard auditing must be enabled and capture privileged operations.

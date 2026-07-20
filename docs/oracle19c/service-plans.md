@@ -5,16 +5,16 @@
 Oracle is offered as a plan on the existing `aws-rds` service (not a separate
 service), so it shares the RDS lifecycle, credential, and binding model.
 
-## `oracle-19c-dev` (dev/test)
+## `oracle-se2-license-included-dev` (dev/test)
 
 Defined in `catalog-template.yml` / `catalog-test.yml`:
 
 | Field | Value |
 |-------|-------|
-| `dbType` | `oracle-ee` |
+| `dbType` | `oracle-se2` |
 | `dbVersion` | `19.0.0.0.ru-2024-07.rur-2024-07.r1` (pinned) |
 | `approvedMajorVersions` | `["19"]` |
-| `licenseModel` | `bring-your-own-license` |
+| `licenseModel` | `license-included` |
 | `instanceClass` | `db.t3.medium` |
 | `allocatedStorage` | 20 GB |
 | `storage_type` | `gp3` |
@@ -32,13 +32,16 @@ Defined in `catalog-template.yml` / `catalog-test.yml`:
 > offering not yet validated on a live foundation — **not** a security/boundary
 > control. Oracle uses the same credential model as the postgres/mysql plans
 > (master credential per binding; the customer creates their own least-privilege
-> in-database users). `cf create-service … oracle-19c-dev …` returns an
+> in-database users). `cf create-service … oracle-se2-license-included-dev …` returns an
 > opt-in-required error when the flag is unset.
 
-> **BYOL — customer-licensed.** This plan is `bring-your-own-license`; AWS does not
-> supply the Oracle license and **cloud.gov does not manage, verify, or enforce it**.
-> You are responsible for holding an Oracle EE license covering the instance's
-> vCPUs. Instructions: [licensing.md](licensing.md).
+> **License Included — Oracle license bundled by AWS.** This plan is
+> `license-included`: AWS holds the Oracle Database license and bundles it into the
+> instance price, so there is **no unlicensed state** — cloud.gov never facilitates
+> an unlicensed Oracle DB. Customers do not buy or bring an Oracle license. The
+> bundled-license cost is passed through to agencies as cloud.gov resource credits.
+> License Included is Standard Edition 2 (SE2) only on RDS. Details:
+> [licensing.md](licensing.md).
 
 ## Create parameters
 
@@ -66,10 +69,11 @@ plan for now). Broker-generated identifiers are validated before the AWS call
 
 ## Naming convention (future production plans)
 
-`oracle-19c-dev` is a **DEV-tier** plan (the `-dev` suffix mirrors the sandbox-only
+`oracle-se2-license-included-dev` is a **DEV-tier** plan (the `-dev` suffix mirrors the sandbox-only
 `micro-psql`/`small-mysql` tier). Production plans will follow the documented RDS
-family naming customers already use — `small-oracle`, `medium-oracle`,
-`large-oracle`, and `*-redundant` / `*-replica` variants — and are added **only
+family naming customers already use — `small-oracle-se2-license-included`,
+`medium-oracle-se2-license-included`, `large-oracle-se2-license-included`, and
+`*-redundant` / `*-replica` variants — and are added **only
 after** the live dev-RDS proof (WS15) confirms the parameter/option/log posture on
 the real engine. Production plans use the same credential model as the other RDS
 plans (master credential per binding; customer creates least-privilege users).

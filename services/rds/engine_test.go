@@ -16,8 +16,8 @@ func TestBaselineFor(t *testing.T) {
 	}{
 		{"postgres", true, EnginePostgres, "postgres", true, false},
 		{"mysql", true, EngineMySQL, "mysql", true, false},
-		{"oracle-ee", true, EngineOracleEE, "oracle", false, true},
-		{"oracle-se2", true, EngineOracleEE, "oracle", false, true},
+		{"oracle-ee", true, EngineOracleSE2, "oracle", false, true},
+		{"oracle-se2", true, EngineOracleSE2, "oracle", false, true},
 		{"mariadb", false, "", "", false, false},
 		{"", false, "", "", false, false},
 	}

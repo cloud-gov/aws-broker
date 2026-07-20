@@ -60,10 +60,10 @@ type RDSPlan struct {
   `getCredentials`. **All reverted** (`566985c`, `aea8dd7`, `29128b6`).
 - A `goracle` smoke-test client still lingers at `ci/smoke-tests/aws-rds/main.go`.
 
-> For 19c the plan will use `dbType: oracle-ee` (or `oracle-se2` — decided in
-> ADR-0004), `dbVersion: "19...."`, and **`licenseModel: bring-your-own-license`**
-> (BYOL, per ADR-0004), with a dedicated Oracle security group and private subnet
-> group.
+> For 19c the plan uses `dbType: oracle-se2` (Standard Edition 2, decided in
+> ADR-0004), `dbVersion: "19...."`, and **`licenseModel: license-included`**
+> (License Included, per ADR-0004), with a dedicated Oracle security group and private subnet
+> group. The catalog plan is named `oracle-se2-license-included-dev`.
 
 ## 2. Create lifecycle (async, River-backed)
 
@@ -101,7 +101,7 @@ params := &rds.CreateDBInstanceInput{
 	// ...
 }
 if i.DbVersion != "" { params.EngineVersion = aws.String(i.DbVersion) }
-if i.LicenseModel != "" { params.LicenseModel = aws.String(i.LicenseModel) } // ← BYOL for Oracle
+if i.LicenseModel != "" { params.LicenseModel = aws.String(i.LicenseModel) } // ← License Included for Oracle SE2
 if len(i.EnabledCloudwatchLogGroupExports) > 0 { params.EnableCloudwatchLogsExports = ... }
 // parameterGroupClient.ProvisionNewCustomParameterGroup(i, rdsTags)
 ```
@@ -132,7 +132,7 @@ uppercase (reverted code used fixed `"ORCL"`); master-username reserved-word rul
 - **`getParameterGroupFamily`** — engine-**generic**: calls
   `DescribeDBEngineVersions(Engine, EngineVersion, IncludeAll=true)` and reads
   `DBParameterGroupFamily`. **Works for Oracle unchanged** (returns e.g.
-  `oracle-ee-19`).
+  `oracle-se2-19`).
 - **`getNewParameters`** — MySQL/Postgres-specific blocks; the params map is
   **keyed by engine string** (`customparams[i.DbType]`), so Oracle needs its own
   entry or no params are applied.
@@ -222,7 +222,7 @@ approval via `plan.CheckVersion`.
   `mockCredentialUtils`. Adapter faked via `mockDBAdapter` when `Environment == "test"`.
 - DB layer: in-memory sqlite (`testutil.TestDbInit` + gorm AutoMigrate); River via
   `testutil.GetRiverClient`.
-- **Pattern for Oracle tests:** build `RDSInstance{DbType:"oracle-ee", DbVersion:"19...",
+- **Pattern for Oracle tests:** build `RDSInstance{DbType:"oracle-se2", DbVersion:"19...",
   Database:"db1"}`, feed `mockRDSClient{dbEngineVersions:[...MajorEngineVersion/
   DBParameterGroupFamily...]}`, assert on the captured `*rds.CreateDBInstanceInput`
   (mirror the `prepareCreateDbInput` and `option_group` tests).
@@ -258,13 +258,13 @@ rows 1–12.
 
 ## Recommended Oracle insertion points
 
-1. **Catalog** — add `oracle-19c-dev` plan (BYOL, private, encrypted). ([#522](https://github.com/cloud-gov/aws-broker/issues/522))
+1. **Catalog** — add `oracle-se2-license-included-dev` plan (SE2 + License Included, private, encrypted). ([#522](https://github.com/cloud-gov/aws-broker/issues/522))
 2. **`RDSBaseline`** — new engine strategy; refactor pg/mysql behind it unchanged, add `oracle19cBaseline`. ([#523](https://github.com/cloud-gov/aws-broker/issues/523))
 3. **`credentials.go`** — Oracle URI scheme + engine-aware `formatDBName`. ([#524](https://github.com/cloud-gov/aws-broker/issues/524), [#528](https://github.com/cloud-gov/aws-broker/issues/528))
 4. **`hasEngineVersionUpdate`** — include Oracle (or per-engine capability flag).
 5. **`needCustomParameters`/`getNewParameters`/reconcile** — Oracle hardened baseline. ([#525](https://github.com/cloud-gov/aws-broker/issues/525))
 6. **Option group** — create Oracle baseline at provision if needed. ([#526](https://github.com/cloud-gov/aws-broker/issues/526))
-7. **Tests** — Oracle table cases against `mockRDSClient` with an `oracle-ee-19` family. ([#531](https://github.com/cloud-gov/aws-broker/issues/531))
+7. **Tests** — Oracle table cases against `mockRDSClient` with an `oracle-se2-19` family. ([#531](https://github.com/cloud-gov/aws-broker/issues/531))
 
 ## Verify commands
 
