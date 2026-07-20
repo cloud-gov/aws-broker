@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cloudwatchTypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 
@@ -41,6 +43,7 @@ type DeleteWorker struct {
 	opensearch OpensearchClientInterface
 	iam        awsiam.IAMClientInterface
 	s3         brokerAws.S3ClientInterface
+	logs       CloudwatchLogsClientInterface
 	logger     *slog.Logger
 }
 
@@ -50,6 +53,7 @@ func NewDeleteWorker(
 	opensearch OpensearchClientInterface,
 	iam awsiam.IAMClientInterface,
 	s3 brokerAws.S3ClientInterface,
+	logs CloudwatchLogsClientInterface,
 	logger *slog.Logger,
 ) *DeleteWorker {
 	return &DeleteWorker{
@@ -58,6 +62,7 @@ func NewDeleteWorker(
 		opensearch: opensearch,
 		iam:        iam,
 		s3:         s3,
+		logs:       logs,
 		logger:     logger,
 	}
 }
@@ -96,6 +101,14 @@ func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *El
 	err = w.cleanupElasticSearchDomain(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+	}
+
+	err = w.cleanupLogGroups(ctx, i)
+	if err != nil {
+		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupLogGroups returned error"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -334,5 +347,26 @@ func (w *DeleteWorker) writeManifestToS3(ctx context.Context, i *ElasticsearchIn
 		return err
 	}
 
+	return nil
+}
+
+func (w *DeleteWorker) cleanupLogGroups(ctx context.Context, i *ElasticsearchInstance) error {
+	for _, state := range i.logTypeStates() {
+		if *state.arn == "" {
+			continue
+		}
+		name := logGroupName(i.Domain, state.suffix)
+		_, err := w.logs.DeleteLogGroup(ctx, &cloudwatchlogs.DeleteLogGroupInput{
+			LogGroupName: aws.String(name),
+		})
+		if err != nil {
+			var notFound *cloudwatchTypes.ResourceNotFoundException
+			if errors.As(err, &notFound) {
+				continue
+			}
+			w.logger.Error("cleanupLogGroups: DeleteLogGroup err", "err", err, "logGroup", name)
+			return err
+		}
+	}
 	return nil
 }
