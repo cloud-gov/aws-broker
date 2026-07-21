@@ -1,10 +1,10 @@
-// #cgo LDFLAGS: -L${SRCDIR}/include
 package main
 
 import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +13,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "gopkg.in/goracle.v2"
+	// Pure-Go Oracle driver (registers as "oracle"); needs no Oracle Instant Client.
+	_ "github.com/sijms/go-ora/v2"
 )
 
 func main() {
@@ -39,12 +40,14 @@ func main() {
 	}
 
 	switch {
-	case strings.Contains("postgres", dbType):
+	case strings.Contains(dbType, "postgres"):
 		openAndTest("postgres", svc.Credentials["uri"].(string))
-	case strings.Contains("mysql", dbType):
+	case strings.Contains(dbType, "mysql"):
 		openAndTest("mysql", fmtMysql(svc))
-	case strings.Contains("oracle", dbType):
-		openAndTest("oracle", svc.Credentials["uri"].(string))
+	case strings.Contains(dbType, "oracle"):
+		openAndTest("oracle", fmtOracle(svc))
+	default:
+		panic("unsupported DB_TYPE: " + dbType)
 	}
 
 	fmt.Printf("tested %s database, things look good, starting web server now.", dbType)
@@ -73,13 +76,47 @@ func fmtMysql(svc *cfenv.Service) string {
 	return cfg.FormatDSN()
 }
 
+// fmtOracle builds the oracle:// URL that go-ora accepts, from the broker's
+// Oracle binding fields. Uses net/url so any special characters in the password
+// are percent-escaped.
+func fmtOracle(svc *cfenv.Service) string {
+	user, ok := svc.CredentialString("username")
+	if !ok {
+		panic("cannot parse username in oracle config")
+	}
+	pass, ok := svc.CredentialString("password")
+	if !ok {
+		panic("cannot parse password in oracle config")
+	}
+	host, ok := svc.CredentialString("host")
+	if !ok {
+		panic("cannot parse host in oracle config")
+	}
+	port, ok := svc.CredentialString("port")
+	if !ok {
+		panic("cannot parse port in oracle config")
+	}
+	service, ok := svc.CredentialString("service_name")
+	if !ok {
+		panic("cannot parse service_name in oracle config")
+	}
+	// go-ora URL form: oracle://user:pass@host:port/service_name
+	u := &url.URL{
+		Scheme: "oracle",
+		User:   url.UserPassword(user, pass),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+		Path:   "/" + service,
+	}
+	return u.String()
+}
+
 func openAndTest(dbType string, dsn interface{}) {
 	db, err := sql.Open(dbType, fmt.Sprintf("%v", dsn))
 	if err != nil {
 		panic(err)
 	}
 
-	if dbType == "goracle" {
+	if dbType == "oracle" {
 		oracleSql(db)
 		return
 	}
