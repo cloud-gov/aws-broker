@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
@@ -383,6 +384,63 @@ func TestCreateInstanceSuccess(t *testing.T) {
 			err = broker.CreateInstance(test.dbInstance.Uuid, test.provisionDetails)
 			if err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+// TestCreateInstanceOracleFeatureGate verifies Oracle provisioning is behind the
+// EnableOracleFeature staged-rollout switch: blocked when off, allowed when on.
+func TestCreateInstanceOracleFeatureGate(t *testing.T) {
+	oracleCatalog := &catalog.Catalog{
+		RdsService: catalog.RDSService{
+			RDSPlans: []catalog.RDSPlan{
+				{
+					ServicePlan: domain.ServicePlan{ID: "oracle-plan"},
+					DbType:      "oracle-se2",
+				},
+			},
+		},
+	}
+
+	testCases := map[string]struct {
+		enableOracle bool
+		wantErr      bool
+	}{
+		"oracle disabled by default is blocked": {enableOracle: false, wantErr: true},
+		"oracle enabled is allowed":             {enableOracle: true, wantErr: false},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				catalog:    oracleCatalog,
+				tagManager: &mocks.MockTagGenerator{},
+				settings: &config.Settings{
+					EncryptionKey:       helpers.RandStr(32),
+					Environment:         "test",
+					EnableOracleFeature: tc.enableOracle,
+				},
+				dbAdapter: &mockDBAdapter{},
+			}
+			err = broker.CreateInstance(helpers.RandStr(10), domain.ProvisionDetails{PlanID: "oracle-plan"})
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected Oracle provisioning to be blocked, got nil error")
+				}
+				// Assert it is specifically the gate failure, not some unrelated error.
+				if !strings.Contains(err.Error(), "534") && !strings.Contains(err.Error(), "not enabled") {
+					t.Fatalf("expected the ENABLE_ORACLE gate error, got: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected Oracle provisioning to succeed, got %v", err)
 			}
 		})
 	}
@@ -1004,6 +1062,75 @@ func TestLastOperation(t *testing.T) {
 
 			if lastOperation.State != test.expectedState.ToLastOperationState() {
 				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperation.State)
+			}
+		})
+	}
+}
+
+// TestModifyInstanceOracleGuards verifies the ENABLE_ORACLE gate and the Oracle
+// create-parameter allowlist ALSO apply on update: they must not
+// be bypassable via cf update-service on an existing Oracle instance.
+func TestModifyInstanceOracleGuards(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oracleCatalog := &catalog.Catalog{
+		RdsService: catalog.RDSService{
+			RDSPlans: []catalog.RDSPlan{
+				{
+					ServicePlan: domain.ServicePlan{ID: "oracle-plan", PlanUpdatable: aws.Bool(true)},
+					DbType:      "oracle-se2",
+				},
+			},
+		},
+	}
+
+	testCases := map[string]struct {
+		enableOracle bool
+		rawParams    string
+		wantErr      bool
+	}{
+		"update blocked when ENABLE_ORACLE off":     {enableOracle: false, rawParams: `{"backup_retention_period":21}`, wantErr: true},
+		"update rejects mysql-only param on oracle": {enableOracle: true, rawParams: `{"enable_functions":true}`, wantErr: true},
+		"update rejects pg-only param on oracle":    {enableOracle: true, rawParams: `{"enable_pg_cron":true}`, wantErr: true},
+		"update allows allowlisted param on oracle": {enableOracle: true, rawParams: `{"backup_retention_period":21}`, wantErr: false},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			inst := createTestRdsInstance(&RDSInstance{
+				DbType: "oracle-se2",
+				Instance: base.Instance{
+					Uuid:    uuid.NewString(),
+					Request: request.Request{ServiceID: "service-1", PlanID: "oracle-plan"},
+				},
+			})
+			if err := brokerDB.Create(inst).Error; err != nil {
+				t.Fatal(err)
+			}
+			broker := &rdsBroker{
+				brokerDB:   brokerDB,
+				catalog:    oracleCatalog,
+				tagManager: &mocks.MockTagGenerator{},
+				settings: &config.Settings{
+					EncryptionKey:       helpers.RandStr(32),
+					Environment:         "test",
+					EnableOracleFeature: tc.enableOracle,
+					MinBackupRetention:  14,
+					MaxBackupRetention:  35,
+				},
+				dbAdapter: &mockDBAdapter{db: brokerDB},
+			}
+			err := broker.ModifyInstance(inst.Uuid, domain.UpdateDetails{
+				PlanID:        "oracle-plan",
+				RawParameters: []byte(tc.rawParams),
+			})
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected update to be rejected (%s), got nil", tc.rawParams)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected update to succeed (%s), got %v", tc.rawParams, err)
 			}
 		})
 	}
