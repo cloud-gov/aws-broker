@@ -69,7 +69,8 @@ cipher (an ECDSA-only suite would need the ECC CA and is rejected fail-closed be
 the AWS call). `FIPS.SSLFIPS_140=TRUE` means clients **must** negotiate a
 FIPS/FedRAMP cipher or the handshake fails. The binding advertises the TCPS/2484
 posture (`port=2484`, `protocol=tcps`, `ssl_required=true`, `ssl_server_dn_match`,
-`ssl_server_cert_dn`, `ca_cert_bundle_url`).
+`ca_cert_bundle_url`); the client verifies the server cert against the CA bundle
+(no hardcoded DN is published).
 
 > **TLS-only posture depends on the platform SG ([#541](https://github.com/cloud-gov/aws-broker/issues/541)).**
 > The broker provisions + attaches the SSL option and expresses the 2484 intent, but

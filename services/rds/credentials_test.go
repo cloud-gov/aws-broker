@@ -110,9 +110,11 @@ func TestGetCredentials(t *testing.T) {
 			password: "fake-pw",
 			// Oracle binding is TLS/TCPS on 2484 with a DESCRIPTION connect string
 			// + DN match + GovCloud CA bundle (#538). Port is the SSL port, not 1521.
+			// No hardcoded cert DN: the driver verifies identity via the CA bundle +
+			// ssl_server_dn_match (DRY review — pg/mysql omit it, DN is Amazon-owned).
 			expectedCreds: map[string]string{
-				"uri":                 `oracle://user-1:fake-pw@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=host)(PORT=2484))(CONNECT_DATA=(SID=ORCL))(SECURITY=(SSL_SERVER_CERT_DN="C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=host")))`,
-				"jdbcUrl":             `jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=host)(PORT=2484))(CONNECT_DATA=(SID=ORCL))(SECURITY=(SSL_SERVER_CERT_DN="C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=host")))`,
+				"uri":                 `oracle://user-1:fake-pw@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=host)(PORT=2484))(CONNECT_DATA=(SID=ORCL)))`,
+				"jdbcUrl":             `jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=host)(PORT=2484))(CONNECT_DATA=(SID=ORCL)))`,
 				"username":            "user-1",
 				"password":            "fake-pw",
 				"host":                "host",
@@ -124,7 +126,6 @@ func TestGetCredentials(t *testing.T) {
 				"name":                "ORCL",
 				"ssl_required":        "true",
 				"ssl_server_dn_match": "true",
-				"ssl_server_cert_dn":  "C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=host",
 				"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
 			},
 		},

@@ -8,8 +8,8 @@ After `cf bind-service my-app my-oracle`, the binding credentials appear in
 
 ```json
 {
-  "uri": "oracle://APP_USER:REDACTED@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=my-oracle.abc.us-gov-west-1.rds.amazonaws.com)(PORT=2484))(CONNECT_DATA=(SID=ORCL))(SECURITY=(SSL_SERVER_CERT_DN=\"C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=my-oracle.abc.us-gov-west-1.rds.amazonaws.com\")))",
-  "jdbcUrl": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=my-oracle.abc.us-gov-west-1.rds.amazonaws.com)(PORT=2484))(CONNECT_DATA=(SID=ORCL))(SECURITY=(SSL_SERVER_CERT_DN=\"C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=my-oracle.abc.us-gov-west-1.rds.amazonaws.com\")))",
+  "uri": "oracle://APP_USER:REDACTED@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=my-oracle.abc.us-gov-west-1.rds.amazonaws.com)(PORT=2484))(CONNECT_DATA=(SID=ORCL)))",
+  "jdbcUrl": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=my-oracle.abc.us-gov-west-1.rds.amazonaws.com)(PORT=2484))(CONNECT_DATA=(SID=ORCL)))",
   "username": "APP_USER",
   "password": "REDACTED",
   "host": "my-oracle.abc.us-gov-west-1.rds.amazonaws.com",
@@ -21,19 +21,20 @@ After `cf bind-service my-app my-oracle`, the binding credentials appear in
   "name": "ORCL",
   "ssl_required": "true",
   "ssl_server_dn_match": "true",
-  "ssl_server_cert_dn": "C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=my-oracle.abc.us-gov-west-1.rds.amazonaws.com",
   "ca_cert_bundle_url": "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem"
 }
 ```
 
 The binding advertises TLS/TCPS: `port` `2484`, `protocol` `tcps`, and a full
 Oracle connect `DESCRIPTION` (not EZConnect) in both `uri` and `jdbcUrl` carrying
-`PROTOCOL=TCPS` and `SSL_SERVER_CERT_DN`. `ssl_required=true` and
-`ssl_server_dn_match=true` instruct the client to encrypt **and** verify the server
-identity; `ca_cert_bundle_url` is the GovCloud RDS CA bundle the client must trust.
-The instance uses the RDS default RSA CA (`rds-ca-rsa2048-g1`), compatible with the
-ECDHE_RSA cipher. Verified offline + by go unit tests; not yet exercised against a
-live GovCloud RDS TLS handshake (WS15).
+`PROTOCOL=TCPS`. `ssl_required=true` and `ssl_server_dn_match=true` instruct the
+client to encrypt **and** verify the server identity; the client verifies that
+identity against `ca_cert_bundle_url` (the GovCloud RDS CA bundle it must trust) —
+the broker does **not** publish a hardcoded server-cert DN (the RDS cert subject is
+Amazon-owned and rotates; the driver derives it from the trusted cert). The instance
+uses the RDS default RSA CA (`rds-ca-rsa2048-g1`), compatible with the ECDHE_RSA
+cipher. Verified offline + by go unit tests; not yet exercised against a live
+GovCloud RDS TLS handshake (WS15).
 
 > **TLS not yet reachable end-to-end (platform SG, [#541](https://github.com/cloud-gov/aws-broker/issues/541)).**
 > The broker provisions the RDS Oracle SSL option group and the binding expresses
@@ -101,7 +102,7 @@ keytool -importcert -alias rds-ca -file global-bundle.pem \
 ```java
 String url = System.getenv("ORACLE_JDBC_URL"); // the TCPS jdbcUrl from the binding
 // jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=..)(PORT=2484))
-//   (CONNECT_DATA=(SID=ORCL))(SECURITY=(SSL_SERVER_CERT_DN="...")))
+//   (CONNECT_DATA=(SID=ORCL)))
 Properties p = new Properties();
 p.put("user", username);
 p.put("password", password);
@@ -148,8 +149,8 @@ provisions and attaches at create, which serves TLS on a dedicated **TCPS listen
 (port 2484)**: TLS 1.2, cipher `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`, and
 `FIPS.SSLFIPS_140=TRUE` (SC-8 / SC-8(1) / SC-13; DISA Oracle 19c STIG V-270579,
 V-270571). The binding advertises this posture (`port=2484`, `protocol=tcps`,
-`ssl_required=true`, `ssl_server_dn_match=true`, `ssl_server_cert_dn`,
-`ca_cert_bundle_url`). RDS Oracle SSL supports **TLS 1.2 only** (no 1.3) — acceptable
+`ssl_required=true`, `ssl_server_dn_match=true`, `ca_cert_bundle_url`). RDS Oracle
+SSL supports **TLS 1.2 only** (no 1.3) — acceptable
 for FedRAMP Moderate. Configure your driver to trust the GovCloud RDS CA bundle and
 require server-DN matching (examples above).
 

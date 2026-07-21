@@ -260,66 +260,54 @@ func indexFold(s, substr string) int {
 	return -1
 }
 
-func TestValidateOracleSSLSecurity(t *testing.T) {
-	base := func() *oracleOptionsFile {
-		return &oracleOptionsFile{
-			CACertFamily: "rsa",
-			Options: []oracleOption{{
-				Name: "SSL", Port: 2484,
-				Settings: []oracleOptionSetting{
-					{Name: "SQLNET.SSL_VERSION", Value: "1.2"},
-					{Name: "SQLNET.CIPHER_SUITE", Value: "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
-					{Name: "FIPS.SSLFIPS_140", Value: "TRUE"},
-				},
-			}},
-		}
-	}
-	if err := validateOracleSSLSecurity(base()); err != nil {
-		t.Fatalf("valid baseline rejected: %v", err)
-	}
-
-	mutate := func(fn func(m map[string]string)) *oracleOptionsFile {
-		f := base()
-		m := map[string]string{}
-		for _, s := range f.Options[0].Settings {
-			m[s.Name] = s.Value
-		}
-		fn(m)
-		f.Options[0].Settings = nil
-		for k, v := range m {
-			if v == "__delete__" {
-				continue
-			}
-			f.Options[0].Settings = append(f.Options[0].Settings, oracleOptionSetting{Name: k, Value: v})
-		}
-		return f
-	}
-
-	bad := map[string]func(map[string]string){
-		"tls 1.0 rejected":         func(m map[string]string) { m["SQLNET.SSL_VERSION"] = "1.0" },
-		"tls 1.1 rejected":         func(m map[string]string) { m["SQLNET.SSL_VERSION"] = "1.1" },
-		"missing version rejected": func(m map[string]string) { m["SQLNET.SSL_VERSION"] = "__delete__" },
-		"fips off rejected":        func(m map[string]string) { m["FIPS.SSLFIPS_140"] = "FALSE" },
-		"fips missing rejected":    func(m map[string]string) { m["FIPS.SSLFIPS_140"] = "__delete__" },
-		"weak cipher rejected":     func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "TLS_RSA_WITH_AES_128_CBC_SHA" },
-		"3des cipher rejected":     func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "TLS_RSA_WITH_3DES_EDE_CBC_SHA" },
-		"missing cipher rejected":  func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "__delete__" },
-		"ecdsa on rsa ca rejected": func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" },
-	}
-	for name, fn := range bad {
-		t.Run(name, func(t *testing.T) {
-			if err := validateOracleSSLSecurity(mutate(fn)); err == nil {
-				t.Errorf("expected fail-closed rejection, got nil")
-			}
-		})
-	}
-
-	// The shipped embedded baseline must pass the security guard.
-	shipped, err := loadOracleOptions()
+// TestOracleSSLBaselineIsFedRAMPCompliant is the CI gate for the SSL security
+// invariants (S1: options.yml is our own committed file, so the values are enforced
+// by this test rather than a runtime guard — matching how pg/mysql have no runtime
+// param guard). It asserts the SHIPPED baseline is TLS 1.2 + FIPS on + a FedRAMP/FIPS
+// allowlisted cipher; a weakened options.yml fails go test and never merges.
+func TestOracleSSLBaselineIsFedRAMPCompliant(t *testing.T) {
+	f, err := loadOracleOptions()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateOracleSSLSecurity(shipped); err != nil {
-		t.Errorf("shipped options.yml fails the SSL security guard: %v", err)
+	s := f.sslSettings()
+
+	if v := s["SQLNET.SSL_VERSION"]; v != "1.2" {
+		t.Errorf("SQLNET.SSL_VERSION=%q, require exactly \"1.2\" (FedRAMP floor; RDS Oracle ceiling)", v)
+	}
+	if v := s["FIPS.SSLFIPS_140"]; !strings.EqualFold(v, "TRUE") {
+		t.Errorf("FIPS.SSLFIPS_140=%q, require TRUE (SC-13)", v)
+	}
+	cipher, ok := s["SQLNET.CIPHER_SUITE"]
+	if !ok || cipher == "" {
+		t.Fatal("SQLNET.CIPHER_SUITE is required")
+	}
+	if _, ok := fedrampOracleSSLCiphers[cipher]; !ok {
+		t.Errorf("cipher %q is not on the FedRAMP/FIPS allowlist", cipher)
+	}
+}
+
+// TestOracleSSLCipherCACompatible covers the runtime compatibility guard kept on the
+// provision path (option-b): an ECDSA-only cipher on the RSA CA is rejected before
+// the AWS associate call.
+func TestOracleSSLCipherCACompatible(t *testing.T) {
+	ok := &oracleOptionsFile{
+		CACertFamily: "rsa",
+		Options: []oracleOption{{Name: "SSL", Settings: []oracleOptionSetting{
+			{Name: "SQLNET.CIPHER_SUITE", Value: "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
+		}}},
+	}
+	if err := oracleSSLCipherCACompatible(ok); err != nil {
+		t.Errorf("RSA cipher on RSA CA should be compatible, got %v", err)
+	}
+
+	bad := &oracleOptionsFile{
+		CACertFamily: "rsa",
+		Options: []oracleOption{{Name: "SSL", Settings: []oracleOptionSetting{
+			{Name: "SQLNET.CIPHER_SUITE", Value: "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"},
+		}}},
+	}
+	if err := oracleSSLCipherCACompatible(bad); err == nil {
+		t.Error("ECDSA cipher on RSA CA must be rejected")
 	}
 }

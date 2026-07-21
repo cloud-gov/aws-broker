@@ -12,10 +12,10 @@ binding payload into `VCAP_SERVICES` (keys documented in
 `uri` (oracle scheme, TCPS `DESCRIPTION`), `jdbcUrl` (thin, TCPS `DESCRIPTION`),
 `username`, `password`, `host`, `port` (`2484`, TCPS), `protocol` (`tcps`),
 `service_name`/`sid` (`ORCL`), `db_name`, `name`, plus the TLS keys `ssl_required=true`,
-`ssl_server_dn_match=true`, `ssl_server_cert_dn` (the RDS server cert DN), and
-`ca_cert_bundle_url` (the GovCloud RDS CA bundle the client must trust). The `uri`
-and `jdbcUrl` use the full Oracle connect `DESCRIPTION` form (`PROTOCOL=TCPS`,
-`PORT=2484`, `SSL_SERVER_CERT_DN`) — EZConnect cannot express TCPS. No admin/master
+`ssl_server_dn_match=true`, and `ca_cert_bundle_url` (the GovCloud RDS CA bundle the
+client must trust; the driver verifies the server cert against it — no hardcoded DN
+is published). The `uri` and `jdbcUrl` use the full Oracle connect `DESCRIPTION` form
+(`PROTOCOL=TCPS`, `PORT=2484`) — EZConnect cannot express TCPS. No admin/master
 marker keys are present (asserted by `TestOracleBindingDoesNotLeakAdminMarkers`).
 
 > **Encryption in transit (TLS).** The broker provisions an RDS Oracle SSL option

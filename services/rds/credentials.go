@@ -127,12 +127,14 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 
 // oracleCredentials builds the Oracle-specific binding payload (WS9 #528, TLS #538).
 // It returns machine-readable connection details for a bound app over TLS/TCPS:
-// the SSL port (2484), a TCPS connect descriptor (uri + jdbcUrl with PROTOCOL=TCPS
-// and SSL_SERVER_CERT_DN), ssl_server_dn_match, and the GovCloud RDS CA bundle URL
-// the client must trust. Like the postgres/mysql plans, the broker returns the
-// instance master credential per binding; the customer creates their own
-// least-privilege in-database users (the intended shared-responsibility boundary).
-// No admin/master marker key is exposed here.
+// the SSL port (2484), a TCPS connect descriptor (uri + jdbcUrl with PROTOCOL=TCPS),
+// ssl_server_dn_match, and the GovCloud RDS CA bundle URL the client must trust.
+// Server identity is verified by the driver against the CA bundle + DN match — the
+// broker does NOT publish a hardcoded cert DN (the RDS cert subject is Amazon-owned
+// and rotates; pinning it would duplicate the driver's own check and break on
+// rotation). Like the postgres/mysql plans, the broker returns the instance master
+// credential per binding; the customer creates their own least-privilege in-database
+// users (the intended shared-responsibility boundary). No admin/master marker key.
 //
 // FAIL-CLOSED (security review): if the TLS SSL port cannot be resolved from the
 // embedded baseline, this returns an error rather than falling back to the
@@ -154,17 +156,14 @@ func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) (ma
 		return nil, errors.New("oracle TLS binding: SSL port is 0, refusing to emit a binding that would claim TLS on a plaintext port")
 	}
 
-	// Server cert DN for RDS Oracle TLS: the RDS-issued cert CN is the endpoint.
-	// Enables ssl_server_dn_match to verify server identity (not just encrypt).
-	certDN := fmt.Sprintf("C=US,ST=Washington,L=Seattle,O=Amazon.com,OU=RDS,CN=%s", i.Host)
-
-	// TCPS connect descriptor (URI form) with DN match — EZConnect cannot express
-	// PROTOCOL=TCPS or the cert DN, so we use the full DESCRIPTION form.
+	// TCPS connect descriptor (URI form) — EZConnect cannot express PROTOCOL=TCPS,
+	// so we use the full DESCRIPTION form. Server identity is verified by the
+	// client driver via ssl_server_dn_match + the CA bundle (below); we do not pin
+	// the cert DN here.
 	descriptor := fmt.Sprintf(
 		"(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=%s)(PORT=%d))"+
-			"(CONNECT_DATA=(SID=%s))"+
-			"(SECURITY=(SSL_SERVER_CERT_DN=\"%s\")))",
-		i.Host, sslPort, serviceName, certDN,
+			"(CONNECT_DATA=(SID=%s)))",
+		i.Host, sslPort, serviceName,
 	)
 	uri := fmt.Sprintf("%s://%s:%s@%s", scheme, i.Username, password, descriptor)
 	jdbcURL := fmt.Sprintf("jdbc:oracle:thin:@%s", descriptor)
@@ -183,7 +182,6 @@ func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) (ma
 		"name":                serviceName,
 		"ssl_required":        "true",
 		"ssl_server_dn_match": "true",
-		"ssl_server_cert_dn":  certDN,
 		"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
 	}, nil
 }

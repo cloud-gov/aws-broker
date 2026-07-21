@@ -151,6 +151,44 @@ func optionsFromGroup(optionGroup *rdsTypes.OptionGroup) []rdsTypes.OptionConfig
 	return optionConfigs
 }
 
+// ensureOptionGroupWithOptions is the shared describe→(create if absent)→modify
+// sequence used by both the create-time baseline path and the upgrade-reconcile
+// path. Idempotent: a group that already exists is not recreated; the options are
+// (re)applied via ModifyOptionGroup. Returns whether it created the group.
+func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
+	groupName, engineName, majorVersion, dbName string,
+	opts []rdsTypes.OptionConfiguration,
+	rdsTags []rdsTypes.Tag,
+) (bool, error) {
+	existing, err := o.describeOptionGroup(groupName)
+	if err != nil {
+		return false, err
+	}
+	created := false
+	if existing == nil {
+		if _, err := o.rds.CreateOptionGroup(o.ctx, &rds.CreateOptionGroupInput{
+			OptionGroupName:        aws.String(groupName),
+			EngineName:             aws.String(engineName),
+			MajorEngineVersion:     aws.String(majorVersion),
+			OptionGroupDescription: aws.String("aws broker option group for " + dbName),
+			Tags:                   rdsTags,
+		}); err != nil {
+			return false, fmt.Errorf("create option group: %w", err)
+		}
+		created = true
+	}
+	if len(opts) > 0 {
+		if _, err := o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
+			OptionGroupName:  aws.String(groupName),
+			OptionsToInclude: opts,
+			ApplyImmediately: aws.Bool(true),
+		}); err != nil {
+			return created, fmt.Errorf("add options to option group: %w", err)
+		}
+	}
+	return created, nil
+}
+
 // ProvisionBaselineOptionGroup creates + attaches a broker-managed option group at
 // CREATE time for engines that ship a baseline option set (Oracle SE2: the SSL
 // option for FedRAMP-Moderate TLS — #519/#538). Unlike ProvisionOrModifyCustomOptionGroup
@@ -180,28 +218,8 @@ func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rds
 	}
 	groupName := o.getOptionGroupName(i, majorVersion)
 
-	existing, err := o.describeOptionGroup(groupName)
-	if err != nil {
+	if _, err := o.ensureOptionGroupWithOptions(groupName, i.DbType, majorVersion, formatDBName(i.Database), opts, rdsTags); err != nil {
 		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
-	}
-	if existing == nil {
-		if _, err := o.rds.CreateOptionGroup(o.ctx, &rds.CreateOptionGroupInput{
-			OptionGroupName:        aws.String(groupName),
-			EngineName:             aws.String(i.DbType),
-			MajorEngineVersion:     aws.String(majorVersion),
-			OptionGroupDescription: aws.String("aws broker option group for " + formatDBName(i.Database)),
-			Tags:                   rdsTags,
-		}); err != nil {
-			return fmt.Errorf("ProvisionBaselineOptionGroup: create option group: %w", err)
-		}
-	}
-
-	if _, err := o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
-		OptionGroupName:  aws.String(groupName),
-		OptionsToInclude: opts,
-		ApplyImmediately: aws.Bool(true),
-	}); err != nil {
-		return fmt.Errorf("ProvisionBaselineOptionGroup: add options: %w", err)
 	}
 
 	i.OptionGroupName = groupName
@@ -243,37 +261,12 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 		return false, nil
 	}
 
-	targetOptionGroup, err := o.describeOptionGroup(targetOptionGroupName)
+	// Recreate the group for the new major version, carrying the same options.
+	existingOptions := optionsFromGroup(existingOptionGroup)
+	createdOptionGroup, err := o.ensureOptionGroupWithOptions(
+		targetOptionGroupName, i.DbType, targetMajorVersion, formatDBName(i.Database), existingOptions, rdsTags)
 	if err != nil {
 		return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: %w", err)
-	}
-
-	createdOptionGroup := false
-	if targetOptionGroup == nil {
-		log.Printf("creating option group %s for %s %s", targetOptionGroupName, i.DbType, targetMajorVersion)
-		_, err = o.rds.CreateOptionGroup(o.ctx, &rds.CreateOptionGroupInput{
-			OptionGroupName:        aws.String(targetOptionGroupName),
-			EngineName:             aws.String(i.DbType),
-			MajorEngineVersion:     aws.String(targetMajorVersion),
-			OptionGroupDescription: aws.String("aws broker option group for " + formatDBName(i.Database)),
-			Tags:                   rdsTags,
-		})
-		if err != nil {
-			return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: error creating option group: %w", err)
-		}
-		createdOptionGroup = true
-	}
-
-	existingOptions := optionsFromGroup(existingOptionGroup)
-	if len(existingOptions) > 0 {
-		_, err = o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
-			OptionGroupName:  aws.String(targetOptionGroupName),
-			OptionsToInclude: existingOptions,
-			ApplyImmediately: aws.Bool(true),
-		})
-		if err != nil {
-			return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: error adding options to option group: %w", err)
-		}
 	}
 
 	i.OptionGroupName = targetOptionGroupName
