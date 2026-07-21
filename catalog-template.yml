@@ -25,10 +25,6 @@ rds:
           - &minimum-1-core "minimum 1 core"
           - &minimum-1-gib-memory "minimum 1 GiB memory"
           - &default-10-gb-storage "Default 10 GB storage"
-        costs:
-          - amount:
-              usd: 16
-            unit: "MONTHLY"
         displayName: *micro-psql-name
       free: true
       adapter: dedicated
@@ -62,10 +58,6 @@ rds:
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 31
-            unit: "MONTHLY"
         displayName: *micro-psql-redundant-name
       free: false
       adapter: dedicated
@@ -95,10 +87,6 @@ rds:
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 31
-            unit: "MONTHLY"
         displayName: *micro-psql-replica-name
       free: false
       adapter: dedicated
@@ -129,10 +117,6 @@ rds:
           - *minimum-1-core
           - &minimum-2-gib-memory "minimum 2 GiB memory"
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 29
-            unit: "MONTHLY"
         displayName: *small-psql-name
       free: false
       adapter: dedicated
@@ -162,10 +146,6 @@ rds:
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 65
-            unit: "MONTHLY"
         displayName: *small-psql-redundant-name
       free: false
       adapter: dedicated
@@ -196,10 +176,6 @@ rds:
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 65
-            unit: "MONTHLY"
         displayName: *small-psql-replica-name
       free: false
       adapter: dedicated
@@ -230,10 +206,6 @@ rds:
           - *minimum-1-core
           - &minimum-4-gib-memory "minimum 4 GiB memory"
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 65
-            unit: "MONTHLY"
         displayName: *medium-psql-name
       free: false
       adapter: dedicated
@@ -263,10 +235,6 @@ rds:
           - *minimum-1-core
           - *minimum-4-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 123
-            unit: "MONTHLY"
         displayName: *medium-psql-redundant-name
       free: false
       adapter: dedicated
@@ -297,10 +265,6 @@ rds:
           - *minimum-1-core
           - *minimum-4-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 123
-            unit: "MONTHLY"
         displayName: *medium-psql-replica-name
       free: false
       adapter: dedicated
@@ -331,10 +295,6 @@ rds:
           - *minimum-1-core
           - &minimum-8-gib-memory "minimum 8 GiB memory"
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 152
-            unit: "MONTHLY"
         displayName: *medium-gp-psql-name
       free: false
       adapter: dedicated
@@ -364,10 +324,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 310
-            unit: "MONTHLY"
         displayName: *medium-gp-psql-redundant
       free: false
       adapter: dedicated
@@ -398,10 +354,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 310
-            unit: "MONTHLY"
         displayName: *medium-gp-psql-replica
       free: false
       adapter: dedicated
@@ -432,10 +384,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 152
-            unit: "MONTHLY"
         displayName: *large-gp-psql-name
       free: false
       adapter: dedicated
@@ -465,10 +413,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 310
-            unit: "MONTHLY"
         displayName: *large-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -498,10 +442,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 310
-            unit: "MONTHLY"
         displayName: *large-gp-psql-replica-name
       free: false
       adapter: dedicated
@@ -532,11 +472,6 @@ rds:
           - &minimum-2-cores "minimum 2 cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
           - *default-10-gb-storage
-        costs:
-          -
-            amount:
-              usd: 310
-            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-name
       free: false
       adapter: dedicated
@@ -566,10 +501,6 @@ rds:
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 612
-            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -600,10 +531,6 @@ rds:
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 612
-            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-replica-name
       free: false
       adapter: dedicated
@@ -635,11 +562,6 @@ rds:
           - &minimum-4-cores "minimum 4 cores"
           - &minimum-32-gib-memory "minimum 32 GiB memory"
           - *default-10-gb-storage
-        costs:
-          -
-            amount:
-              usd: 612
-            unit: "MONTHLY"
         displayName: *2xlarge-gp-psql-name
       free: false
       adapter: dedicated
@@ -669,10 +591,6 @@ rds:
           - *minimum-4-cores
           - *minimum-32-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 1224
-            unit: "MONTHLY"
         displayName: *2xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -703,10 +621,6 @@ rds:
           - *minimum-4-cores
           - *minimum-32-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 1224
-            unit: "MONTHLY"
         displayName: *2xlarge-gp-psql-replica-name
       free: false
       adapter: dedicated
@@ -738,11 +652,6 @@ rds:
           - &minimum-4-cores "minimum 4 graviton cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
           - *default-10-gb-storage
-        costs:
-          -
-            amount:
-              usd: 268
-            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-m6-name
       free: false
       adapter: dedicated
@@ -772,10 +681,6 @@ rds:
           - *minimum-4-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 535
-            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-m6-redundant-name
       free: false
       adapter: dedicated
@@ -806,10 +711,6 @@ rds:
           - *minimum-4-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 535
-            unit: "MONTHLY"
         displayName: *xlarge-gp-psql-m6-replica-name
       free: false
       adapter: dedicated
@@ -841,10 +742,6 @@ rds:
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 16
-            unit: "MONTHLY"
         displayName: *micro-mysql-name
       free: true
       adapter: dedicated
@@ -877,10 +774,6 @@ rds:
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 30
-            unit: "MONTHLY"
         displayName: *micro-mysql-replica-name
       free: true
       adapter: dedicated
@@ -911,10 +804,6 @@ rds:
           - *minimum-1-core
           - *minimum-1-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 30
-            unit: "MONTHLY"
         displayName: *micro-mysql-name
       free: true
       adapter: dedicated
@@ -944,10 +833,6 @@ rds:
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 29
-            unit: "MONTHLY"
         displayName: *small-mysql-name
       free: true
       adapter: dedicated
@@ -977,10 +862,6 @@ rds:
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 58
-            unit: "MONTHLY"
         displayName: *small-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1011,10 +892,6 @@ rds:
           - *minimum-1-core
           - *minimum-2-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 58
-            unit: "MONTHLY"
         displayName: *small-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1045,10 +922,6 @@ rds:
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 58
-            unit: "MONTHLY"
         displayName: *medium-mysql-name
       free: false
       adapter: dedicated
@@ -1078,10 +951,6 @@ rds:
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 116
-            unit: "MONTHLY"
         displayName: *medium-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1112,10 +981,6 @@ rds:
           - *minimum-2-cores
           - *minimum-4-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 116
-            unit: "MONTHLY"
         displayName: *medium-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1146,10 +1011,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 148
-            unit: "MONTHLY"
         displayName: *medium-gp-mysql-name
       free: false
       adapter: dedicated
@@ -1179,10 +1040,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 296
-            unit: "MONTHLY"
         displayName: *medium-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1213,10 +1070,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 296
-            unit: "MONTHLY"
         displayName: *medium-gp-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1247,10 +1100,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 148
-            unit: "MONTHLY"
         displayName: *large-gp-mysql-name
       free: false
       adapter: dedicated
@@ -1280,10 +1129,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 296
-            unit: "MONTHLY"
         displayName: *large-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1314,10 +1159,6 @@ rds:
           - *minimum-1-core
           - *minimum-8-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 296
-            unit: "MONTHLY"
         displayName: *large-gp-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1348,10 +1189,6 @@ rds:
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 296
-            unit: "MONTHLY"
         displayName: *xlarge-gp-mysql-name
       free: false
       adapter: dedicated
@@ -1381,10 +1218,6 @@ rds:
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 591
-            unit: "MONTHLY"
         displayName: *xlarge-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1415,10 +1248,6 @@ rds:
           - *minimum-2-cores
           - *minimum-16-gib-memory
           - *default-10-gb-storage
-        costs:
-          - amount:
-              usd: 591
-            unit: "MONTHLY"
         displayName: *xlarge-gp-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1466,11 +1295,6 @@ redis:
           - "redis"
           - "single node"
           - "non-prod"
-        costs:
-          -
-            amount:
-              usd: 20.0
-            unit: "MONTHLY"
         displayName: "non-prod single Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
@@ -1502,11 +1326,6 @@ redis:
           - "Elasticache"
           - "redis"
           - "3node"
-        costs:
-          -
-            amount:
-              usd: 60.0
-            unit: "MONTHLY"
         displayName: "3 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
@@ -1533,11 +1352,6 @@ redis:
           - "Elasticache"
           - "redis"
           - "5node"
-        costs:
-          -
-            amount:
-              usd: 100.0
-            unit: "MONTHLY"
         displayName: "5 node Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
@@ -1564,11 +1378,6 @@ redis:
           - "Elasticache"
           - "redis"
           - "3node"
-        costs:
-          -
-            amount:
-              usd: 120.0
-            unit: "MONTHLY"
         displayName: "3 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
@@ -1595,11 +1404,6 @@ redis:
           - "Elasticache"
           - "redis"
           - "5node"
-        costs:
-          -
-            amount:
-              usd: 200.0
-            unit: "MONTHLY"
         displayName: "5 node Elasticache redis, persistent storage, 1.37GiB memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
@@ -1644,10 +1448,6 @@ elasticsearch:
       - "es 6.8"
       - "single node"
       - "non-prod"
-      costs:
-      - amount:
-          usd: 200.0
-        unit: "MONTHLY"
       displayName: "non-prod single node elasticsearch 6.8"
     free: false
     elasticsearchVersion: Elasticsearch_6.8
@@ -1678,10 +1478,6 @@ elasticsearch:
       - "Small"
       - "Single node"
       - "Non-prod"
-      costs:
-      - amount:
-          usd: 200.0
-        unit: "MONTHLY"
       displayName: "Small, single node, non-prod"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1711,10 +1507,6 @@ elasticsearch:
       bullets:
       - "Medium"
       - "2 data nodes"
-      costs:
-      - amount:
-          usd: 1000.0
-        unit: "MONTHLY"
       displayName: "Medium, 3 master nodes, 2 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1748,10 +1540,6 @@ elasticsearch:
       bullets:
       - "Medium"
       - "4 data nodes"
-      costs:
-      - amount:
-          usd: 1400.0
-        unit: "MONTHLY"
       displayName: "Medium, 3 master nodes, 4 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1785,10 +1573,6 @@ elasticsearch:
       bullets:
       - "Large"
       - "2 data nodes"
-      costs:
-      - amount:
-          usd: 2000.0
-        unit: "MONTHLY"
       displayName: "Large, 3 master nodes, 2 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1822,10 +1606,6 @@ elasticsearch:
       bullets:
       - "Large"
       - "4 data nodes"
-      costs:
-      - amount:
-          usd: 2800.0
-        unit: "MONTHLY"
       displayName: "Large, 3 master nodes, 4 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1859,10 +1639,6 @@ elasticsearch:
       bullets:
       - "X-Large"
       - "2 data nodes"
-      costs:
-      - amount:
-          usd: 3000.0
-        unit: "MONTHLY"
       displayName: "X-Large, 3 master nodes, 2 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1896,10 +1672,6 @@ elasticsearch:
       bullets:
       - "X-Large"
       - "4 data nodes"
-      costs:
-      - amount:
-          usd: 4200.0
-        unit: "MONTHLY"
       displayName: "X-Large, 3 master nodes, 4 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1933,10 +1705,6 @@ elasticsearch:
       bullets:
       - "2X-Large"
       - "2 data nodes"
-      costs:
-      - amount:
-          usd: 4000.00
-        unit: "MONTHLY"
       displayName: "2X-Large, General-Purpose, 3 master nodes, 2 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -1970,10 +1738,6 @@ elasticsearch:
       bullets:
       - "2X-Large"
       - "4 data nodes"
-      costs:
-      - amount:
-          usd: 5600.00
-        unit: "MONTHLY"
       displayName: "2X-Large, General-Purpose, 3 master nodes, 4 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -2007,10 +1771,6 @@ elasticsearch:
       bullets:
       - "4X-Large"
       - "2 data nodes"
-      costs:
-      - amount:
-          usd: 8000.00
-        unit: "MONTHLY"
       displayName: "4X-Large, General-Purpose, 3 master nodes, 2 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -2044,10 +1804,6 @@ elasticsearch:
       bullets:
       - "4X-Large"
       - "4 data nodes"
-      costs:
-      - amount:
-          usd: 11200.00
-        unit: "MONTHLY"
       displayName: "4X-Large, General-Purpose, 3 master nodes, 4 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -2082,10 +1838,6 @@ elasticsearch:
       bullets:
       - "12X-Large"
       - "2 data nodes"
-      costs:
-      - amount:
-          usd: 24000.00
-        unit: "MONTHLY"
       displayName: "12X-Large, General-Purpose, 3 master nodes, 2 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
@@ -2119,10 +1871,6 @@ elasticsearch:
       bullets:
       - "12X-Large"
       - "4 data nodes"
-      costs:
-      - amount:
-          usd: 33600.00
-        unit: "MONTHLY"
       displayName: "12X-Large, General-Purpose, 3 master nodes, 4 data nodes"
     free: false
     elasticsearchVersion: Elasticsearch_7.10
