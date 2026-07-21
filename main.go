@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
@@ -104,8 +105,9 @@ func run(ctx context.Context, out io.Writer) error {
 	// OpenSearch workers
 	opensearch := opensearch.NewFromConfig(cfg)
 	iamSvc := iam.NewFromConfig(cfg)
+	cloudwatchLogsClient := cloudwatchlogs.NewFromConfig(cfg)
 	river.AddWorker(workers, elasticsearch.NewDeleteWorker(
-		db, &settings, opensearch, iamSvc, s3, logger,
+		db, &settings, opensearch, iamSvc, s3, cloudwatchLogsClient, logger,
 	))
 
 	riverClient, err := jobs.NewClient(ctx, db, settings.DbConfig, logger, workers)
