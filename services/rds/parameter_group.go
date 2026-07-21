@@ -334,6 +334,12 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 		return true
 	}
 
+	// Oracle is "born hardened": it always needs a broker-managed
+	// custom parameter group carrying the STIG baseline.
+	if b, ok := baselineFor(i.DbType); ok && b.BornHardened() {
+		return true
+	}
+
 	return false
 }
 
@@ -452,6 +458,17 @@ func (p *awsParameterGroupClient) getExistingParameters(i *RDSInstance) (map[str
 
 func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
 	customRDSParameters := make(map[string]map[string]paramDetails)
+
+	// Oracle is born hardened: seed the engine's STIG parameter baseline
+	// from the embedded baseline file. Keyed by engine string to match
+	// the customparams[i.DbType] lookup in createOrModifyCustomParameterGroup.
+	if b, ok := baselineFor(i.DbType); ok && b.BornHardened() {
+		defaults, err := b.DefaultParameters()
+		if err != nil {
+			return nil, err
+		}
+		customRDSParameters[i.DbType] = defaults
+	}
 
 	if i.DbType == "mysql" {
 		// enable functions

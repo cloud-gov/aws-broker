@@ -232,3 +232,34 @@ func TestValidateRetentionPeriod(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateOracleOptions(t *testing.T) {
+	boolPtr := func(b bool) *bool { return &b }
+	testCases := map[string]struct {
+		options     Options
+		expectedErr bool
+	}{
+		"empty is valid":                       {options: Options{}, expectedErr: false},
+		"allowed log exports":                  {options: Options{EnableCloudWatchLogGroupExports: []string{"alert", "audit", "listener"}}, expectedErr: false},
+		"storage + backup ok":                  {options: Options{AllocatedStorage: 50, BackupRetentionPeriod: aws.Int64(30)}, expectedErr: false},
+		"publicly_accessible rejected":         {options: Options{PubliclyAccessible: true}, expectedErr: true},
+		"enable_functions rejected":            {options: Options{EnableFunctions: true}, expectedErr: true},
+		"binary_log_format rejected":           {options: Options{BinaryLogFormat: "ROW"}, expectedErr: true},
+		"enable_pg_cron rejected":              {options: Options{EnablePgCron: boolPtr(true)}, expectedErr: true},
+		"version rejected":                     {options: Options{Version: "19.0.0.0"}, expectedErr: true},
+		"allow_major_version_upgrade rejected": {options: Options{AllowMajorVersionUpgrade: boolPtr(true)}, expectedErr: true},
+		"trace log export allowed":             {options: Options{EnableCloudWatchLogGroupExports: []string{"trace", "oemagent"}}, expectedErr: false},
+		"bad log export rejected":              {options: Options{EnableCloudWatchLogGroupExports: []string{"slowquery"}}, expectedErr: true},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateOracleOptions(test.options)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}
