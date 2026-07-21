@@ -66,7 +66,50 @@ type ElasticsearchInstance struct {
 	ErrorLogsGroupARN      string `sql:"size(2048)"`
 	AuditLogsGroupARN      string `sql:"size(2048)"`
 
+	// Cloudwatch log publishing toggles
+	SearchSlowLogsEnabled bool `sql:"size(255)"`
+	IndexSlowLogsEnabled  bool `sql:"size(255)"`
+	ErrorLogsEnabled      bool `sql:"size(255)"`
+	AuditLogsEnabled      bool `sql:"size(255)"`
+
+	// AdvancedSecurityEnabled is for FGAC which is a prereq for audit logs
+	AdvancedSecurityEnabled bool `sql:"size(255)"`
+
+	// AuditRestConfigApplied records that the one-time OpenSearch security REST call that
+	// turns on audit logging has succeeded
+	AuditRestConfigApplied bool `sql:"size(255)"`
+
+	IamUserARN string `sql:"size(2048)"`
+
 	Protocol string `gorm:"-"`
+}
+
+func (i *ElasticsearchInstance) applyLogOptions(opts ElasticsearchLogOptions) {
+	if opts.AuditLogs != nil {
+		i.AuditLogsEnabled = *opts.AuditLogs
+	}
+	if opts.ErrorLogs != nil {
+		i.ErrorLogsEnabled = *opts.ErrorLogs
+	}
+	if opts.SearchSlowLogs != nil {
+		i.SearchSlowLogsEnabled = *opts.SearchSlowLogs
+	}
+	if opts.IndexSlowLogs != nil {
+		i.IndexSlowLogsEnabled = *opts.IndexSlowLogs
+	}
+	// Audit logs require FGAC which is permanent once enabled
+	if i.AuditLogsEnabled {
+		i.AdvancedSecurityEnabled = true
+	}
+}
+
+// validateAuditLogSupport returns an error when audit logging (which enables FGAC) is requested on an instance
+// whose plan does not provide FGAC's encryption prereqs (node-to-node and encryption at rest.)
+func (i *ElasticsearchInstance) validateAuditLogSupport() error {
+	if i.AdvancedSecurityEnabled && !(i.NodeToNodeEncryption && i.EncryptAtRest) {
+		return errors.New("audit logs require a plan with node-to-node encryption and encryption at rest enabled; this plan does not support them")
+	}
+	return nil
 }
 
 func (i *ElasticsearchInstance) setPassword(password, key string) error {
@@ -193,7 +236,7 @@ func (i *ElasticsearchInstance) init(
 		// Default to the version provided by the plan chosen in catalog.
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
-
+	i.applyLogOptions(options.LogPublishing)
 	i.setTags(plan, tags)
 
 	return nil
@@ -212,6 +255,7 @@ func (i *ElasticsearchInstance) update(
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	i.applyLogOptions(options.LogPublishing)
 	return nil
 }
 
