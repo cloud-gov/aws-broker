@@ -130,3 +130,29 @@ func buildLogPublishingOptions(i *ElasticsearchInstance) map[string]opensearchTy
 	}
 	return options
 }
+
+func cleanupLogGroups(
+	ctx context.Context,
+	logsClient CloudwatchLogsClientInterface,
+	logger *slog.Logger,
+	i *ElasticsearchInstance) error {
+
+	for _, state := range i.logTypeStates() {
+		if *state.arn == "" {
+			continue
+		}
+		name := logGroupName(i.Domain, state.suffix)
+		_, err := logsClient.DeleteLogGroup(ctx, &cloudwatchlogs.DeleteLogGroupInput{
+			LogGroupName: aws.String(name),
+		})
+		if err != nil {
+			var notFound *cloudwatchTypes.ResourceNotFoundException
+			if errors.As(err, &notFound) {
+				continue
+			}
+			logger.Error("cleanupLogGroups: DeleteLogGroup err", "err", err, "logGroup", name)
+			return err
+		}
+	}
+	return nil
+}
