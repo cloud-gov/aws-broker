@@ -42,6 +42,14 @@ STIG posture is validated out-of-band by the
 - **Operator-controlled**: whether the Oracle offering is switched on at all
   (`ENABLE_ORACLE`, a platform rollout switch — not a per-request approval).
 
+> **Encryption in transit (TLS) — configured, not yet TLS-only.** The broker
+> provisions an RDS Oracle SSL option group and the binding advertises TCPS/2484
+> (TLS 1.2 + FIPS cipher, SC-8). It **cannot** open `2484` ingress or deny plaintext
+> `1521` — that is a platform security-group change (cg-provision), tracked in
+> [#541](https://github.com/cloud-gov/aws-broker/issues/541). Until #541 lands,
+> `1521` plaintext stays reachable and the plan is **not customer-ready**. Verified
+> offline + go unit tests; no live GovCloud TLS handshake yet (WS15).
+
 ## Key properties
 
 | Property | Value | Why |
@@ -51,10 +59,11 @@ STIG posture is validated out-of-band by the
 | Encryption | at rest (KMS) | STIG / SC-28 |
 | Network | private only | [ADR-0004](../decisions/ADR-0004-rds-oracle-standard-first.md); no public accessibility |
 | Parameter group | broker-managed hardened baseline (born hardened) | [ADR-0003](../decisions/ADR-0003-design-oracle-baseline-for-future-csb-portability.md), [#525](https://github.com/cloud-gov/aws-broker/issues/525) |
-| Option group | none at provision yet (follow-up) | [#526](https://github.com/cloud-gov/aws-broker/issues/526) |
+| Option group | RDS Oracle **SSL option group** provisioned + attached at create (encryption-in-transit) | [#526](https://github.com/cloud-gov/aws-broker/issues/526), [#538](https://github.com/cloud-gov/aws-broker/issues/538) |
+| Encryption in transit | TLS via SSL option group; **TLS 1.2** + FIPS cipher (`TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`), `FIPS.SSLFIPS_140=TRUE` | SC-8 / SC-8(1) / SC-13; STIG V-270579, V-270571 |
 | Log exports | `alert`, `audit`, `listener` by default | audit generation, [#527](https://github.com/cloud-gov/aws-broker/issues/527) |
 | SID / DBName | `ORCL` (fixed, ≤8 upper) | RDS Oracle constraint |
-| Port | 1521 | Oracle default |
+| Port | **2484 (TCPS/TLS)** for the SSL listener; 1521 is the plaintext default | RDS Oracle serves TLS on a separate TCPS port |
 
 ## Document map
 

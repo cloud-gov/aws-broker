@@ -22,10 +22,21 @@ Defined in `catalog-template.yml` / `catalog-test.yml`:
 | `backup_retention_period` | 14 |
 | `securityGroup` | `meta.aws_broker.oracle_security_group` (private) |
 | `subnetGroup` | `meta.aws_broker.subnet_group` (private) |
+| `optionGroup` | RDS Oracle **SSL option group** (TCPS 2484, TLS 1.2, FIPS cipher) provisioned + attached at create |
 | `free` | `false` |
 
 > Provisioning requires `meta.aws_broker.oracle_security_group` to be defined in
 > the environment (mirrors the postgres/mysql security-group pattern).
+
+> **Encryption in transit (on by default, SC-8).** The plan provisions an RDS
+> Oracle **SSL option group** at create and attaches it, serving TLS on a TCPS
+> listener (port 2484): TLS 1.2, cipher `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`,
+> `FIPS.SSLFIPS_140=TRUE` (SC-8 / SC-8(1) / SC-13). The binding advertises TCPS/2484.
+> **Caveat:** TLS-only enforcement (opening `2484`, denying plaintext `1521`) is a
+> platform security-group change (cg-provision), tracked in
+> [#541](https://github.com/cloud-gov/aws-broker/issues/541); until it lands the
+> plan is **not customer-ready**. Verified offline + go unit tests, not against live
+> GovCloud RDS (WS15).
 
 > **Staged rollout.** Oracle provisioning is disabled unless the broker environment
 > sets `ENABLE_ORACLE` (`EnableOracleFeature`). This is a rollout control for a new

@@ -16,8 +16,11 @@ async lifecycle (see [current-state-analysis.md](current-state-analysis.md) §2)
    `EngineVersion`, `LicenseModel=license-included`, `StorageEncrypted`,
    private (no public accessibility), backup retention, default CloudWatch log
    exports (`alert`/`audit`/`listener`), and attaches the **born-hardened
-   parameter group**. (No option group is provisioned yet — the Oracle option
-   baseline is empty; tracked in [#526](https://github.com/cloud-gov/aws-broker/issues/526).)
+   parameter group** and the **RDS Oracle SSL option group** (encryption-in-transit
+   via a TCPS listener on port 2484 — TLS 1.2, FIPS cipher; SC-8 / SC-13,
+   [#538](https://github.com/cloud-gov/aws-broker/issues/538)). TLS-only reachability
+   (opening `2484`, denying `1521`) is a platform security-group change, tracked in
+   [#541](https://github.com/cloud-gov/aws-broker/issues/541).)
 5. On ready, the instance is marked available; bind is synchronous.
 
 Exercised against a **moto** RDS control-plane mock (control-flow signal, **not**

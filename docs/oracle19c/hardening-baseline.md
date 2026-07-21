@@ -45,14 +45,40 @@ Default: `alert`, `audit`, `listener`. `trace` and `oemagent` are opt-in
 
 ## Option group (`baselines/oracle19c/options.yml`)
 
-Empty by default. **No attack-surface options** (Oracle XML DB HTTP listener,
-external procedures / `extproc`, Java VM, APEX) are enabled
-([#535](https://github.com/cloud-gov/aws-broker/issues/535)). A test asserts this.
+The SSL option is provisioned and attached at create; **no attack-surface options**
+(Oracle XML DB HTTP listener, external procedures / `extproc`, Java VM, APEX) are
+enabled ([#535](https://github.com/cloud-gov/aws-broker/issues/535)). A test asserts
+this.
 
-> **Not yet wired at provision (#526):** the create path currently provisions the
-> parameter group only, not an option group. Because the list is empty this is a
-> latent gap; option-group provisioning at create is a tracked follow-up. Do not
-> assume adding an option here takes effect until #526 lands.
+### Encryption in transit — SSL option (SC-8 / SC-8(1) / SC-13)
+
+The create path provisions an RDS Oracle **SSL option group** and attaches it,
+serving TLS on a dedicated **TCPS listener (port 2484)**:
+
+| Setting | Value | Intent |
+|---------|-------|--------|
+| listener port | `2484` (TCPS) | separate TLS listener (RDS Oracle serves TLS off-port) |
+| `SQLNET.SSL_VERSION` | `1.2` | TLS 1.2 — RDS Oracle ceiling (no 1.3); acceptable for FedRAMP Moderate |
+| `SQLNET.CIPHER_SUITE` | `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384` | FedRAMP + FIPS AEAD suite; RSA-CA-compatible |
+| `FIPS.SSLFIPS_140` | `TRUE` | FIPS 140 crypto mode (STIG V-270571) |
+
+This delivers **encryption-in-transit** (SC-8 / SC-8(1)) with FIPS-validated crypto
+(SC-13); DISA Oracle 19c STIG V-270579 (SC-8(2)) + V-270571 (SC-13). The instance
+uses the RDS default RSA CA (`rds-ca-rsa2048-g1`), compatible with the ECDHE_RSA
+cipher (an ECDSA-only suite would need the ECC CA and is rejected fail-closed before
+the AWS call). `FIPS.SSLFIPS_140=TRUE` means clients **must** negotiate a
+FIPS/FedRAMP cipher or the handshake fails. The binding advertises the TCPS/2484
+posture (`port=2484`, `protocol=tcps`, `ssl_required=true`, `ssl_server_dn_match`,
+`ssl_server_cert_dn`, `ca_cert_bundle_url`).
+
+> **TLS-only posture depends on the platform SG ([#541](https://github.com/cloud-gov/aws-broker/issues/541)).**
+> The broker provisions + attaches the SSL option and expresses the 2484 intent, but
+> **cannot** open `2484` ingress or deny plaintext `1521` — that is a platform
+> security-group change (cg-provision) outside the broker's IAM. Until #541 lands,
+> `1521` plaintext stays reachable and the plan is **not customer-ready**. Verified
+> offline + go unit tests (`TestOracleSSLOptionBaseline`,
+> `TestOracleBaselineOptionsBuild`, and `TestGetCredentials` oracle-se2 asserting the
+> TCPS payload); not validated against live GovCloud RDS (WS15).
 
 ## SQL-level hardening (overlay, not the broker)
 

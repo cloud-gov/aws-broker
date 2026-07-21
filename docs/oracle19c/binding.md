@@ -9,9 +9,24 @@ binding payload into `VCAP_SERVICES` (keys documented in
 
 ## What the app receives
 
-`uri` (oracle scheme), `jdbcUrl` (thin), `username`, `password`, `host`, `port`
-(1521), `service_name`/`sid` (`ORCL`), `db_name`, `name`, `ssl_required=true`. No admin/master marker
-keys are present (asserted by `TestOracleBindingDoesNotLeakAdminMarkers`).
+`uri` (oracle scheme, TCPS `DESCRIPTION`), `jdbcUrl` (thin, TCPS `DESCRIPTION`),
+`username`, `password`, `host`, `port` (`2484`, TCPS), `protocol` (`tcps`),
+`service_name`/`sid` (`ORCL`), `db_name`, `name`, plus the TLS keys `ssl_required=true`,
+`ssl_server_dn_match=true`, `ssl_server_cert_dn` (the RDS server cert DN), and
+`ca_cert_bundle_url` (the GovCloud RDS CA bundle the client must trust). The `uri`
+and `jdbcUrl` use the full Oracle connect `DESCRIPTION` form (`PROTOCOL=TCPS`,
+`PORT=2484`, `SSL_SERVER_CERT_DN`) — EZConnect cannot express TCPS. No admin/master
+marker keys are present (asserted by `TestOracleBindingDoesNotLeakAdminMarkers`).
+
+> **Encryption in transit (TLS).** The broker provisions an RDS Oracle SSL option
+> group serving TLS 1.2 on the TCPS listener (port 2484) with a FIPS cipher (SC-8 /
+> SC-13). `ssl_required=true` reflects the configured+intended posture. **Caveat:**
+> the broker cannot open `2484` ingress or deny plaintext `1521` — that TLS-only
+> enforcement is a platform security-group change (cg-provision), tracked in
+> [#541](https://github.com/cloud-gov/aws-broker/issues/541); until it lands `1521`
+> plaintext stays reachable and the plan is not customer-ready. See
+> [connection-examples.md](connection-examples.md) for CA-bundle/DN-match client
+> config. Verified offline + go unit tests, not live GovCloud RDS (WS15).
 
 ## Credential model (intended shared-responsibility boundary)
 

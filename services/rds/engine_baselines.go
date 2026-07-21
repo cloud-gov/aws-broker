@@ -3,6 +3,7 @@ package rds
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -193,12 +194,73 @@ func (oracle19cBaseline) DefaultParameters() (map[string]paramDetails, error) {
 }
 
 // BaselineOptions builds the Oracle SSL option (TLS/TCPS) from the embedded
+// fedrampOracleSSLCiphers is the allowlist of RDS Oracle SSL cipher suites that are
+// both FIPS-validated AND FedRAMP-compliant AND compatible with the default RSA CA
+// (ECDHE_RSA AEAD/forward-secret suites). A cipher not on this list is rejected
+// fail-closed — the guard enforces the security posture, not just CA compatibility.
+var fedrampOracleSSLCiphers = map[string]struct{}{
+	"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384": {},
+	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256": {},
+}
+
+// sslSettings extracts the SSL option's settings into a name→value map.
+func (f *oracleOptionsFile) sslSettings() map[string]string {
+	m := map[string]string{}
+	for _, o := range f.Options {
+		if o.Name != "SSL" {
+			continue
+		}
+		for _, s := range o.Settings {
+			m[s.Name] = s.Value
+		}
+	}
+	return m
+}
+
+// validateOracleSSLSecurity enforces the FedRAMP-Moderate SSL invariants fail-closed
+// (security review H1): TLS must be exactly 1.2 (RDS Oracle ceiling; never 1.0/1.1),
+// FIPS mode on (SC-13), and the cipher must be on the FedRAMP+FIPS+RSA-CA allowlist.
+// A missing cipher/version/FIPS setting is a hard failure, not a skip. This runs
+// before the SSL option group is provisioned, so a weakened options.yml can never
+// ship.
+func validateOracleSSLSecurity(f *oracleOptionsFile) error {
+	s := f.sslSettings()
+
+	if v := s["SQLNET.SSL_VERSION"]; v != "1.2" {
+		return fmt.Errorf("oracle SSL: SQLNET.SSL_VERSION=%q, require exactly \"1.2\" (FedRAMP-Moderate floor; RDS Oracle ceiling)", v)
+	}
+	if v := s["FIPS.SSLFIPS_140"]; !strings.EqualFold(v, "TRUE") {
+		return fmt.Errorf("oracle SSL: FIPS.SSLFIPS_140=%q, require TRUE (SC-13 FIPS-validated crypto)", v)
+	}
+	cipher, ok := s["SQLNET.CIPHER_SUITE"]
+	if !ok || cipher == "" {
+		return fmt.Errorf("oracle SSL: SQLNET.CIPHER_SUITE is required (no cipher = fail closed)")
+	}
+	if _, ok := fedrampOracleSSLCiphers[cipher]; !ok {
+		return fmt.Errorf("oracle SSL: cipher %q is not on the FedRAMP/FIPS allowlist %v", cipher, sortedKeys(fedrampOracleSSLCiphers))
+	}
+	// CA compatibility: ECDSA-only ciphers need the ECC CA; the RDS default is RSA.
+	if strings.Contains(cipher, "_ECDSA_") && strings.EqualFold(f.CACertFamily, "rsa") {
+		return fmt.Errorf("oracle SSL: cipher %q is ECDSA-only but the instance CA family is %q (RSA); use an ECDHE_RSA cipher or an ECC CA", cipher, f.CACertFamily)
+	}
+	return nil
+}
+
+func sortedKeys(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// BaselineOptions builds the Oracle SSL option (TLS/TCPS) from the embedded
 // baseline (baselines/oracle19c/options.yml, #519/#538), referencing the
-// instance's security group for the TCPS listener. Includes a fail-closed
-// cipher/CA compatibility guard: an ECDSA-only cipher requires the ECC CA, so
-// pairing it with the default RSA CA is rejected before the AWS call (which would
-// otherwise fail opaquely at option-group associate time). Returns nil for an
-// empty baseline.
+// instance's security group for the TCPS listener. Enforces the FedRAMP-Moderate
+// SSL invariants fail-closed (TLS 1.2, FIPS on, FedRAMP cipher allowlist,
+// cipher/CA compatibility) before returning — a weakened baseline never ships.
+// Returns nil for an empty baseline.
 func (oracle19cBaseline) BaselineOptions(i *RDSInstance) ([]rdsTypes.OptionConfiguration, error) {
 	f, err := loadOracleOptions()
 	if err != nil {
@@ -208,15 +270,9 @@ func (oracle19cBaseline) BaselineOptions(i *RDSInstance) ([]rdsTypes.OptionConfi
 		return nil, nil
 	}
 
-	// Fail-closed cipher/CA guard (#538 review): ECDSA-only ciphers need the ECC
-	// CA; the RDS default is RSA. Reject the mismatch here rather than letting the
-	// AWS associate call fail.
-	if cipher, ok := f.cipherSuiteFor("SSL"); ok {
-		if strings.Contains(cipher, "_ECDSA_") && strings.EqualFold(f.CACertFamily, "rsa") {
-			return nil, fmt.Errorf(
-				"oracle SSL cipher %q is ECDSA-only but the instance CA family is %q (RSA); "+
-					"use an ECDHE_RSA cipher or an ECC CA", cipher, f.CACertFamily)
-		}
+	// Fail-closed FedRAMP-Moderate SSL security guard (#538 review H1).
+	if err := validateOracleSSLSecurity(f); err != nil {
+		return nil, err
 	}
 
 	out := make([]rdsTypes.OptionConfiguration, 0, len(f.Options))
@@ -242,13 +298,13 @@ func (oracle19cBaseline) BaselineOptions(i *RDSInstance) ([]rdsTypes.OptionConfi
 	return out, nil
 }
 
-// oracleSSLPort returns the TCPS port from the embedded options baseline (2484),
-// or 0 if unavailable. Used by the binding to publish the TLS port instead of the
-// plaintext endpoint port.
-func oracleSSLPort() int32 {
+// oracleSSLPort returns the TCPS port from the embedded options baseline (2484).
+// Returns an error if the baseline cannot be loaded — callers must fail closed
+// rather than fall back to a plaintext port (security review).
+func oracleSSLPort() (int32, error) {
 	f, err := loadOracleOptions()
 	if err != nil {
-		return 0
+		return 0, err
 	}
-	return f.SSLPort
+	return f.SSLPort, nil
 }

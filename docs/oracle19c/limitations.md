@@ -52,18 +52,25 @@ plane to mint DB principals). See [binding.md](binding.md) and the STIG guidance
    residual TDE/FGA control interpretation is handled as documented ISSO
    risk/deviation acceptances ([licensing.md](licensing.md)). Not an unfinished
    feature — an accepted deviation of the chosen edition.
-6. **Option group empty.** No option-group options are enabled by default; some
-   Oracle security features (e.g. native network encryption) may need options once
-   GovCloud availability is confirmed ([#526](https://github.com/cloud-gov/aws-broker/issues/526)).
-7. **OS/listener STIG controls are AWS-inherited / not applicable** on managed RDS
+6. **TLS-only not yet enforced (platform SG, [#541](https://github.com/cloud-gov/aws-broker/issues/541)).**
+   The broker provisions + attaches an RDS Oracle **SSL option group** (TCPS 2484,
+   TLS 1.2, `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`, `FIPS.SSLFIPS_140=TRUE`) and the
+   binding advertises TCPS/2484 — but it **cannot** open `2484` ingress or deny
+   plaintext `1521`. That security-group change is platform-owned (cg-provision),
+   tracked in [#541](https://github.com/cloud-gov/aws-broker/issues/541). Until it
+   lands, plaintext `1521` remains reachable and the plan is **not customer-ready**.
+   Verified offline + go unit tests, not against live GovCloud RDS (WS15).
+7. **TLS 1.2 ceiling.** RDS Oracle SSL supports **TLS 1.2 only** (no 1.3). This is
+   acceptable for FedRAMP Moderate and documented for the SSP.
+8. **OS/listener STIG controls are AWS-inherited / not applicable** on managed RDS
    (~33 controls). They are classified in the overlay's `control-layers.yml`, not
    remediated here. Any that cannot be met become POA&M candidates.
-8. **A residual set of controls require manual review** (e.g. audit-log retention
+9. **A residual set of controls require manual review** (e.g. audit-log retention
    as a CloudWatch policy decision).
-9. **`ENABLE_ORACLE` staged-rollout switch.** Oracle provisioning is off until an
-   operator opts in. This is a rollout control for a new, not-yet-live-validated
-   offering — **not** a security/boundary control (the credential model matches
-   postgres/mysql).
+10. **`ENABLE_ORACLE` staged-rollout switch.** Oracle provisioning is off until an
+    operator opts in. This is a rollout control for a new, not-yet-live-validated
+    offering — **not** a security/boundary control (the credential model matches
+    postgres/mysql).
 
 ## Not goals (by design)
 

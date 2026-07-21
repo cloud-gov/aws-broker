@@ -37,13 +37,16 @@
     },
     "aws_partition": { "type": "string", "examples": ["aws-us-gov"] },
     "aws_region": { "type": "string", "examples": ["us-gov-west-1"] },
-    "engine": { "type": "string", "enum": ["oracle-ee", "oracle-se2"], "examples": ["oracle-se2"] },
+    "engine": { "type": "string", "enum": ["oracle-se2"], "examples": ["oracle-se2"], "description": "Standard Edition 2. Enterprise Edition (oracle-ee) is not offered — License Included is SE2-only on RDS (ADR-0004)." },
     "engine_version": { "type": "string", "examples": ["19.0.0.0.ru-2024-07.rur-2024-07.r1"] },
     "endpoint": {
       "type": "string",
       "description": "RDS endpoint host (or tunnel host for the overlay). Not a secret."
     },
-    "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 1521 },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 2484, "description": "DB listener port. The SSL/TCPS listener is 2484 when ssl_enabled; the plaintext default is 1521." },
+    "protocol": { "type": "string", "enum": ["tcp", "tcps"], "description": "Listener protocol: tcps for the TLS listener, tcp for plaintext." },
+    "ssl_enabled": { "type": "boolean", "description": "Whether the RDS Oracle SSL option group (encryption-in-transit) is provisioned. Reflects configured posture; TLS-only reachability depends on the platform security group (#541)." },
+    "ssl_version": { "type": "string", "examples": ["1.2"], "description": "Negotiated/configured TLS version. RDS Oracle SSL supports 1.2 only." },
     "service_name": { "type": "string", "examples": ["ORCL"] },
     "db_name": { "type": "string", "examples": ["ORCL"] },
     "parameter_group": { "type": "string" },

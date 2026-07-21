@@ -86,7 +86,7 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	dbName := baseline.FormatDBName(i.Database)
 
 	if isOracleEngine(i.DbType) {
-		return oracleCredentials(i, password, dbScheme, dbName), nil
+		return oracleCredentials(i, password, dbScheme, dbName)
 	}
 
 	uri := fmt.Sprintf(
@@ -134,16 +134,24 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 // least-privilege in-database users (the intended shared-responsibility boundary).
 // No admin/master marker key is exposed here.
 //
+// FAIL-CLOSED (security review): if the TLS SSL port cannot be resolved from the
+// embedded baseline, this returns an error rather than falling back to the
+// plaintext endpoint port — we never emit a binding that claims ssl_required=true
+// while pointing the client at a plaintext listener.
+//
 // NOTE (#538): TLS-on-2484 requires the broker-provisioned SSL option group AND a
 // platform security-group rule allowing 2484 / denying 1521 (a cg-provision
-// dependency the broker cannot satisfy). The plan is not customer-ready until that
-// SG rule lands; ssl_required=true reflects the intended+configured posture.
-func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) map[string]string {
-	// TLS listener port from the embedded SSL option baseline (2484); fall back to
-	// the endpoint port only if the baseline is unavailable.
-	sslPort := int64(oracleSSLPort())
+// dependency, #541). The plan is not customer-ready until that SG rule lands;
+// ssl_required=true reflects the intended+configured posture.
+func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) (map[string]string, error) {
+	// TLS listener port from the embedded SSL option baseline (2484). Fail closed
+	// if unavailable — do NOT fall back to the plaintext endpoint port.
+	sslPort, err := oracleSSLPort()
+	if err != nil {
+		return nil, fmt.Errorf("oracle TLS binding: cannot resolve SSL port, refusing to emit binding: %w", err)
+	}
 	if sslPort == 0 {
-		sslPort = i.Port
+		return nil, errors.New("oracle TLS binding: SSL port is 0, refusing to emit a binding that would claim TLS on a plaintext port")
 	}
 
 	// Server cert DN for RDS Oracle TLS: the RDS-issued cert CN is the endpoint.
@@ -167,7 +175,7 @@ func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) map
 		"username":            i.Username,
 		"password":            password,
 		"host":                i.Host,
-		"port":                strconv.FormatInt(sslPort, 10),
+		"port":                strconv.FormatInt(int64(sslPort), 10),
 		"protocol":            "tcps",
 		"service_name":        serviceName,
 		"sid":                 serviceName,
@@ -177,7 +185,7 @@ func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) map
 		"ssl_server_dn_match": "true",
 		"ssl_server_cert_dn":  certDN,
 		"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
-	}
+	}, nil
 }
 
 func (u *RDSCredentialUtils) generateCredentials(

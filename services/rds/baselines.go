@@ -55,21 +55,6 @@ type oracleOptionSetting struct {
 	Value string `yaml:"value"`
 }
 
-// cipherSuiteFor returns the SQLNET.CIPHER_SUITE value from the SSL option, if any.
-func (f *oracleOptionsFile) cipherSuiteFor(optionName string) (string, bool) {
-	for _, o := range f.Options {
-		if o.Name != optionName {
-			continue
-		}
-		for _, s := range o.Settings {
-			if s.Name == "SQLNET.CIPHER_SUITE" {
-				return s.Value, true
-			}
-		}
-	}
-	return "", false
-}
-
 // loadOracleParameters parses baselines/oracle19c/parameters.yml.
 func loadOracleParameters() (*oracleParametersFile, error) {
 	b, err := oracle19cBaselineFS.ReadFile("baselines/oracle19c/parameters.yml")

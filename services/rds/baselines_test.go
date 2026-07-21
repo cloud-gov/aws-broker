@@ -259,3 +259,67 @@ func indexFold(s, substr string) int {
 	}
 	return -1
 }
+
+func TestValidateOracleSSLSecurity(t *testing.T) {
+	base := func() *oracleOptionsFile {
+		return &oracleOptionsFile{
+			CACertFamily: "rsa",
+			Options: []oracleOption{{
+				Name: "SSL", Port: 2484,
+				Settings: []oracleOptionSetting{
+					{Name: "SQLNET.SSL_VERSION", Value: "1.2"},
+					{Name: "SQLNET.CIPHER_SUITE", Value: "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
+					{Name: "FIPS.SSLFIPS_140", Value: "TRUE"},
+				},
+			}},
+		}
+	}
+	if err := validateOracleSSLSecurity(base()); err != nil {
+		t.Fatalf("valid baseline rejected: %v", err)
+	}
+
+	mutate := func(fn func(m map[string]string)) *oracleOptionsFile {
+		f := base()
+		m := map[string]string{}
+		for _, s := range f.Options[0].Settings {
+			m[s.Name] = s.Value
+		}
+		fn(m)
+		f.Options[0].Settings = nil
+		for k, v := range m {
+			if v == "__delete__" {
+				continue
+			}
+			f.Options[0].Settings = append(f.Options[0].Settings, oracleOptionSetting{Name: k, Value: v})
+		}
+		return f
+	}
+
+	bad := map[string]func(map[string]string){
+		"tls 1.0 rejected":         func(m map[string]string) { m["SQLNET.SSL_VERSION"] = "1.0" },
+		"tls 1.1 rejected":         func(m map[string]string) { m["SQLNET.SSL_VERSION"] = "1.1" },
+		"missing version rejected": func(m map[string]string) { m["SQLNET.SSL_VERSION"] = "__delete__" },
+		"fips off rejected":        func(m map[string]string) { m["FIPS.SSLFIPS_140"] = "FALSE" },
+		"fips missing rejected":    func(m map[string]string) { m["FIPS.SSLFIPS_140"] = "__delete__" },
+		"weak cipher rejected":     func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "TLS_RSA_WITH_AES_128_CBC_SHA" },
+		"3des cipher rejected":     func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "TLS_RSA_WITH_3DES_EDE_CBC_SHA" },
+		"missing cipher rejected":  func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "__delete__" },
+		"ecdsa on rsa ca rejected": func(m map[string]string) { m["SQLNET.CIPHER_SUITE"] = "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" },
+	}
+	for name, fn := range bad {
+		t.Run(name, func(t *testing.T) {
+			if err := validateOracleSSLSecurity(mutate(fn)); err == nil {
+				t.Errorf("expected fail-closed rejection, got nil")
+			}
+		})
+	}
+
+	// The shipped embedded baseline must pass the security guard.
+	shipped, err := loadOracleOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateOracleSSLSecurity(shipped); err != nil {
+		t.Errorf("shipped options.yml fails the SSL security guard: %v", err)
+	}
+}

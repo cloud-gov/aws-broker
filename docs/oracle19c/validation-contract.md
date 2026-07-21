@@ -34,11 +34,14 @@ present.
   "engine": "oracle-se2",
   "engine_version": "19.0.0.0.ru-2024-07.rur-2024-07.r1",
   "endpoint": "cg-oracle-dev.abc123.us-gov-west-1.rds.amazonaws.com",
-  "port": 1521,
+  "port": 2484,
+  "protocol": "tcps",
   "service_name": "ORCL",
   "db_name": "ORCL",
   "parameter_group": "cg-aws-broker-...-version-19",
   "option_group": "cg-aws-broker-...-option-19",
+  "ssl_enabled": true,
+  "ssl_version": "1.2",
   "kms_key_id": "arn:aws-us-gov:kms:us-gov-west-1:...:key/...",
   "storage_encrypted": true,
   "publicly_accessible": false,
@@ -57,7 +60,11 @@ present.
 1. Resolve `assessment_credential_ref` out-of-band → DB user/password.
 2. Render the InSpec `--input-file` (`user`, `password`, `host` from `endpoint` or
    the tunnel, `port`, `service` from `service_name`, `sqlplus_bin`) plus the
-   org-policy allow-list inputs.
+   org-policy allow-list inputs. `port` is the SSL/TCPS listener (`2484`) when
+   `ssl_enabled` is true; `protocol`/`ssl_version` let the overlay assert the
+   encryption-in-transit posture (SC-8 / SC-13). **Caveat:** TLS-only reachability
+   depends on the platform security group ([#541](https://github.com/cloud-gov/aws-broker/issues/541));
+   `ssl_enabled` reflects the configured posture, not a live-enforced TLS-only state.
 3. Apply [`control-layers.yml`](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/blob/main/control-layers.yml)
    so controls that are `aws_rds_parameter_group` / `aws_inherited` /
    `not_applicable_rds` report correctly instead of failing on a managed RDS.
