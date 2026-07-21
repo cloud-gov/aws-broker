@@ -131,6 +131,78 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				},
 			},
 		},
+		"audit + error logs enable FGAC and log publishing": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                     "test-domain",
+				DataCount:                  2,
+				SubnetID3AZ1:               "az-3",
+				SubnetID4AZ2:               "az-4",
+				SecGroup:                   "group-1",
+				EncryptAtRest:              true,
+				VolumeSize:                 10,
+				VolumeType:                 "gp3",
+				InstanceType:               "m5.2xlarge.search",
+				NodeToNodeEncryption:       true,
+				AutomatedSnapshotStartHour: 0,
+				ErrorLogsEnabled:           true,
+				AuditLogsEnabled:           true,
+				AdvancedSecurityEnabled:    true,
+				IamUserARN:                 "arn:aws-us-gov:iam::123456789012:user/test-domain",
+				ErrorLogsGroupARN:          "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/test-domain/application-logs",
+				AuditLogsGroupARN:          "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/test-domain/audit-logs",
+			},
+			accessPolicy: "fake-access-policy",
+			expectedParams: &opensearch.CreateDomainInput{
+				DomainName:     aws.String("test-domain"),
+				AccessPolicies: aws.String("fake-access-policy"),
+				VPCOptions: &opensearchTypes.VPCOptions{
+					SubnetIds:        []string{"az-3", "az-4"},
+					SecurityGroupIds: []string{"group-1"},
+				},
+				DomainEndpointOptions: &opensearchTypes.DomainEndpointOptions{
+					EnforceHTTPS: aws.Bool(true),
+				},
+				EBSOptions: &opensearchTypes.EBSOptions{
+					EBSEnabled: aws.Bool(true),
+					VolumeSize: aws.Int32(int32(10)),
+					VolumeType: opensearchTypes.VolumeTypeGp3,
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:         opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
+					InstanceCount:        aws.Int32(int32(2)),
+					ZoneAwarenessEnabled: aws.Bool(true),
+					ZoneAwarenessConfig: &opensearchTypes.ZoneAwarenessConfig{
+						AvailabilityZoneCount: aws.Int32(int32(2)),
+					},
+				},
+				SnapshotOptions: &opensearchTypes.SnapshotOptions{
+					AutomatedSnapshotStartHour: aws.Int32(int32(0)),
+				},
+				NodeToNodeEncryptionOptions: &opensearchTypes.NodeToNodeEncryptionOptions{
+					Enabled: aws.Bool(true),
+				},
+				EncryptionAtRestOptions: &opensearchTypes.EncryptionAtRestOptions{
+					Enabled: aws.Bool(true),
+				},
+				AdvancedSecurityOptions: &opensearchTypes.AdvancedSecurityOptionsInput{
+					Enabled:                     aws.Bool(true),
+					InternalUserDatabaseEnabled: aws.Bool(false),
+					MasterUserOptions: &opensearchTypes.MasterUserOptions{
+						MasterUserARN: aws.String("arn:aws-us-gov:iam::123456789012:user/test-domain"),
+					},
+				},
+				LogPublishingOptions: map[string]opensearchTypes.LogPublishingOption{
+					"AUDIT_LOGS": {
+						CloudWatchLogsLogGroupArn: aws.String("arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/test-domain/audit-logs"),
+						Enabled:                   aws.Bool(true),
+					},
+					"ES_APPLICATION_LOGS": {
+						CloudWatchLogsLogGroupArn: aws.String("arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/test-domain/application-logs"),
+						Enabled:                   aws.Bool(true),
+					},
+				},
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -199,6 +271,87 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 				DomainName: aws.String("fake-domain"),
 				AdvancedOptions: map[string]string{
 					"indices.query.bool.max_clause_count": "5000",
+				},
+			},
+		},
+		"enable search slow logs": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                 "fake-domain",
+				SearchSlowLogsEnabled:  true,
+				SearchSlowLogsGroupARN: "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/search-slow-logs",
+			},
+			expectedParams: &opensearch.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]string{},
+				LogPublishingOptions: map[string]opensearchTypes.LogPublishingOption{
+					"SEARCH_SLOW_LOGS": {
+						CloudWatchLogsLogGroupArn: aws.String("arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/search-slow-logs"),
+						Enabled:                   aws.Bool(true),
+					},
+				},
+			},
+		},
+		"disable a previously enabled log type": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                 "fake-domain",
+				SearchSlowLogsEnabled:  false,
+				SearchSlowLogsGroupARN: "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/search-slow-logs",
+			},
+			expectedParams: &opensearch.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]string{},
+				LogPublishingOptions: map[string]opensearchTypes.LogPublishingOption{
+					"SEARCH_SLOW_LOGS": {
+						CloudWatchLogsLogGroupArn: aws.String("arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/search-slow-logs"),
+						Enabled:                   aws.Bool(false),
+					},
+				},
+			},
+		},
+		"enabling audit asserts FGAC": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                  "fake-domain",
+				AuditLogsEnabled:        true,
+				AdvancedSecurityEnabled: true,
+				AuditRestConfigApplied:  false,
+				IamUserARN:              "arn:aws-us-gov:iam::123456789012:user/fake-domain",
+				AuditLogsGroupARN:       "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/audit-logs",
+			},
+			expectedParams: &opensearch.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]string{},
+				LogPublishingOptions: map[string]opensearchTypes.LogPublishingOption{
+					"AUDIT_LOGS": {
+						CloudWatchLogsLogGroupArn: aws.String("arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/audit-logs"),
+						Enabled:                   aws.Bool(true),
+					},
+				},
+				AdvancedSecurityOptions: &opensearchTypes.AdvancedSecurityOptionsInput{
+					Enabled:                     aws.Bool(true),
+					InternalUserDatabaseEnabled: aws.Bool(false),
+					MasterUserOptions: &opensearchTypes.MasterUserOptions{
+						MasterUserARN: aws.String("arn:aws-us-gov:iam::123456789012:user/fake-domain"),
+					},
+				},
+			},
+		},
+		"audit already configured does not re-assert FGAC on future modify": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                  "fake-domain",
+				AuditLogsEnabled:        true,
+				AdvancedSecurityEnabled: true,
+				AuditRestConfigApplied:  true,
+				IamUserARN:              "arn:aws-us-gov:iam::123456789012:user/fake-domain",
+				AuditLogsGroupARN:       "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/audit-logs",
+			},
+			expectedParams: &opensearch.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]string{},
+				LogPublishingOptions: map[string]opensearchTypes.LogPublishingOption{
+					"AUDIT_LOGS": {
+						CloudWatchLogsLogGroupArn: aws.String("arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/fake-domain/audit-logs"),
+						Enabled:                   aws.Bool(true),
+					},
 				},
 			},
 		},

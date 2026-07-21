@@ -60,8 +60,9 @@ type Snapshots struct {
 // Audit categories exlucded (per AWS guidance) to prevent ballooning of log volume.
 var disabledAuditCategories = []string{"GRANTED_PRIVILEGES", "AUTHENTICATED"}
 
+// auditApiBasePath returns the security plugin's audit API base path for the domain's engine
 func auditApiBasePath(engineVersion string) string {
-	if strings.HasPrefix(engineVersion, "Opensearch") {
+	if strings.HasPrefix(strings.ToLower(engineVersion), "opensearch") {
 		return "/_plugins/_security/api/audit"
 	}
 	return "/_opendistro/_security/api/audit"
