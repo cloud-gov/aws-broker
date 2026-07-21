@@ -35,6 +35,35 @@ func (i *ElasticsearchInstance) logTypeStates() []logTypeState {
 	}
 }
 
+// applyLogOptions applies customer log-publishing toggles.
+func (i *ElasticsearchInstance) applyLogOptions(opts ElasticsearchLogOptions) {
+	if opts.AuditLogs != nil {
+		i.AuditLogsEnabled = *opts.AuditLogs
+	}
+	if opts.ErrorLogs != nil {
+		i.ErrorLogsEnabled = *opts.ErrorLogs
+	}
+	if opts.SearchSlowLogs != nil {
+		i.SearchSlowLogsEnabled = *opts.SearchSlowLogs
+	}
+	if opts.IndexSlowLogs != nil {
+		i.IndexSlowLogsEnabled = *opts.IndexSlowLogs
+	}
+	// Audit logs require FGAC which is permanent once enabled
+	if i.AuditLogsEnabled {
+		i.AdvancedSecurityEnabled = true
+	}
+}
+
+// validateAuditLogSupport returns an error when audit logging (which enables FGAC) is requested on an instance
+// whose plan does not provide FGAC's encryption prereqs (node-to-node and encryption at rest.)
+func (i *ElasticsearchInstance) validateAuditLogSupport() error {
+	if i.AdvancedSecurityEnabled && !(i.NodeToNodeEncryption && i.EncryptAtRest) {
+		return errors.New("audit logs require a plan with node-to-node encryption and encryption at rest enabled; this plan does not support them")
+	}
+	return nil
+}
+
 func (i *ElasticsearchInstance) anyLogsEnabled() bool {
 	for _, s := range i.logTypeStates() {
 		if s.enabled {
