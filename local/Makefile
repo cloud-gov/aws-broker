@@ -65,8 +65,7 @@ doctor:
 	  if command -v aws >/dev/null 2>&1; then echo "OK (layer 2 moto smoke)"; \
 	  else echo "MISSING for layer 2 — 'brew install awscli' (macOS) or 'apt-get install -y awscli' (Linux); only 'make moto-smoke' needs it"; fi; \
 	printf "%-22s" "cinc-auditor:"; \
-	  if command -v cinc-auditor >/dev/null 2>&1; then echo "OK (overlay InSpec run)"; \
-	  else echo "optional — 'brew install --cask cinc-auditor' (only to run the STIG overlay locally)"; fi; \
+	  echo "via Docker — 'docker run cincproject/auditor ...' (see README §3); no local install (avoids cinc-workstation/root)"; \
 	printf "%-22s" "sqlplus:"; \
 	  if command -v sqlplus >/dev/null 2>&1; then echo "OK"; \
 	  else echo "not needed — 'make assess/harden' run sqlplus INSIDE the container"; fi; \

@@ -35,7 +35,7 @@ command to install each. Summary:
 | **C compiler** (`cc`/`gcc`/`clang`) | layer 1 — cgo builds `go-sqlite3` | `xcode-select --install` (macOS) or `apt-get install -y gcc` (Linux) |
 | `aws` CLI | layer 2 `moto-smoke` only | `brew install awscli` (macOS) or `apt-get install -y awscli` (Linux) |
 | **`cg-oracle-database-19c-stig-overlay` cloned as a sibling** | layer 3 `assess`/`harden` | `git clone` it next to `aws-broker` (so `../../cg-oracle-database-19c-stig-overlay/hardening/sql` resolves), or pass `SQL_DIR=…` |
-| `cinc-auditor` | running the STIG overlay locally (optional) | `brew install --cask cinc-auditor` |
+| `cinc-auditor` (via Docker) | running the STIG overlay locally (optional) | run it from the `cincproject/auditor` container — do **not** install cinc-workstation (needs root); see §3 |
 | `sqlplus` | **not required** | `assess`/`harden` run `sqlplus` *inside* the container via `docker exec` |
 
 You do **not** need Oracle Instant Client or `sqlplus` on your Mac — layer 3 runs
@@ -111,10 +111,23 @@ first, then `make -C local oracle19c-up`. It publishes on **1522** with service
 (this fidelity path is for maintainers; the default `oracle-free` flow above is the
 supported one).
 
-**Optional — run the STIG overlay** against the local DB (needs `cinc-auditor`):
-see the overlay repo's `README.md`; point its `oracledb_session` inputs at
-`localhost:1521/FREEPDB1` with the seeded app user. Local overlay results are dev
-signal only.
+**Optional — run the STIG overlay** against the local DB: point its
+`oracledb_session` inputs at `localhost:1521/FREEPDB1` with the seeded app user.
+Run cinc-auditor **via Docker** (image `cincproject/auditor`) rather than
+installing cinc-workstation locally (the workstation install requires root and
+pulls in a lot of complexity):
+
+```bash
+docker run --rm -it --network host \
+  -v "$PWD/../../cg-oracle-database-19c-stig-overlay:/share" \
+  cincproject/auditor exec /share \
+  --input-file /share/input.yml
+```
+
+The overlay's `oracledb_session` controls call `sqlplus`, so its README uses a
+derived image (`cincproject/auditor` + Oracle Instant Client). See the overlay
+repo's `README.md` for the authoritative image build and inputs. Local overlay
+results are dev signal only.
 
 ## What local CANNOT tell you (by design)
 
