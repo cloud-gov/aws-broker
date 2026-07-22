@@ -221,6 +221,11 @@ func (s *Settings) LoadFromEnv() error {
 		s.OpensearchLogRetentionDays = int32(retentionDays)
 	}
 
+	// Set default OpensearchLogRetentionDays = 3
+	if s.OpensearchLogRetentionDays == 0 {
+		s.OpensearchLogRetentionDays = 3
+	}
+
 	if val, ok := os.LookupEnv("PORT"); ok {
 		s.Port = val
 	}
