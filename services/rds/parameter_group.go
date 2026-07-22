@@ -208,12 +208,17 @@ func (p *awsParameterGroupClient) getParameterGroupFamily(i *RDSInstance) error 
 	dbEngineVersionsInput := &rds.DescribeDBEngineVersionsInput{
 		Engine:        aws.String(i.DbType),
 		EngineVersion: aws.String(i.DbVersion),
+		IncludeAll:    aws.Bool(true), // Shows all engine versions (including deprecated ones)
 	}
 
 	// This call requires that the broker have permissions to make it.
 	defaultEngineInfo, err := p.rds.DescribeDBEngineVersions(p.ctx, dbEngineVersionsInput)
 	if err != nil {
 		return err
+	}
+
+	if len(defaultEngineInfo.DBEngineVersions) == 0 {
+		return fmt.Errorf("no engine versions were returned for version %s", i.DbVersion)
 	}
 
 	// The value from the engine info is a string pointer, so we must
