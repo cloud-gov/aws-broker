@@ -20,10 +20,6 @@ elasticsearch:
       bullets:
       - "elasticsearch"
       - "on AWS!"
-      costs:
-      - amount:
-          usd: 0
-        unit: "MONTHLY"
       displayName: "Free elasticsearch"
     free: true
     elasticsearchVersion: 7.4
@@ -53,10 +49,6 @@ elasticsearch:
       bullets:
       - "elasticsearch"
       - "on AWS!"
-      costs:
-      - amount:
-          usd: 0
-        unit: "MONTHLY"
       displayName: "Free elasticsearch"
     free: true
     elasticsearchVersion: 7.4
@@ -97,11 +89,6 @@ redis:
         bullets:
           - "Redis"
           - "on AWS!"
-        costs:
-          -
-            amount:
-              usd: 0
-            unit: "MONTHLY"
         displayName: "Free redis"
       free: true
       securityGroup: sg-123456
@@ -132,11 +119,6 @@ redis:
           - "redis"
           - "redis506"
           - "5node"
-        costs:
-          -
-            amount:
-              usd: 0
-            unit: "MONTHLY"
         displayName: "5 node redis5.0.6, persistent storage, 512Mb memory limit"
       free: true
       securityGroup: (( grab meta.redis.security_group ))
@@ -180,10 +162,6 @@ rds:
         bullets:
           - "Dedicated RDS instance"
           - "PostgreSQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
         displayName: "Dedicated micro PostgreSQL"
       free: true
       adapter: dedicated
@@ -214,10 +192,6 @@ rds:
         bullets:
           - "Dedicated RDS instance"
           - "PostgreSQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
         displayName: "Dedicated medium PostgreSQL"
       free: false
       adapter: dedicated
@@ -244,10 +218,6 @@ rds:
         bullets:
           - "Dedicated redundant RDS instance"
           - "PostgreSQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
         displayName: "Dedicated redundant medium PostgreSQL"
       free: false
       adapter: dedicated
@@ -273,10 +243,6 @@ rds:
         bullets:
           - "Dedicated RDS Instance"
           - "MySQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
         displayName: "Dedicated small MySQL"
       free: true
       adapter: dedicated
@@ -302,10 +268,6 @@ rds:
         bullets:
           - "Dedicated RDS Instance"
           - "MySQL instance"
-        costs:
-          - amount:
-              usd: 0
-            unit: "HOURLY"
         displayName: "Dedicated Medium MySQL"
       free: false
       adapter: dedicated
