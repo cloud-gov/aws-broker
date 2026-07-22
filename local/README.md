@@ -10,6 +10,9 @@ can use independently. Written for **macOS on Apple Silicon (arm64)**.
 
 ## TL;DR
 
+> Run these from the **repo root** (`aws-broker/`); `-C local` points make at
+> `local/Makefile`. If you're already in `local/`, drop `-C local` (e.g. `make doctor`).
+
 ```bash
 make -C local doctor        # 0. check prerequisites
 make -C local unit          # 1. Go unit tests (fast, no Docker)
@@ -38,9 +41,9 @@ You do **not** need Oracle Instant Client or `sqlplus` on your Mac — layer 3 r
 `sqlplus` inside the `cg-oracle-free` container. Your clone layout for layer 3:
 
 ```
-git/…/
-  aws-broker/                              (this repo)
-  cg-oracle-database-19c-stig-overlay/     (sibling — provides hardening/sql/)
+<workspace>/
+├── aws-broker/                            (this repo)
+└── cg-oracle-database-19c-stig-overlay/   (sibling — provides hardening/sql/)
 ```
 
 ## 1. Unit tests (fast, no Docker) — the everyday loop
