@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -127,6 +128,14 @@ func TestModifyInstance(t *testing.T) {
 			options: ElasticsearchOptions{
 				ElasticsearchVersion: "OpenSearch_2.3",
 				VolumeType:           "gp3",
+			},
+			existingVersion: "OpenSearch_1.3",
+			expectedErrMsg:  "engine version upgrade cannot be combined with other configuration options",
+		},
+		"version with log publishing rejected": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_2.3",
+				LogPublishing:        ElasticsearchLogOptions{ErrorLogs: aws.Bool(true)},
 			},
 			existingVersion: "OpenSearch_1.3",
 			expectedErrMsg:  "engine version upgrade cannot be combined with other configuration options",

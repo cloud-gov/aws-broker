@@ -14,30 +14,31 @@ import (
 
 // Settings stores settings used to run the application
 type Settings struct {
-	EncryptionKey             string
-	DbNamePrefix              string
-	DbShorthandPrefix         string
-	MaxAllocatedStorage       int64
-	DbConfig                  *db.DBConfig
-	Environment               string
-	Region                    string
-	PubliclyAccessibleFeature bool
-	EnableFunctionsFeature    bool
-	SnapshotsBucketName       string
-	SnapshotsRepoName         string
-	LastSnapshotName          string
-	CfApiUrl                  string
-	CfApiClientId             string
-	CfApiClientSecret         string
-	MaxBackupRetention        int64
-	MinBackupRetention        int64
-	pollAwsMaxDurationSeconds int64
-	PollAwsMaxDuration        time.Duration
-	pollAwsMinDelaySeconds    int64
-	PollAwsMinDelay           time.Duration
-	PollAwsMaxRetries         int64
-	Port                      string
-	LogLevel                  slog.Level
+	EncryptionKey              string
+	DbNamePrefix               string
+	DbShorthandPrefix          string
+	MaxAllocatedStorage        int64
+	DbConfig                   *db.DBConfig
+	Environment                string
+	Region                     string
+	PubliclyAccessibleFeature  bool
+	EnableFunctionsFeature     bool
+	SnapshotsBucketName        string
+	SnapshotsRepoName          string
+	LastSnapshotName           string
+	CfApiUrl                   string
+	CfApiClientId              string
+	CfApiClientSecret          string
+	MaxBackupRetention         int64
+	MinBackupRetention         int64
+	pollAwsMaxDurationSeconds  int64
+	PollAwsMaxDuration         time.Duration
+	pollAwsMinDelaySeconds     int64
+	PollAwsMinDelay            time.Duration
+	PollAwsMaxRetries          int64
+	Port                       string
+	LogLevel                   slog.Level
+	OpensearchLogRetentionDays int32
 }
 
 // LoadFromEnv loads settings from environment variables
@@ -210,6 +211,14 @@ func (s *Settings) LoadFromEnv() error {
 
 	if s.PollAwsMaxRetries == 0 {
 		s.PollAwsMaxRetries = 60
+	}
+
+	if val, ok := os.LookupEnv("OPENSEARCH_LOG_RETENTION_DAYS"); ok {
+		retentionDays, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return err
+		}
+		s.OpensearchLogRetentionDays = int32(retentionDays)
 	}
 
 	if val, ok := os.LookupEnv("PORT"); ok {
