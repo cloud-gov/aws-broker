@@ -213,6 +213,14 @@ func (s *Settings) LoadFromEnv() error {
 		s.PollAwsMaxRetries = 60
 	}
 
+	if val, ok := os.LookupEnv("OPENSEARCH_LOG_RETENTION_DAYS"); ok {
+		retentionDays, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return err
+		}
+		s.OpensearchLogRetentionDays = int32(retentionDays)
+	}
+
 	if val, ok := os.LookupEnv("PORT"); ok {
 		s.Port = val
 	}
