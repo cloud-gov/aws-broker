@@ -23,7 +23,7 @@ make -C local down          # tear everything down
 
 `make -C local quickstart` prints this menu any time.
 
-## 0. Prerequisites (macOS arm64)
+## 0. Prerequisites (macOS arm64 / Linux)
 
 Run `make -C local doctor` — it tells you exactly what's present/missing and the
 command to install each. Summary:
@@ -32,7 +32,8 @@ command to install each. Summary:
 |------|-----------|---------|
 | **Docker** (running) | layers 2 & 3 | Docker Desktop, or `brew install colima docker && colima start` |
 | **go** | layer 1 (unit tests) | `brew install go` |
-| `aws` CLI | layer 2 `moto-smoke` only | `brew install awscli` |
+| **C compiler** (`cc`/`gcc`/`clang`) | layer 1 — cgo builds `go-sqlite3` | `xcode-select --install` (macOS) or `apt-get install -y gcc` (Linux) |
+| `aws` CLI | layer 2 `moto-smoke` only | `brew install awscli` (macOS) or `apt-get install -y awscli` (Linux) |
 | **`cg-oracle-database-19c-stig-overlay` cloned as a sibling** | layer 3 `assess`/`harden` | `git clone` it next to `aws-broker` (so `../../cg-oracle-database-19c-stig-overlay/hardening/sql` resolves), or pass `SQL_DIR=…` |
 | `cinc-auditor` | running the STIG overlay locally (optional) | `brew install --cask cinc-auditor` |
 | `sqlplus` | **not required** | `assess`/`harden` run `sqlplus` *inside* the container via `docker exec` |

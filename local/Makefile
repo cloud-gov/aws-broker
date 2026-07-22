@@ -11,6 +11,9 @@ COMPOSE_MOTO = docker compose -f docker-compose.moto.yml
 ORACLE_CONN ?= APPUSER/devpw_ChangeMe1@//localhost:1521/FREEPDB1
 # Repo root (this Makefile lives in local/).
 ROOT = ..
+# The suite pulls in go-sqlite3 (a cgo package), so unit tests need cgo + a C
+# compiler. Force it on here rather than relying on the toolchain default.
+export CGO_ENABLED = 1
 
 .PHONY: help
 help: quickstart
@@ -45,7 +48,7 @@ quickstart:
 # ---------------------------------------------------------------------------
 .PHONY: doctor
 doctor:
-	@echo "== Local test harness prerequisites (macOS arm64) =="
+	@echo "== Local test harness prerequisites (macOS arm64 / Linux) =="
 	@ok=1; \
 	printf "%-22s" "docker:"; \
 	  if command -v docker >/dev/null 2>&1; then \
@@ -55,9 +58,12 @@ doctor:
 	printf "%-22s" "go:"; \
 	  if command -v go >/dev/null 2>&1; then go version | awk '{print "OK ("$$3")"}'; \
 	  else echo "MISSING — 'brew install go' (needed for layer 1 unit tests)"; ok=0; fi; \
+	printf "%-22s" "C compiler (cgo):"; \
+	  if command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1; then echo "OK (cgo builds go-sqlite3)"; \
+	  else echo "MISSING — layer 1 needs cgo: 'xcode-select --install' (macOS) or 'apt-get install -y gcc' (Linux)"; ok=0; fi; \
 	printf "%-22s" "aws (cli):"; \
 	  if command -v aws >/dev/null 2>&1; then echo "OK (layer 2 moto smoke)"; \
-	  else echo "optional — 'brew install awscli' (only for 'make moto-smoke')"; fi; \
+	  else echo "MISSING for layer 2 — 'brew install awscli' (macOS) or 'apt-get install -y awscli' (Linux); only 'make moto-smoke' needs it"; fi; \
 	printf "%-22s" "cinc-auditor:"; \
 	  if command -v cinc-auditor >/dev/null 2>&1; then echo "OK (overlay InSpec run)"; \
 	  else echo "optional — 'brew install --cask cinc-auditor' (only to run the STIG overlay locally)"; fi; \
