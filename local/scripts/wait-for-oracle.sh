@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # wait-for-oracle.sh — block until the local Oracle container is healthy.
-# Local harness only; development signal only.
 set -euo pipefail
 
 CONTAINER="${1:-cg-oracle-free}"
