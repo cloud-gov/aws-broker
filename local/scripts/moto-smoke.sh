@@ -10,11 +10,11 @@
 set -euo pipefail
 
 # aws flags for the moto endpoint (array so it word-splits cleanly).
-EP=(--endpoint-url http://localhost:5000 --region us-gov-west-1)
+MOTO_ENDPOINT=(--endpoint-url http://localhost:5000 --region us-gov-west-1)
 export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
-ID="cg-oracle-smoke-$$"
-PG="cg-aws-broker-oracle-smoke-$$"
-OG="cg-aws-broker-oracle-smoke-og-$$"
+INSTANCE_ID="cg-oracle-smoke-$$"
+PARAM_GROUP="cg-aws-broker-oracle-smoke-$$"
+OPTION_GROUP="cg-aws-broker-oracle-smoke-og-$$"
 
 if ! command -v aws >/dev/null 2>&1; then
 	echo "aws CLI not found — 'brew install awscli' (layer-2 smoke only)." >&2
@@ -26,15 +26,15 @@ if ! curl -sf http://localhost:5000/moto-api/ >/dev/null 2>&1; then
 fi
 
 cleanup() {
-	aws "${EP[@]}" rds delete-db-instance --db-instance-identifier "$ID" --skip-final-snapshot >/dev/null 2>&1 || true
-	aws "${EP[@]}" rds delete-db-parameter-group --db-parameter-group-name "$PG" >/dev/null 2>&1 || true
-	aws "${EP[@]}" rds delete-option-group --option-group-name "$OG" >/dev/null 2>&1 || true
+	aws "${MOTO_ENDPOINT[@]}" rds delete-db-instance --db-instance-identifier "$INSTANCE_ID" --skip-final-snapshot >/dev/null 2>&1 || true
+	aws "${MOTO_ENDPOINT[@]}" rds delete-db-parameter-group --db-parameter-group-name "$PARAM_GROUP" >/dev/null 2>&1 || true
+	aws "${MOTO_ENDPOINT[@]}" rds delete-option-group --option-group-name "$OPTION_GROUP" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
 echo "== create-db-instance (oracle-se2, License Included, encrypted, private) =="
-aws "${EP[@]}" rds create-db-instance \
-	--db-instance-identifier "$ID" \
+aws "${MOTO_ENDPOINT[@]}" rds create-db-instance \
+	--db-instance-identifier "$INSTANCE_ID" \
 	--db-instance-class db.t3.medium \
 	--engine oracle-se2 \
 	--engine-version 19.0.0.0.ru-2024-07.rur-2024-07.r1 \
@@ -50,15 +50,15 @@ aws "${EP[@]}" rds create-db-instance \
 	--output text
 
 echo "== create-db-parameter-group (oracle-se2-19) =="
-aws "${EP[@]}" rds create-db-parameter-group \
-	--db-parameter-group-name "$PG" \
+aws "${MOTO_ENDPOINT[@]}" rds create-db-parameter-group \
+	--db-parameter-group-name "$PARAM_GROUP" \
 	--db-parameter-group-family oracle-se2-19 \
 	--description "cg smoke" \
 	--query 'DBParameterGroup.[DBParameterGroupName,DBParameterGroupFamily]' --output text
 
 echo "== create-option-group (oracle-se2 19) =="
-aws "${EP[@]}" rds create-option-group \
-	--option-group-name "$OG" \
+aws "${MOTO_ENDPOINT[@]}" rds create-option-group \
+	--option-group-name "$OPTION_GROUP" \
 	--engine-name oracle-se2 \
 	--major-engine-version 19 \
 	--option-group-description "cg smoke" \
