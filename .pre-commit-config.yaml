@@ -1,0 +1,114 @@
+# ===========================================================================
+# Pre-commit configuration — cloud-gov/aws-broker
+# ===========================================================================
+# Consumes the internal cloud-gov/pre-commit-templates (pinned rev). Added on the
+# Oracle-19c feature branch (#519) so the scanners validate our changes.
+#
+# CAULKING: cloud.gov dev hosts run caulking, which sets core.hooksPath globally
+# and invokes this file via `prek` automatically. Do NOT run `pre-commit install`
+# (it fails with "cowardly refusing to install hooks with core.hooksPath set").
+# Run manually with `pre-commit run --all-files`.
+#
+# SECRETS: on caulking hosts caulking runs gitleaks globally; set SKIP=gitleaks
+# there to avoid a double scan (caulking owns gitleaks). In CI the gitleaks hook
+# below self-installs and runs. See cloud-gov/pre-commit-templates ADR-0007.
+#
+# SCOPE DECISION: aws-broker is a large inherited repo with pre-existing
+# golangci-lint findings and NO prior lint gate (CI was only `go test ./...`).
+# Whole-repo golangci-lint reports ~55 inherited findings, and
+# --new-from-merge-base mis-attributes line-shifted pre-existing findings to this
+# branch. To get honest signal on OUR Oracle changes, golangci-lint is gated to
+# the Go files this branch authored; hygiene + fmt/vet + shell run normally.
+# Follow-up cloud-gov/aws-broker#551 burns down the inherited findings (nolint pass)
+# and then switches to the template's whole-repo golangci-lint/gosec hooks.
+#
+# Setup on a cloud.gov dev host (tools for the local Go hooks below):
+#   brew install golangci-lint shellcheck shfmt
+# (Hygiene/shell/gitleaks hooks from the template self-install or are provided by
+# caulking; only the local Go hooks need golangci-lint on PATH.)
+# ===========================================================================
+
+repos:
+  - repo: https://github.com/cloud-gov/pre-commit-templates
+    rev: v0.6.0
+    hooks:
+      # --- HYGIENE (all repos) — NIST SA-15 / SSDF PO.3 ---
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      # trailing-whitespace / end-of-file-fixer are FIXER hooks that rewrite files
+      # in place. Scope them away from templated/generated/fixture files whose exact
+      # bytes matter (spruce catalog templates, base64 image blobs, secrets fixtures)
+      # so a commit-time auto-fix can't silently mutate them.
+      - id: trailing-whitespace
+        exclude: '^(catalog-template\.yml|catalog-test\.yml|secrets-test\.yml|.*\.golden)$'
+      - id: end-of-file-fixer
+        exclude: '^(catalog-template\.yml|catalog-test\.yml|secrets-test\.yml|.*\.golden)$'
+      - id: check-yaml
+        # catalog-template.yml is not plain YAML: it uses spruce (( grab ... ))
+        # operators AND defines the same anchor name more than once (a duplicate-
+        # anchor ComposerError), so a strict YAML parse fails. Exclude it.
+        # catalog-test.yml parses fine and is intentionally NOT excluded.
+        exclude: '^(catalog-template\.yml)$'
+      - id: check-json
+
+      # --- LINTING (shell) — NIST SA-11 / SSDF PW.7 ---
+      # aws-broker has many shell scripts under ci/.
+      - id: shellcheck
+      - id: shfmt-check
+
+      # --- COMPLIANCE ---
+      - id: check-gsa-email
+
+  # --- SECRETS (caulking-aware) ---
+  # gitleaks' OWN upstream hook (a real Go module that self-installs via
+  # language: golang). The cloud-gov template ships no gitleaks hook of its own
+  # (ADR-0007). On caulking dev hosts caulking already runs gitleaks globally, so
+  # set SKIP=gitleaks there to avoid a double scan; in CI it self-installs + runs.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # Go linters, scoped to NEW issues on this branch (see SCOPE DECISION).
+  # Kept as local hooks so we control the exact invocation (the template's
+  # golangci-lint hook runs whole-repo, which would flag ~55 inherited findings).
+  # These require golangci-lint on PATH. Follow-up #551 burns down the inherited
+  # findings (nolint pass) and switches to the template's whole-repo hooks.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: go-fmt-changed
+        name: gofmt (changed Go files)
+        description: >-
+          Fails if any staged Go file is not gofmt-clean. `gofmt -l` exits 0 even
+          when it lists unformatted files, so we wrap it and fail on non-empty
+          output (listing the offending files).
+        entry: "bash -c 'out=$(gofmt -l \"$@\"); [ -z \"$out\" ] || { echo \"gofmt: unformatted files (run gofmt -w):\"; echo \"$out\"; exit 1; }' --"
+        language: system
+        types: [go]
+
+      - id: go-vet
+        name: go vet
+        description: Reports suspicious constructs (whole module; near-zero FPs).
+        entry: bash -c 'go vet ./... 2>&1'
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: golangci-lint-oracle
+        name: golangci-lint (Oracle-19c changes)
+        description: >-
+          Full linter suite gated to findings this branch introduced, attributed
+          by git blame provenance (scripts/lint-oracle-go.sh) — covers every
+          Oracle file we authored OR modified (broker/validate/credentials/…),
+          not just new files. Pre-existing inherited debt (no prior lint gate) is
+          excluded only when provably an ancestor of the base ref; any finding that
+          cannot be attributed is reported, and a golangci-lint tool error fails the
+          gate — it never emits a false green. A tracked follow-up widens to
+          whole-repo after debt burn-down.
+        entry: bash scripts/lint-oracle-go.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

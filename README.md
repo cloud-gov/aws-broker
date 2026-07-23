@@ -88,6 +88,24 @@ cp secrets-test.yml secrets.yml
 
 Once you have these in place, run `go test ./...` to run the tests.
 
+### Pre-commit hooks
+
+This repo ships a `.pre-commit-config.yaml` consuming the internal
+[`cloud-gov/pre-commit-templates`](https://github.com/cloud-gov/pre-commit-templates)
+(hygiene, `shellcheck`/`shfmt`, `check-gsa-email`, gitleaks) plus local Go hooks
+(`gofmt`, `go vet`, and a golangci-lint gate scoped to this repo's changes).
+
+- **On a cloud.gov dev host with [caulking](https://github.com/cloud-gov/caulking):**
+  do **not** run `pre-commit install` (caulking sets `core.hooksPath` globally and
+  the framework refuses). Caulking invokes the config automatically on commit; run
+  ad hoc with `pre-commit run --all-files`. Caulking also runs gitleaks globally,
+  so use `SKIP=gitleaks` to avoid a double scan.
+- **Without caulking (CI / a fresh box):** `pre-commit install`, or run
+  `pre-commit run --all-files`. `gitleaks` self-installs; the template's
+  `shellcheck`/`shfmt-check` and the local Go hooks need
+  `golangci-lint`/`shellcheck`/`shfmt` on `PATH`
+  (`brew install golangci-lint shellcheck shfmt`).
+
 ### Testing with PostgreSQL database
 
 1. Copy `.env-sample` to `.env`
