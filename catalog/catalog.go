@@ -64,6 +64,9 @@ func (c *Catalog) GetResources() Resources {
 func InitCatalog(path string) *Catalog {
 	var catalog Catalog
 	catalogFile := filepath.Join(path, "catalog.yml")
+	// #nosec G304 -- path is the broker's own working directory (os.Getwd at the
+	// call sites), not request input; the filename is the fixed literal
+	// "catalog.yml". No attacker-controlled path-traversal surface.
 	data, err := os.ReadFile(catalogFile)
 	if err != nil {
 		log.Fatalf("error: %v", err)

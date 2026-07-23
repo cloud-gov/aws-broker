@@ -66,6 +66,9 @@ func (p *awsParameterGroupClient) ProvisionNewCustomParameterGroup(i *RDSInstanc
 	}
 
 	customRDSParameters, err := p.getAllCustomParameters(i, false)
+	if err != nil {
+		return fmt.Errorf("error gathering custom parameters: %w", err)
+	}
 
 	setParameterGroupName(i, p)
 
@@ -101,6 +104,9 @@ func (p *awsParameterGroupClient) ProvisionOrModifyCustomParameterGroup(i *RDSIn
 	// if a parameter group with the current name already exists, include its parameters
 	// in the parameters to be set
 	customRDSParameters, err := p.getAllCustomParameters(i, parameterGroupExists)
+	if err != nil {
+		return false, fmt.Errorf("error gathering custom parameters: %w", err)
+	}
 
 	// set the parameter group name, which may or may not change depending on if there is a
 	// new database version
@@ -624,33 +630,29 @@ func (p *awsParameterGroupClient) DeleteParameterGroup(parameterGroupName string
 	attempts := 1
 	maxRetries := int(p.settings.PollAwsMaxRetries)
 
-	var parameterGroupIsDeleted bool
-
-	for !parameterGroupIsDeleted && attempts <= maxRetries {
+	for attempts <= maxRetries {
 		_, err = p.rds.DeleteDBParameterGroup(p.ctx, &rds.DeleteDBParameterGroupInput{
 			DBParameterGroupName: &parameterGroupName,
 		})
-		if err != nil {
-			var invalidParameterGroupStateErr *rdsTypes.InvalidDBParameterGroupStateFault
-			if errors.As(err, &invalidParameterGroupStateErr) {
-				attempts += 1
-				time.Sleep(p.settings.PollAwsMinDelay)
-				continue
-			}
-			var notFoundErr *rdsTypes.DBParameterGroupNotFoundFault
-			if errors.As(err, &notFoundErr) {
-				parameterGroupIsDeleted = true
-				return nil
-			}
-			return err
+		if err == nil {
+			// Deletion succeeded.
+			return nil
 		}
+		var invalidParameterGroupStateErr *rdsTypes.InvalidDBParameterGroupStateFault
+		if errors.As(err, &invalidParameterGroupStateErr) {
+			attempts += 1
+			time.Sleep(p.settings.PollAwsMinDelay)
+			continue
+		}
+		var notFoundErr *rdsTypes.DBParameterGroupNotFoundFault
+		if errors.As(err, &notFoundErr) {
+			// Already gone — deletion goal achieved.
+			return nil
+		}
+		return err
 	}
 
-	if !parameterGroupIsDeleted {
-		return errors.New("could not verify deletion of parameter group")
-	}
-
-	return err
+	return errors.New("could not verify deletion of parameter group")
 }
 
 // setParameterGroupName sets the parameter group name on the instance struct

@@ -267,7 +267,7 @@ func TestInstanceInit(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			instance := &RedisInstance{}
-			instance.init(
+			instance.init( //nolint:errcheck // test setup; init failure surfaces downstream in the test
 				test.uuid,
 				test.orgID,
 				test.spaceID,
@@ -430,7 +430,7 @@ func TestInitInstanceTags(t *testing.T) {
 	}
 
 	instance := &RedisInstance{}
-	instance.init(
+	instance.init( //nolint:errcheck // test setup; init failure surfaces downstream in the test
 		"uuid-1",
 		"org-1",
 		"space-1",

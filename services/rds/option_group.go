@@ -85,7 +85,7 @@ func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, e
 func (o *awsOptionsGroupClient) ReconcileRDSInstanceOptionGroup(dbInstanceState *rdsTypes.DBInstance, i RDSInstance) (*RDSInstance, error) {
 	reconciledInstance := i
 
-	if len(*&dbInstanceState.OptionGroupMemberships) == 0 {
+	if len(dbInstanceState.OptionGroupMemberships) == 0 {
 		return &reconciledInstance, nil
 	}
 

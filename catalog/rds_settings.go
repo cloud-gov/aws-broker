@@ -43,5 +43,5 @@ func (s *RDSSettings) GetRDSSettingByPlan(planID string) (*RDSSetting, error) {
 	if setting, ok := s.databases[planID]; ok {
 		return setting, nil
 	}
-	return nil, errors.New("Cannot find rds setting by plan id.")
+	return nil, errors.New("cannot find rds setting by plan id")
 }

@@ -436,7 +436,7 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.dbInstance.setTags(test.plan, test.tags)
+			test.dbInstance.setTags(test.plan, test.tags) //nolint:errcheck // test setup; setTags failure surfaces downstream in the test
 			params, err := test.worker.prepareCreateDbInput(test.dbInstance, test.plan, test.password)
 			if err != nil && test.expectedErr == nil {
 				t.Errorf("expected error: %s, got: %s", test.expectedErr, err)

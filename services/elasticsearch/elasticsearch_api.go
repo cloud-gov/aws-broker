@@ -125,7 +125,7 @@ func (es *EsApiHandler) CreateSnapshotRepo(repositoryName string, bucketName str
 	if err != nil {
 		return "", fmt.Errorf("CreateSnapshotRepo: error creating snapshot repository: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		return "", fmt.Errorf("CreateSnapshotRepo: failed to create snapshot repository %s: %s", repositoryName, res.String())
@@ -145,7 +145,7 @@ func (es *EsApiHandler) CreateSnapshot(repositoryName string, snapshotName strin
 		return "", fmt.Errorf("error creating snapshot: %s", err)
 	}
 
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		return "", fmt.Errorf("failed to create snapshot %s: %s", repositoryName, res.String())
@@ -165,7 +165,7 @@ func (es *EsApiHandler) GetSnapshotStatus(repositoryName string, snapshotName st
 		return "", fmt.Errorf("error getting snapshot: %s", err)
 	}
 
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	// A 404 response may indicate that the snapshot is not ready yet, not that
 	// anything has necessarily failed

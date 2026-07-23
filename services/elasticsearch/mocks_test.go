@@ -13,6 +13,9 @@ import (
 
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
+	if err != nil {
+		return nil, err
+	}
 	// Automigrate!
 	err = db.AutoMigrate(&ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err

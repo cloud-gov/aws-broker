@@ -166,7 +166,7 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		}
 	}
 
-	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+	modifiedInstance.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports) //nolint:errcheck // decide fail-vs-best-effort on log-export config failure
 
 	if newPlan.ReadReplica && !newPlan.Redundant {
 		return nil, errors.New("database plan must be multi-AZ in order to support read replicas")
@@ -181,7 +181,7 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		modifiedInstance.DeleteReadReplica = true
 	}
 
-	modifiedInstance.setTags(newPlan, tags)
+	modifiedInstance.setTags(newPlan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
 
 	return &modifiedInstance, nil
 }
@@ -234,7 +234,7 @@ func (i *RDSInstance) init(
 		return err
 	}
 
-	i.setTags(plan, tags)
+	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
 
 	i.StorageType = plan.StorageType
 
@@ -252,7 +252,7 @@ func (i *RDSInstance) init(
 		return err
 	}
 
-	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports)
+	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports) //nolint:errcheck // decide fail-vs-best-effort on log-export config failure
 
 	if plan.ReadReplica {
 		i.AddReadReplica = true
