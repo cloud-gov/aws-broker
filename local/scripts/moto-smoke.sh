@@ -20,10 +20,16 @@ if ! command -v aws >/dev/null 2>&1; then
 	echo "aws CLI not found — 'brew install awscli' (layer-2 smoke only)." >&2
 	exit 2
 fi
-if ! curl -sf http://localhost:5000/moto-api/ >/dev/null 2>&1; then
-	echo "moto is not up on :5000 — run 'make moto-up' first." >&2
-	exit 2
-fi
+MOTO_TIMEOUT="${MOTO_TIMEOUT:-10}"
+elapsed=0
+until curl -sf http://localhost:5000/moto-api/ >/dev/null 2>&1; do
+	if [ "$elapsed" -ge "$MOTO_TIMEOUT" ]; then
+		echo "moto is not up on :5000 after ${MOTO_TIMEOUT}s — run 'make moto-up' first." >&2
+		exit 2
+	fi
+	sleep 1
+	elapsed=$((elapsed + 1))
+done
 
 cleanup() {
 	aws "${MOTO_ENDPOINT[@]}" rds delete-db-instance --db-instance-identifier "$INSTANCE_ID" --skip-final-snapshot >/dev/null 2>&1 || true
