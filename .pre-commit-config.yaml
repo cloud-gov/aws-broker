@@ -13,14 +13,6 @@
 # there to avoid a double scan (caulking owns gitleaks). In CI the gitleaks hook
 # below self-installs and runs. See cloud-gov/pre-commit-templates ADR-0007.
 #
-# SCOPE DECISION: aws-broker is a large inherited repo with pre-existing
-# golangci-lint findings and NO prior lint gate (CI was only `go test ./...`).
-# Whole-repo golangci-lint reports ~55 inherited findings, and
-# --new-from-merge-base mis-attributes line-shifted pre-existing findings to this
-# branch. To get honest signal on OUR Oracle changes, golangci-lint is gated to
-# the Go files this branch authored; hygiene + fmt/vet + shell run normally.
-# Follow-up cloud-gov/aws-broker#551 burns down the inherited findings (nolint pass)
-# and then switches to the template's whole-repo golangci-lint/gosec hooks.
 #
 # Setup on a cloud.gov dev host (tools for the local Go hooks below):
 #   brew install golangci-lint shellcheck shfmt
