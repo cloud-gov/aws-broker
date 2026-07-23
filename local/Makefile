@@ -5,7 +5,6 @@
 # New here? Run `make -C local doctor` then `make -C local quickstart`.
 
 COMPOSE_ORACLE = docker compose -f docker-compose.oracle-free.yml
-COMPOSE_ORACLE19C = docker compose -f docker-compose.oracle-19c.yml
 COMPOSE_MOTO = docker compose -f docker-compose.moto.yml
 
 ORACLE_CONN ?= APPUSER/devpw_ChangeMe1@//localhost:1521/FREEPDB1
@@ -37,7 +36,6 @@ quickstart:
 	@echo "     make assess         run assessment SQL -> reports/ (labeled dev signal)"
 	@echo "     make harden         apply allowed hardening (idempotent)"
 	@echo "     make assess         re-assess: state should have changed"
-	@echo "     make oracle19c-up   (optional) self-built Oracle 19c EE fidelity image"
 	@echo ""
 	@echo "  make down             tear EVERYTHING down"
 	@echo ""
@@ -120,10 +118,6 @@ oracle-up:
 	$(COMPOSE_ORACLE) up -d
 	./scripts/wait-for-oracle.sh
 
-.PHONY: oracle19c-up
-oracle19c-up:
-	$(COMPOSE_ORACLE19C) up -d
-
 .PHONY: assess
 assess:
 	./scripts/run-assessment-local.sh "$(ORACLE_CONN)"
@@ -135,5 +129,4 @@ harden:
 .PHONY: down
 down:
 	-$(COMPOSE_ORACLE) down -v
-	-$(COMPOSE_ORACLE19C) down -v
 	-$(COMPOSE_MOTO) down -v

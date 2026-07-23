@@ -1,4 +1,4 @@
-# Local Oracle 19c test harness
+# Local Oracle test harness (23c engine; targets 19c on RDS)
 
 > **⚠️ DEVELOPMENT SIGNAL ONLY — NOT COMPLIANCE EVIDENCE.**
 > Everything here is for fast iteration. Authoritative STIG evidence comes only
@@ -7,6 +7,11 @@
 
 This lets you test the Oracle work **without any AWS access**, in three layers you
 can use independently. Written for **macOS on Apple Silicon (arm64)**.
+
+> **Engine vs. target.** The local DB is `gvenzl/oracle-free` (Oracle **23c**);
+> the target is **19c SE2** on RDS. No local 19c image exists for arm64
+> (see [§3](#3-real-local-oracle-for-sql-hardeningassessment)).
+
 
 ## TL;DR
 
@@ -102,14 +107,15 @@ and the seeded `weak_profile`/`seed_weak` artifacts are on a non-DEFAULT profile
 that hardening intentionally leaves alone. Reports land in `local/reports/`
 (gitignored), each labeled *development signal only*.
 
-**Optional fidelity pass** — a self-built Oracle **19c EE** image (closer to the
-brokered engine than 23c Free). You must build/tag `oracle/database:19.3.0-ee`
-yourself from [oracle/docker-images](https://github.com/oracle/docker-images)
-first, then `make -C local oracle19c-up`. It publishes on **1522** with service
-`ORCLPDB1` and does **not** create `APPUSER`, so target it explicitly, e.g.
-`make -C local assess ORACLE_CONN="SYS/<pw>@//localhost:1522/ORCLPDB1 as sysdba"`
-(this fidelity path is for maintainers; the default `oracle-free` flow above is the
-supported one).
+> **Why not a local Oracle 19c image?** The brokered product is Oracle 19c
+> **Standard Edition 2 (SE2)** (License Included is SE2-only on RDS). On arm64,
+> Oracle's `buildContainerImage.sh` supports **only** 19c Enterprise Edition and
+> 26ai Free — there is no way to build a local SE2 image (`-s` errors out). An EE
+> image would be the *wrong edition*: it exposes EE-only features (Oracle-native
+> TDE, Fine-Grained Auditing) that SE2 lacks and the design compensates for, so it
+> risks a misleading pass. Since edition-accurate STIG conformance is validated on
+> a real brokered RDS SE2 instance regardless, this harness uses only the
+> freely-pullable `gvenzl/oracle-free` engine and accepts that it is not 19c.
 
 **Optional — run the STIG overlay** against the local DB: point its
 `oracledb_session` inputs at `localhost:1521/FREEPDB1` with the seeded app user.
@@ -148,7 +154,6 @@ local/
   Makefile                         doctor / unit / moto-* / oracle-* / down
   docker-compose.moto.yml          motoserver/moto (free RDS control-plane mock)
   docker-compose.oracle-free.yml   gvenzl/oracle-free (native arm64)
-  docker-compose.oracle-19c.yml    self-built oracle/database:19.3.0-ee (fidelity)
   scripts/
     wait-for-oracle.sh
     moto-smoke.sh                  layer-2 broker-shape smoke
