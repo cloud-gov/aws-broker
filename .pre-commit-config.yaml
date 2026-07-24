@@ -4,7 +4,7 @@
 # Consumes the internal cloud-gov/pre-commit-templates (pinned rev). Added on the
 # Oracle-19c feature branch (#519) so the scanners validate our changes.
 #
-# CAULKING: cloud.gov dev hosts run caulking, which sets core.hooksPath globally
+# CAULKING: Cloud.gov dev hosts run caulking, which sets core.hooksPath globally
 # and invokes this file via `prek` automatically. Do NOT run `pre-commit install`
 # (it fails with "cowardly refusing to install hooks with core.hooksPath set").
 # Run manually with `pre-commit run --all-files`.
@@ -14,10 +14,10 @@
 # below self-installs and runs. See cloud-gov/pre-commit-templates ADR-0007.
 #
 #
-# Setup on a cloud.gov dev host (tools for the local Go hooks below):
+# Setup on a Cloud.gov dev host (tools for the Go/shell hooks below):
 #   brew install golangci-lint shellcheck shfmt
-# (Hygiene/shell/gitleaks hooks from the template self-install or are provided by
-# caulking; only the local Go hooks need golangci-lint on PATH.)
+# (Hygiene/gitleaks hooks from the template self-install or are provided by
+# caulking; the golangci-lint/gofmt/vet + shell hooks need those tools on PATH.)
 # ===========================================================================
 
 repos:
@@ -49,6 +49,11 @@ repos:
       - id: shellcheck
       - id: shfmt-check
 
+      # --- LINTING (Go) — NIST SA-11 / SSDF PW.7 ---
+      - id: go-fmt
+      - id: go-vet
+      - id: golangci-lint
+
       # --- COMPLIANCE ---
       - id: check-gsa-email
 
@@ -61,46 +66,3 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks
-
-  # ---------------------------------------------------------------------------
-  # Go linters, scoped to NEW issues on this branch (see SCOPE DECISION).
-  # Kept as local hooks so we control the exact invocation (the template's
-  # golangci-lint hook runs whole-repo, which would flag ~55 inherited findings).
-  # These require golangci-lint on PATH. Follow-up #551 burns down the inherited
-  # findings (nolint pass) and switches to the template's whole-repo hooks.
-  # ---------------------------------------------------------------------------
-  - repo: local
-    hooks:
-      - id: go-fmt-changed
-        name: gofmt (changed Go files)
-        description: >-
-          Fails if any staged Go file is not gofmt-clean. `gofmt -l` exits 0 even
-          when it lists unformatted files, so we wrap it and fail on non-empty
-          output (listing the offending files).
-        entry: "bash -c 'out=$(gofmt -l \"$@\"); [ -z \"$out\" ] || { echo \"gofmt: unformatted files (run gofmt -w):\"; echo \"$out\"; exit 1; }' --"
-        language: system
-        types: [go]
-
-      - id: go-vet
-        name: go vet
-        description: Reports suspicious constructs (whole module; near-zero FPs).
-        entry: bash -c 'go vet ./... 2>&1'
-        language: system
-        types: [go]
-        pass_filenames: false
-
-      - id: golangci-lint-oracle
-        name: golangci-lint (Oracle-19c changes)
-        description: >-
-          Full linter suite gated to findings this branch introduced, attributed
-          by git blame provenance (scripts/lint-oracle-go.sh) — covers every
-          Oracle file we authored OR modified (broker/validate/credentials/…),
-          not just new files. Pre-existing inherited debt (no prior lint gate) is
-          excluded only when provably an ancestor of the base ref; any finding that
-          cannot be attributed is reported, and a golangci-lint tool error fails the
-          gate — it never emits a false green. A tracked follow-up widens to
-          whole-repo after debt burn-down.
-        entry: bash scripts/lint-oracle-go.sh
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
