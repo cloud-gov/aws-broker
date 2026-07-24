@@ -1,0 +1,68 @@
+# ===========================================================================
+# Pre-commit configuration — cloud-gov/aws-broker
+# ===========================================================================
+# Consumes the internal cloud-gov/pre-commit-templates (pinned rev). Added on the
+# Oracle-19c feature branch (#519) so the scanners validate our changes.
+#
+# CAULKING: Cloud.gov dev hosts run caulking, which sets core.hooksPath globally
+# and invokes this file via `prek` automatically. Do NOT run `pre-commit install`
+# (it fails with "cowardly refusing to install hooks with core.hooksPath set").
+# Run manually with `pre-commit run --all-files`.
+#
+# SECRETS: on caulking hosts caulking runs gitleaks globally; set SKIP=gitleaks
+# there to avoid a double scan (caulking owns gitleaks). In CI the gitleaks hook
+# below self-installs and runs. See cloud-gov/pre-commit-templates ADR-0007.
+#
+#
+# Setup on a Cloud.gov dev host (tools for the Go/shell hooks below):
+#   brew install golangci-lint shellcheck shfmt
+# (Hygiene/gitleaks hooks from the template self-install or are provided by
+# caulking; the golangci-lint/gofmt/vet + shell hooks need those tools on PATH.)
+# ===========================================================================
+
+repos:
+  - repo: https://github.com/cloud-gov/pre-commit-templates
+    rev: v0.6.0
+    hooks:
+      # --- HYGIENE (all repos) — NIST SA-15 / SSDF PO.3 ---
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      # trailing-whitespace / end-of-file-fixer are FIXER hooks that rewrite files
+      # in place. Scope them away from templated/generated/fixture files whose exact
+      # bytes matter (spruce catalog templates, base64 image blobs, secrets fixtures)
+      # so a commit-time auto-fix can't silently mutate them.
+      - id: trailing-whitespace
+        exclude: '^(catalog-template\.yml|catalog-test\.yml|secrets-test\.yml|.*\.golden)$'
+      - id: end-of-file-fixer
+        exclude: '^(catalog-template\.yml|catalog-test\.yml|secrets-test\.yml|.*\.golden)$'
+      - id: check-yaml
+        # catalog-template.yml is not plain YAML: it uses spruce (( grab ... ))
+        # operators AND defines the same anchor name more than once (a duplicate-
+        # anchor ComposerError), so a strict YAML parse fails. Exclude it.
+        # catalog-test.yml parses fine and is intentionally NOT excluded.
+        exclude: '^(catalog-template\.yml)$'
+      - id: check-json
+
+      # --- LINTING (shell) — NIST SA-11 / SSDF PW.7 ---
+      # aws-broker has many shell scripts under ci/.
+      - id: shellcheck
+      - id: shfmt-check
+
+      # --- LINTING (Go) — NIST SA-11 / SSDF PW.7 ---
+      - id: go-fmt
+      - id: go-vet
+      - id: golangci-lint
+
+      # --- COMPLIANCE ---
+      - id: check-gsa-email
+
+  # --- SECRETS (caulking-aware) ---
+  # gitleaks' OWN upstream hook (a real Go module that self-installs via
+  # language: golang). The cloud-gov template ships no gitleaks hook of its own
+  # (ADR-0007). On caulking dev hosts caulking already runs gitleaks globally, so
+  # set SKIP=gitleaks there to avoid a double scan; in CI it self-installs + runs.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

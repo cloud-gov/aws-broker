@@ -28,7 +28,7 @@ There are important environment variables that should be overriden inside the `m
 1. `AWS_DEFAULT_REGION`: Region you wish to provision services in.
 1. `AUTH_USER`: The username used by cf to authenticate to the broker
 1. `AUTH_PASS`: The password used by cf to authenticate to the broker
-1. `ENC_KEY`: This is an string that must be 16, 24, or 32 bytes long.  It is an AES key that is used to encrypt the password.
+1. `ENC_KEY`: This is an string that must be 16, 24, or 32 bytes long. It is an AES key that is used to encrypt the password.
 1. `CF_API_URL`: URL for CloudFoundry API in this environment
 1. `CF_API_CLIENT_ID`: UAA client ID that will be used for requests to the CloudFoundry API
 1. `CF_API_CLIENT_SECRET`: UAA client secret that will be used for requests to the CloudFoundry API
@@ -59,19 +59,12 @@ uaac client add aws_broker \
 
 There are some feature flags that you can turn on as well:
 
-1. `ENABLE_FUNCTIONS`:  If this environment variable exists, it will enable users to create mysql databases like
-   `cf create-service _servicename_ production my-mysql-service -c '{"enable_functions": true}'`,
-   which will set the `log_bin_trust_function_creators=1` parameter for their db,
-   enabling the creation of functions in their databases.
-1. `PUBLICLY_ACCESSIBLE`:  If this environment variable exists, it will enable users to create databases with
-   `PubliclyAccessible: true` by doing something like
-   `cf create-service _servicename_ production my-mysql-service -c '{"publicly_accessible": true}'`.
-   This is probably not something you want to set unless you really know what you are doing.
+1. `ENABLE_FUNCTIONS`: If this environment variable exists, it will enable users to create mysql databases like `cf create-service _servicename_ production my-mysql-service -c '{"enable_functions": true}'`, which will set the `log_bin_trust_function_creators=1` parameter for their db, enabling the creation of functions in their databases.
+1. `PUBLICLY_ACCESSIBLE`: If this environment variable exists, it will enable users to create databases with `PubliclyAccessible: true` by doing something like `cf create-service _servicename_ production my-mysql-service -c '{"publicly_accessible": true}'`. This is probably not something you want to set unless you really know what you are doing.
 
 ### Catalog.yml
 
-Catalog.yml contains a list of service(s) offered with plans. It contains no secrets.
-Prior to pushing, complete the catalog.yml for your environment. It is architected where the service name (e.g. rds) is the mapping between it and the service details.
+Catalog.yml contains a list of service(s) offered with plans. It contains no secrets. Prior to pushing, complete the catalog.yml for your environment. It is architected where the service name (e.g. rds) is the mapping between it and the service details.
 
 ### Secrets.yml
 
@@ -88,6 +81,13 @@ cp secrets-test.yml secrets.yml
 
 Once you have these in place, run `go test ./...` to run the tests.
 
+### Pre-commit hooks
+
+This repo ships a `.pre-commit-config.yaml` consuming the internal [`cloud-gov/pre-commit-templates`](https://github.com/cloud-gov/pre-commit-templates) (hygiene, `shellcheck`/`shfmt`, `check-gsa-email`, gitleaks) plus the template's Go hooks (`gofmt`, `go vet`, and whole-repo `golangci-lint`).
+
+- **On a Cloud.gov dev host with [caulking](https://github.com/cloud-gov/caulking):** do **not** run `pre-commit install` (caulking sets `core.hooksPath` globally and the framework refuses). Caulking invokes the config automatically on commit; run ad hoc with `pre-commit run --all-files`. Caulking also runs gitleaks globally, so use `SKIP=gitleaks` to avoid a double scan.
+- **Without caulking (CI / a fresh box):** `pre-commit install`, or run `pre-commit run --all-files`. `gitleaks` self-installs; the template's `shellcheck`/`shfmt-check` and Go hooks need `golangci-lint`/`shellcheck`/`shfmt` on `PATH` (`brew install golangci-lint shellcheck shfmt`). Use **golangci-lint v2** — `.golangci.yml` pins the config to v2, and the whole-repo gate is validated 0-issue under v2 (a v1 binary applies different defaults and will error on the v2 config).
+
 ### Testing with PostgreSQL database
 
 1. Copy `.env-sample` to `.env`
@@ -95,15 +95,15 @@ Once you have these in place, run `go test ./...` to run the tests.
 1. Add a value for `POSTGRES_PASSWORD` to the `.env` file
 1. Start the PostgreSQL docker container:
 
-      ```shell
-      cd docker && docker compose up -d  && cd -
-      ```
+   ```shell
+   cd docker && docker compose up -d  && cd -
+   ```
 
 1. **OPTIONAL**: For `.env` file integration with the VSCode Go test runner, create `.vscode/settings.json` with:
 
    ```json
    {
-      "go.testEnvFile": "/path/to/aws-broker/.env"
+     "go.testEnvFile": "/path/to/aws-broker/.env"
    }
    ```
 
@@ -129,11 +129,9 @@ To use the service you need to create a service instance and bind it:
 1. `cf create-service SERVICE_NAME micro-psql MYDB`
 1. `cf bind-service APP MYDB`
 
-When you do that you will have all the credentials in the
-`VCAP_SERVICES` environment variable with the JSON key `rds`.
+When you do that you will have all the credentials in the `VCAP_SERVICES` environment variable with the JSON key `rds`.
 
-Also, you will have a `DATABASE_URL` environment variable that will
-be the connection string to the DB.
+Also, you will have a `DATABASE_URL` environment variable that will be the connection string to the DB.
 
 ## Credential handling
 
@@ -141,7 +139,7 @@ This section is primarily for auditors who need to understand how the broker, an
 
 ### Instantiation
 
-The broker is deployed by Concourse CI onto CloudFoundry, using a manifest that is built by the cloud.gov secrets management system to specify the environment variables. When the app is deployed, Concourse [registers](https://docs.cloudfoundry.org/services/managing-service-brokers.html#register-broker) the broker, specifying the AUTH_USER and AUTH_PASS.
+The broker is deployed by Concourse CI onto CloudFoundry, using a manifest that is built by the Cloud.gov secrets management system to specify the environment variables. When the app is deployed, Concourse [registers](https://docs.cloudfoundry.org/services/managing-service-brokers.html#register-broker) the broker, specifying the AUTH_USER and AUTH_PASS.
 
 The CF Cloud Controller stores the configuration for the app, including these environment variables, in an encrypted database table on the CCDB, as described in [Cloud Foundry security concepts](https://docs.cloudfoundry.org/concepts/security.html). The `aws-broker` app does not write these to static storage since Cloud Foundry makes them available as environment variables.
 
@@ -170,7 +168,7 @@ When the provisioning is complete, the broker takes the following actions:
 
 The broker uses a dedicated AWS RDS PostgreSQL database. The RDS instance data are encrypted at rest using AWS storage encryption. The communication between the broker and the database is over postgres StartTLS with TLS 1.2 enabled.
 
-The broker is instantiated with encryption key, `ENC_KEY`, and all credentials are written to the database encrypted with that key and a random salt, as in the `setPassword` function of each _service_instance.go file, e.g.: <https://github.com/cloud-gov/aws-broker/blob/20f70bb/services/redis/redisinstance.go#L50>
+The broker is instantiated with encryption key, `ENC_KEY`, and all credentials are written to the database encrypted with that key and a random salt, as in the `setPassword` function of each \_service_instance.go file, e.g.: <https://github.com/cloud-gov/aws-broker/blob/20f70bb/services/redis/redisinstance.go#L50>
 
 ### Providing credentials to CloudFoundry applications
 
