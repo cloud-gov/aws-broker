@@ -524,9 +524,14 @@ func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.Updat
 			return nil, err
 		}
 
+		volumeSize, err := common.ConvertIntToInt32Safely(i.VolumeSize)
+		if err != nil {
+			return nil, err
+		}
+
 		params.EBSOptions = &opensearchTypes.EBSOptions{
 			EBSEnabled: aws.Bool(true),
-			VolumeSize: aws.Int32(int32(i.VolumeSize)),
+			VolumeSize: aws.Int32(*volumeSize),
 			VolumeType: *volumeType,
 		}
 	}

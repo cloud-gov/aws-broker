@@ -292,7 +292,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.worker.asyncModifyRedis(test.ctx, test.instance)
+			test.worker.asyncModifyRedis(test.ctx, test.instance) //nolint:errcheck // test drives the worker; the assertion below checks the outcome
 
 			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.ModifyOp)
 			if err != nil {

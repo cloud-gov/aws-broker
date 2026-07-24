@@ -37,6 +37,12 @@ import (
 var brokerDB *gorm.DB
 var requestHandler *TestRequestHandler
 
+// ctxKey is a private type for context keys defined in this package, avoiding
+// collisions with keys defined elsewhere (staticcheck SA1029).
+type ctxKey string
+
+const testContextKey ctxKey = "test_context"
+
 func setup() http.Handler {
 	var s config.Settings
 
@@ -52,7 +58,7 @@ func setup() http.Handler {
 	if err != nil {
 		log.Fatal(err)
 	}
-	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) //nolint:errcheck // test setup; AutoMigrate failure surfaces as a later test failure
 
 	path, _ := os.Getwd()
 	c := catalog.InitCatalog(path)
@@ -102,7 +108,7 @@ func (t *TestRequestHandler) doRequest(url string, method string, auth bool, bod
 		req.SetBasicAuth("default", "default")
 	}
 	req.Header.Set("X-Broker-API-Version", "2.14")
-	ctx := context.WithValue(context.Background(), "test_context", true)
+	ctx := context.WithValue(context.Background(), testContextKey, true)
 	req = req.WithContext(ctx)
 
 	t.brokerAPI.ServeHTTP(res, req)
@@ -860,7 +866,7 @@ func TestRDSBindInstance(t *testing.T) {
 
 	var r response
 
-	json.Unmarshal(res.Body.Bytes(), &r)
+	json.Unmarshal(res.Body.Bytes(), &r) //nolint:errcheck // test assertion; a bad unmarshal fails the surrounding checks
 
 	// Does it contain "uri"
 	if r.Credentials.URI == "" {
@@ -1174,7 +1180,7 @@ func TestRedisBindInstance(t *testing.T) {
 
 	var r response
 
-	json.Unmarshal(res.Body.Bytes(), &r)
+	json.Unmarshal(res.Body.Bytes(), &r) //nolint:errcheck // test assertion; a bad unmarshal fails the surrounding checks
 
 	// Does it contain "uri"
 	if r.Credentials.URI == "" {
@@ -1516,7 +1522,7 @@ func TestElasticsearchBindInstance(t *testing.T) {
 
 	var r response
 
-	json.Unmarshal(res.Body.Bytes(), &r)
+	json.Unmarshal(res.Body.Bytes(), &r) //nolint:errcheck // test assertion; a bad unmarshal fails the surrounding checks
 
 	// Does it contain "uri"
 	if r.Credentials.URI == "" {

@@ -127,7 +127,7 @@ func (i *RedisInstance) init(
 		return err
 	}
 
-	i.setTags(plan, tags)
+	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
 
 	return nil
 }
@@ -140,7 +140,7 @@ func (i RedisInstance) modify(
 
 	setInstanceParameters(&modifiedInstance, options, *newPlan)
 
-	modifiedInstance.setTags(*newPlan, tags)
+	modifiedInstance.setTags(*newPlan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
 
 	return &modifiedInstance
 }

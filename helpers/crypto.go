@@ -42,6 +42,7 @@ func Encrypt(msg, key string, iv []byte) (string, error) {
 		return "", err
 	}
 
+	//nolint:staticcheck // SA1019: CFB is deprecated (unauthenticated, not FIPS 140-3 validated); AEAD migration to an authenticated cipher is pending.
 	aesEncrypter := cipher.NewCFBEncrypter(aesBlockEncrypter, iv)
 	aesEncrypter.XORKeyStream(dst, src)
 
@@ -58,6 +59,7 @@ func Decrypt(msg, key string, iv []byte) (string, error) {
 		return "", err
 	}
 
+	//nolint:staticcheck // SA1019: CFB is deprecated (unauthenticated, not FIPS 140-3 validated); AEAD migration to an authenticated cipher is pending. Decrypt path must be retained to read existing ciphertext during any future migration.
 	aesDecrypter := cipher.NewCFBDecrypter(aesBlockDecrypter, iv)
 	aesDecrypter.XORKeyStream(dst, src)
 

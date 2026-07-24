@@ -194,7 +194,7 @@ func (i *ElasticsearchInstance) init(
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
 
-	i.setTags(plan, tags)
+	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
 
 	return nil
 }
