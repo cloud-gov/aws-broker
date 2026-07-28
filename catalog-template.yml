@@ -1298,6 +1298,11 @@ rds:
       dbVersion: "19.0.0.0.ru-2024-07.rur-2024-07.r1"
       licenseModel: license-included
       allocatedStorage: 20
+      # Storage autoscaling (#540): RDS grows storage automatically up to this
+      # cap when free space runs low, avoiding out-of-space outages. Enabled now
+      # (before any customers land) so the plan does not need a later migration.
+      # Growth is passed through as cloud.gov credits — see docs/oracle19c.
+      maxAllocatedStorage: 100
       approvedMajorVersions:
         - "19"
       plan_updateable: true

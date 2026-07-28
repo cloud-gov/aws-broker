@@ -14,6 +14,9 @@ mirrors the sandbox-only `micro-psql` / `small-mysql` tier). **Not
 production-ready.**
 
 - `db.t3.medium`, 20 GB `gp3`, `encrypted: true` (KMS at rest)
+- **storage autoscaling to 100 GB** — RDS grows storage automatically up to
+  `maxAllocatedStorage` when free space runs low (avoids out-of-space outages).
+  Growth is passed through as cloud.gov credits.
 - private only (no public accessibility)
 - backup retention **14 days**
 - `oracle-se2` 19c, `licenseModel: license-included`
@@ -36,6 +39,10 @@ production-ready.**
   — it is **not** a security control.
 - **License Included (no BYOL).** AWS holds the Oracle license and bundles it into
   the instance price — no license key, no attestation. See [licensing.md](licensing.md).
+- **Storage autoscaling (`max_storage`).** The plan enables RDS storage autoscaling
+  (starting 20 GB, max 100 GB). A customer may raise the ceiling per instance with
+  `-c '{"max_storage": <GB>}'` on create/update; it must be `> storage` and `≤` the
+  platform maximum. `0`/unset on update leaves the existing policy unchanged.
 
 ## Pages
 

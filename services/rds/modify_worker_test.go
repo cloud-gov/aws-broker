@@ -1052,6 +1052,75 @@ func TestPrepareModifyDbInstanceInput(t *testing.T) {
 				DBParameterGroupName:     aws.String("group1"),
 			},
 		},
+		"enables storage autoscaling when max > allocated": {
+			dbInstance: &RDSInstance{
+				DbType:                "oracle-se2",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				MaxAllocatedStorage:   100,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				&mockOptionGroupClient{},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				MaxAllocatedStorage:      aws.Int32(100),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(false),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+			},
+		},
+		"omits autoscaling when max not greater than allocated": {
+			dbInstance: &RDSInstance{
+				DbType:                "oracle-se2",
+				StorageType:           "gp3",
+				AllocatedStorage:      20,
+				MaxAllocatedStorage:   20,
+				Database:              "db-name",
+				BackupRetentionPeriod: 14,
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{},
+				nil,
+				&mockParameterGroupClient{
+					rds: &mockRDSClient{},
+				},
+				&mockOptionGroupClient{},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class",
+			},
+			expectedParams: &rds.ModifyDBInstanceInput{
+				AllocatedStorage:         aws.Int32(20),
+				ApplyImmediately:         aws.Bool(true),
+				DBInstanceClass:          aws.String("class"),
+				MultiAZ:                  aws.Bool(false),
+				DBInstanceIdentifier:     aws.String("db-name"),
+				AllowMajorVersionUpgrade: aws.Bool(false),
+				BackupRetentionPeriod:    aws.Int32(14),
+				StorageType:              aws.String("gp3"),
+			},
+		},
 	}
 
 	for name, test := range testCases {
