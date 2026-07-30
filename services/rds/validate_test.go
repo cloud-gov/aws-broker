@@ -265,7 +265,7 @@ func TestValidateOracleOptions(t *testing.T) {
 	}
 }
 
-// TestOracleLogExportAllowlistMatchesBaseline is the #546 drift guard. The
+// TestOracleLogExportAllowlistMatchesBaseline is a drift guard. The
 // customer-facing log-export allowlist enforced by validateOracleOptions
 // (validOracleLogExports) MUST be exactly the embedded baseline's `supported`
 // set, and the baseline's `default_exports` (what the create path enables when
@@ -289,8 +289,9 @@ func TestOracleLogExportAllowlistMatchesBaseline(t *testing.T) {
 			allow, baseline.Supported)
 	}
 
-	// 2. default_exports ⊆ supported — you cannot default-enable an export the
-	//    engine does not support (create path would advertise an invalid request).
+	// 2. default_exports is a subset of supported — you cannot default-enable an
+	//    export the engine does not support (create path would advertise an
+	//    invalid request).
 	for _, d := range baseline.DefaultExports {
 		if !slices.Contains(baseline.Supported, d) {
 			t.Errorf("default export %q is not in the supported set %v", d, baseline.Supported)
