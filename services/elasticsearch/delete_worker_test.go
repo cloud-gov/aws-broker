@@ -167,9 +167,9 @@ func TestDeleteWorkerWork(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.RequestURI == fmt.Sprintf("/_snapshot/%s", snapshotRepo) {
-			fmt.Fprintln(w, `{"status": "ok"}`)
+			fmt.Fprintln(w, `{"status": "ok"}`) //nolint:errcheck // test fixture writer; Fprintln to a test buffer
 		} else if strings.HasPrefix(r.RequestURI, fmt.Sprintf("/_snapshot/%s", snapshotRepo)) {
-			fmt.Fprintln(w, `{"snapshots": [{"state":"SUCCESS"}]}`)
+			fmt.Fprintln(w, `{"snapshots": [{"state":"SUCCESS"}]}`) //nolint:errcheck // test fixture writer; Fprintln to a test buffer
 		}
 	}))
 	defer ts.Close()

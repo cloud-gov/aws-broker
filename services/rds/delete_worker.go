@@ -152,7 +152,7 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance) error 
 	err = w.optionGroupClient.DeleteOptionGroup(i.OptionGroupName)
 	if err != nil {
 		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup"))
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup")
 		w.logger.Warn("asyncDeleteDb: deletion of option group failed; leaving for later cleanup", "err", err)
 	}
 

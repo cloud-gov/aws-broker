@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os/signal"
+	"time"
 
 	"code.cloudfoundry.org/brokerapi/v13"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -157,7 +159,23 @@ func run(ctx context.Context, out io.Writer) error {
 
 	logger.Debug("run: starting web server")
 	http.Handle("/", brokerAPI)
-	http.ListenAndServe(fmt.Sprintf(":%s", settings.Port), nil)
+	// Use an explicit http.Server with timeouts rather than http.ListenAndServe,
+	// which sets none (Slowloris exposure on this network-facing OSBAPI server;
+	// gosec G114). Handler is nil so it uses DefaultServeMux, preserving the
+	// routing registered by http.Handle above. WriteTimeout is generous (180s)
+	// because bind is synchronous and makes live AWS describe calls in-request;
+	// provision/update/delete are async (202) and unaffected.
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%s", settings.Port),
+		Handler:           nil,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      180 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
 
 	return nil
 }

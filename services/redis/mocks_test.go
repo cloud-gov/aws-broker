@@ -20,8 +20,11 @@ import (
 
 func testDBInit() (*gorm.DB, error) {
 	db, err := testutil.TestDbInit()
+	if err != nil {
+		return nil, err
+	}
 	// Automigrate!
-	db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
+	err = db.AutoMigrate(&RedisInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err
 }
 

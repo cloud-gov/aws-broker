@@ -1,8 +1,8 @@
 package catalog
 
 import (
-	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/cloud-gov/aws-broker/db"
@@ -59,7 +59,10 @@ type ElasticsearchDBSecret struct {
 func InitSecrets(path string) *Secrets {
 	var secrets Secrets
 	secretsFile := filepath.Join(path, "secrets.yml")
-	data, err := ioutil.ReadFile(secretsFile)
+	// #nosec G304 -- path is the broker's own working directory (os.Getwd at the
+	// call sites), not request input; the filename is the fixed literal
+	// "secrets.yml". No attacker-controlled path-traversal surface.
+	data, err := os.ReadFile(secretsFile)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}

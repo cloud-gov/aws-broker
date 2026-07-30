@@ -63,7 +63,7 @@ func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) err
 func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance) error {
 	operation := base.DeleteOp
 
-	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
+	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group") //nolint:errcheck // decide fail-vs-log on async job-message write (job-state drift risk)
 
 	err := w.deleteReplicationGroup(ctx, i, operation)
 	if err != nil {
@@ -72,7 +72,7 @@ func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance) e
 		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error deleting replication group %w ", err))
 	}
 
-	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot") //nolint:errcheck // decide fail-vs-log on async job-message write (job-state drift risk)
 
 	err = w.exportRedisSnapshot(ctx, i)
 	if err != nil {
@@ -167,6 +167,10 @@ func (w *DeleteWorker) exportRedisSnapshot(ctx context.Context, i *RedisInstance
 	w.logger.Info("exportRedisSnapshot: Writing Instance manifest to s3")
 	// write instance to manifest
 	// marshall instance to bytes.
+	// #nosec G117 -- Password is the AES-encrypted ciphertext (plaintext lives
+	// only in the unpersisted ClearPassword). Marshaled into required restore
+	// metadata written to the broker's private, SSE-AES256 snapshots bucket;
+	// never logged or returned to clients.
 	data, err := json.Marshal(i)
 	if err != nil {
 		return err

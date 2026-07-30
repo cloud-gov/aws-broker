@@ -77,7 +77,7 @@ func (pd *PolicyDocument) FromString(docstring string) error {
 // adds any policy statement entries that dont already exist in the policy doc
 // using string comparison
 func (pd *PolicyDocument) AddNewStatements(newStatements []PolicyStatementEntry) bool {
-	var modified bool = false
+	modified := false
 	searchkeys := map[string]string{}
 	for _, v := range pd.Statement {
 		key, _ := v.ToString()
@@ -398,7 +398,7 @@ func DeletePolicy(
 	}
 
 	// list and remove all versions but default first
-	deleteNonDefaultPolicyVersions(ctx, iamClient, logger, policyARN)
+	deleteNonDefaultPolicyVersions(ctx, iamClient, logger, policyARN) //nolint:errcheck // confirm ignoring version-cleanup error before DeletePolicy is safe
 
 	logger.Debug("delete-policy", "input", deletePolicyInput)
 	deletePolicyOutput, err := iamClient.DeletePolicy(ctx, deletePolicyInput)
