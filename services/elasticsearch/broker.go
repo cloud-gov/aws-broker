@@ -244,6 +244,7 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 	}
 
 	if esInstance.PlanID != details.PlanID {
+		//nolint:staticcheck // ST1005: user-facing API error returned in the HTTP failure response; intentionally sentence-case for readability.
 		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
 	}
 
@@ -419,7 +420,7 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 	// Get the correct database logic depending on the type of plan
 	var credentials map[string]string
 	// Bind the database instance to the application.
-	existingInstance.setBucket(options.Bucket)
+	existingInstance.setBucket(options.Bucket) //nolint:errcheck // confirm setBucket failure semantics
 	if credentials, err = broker.adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
 		return binding, apiresponses.NewFailureResponse(
 			fmt.Errorf("there was an error binding the service to the application: %s", err),

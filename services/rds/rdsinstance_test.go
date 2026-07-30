@@ -1099,7 +1099,7 @@ func TestSetTagsConcurrency(t *testing.T) {
 	updateInstanceTags := func(tags map[string]string, expectedTags map[string]string, wg *sync.WaitGroup) {
 		defer wg.Done()
 		i := &RDSInstance{}
-		i.setTags(plan, tags)
+		i.setTags(plan, tags) //nolint:errcheck // test setup; setTags failure surfaces downstream in the test
 
 		updatedTags := i.getTags()
 
@@ -1124,8 +1124,8 @@ func TestSetTagsInitializesMutex(t *testing.T) {
 		},
 	}
 
-	i := &RDSInstance{} // no mutex defined by default
-	i.setTags(plan, map[string]string{"foo2": "bar2"})
+	i := &RDSInstance{}                                // no mutex defined by default
+	i.setTags(plan, map[string]string{"foo2": "bar2"}) //nolint:errcheck // test setup; setTags failure surfaces downstream in the test
 
 	updatedTags := i.getTags()
 	expectedTags := map[string]string{
@@ -1181,7 +1181,7 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 		ReplicaDatabase:      "replica",
 		ReplicaDatabaseHost:  "host",
 	}
-	i.setTags(&catalog.RDSPlan{}, map[string]string{
+	i.setTags(&catalog.RDSPlan{}, map[string]string{ //nolint:errcheck // test setup; setTags failure surfaces downstream in the test
 		"foo": "bar",
 	})
 	output, err := json.Marshal(i)
@@ -1225,7 +1225,7 @@ func TestRDSInstanceMarshalAndUnmarshal(t *testing.T) {
 		}
 	}
 	unmarshaledInstance := &RDSInstance{}
-	json.Unmarshal(output, unmarshaledInstance)
+	json.Unmarshal(output, unmarshaledInstance) //nolint:errcheck // test assertion; a bad unmarshal fails the surrounding checks
 	if diff := deep.Equal(i, unmarshaledInstance); diff != nil {
 		t.Fatal(diff)
 	}

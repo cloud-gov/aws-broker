@@ -40,6 +40,9 @@ func GetRiverClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, wor
 			TestOnly: true,
 			Workers:  workers,
 		})
+		if err != nil {
+			return nil, err
+		}
 		return riverClient, nil
 	case "sqlite3":
 		driver := riversqlite.New(sqlDB)
@@ -56,6 +59,9 @@ func GetRiverClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, wor
 			TestOnly: true,
 			Workers:  workers,
 		})
+		if err != nil {
+			return nil, err
+		}
 		return riverClient, nil
 	default:
 		return nil, fmt.Errorf("unsupported db type: %s", dbConfig.DbType)

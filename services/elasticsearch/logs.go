@@ -58,7 +58,7 @@ func (i *ElasticsearchInstance) applyLogOptions(opts ElasticsearchLogOptions) {
 // validateAuditLogSupport returns an error when audit logging (which enables FGAC) is requested on an instance
 // whose plan does not provide FGAC's encryption prereqs (node-to-node and encryption at rest.)
 func (i *ElasticsearchInstance) validateAuditLogSupport() error {
-	if i.AdvancedSecurityEnabled && !(i.NodeToNodeEncryption && i.EncryptAtRest) {
+	if i.AdvancedSecurityEnabled && (!i.NodeToNodeEncryption || !i.EncryptAtRest) {
 		return errors.New("audit logs require a plan with node-to-node encryption and encryption at rest enabled; this plan does not support them")
 	}
 	return nil

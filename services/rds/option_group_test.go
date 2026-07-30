@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"context"
 	"log/slog"
 	"slices"
 	"testing"
@@ -15,7 +16,7 @@ import (
 
 func newTestOptionGroupClient(rdsClient RDSClientInterface) *awsOptionsGroupClient {
 	return NewAwsOptionGroupClient(
-		nil,
+		context.TODO(),
 		rdsClient,
 		&config.Settings{
 			PollAwsMinDelay:   1 * time.Millisecond,
