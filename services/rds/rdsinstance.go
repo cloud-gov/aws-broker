@@ -32,6 +32,7 @@ type RDSInstance struct {
 	BackupRetentionPeriod int64  `sql:"size(255)"`
 	DbSubnetGroup         string `gorm:"-"`
 	AllocatedStorage      int64  `sql:"size(255)"`
+	MaxAllocatedStorage   int64  `sql:"size(255)"`
 	SecGroup              string `gorm:"-"`
 	PubliclyAccessible    bool   `gorm:"-"`
 
@@ -113,6 +114,15 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 
 	if options.StorageType == "gp3" && modifiedInstance.AllocatedStorage < 20 {
 		return nil, errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+	}
+
+	// Storage autoscaling max (#540). A customer-supplied max_storage overrides
+	// the plan/instance value on modify; 0 leaves the existing setting unchanged
+	// (avoids silently disabling an already-enabled autoscaling policy).
+	if options.MaxAllocatedStorage > 0 {
+		modifiedInstance.MaxAllocatedStorage = options.MaxAllocatedStorage
+	} else if modifiedInstance.MaxAllocatedStorage == 0 {
+		modifiedInstance.MaxAllocatedStorage = newPlan.MaxAllocatedStorage
 	}
 
 	if options.StorageType != modifiedInstance.StorageType {
@@ -250,6 +260,13 @@ func (i *RDSInstance) init(
 	i.AllocatedStorage = options.AllocatedStorage
 	if i.AllocatedStorage == 0 {
 		i.AllocatedStorage = plan.AllocatedStorage
+	}
+	// Storage autoscaling (#540): RDS grows storage automatically up to
+	// MaxAllocatedStorage when free space runs low, avoiding out-of-space
+	// outages. A customer-supplied max overrides the plan default; 0 = disabled.
+	i.MaxAllocatedStorage = options.MaxAllocatedStorage
+	if i.MaxAllocatedStorage == 0 {
+		i.MaxAllocatedStorage = plan.MaxAllocatedStorage
 	}
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible

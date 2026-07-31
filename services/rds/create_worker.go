@@ -117,6 +117,17 @@ func (w *CreateWorker) prepareCreateDbInput(
 		params.EnableCloudwatchLogsExports = i.EnabledCloudwatchLogGroupExports
 	}
 
+	// Storage autoscaling (#540): enable only when a max is configured and it
+	// exceeds the initial allocation (RDS requires MaxAllocatedStorage >
+	// AllocatedStorage). Left unset => autoscaling disabled.
+	if i.MaxAllocatedStorage > i.AllocatedStorage {
+		maxAllocatedStorage, err := common.ConvertInt64ToInt32Safely(i.MaxAllocatedStorage)
+		if err != nil {
+			return nil, err
+		}
+		params.MaxAllocatedStorage = maxAllocatedStorage
+	}
+
 	// If a custom parameter has been requested, and the feature is enabled,
 	// create/update a custom parameter group for our custom parameters.
 	err = w.parameterGroupClient.ProvisionNewCustomParameterGroup(i, rdsTags)
