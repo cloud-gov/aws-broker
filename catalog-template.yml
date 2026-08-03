@@ -1289,6 +1289,7 @@ rds:
       instanceClass: db.t3.medium
       allocatedStorage: 20
       dbType: oracle-se2
+      dbVersion: "19.0.0.0.ru-2026-04.rur-2026-04.r1"
       licenseModel: license-included
       redundant: false
       encrypted: true
