@@ -204,14 +204,27 @@ func TestBuildLogPublishingOptions(t *testing.T) {
 }
 
 func TestAdvancedSecurityOptionsForAudit(t *testing.T) {
-	if got := advancedSecurityOptionsForAudit(&ElasticsearchInstance{}); got != nil {
+	got, err := advancedSecurityOptionsForAudit(&ElasticsearchInstance{})
+	if err != nil {
+		t.Fatalf("unexpected error when FGAC disabled: %s", err)
+	}
+	if got != nil {
 		t.Errorf("expected nil when FGAC disabled, got %+v", got)
 	}
 
-	options := advancedSecurityOptionsForAudit(&ElasticsearchInstance{
+	if _, err := advancedSecurityOptionsForAudit(&ElasticsearchInstance{
+		AdvancedSecurityEnabled: true,
+	}); err == nil {
+		t.Error("expected an error when FGAC is enabled but IamUserARN is empty, got nil")
+	}
+
+	options, err := advancedSecurityOptionsForAudit(&ElasticsearchInstance{
 		AdvancedSecurityEnabled: true,
 		IamUserARN:              "arn:aws-us-gov:iam::123456789012:user/test-domain",
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
 	if options == nil {
 		t.Fatal("expected non-nil advanced security options")
 	}

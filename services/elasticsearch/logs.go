@@ -129,9 +129,13 @@ func ensureLogGroups(
 
 // advancedSecurityOptionsForAudit returns the FGAC config required for audit logs. Assigns the domain
 // IAM user as the master user.
-func advancedSecurityOptionsForAudit(i *ElasticsearchInstance) *opensearchTypes.AdvancedSecurityOptionsInput {
+func advancedSecurityOptionsForAudit(i *ElasticsearchInstance) (*opensearchTypes.AdvancedSecurityOptionsInput, error) {
 	if !i.AdvancedSecurityEnabled {
-		return nil
+		return nil, nil
+	}
+
+	if i.IamUserARN == "" {
+		return nil, errors.New("cannot enable FGAC for audit logging: IamUserARN is not set for this instance")
 	}
 
 	return &opensearchTypes.AdvancedSecurityOptionsInput{
@@ -140,7 +144,7 @@ func advancedSecurityOptionsForAudit(i *ElasticsearchInstance) *opensearchTypes.
 		MasterUserOptions: &opensearchTypes.MasterUserOptions{
 			MasterUserARN: aws.String(i.IamUserARN),
 		},
-	}
+	}, nil
 }
 
 // buildLogPublishingOptions builds the LogPublishingOptions map for

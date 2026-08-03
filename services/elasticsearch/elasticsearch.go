@@ -147,7 +147,11 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	userParams := &iam.GetUserInput{
 		UserName: aws.String(i.Domain),
 	}
-	userResp, _ := d.iam.GetUser(d.ctx, userParams)
+	userResp, err := d.iam.GetUser(d.ctx, userParams)
+	if err != nil {
+		d.logger.Error("createElasticsearch: GetUser err", "err", err)
+		return base.InstanceNotCreated, err
+	}
 	uniqueUserArn := *(userResp.User.Arn)
 	i.IamUserARN = uniqueUserArn
 	stsInput := &sts.GetCallerIdentityInput{}
@@ -584,7 +588,11 @@ func prepareCreateDomainInput(
 		params.LogPublishingOptions = logPublishingOptions
 	}
 
-	if advancedSecurityOptions := advancedSecurityOptionsForAudit(i); advancedSecurityOptions != nil {
+	advancedSecurityOptions, err := advancedSecurityOptionsForAudit(i)
+	if err != nil {
+		return nil, err
+	}
+	if advancedSecurityOptions != nil {
 		params.AdvancedSecurityOptions = advancedSecurityOptions
 	}
 
@@ -633,8 +641,14 @@ func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.Updat
 		params.LogPublishingOptions = logPublishingOptions
 	}
 
-	if advancedSecurityOptions := advancedSecurityOptionsForAudit(i); advancedSecurityOptions != nil && !i.AuditRestConfigApplied {
-		params.AdvancedSecurityOptions = advancedSecurityOptions
+	if !i.AuditRestConfigApplied {
+		advancedSecurityOptions, err := advancedSecurityOptionsForAudit(i)
+		if err != nil {
+			return nil, err
+		}
+		if advancedSecurityOptions != nil {
+			params.AdvancedSecurityOptions = advancedSecurityOptions
+		}
 	}
 
 	return params, nil
