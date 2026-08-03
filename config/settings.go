@@ -197,7 +197,7 @@ func (s *Settings) LoadFromEnv() error {
 	}
 
 	if s.pollAwsMaxDurationSeconds == 0 {
-		s.pollAwsMaxDurationSeconds = 3600 // 3600 seconds = 1 hour
+		s.pollAwsMaxDurationSeconds = 7200 // 7200 seconds = 2 hours
 	}
 
 	s.PollAwsMaxDuration = time.Duration(s.pollAwsMaxDurationSeconds) * time.Second
