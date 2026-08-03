@@ -76,6 +76,10 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	}
 
 	dbName := formatDBName(i.Database, i.DbType)
+	if i.DbType == "oracle-se1" || i.DbType == "oracle-se2" {
+		return oracleCredentials(i, password, dbScheme, dbName)
+	}
+
 	uri := fmt.Sprintf(
 		"%s://%s:%s@%s:%d/%s",
 		dbScheme,
@@ -110,6 +114,35 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	}
 
 	return credentials, nil
+}
+
+func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) (map[string]string, error) {
+	const sslPort int64 = 2484
+	descriptor := fmt.Sprintf(
+		"(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=%s)(PORT=%d))(CONNECT_DATA=(SID=%s)))",
+		i.Host,
+		sslPort,
+		serviceName,
+	)
+	uri := fmt.Sprintf("%s://%s:%s@%s", scheme, i.Username, password, descriptor)
+	jdbcURL := fmt.Sprintf("jdbc:oracle:thin:@%s", descriptor)
+
+	return map[string]string{
+		"uri":                 uri,
+		"jdbcUrl":             jdbcURL,
+		"username":            i.Username,
+		"password":            password,
+		"host":                i.Host,
+		"port":                strconv.FormatInt(sslPort, 10),
+		"protocol":            "tcps",
+		"service_name":        serviceName,
+		"sid":                 serviceName,
+		"db_name":             serviceName,
+		"name":                serviceName,
+		"ssl_required":        "true",
+		"ssl_server_dn_match": "true",
+		"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
+	}, nil
 }
 
 func (u *RDSCredentialUtils) generateCredentials(
