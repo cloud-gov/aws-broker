@@ -778,6 +778,59 @@ func TestReconcileDbState(t *testing.T) {
 				OptionGroupName: "my-audit-group",
 			},
 		},
+		"reconcile unrecorded read replica": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									ReadReplicaDBInstanceIdentifiers: []string{"test-replica"},
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: RDSInstance{
+				Database: "test",
+			},
+			expectedInstance: &RDSInstance{
+				Database:        "test",
+				ReplicaDatabase: "test-replica",
+			},
+		},
+		"does not adopt a replica that this db is not associated with": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									ReadReplicaDBInstanceIdentifiers: []string{"random-replica"},
+								},
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+			),
+			dbInstance: RDSInstance{
+				Database: "test",
+			},
+			expectedInstance: &RDSInstance{
+				Database: "test",
+			},
+		},
 		"error describing database": {
 			dbAdapter: NewTestDedicatedDBAdapter(
 				t.Context(),
@@ -804,6 +857,9 @@ func TestReconcileDbState(t *testing.T) {
 			}
 			if diff := deep.Equal(reconciledInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)
+			}
+			if test.expectedInstance != nil && reconciledInstance.ReplicaDatabase != test.expectedInstance.ReplicaDatabase {
+				t.Errorf("expected ReplicaDatabase %q, got %q", test.expectedInstance.ReplicaDatabase, reconciledInstance.ReplicaDatabase)
 			}
 			if diff := deep.Equal(test.expectedInstance, test.dbInstance); diff == nil {
 				t.Fatal("instance passed as argument to reconcileDbState() should not have been mutated")
