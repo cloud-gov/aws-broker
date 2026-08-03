@@ -127,6 +127,16 @@ func (w *CreateWorker) prepareCreateDbInput(
 		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
 	}
 
+	// Provision + attach the engine's baseline option group at create time
+	// (Oracle SE2: the SSL/TCPS option that opens the TLS listener on port 2484).
+	// No-op for engines with no baseline options (postgres/mysql). Fails closed.
+	if err = w.optionGroupClient.ProvisionBaselineOptionGroup(i, rdsTags); err != nil {
+		return nil, err
+	}
+	if i.OptionGroupName != "" {
+		params.OptionGroupName = aws.String(i.OptionGroupName)
+	}
+
 	return params, nil
 }
 
