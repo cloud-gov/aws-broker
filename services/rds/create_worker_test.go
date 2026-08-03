@@ -799,11 +799,12 @@ func TestCreateDBReadReplica(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		ctx        context.Context
-		worker     *CreateWorker
-		dbInstance *RDSInstance
-		expectErr  bool
-		plan       *catalog.RDSPlan
+		ctx                context.Context
+		worker             *CreateWorker
+		dbInstance         *RDSInstance
+		expectErr          bool
+		plan               *catalog.RDSPlan
+		expectedReplicaArn string
 	}{
 		"success": {
 			ctx: t.Context(),
@@ -891,16 +892,65 @@ func TestCreateDBReadReplica(t *testing.T) {
 			plan:      &catalog.RDSPlan{},
 			expectErr: true,
 		},
+		"adopts an already existing replica": {
+			ctx: t.Context(),
+			worker: &CreateWorker{
+				db: brokerDB,
+				settings: &config.Settings{
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
+				},
+				rds: &mockRDSClient{
+					createDBInstanceReadReplicaErrs: []error{
+						&rdsTypes.DBInstanceAlreadyExistsFault{},
+					},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceArn: aws.String("existing-replica-arn"),
+								},
+							},
+						},
+					},
+				},
+				parameterGroupClient: &mockParameterGroupClient{},
+				logger:               slog.New(&testutil.MockLogHandler{}),
+			},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "existing-replica",
+			},
+			plan:               &catalog.RDSPlan{},
+			expectedReplicaArn: "existing-replica-arn",
+		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			_, err := test.worker.createDBReadReplica(test.ctx, test.dbInstance, test.plan)
+			output, err := createDBReadReplica(test.ctx, test.worker.settings, test.worker.rds, test.worker.logger, test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
 			if test.expectErr && err == nil {
 				t.Fatal("expected error but received nil")
+			}
+			if test.expectedReplicaArn != "" {
+				if output == nil || output.DBInstance == nil || output.DBInstance.DBInstanceArn == nil {
+					t.Fatal("expected replica ARN in output but received none")
+				}
+				if *output.DBInstance.DBInstanceArn != test.expectedReplicaArn {
+					t.Errorf("expected replica ARN %s, got %s", test.expectedReplicaArn, *output.DBInstance.DBInstanceArn)
+				}
 			}
 		})
 	}
@@ -1095,6 +1145,61 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 			plan:          &catalog.RDSPlan{},
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
+		},
+		"adopts an already existing replica and tags it": {
+			ctx: t.Context(),
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 3 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRDSClient{
+					createDBInstanceReadReplicaErrs: []error{&rdsTypes.DBInstanceAlreadyExistsFault{}},
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceArn: aws.String("existing-replica-arn"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
+				&mockCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				ReplicaDatabase: "existing-replica",
+			},
+			expectedState: base.InstanceInProgress,
 		},
 	}
 

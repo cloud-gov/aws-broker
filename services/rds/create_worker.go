@@ -2,14 +2,11 @@ package rds
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
-	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -130,50 +127,6 @@ func (w *CreateWorker) prepareCreateDbInput(
 	return params, nil
 }
 
-func (w *CreateWorker) createDBReadReplica(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) (*rds.CreateDBInstanceReadReplicaOutput, error) {
-	var err error
-
-	rdsTags := ConvertTagsToRDSTags(i.getTags())
-	createReadReplicaParams := &rds.CreateDBInstanceReadReplicaInput{
-		AutoMinorVersionUpgrade:    aws.Bool(true),
-		DBInstanceIdentifier:       &i.ReplicaDatabase,
-		SourceDBInstanceIdentifier: &i.Database,
-		MultiAZ:                    &plan.Redundant,
-		PubliclyAccessible:         aws.Bool(w.settings.PubliclyAccessibleFeature && i.PubliclyAccessible),
-		StorageType:                aws.String(i.StorageType),
-		Tags:                       rdsTags,
-		VpcSecurityGroupIds: []string{
-			i.SecGroup,
-		},
-	}
-
-	var createDbInstanceReplicaSuccess bool
-	var createDbInstanceReadReplicaOutput *rds.CreateDBInstanceReadReplicaOutput
-
-	attempts := 1
-	maxRetries := getPollAwsMaxRetries(i.AllocatedStorage, w.settings.PollAwsMaxRetries)
-	// max attempts = initial attempt + retries
-	maxAttempts := 1 + maxRetries
-
-	for !createDbInstanceReplicaSuccess && attempts <= maxAttempts {
-		w.logger.Info(fmt.Sprintf("attempting replica creation. attempt %d of %d", attempts, maxAttempts))
-		createDbInstanceReadReplicaOutput, err = w.rds.CreateDBInstanceReadReplica(ctx, createReadReplicaParams)
-		if err != nil {
-			var invalidDbInstanceStateErr *rdsTypes.InvalidDBInstanceStateFault
-			if errors.As(err, &invalidDbInstanceStateErr) {
-				attempts += 1
-				time.Sleep(w.settings.PollAwsMinDelay)
-				continue
-			} else {
-				return createDbInstanceReadReplicaOutput, err
-			}
-		}
-		createDbInstanceReplicaSuccess = true
-	}
-
-	return createDbInstanceReadReplicaOutput, err
-}
-
 func (w *CreateWorker) waitAndCreateDBReadReplica(
 	ctx context.Context,
 	operation base.Operation,
@@ -188,7 +141,7 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
 
-	createReplicaOutput, err := w.createDBReadReplica(ctx, i, plan)
+	createReplicaOutput, err := createDBReadReplica(ctx, w.settings, w.rds, w.logger, i, plan)
 	if err != nil {
 		w.logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))

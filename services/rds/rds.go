@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"log/slog"
 	"math"
+	"slices"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/riverqueue/river"
 
@@ -216,25 +216,7 @@ func (d *dedicatedDBAdapter) modifyDB(i *RDSInstance, plan *catalog.RDSPlan) (ba
 }
 
 func (d *dedicatedDBAdapter) describeDatabaseInstance(database string) (*rdsTypes.DBInstance, error) {
-	params := &rds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: aws.String(database),
-	}
-
-	resp, err := d.rds.DescribeDBInstances(d.ctx, params)
-	if err != nil {
-		return nil, err
-	}
-
-	numOfInstances := len(resp.DBInstances)
-	if numOfInstances == 0 {
-		return nil, errors.New("could not find any instances")
-	}
-
-	if numOfInstances > 1 {
-		return nil, fmt.Errorf("found more than one database for %s", database)
-	}
-
-	return &resp.DBInstances[0], nil
+	return describeDatabaseInstance(d.ctx, d.rds, database)
 }
 
 func (d *dedicatedDBAdapter) checkDBStatus(database string) (base.InstanceState, error) {
@@ -374,6 +356,14 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 	// reconcile storage with actual instance storage, if necessary
 	if dbInstanceState.AllocatedStorage != nil && reconciledInstance.AllocatedStorage != int64(*dbInstanceState.AllocatedStorage) {
 		reconciledInstance.AllocatedStorage = int64(*dbInstanceState.AllocatedStorage)
+	}
+
+	// Reconcile a read replica (e.g. timed out from waiting for the replica to become available)
+	if reconciledInstance.ReplicaDatabase == "" {
+		expectedReplica := reconciledInstance.generateDatabaseReplicaName()
+		if slices.Contains(dbInstanceState.ReadReplicaDBInstanceIdentifiers, expectedReplica) {
+			reconciledInstance.ReplicaDatabase = expectedReplica
+		}
 	}
 
 	return &reconciledInstance, nil

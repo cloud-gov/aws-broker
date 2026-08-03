@@ -44,7 +44,7 @@ func TestSettings(t *testing.T) {
 		CfApiClientId:             "fake-client-id",
 		CfApiClientSecret:         "fake-client-secret",
 		PollAwsMinDelay:           30 * time.Second,
-		PollAwsMaxDuration:        3600 * time.Second,
+		PollAwsMaxDuration:        7200 * time.Second,
 		PollAwsMaxRetries:         60,
 		Port:                      "3000",
 	}
@@ -90,7 +90,7 @@ func TestSettingsPort(t *testing.T) {
 		CfApiClientId:             "fake-client-id",
 		CfApiClientSecret:         "fake-client-secret",
 		PollAwsMinDelay:           30 * time.Second,
-		PollAwsMaxDuration:        3600 * time.Second,
+		PollAwsMaxDuration:        7200 * time.Second,
 		PollAwsMaxRetries:         60,
 		Port:                      "5000",
 	}

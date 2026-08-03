@@ -17,6 +17,28 @@ import (
 	"gorm.io/gorm"
 )
 
+func describeDatabaseInstance(ctx context.Context, rdsClient RDSClientInterface, database string) (*rdsTypes.DBInstance, error) {
+	params := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(database),
+	}
+
+	resp, err := rdsClient.DescribeDBInstances(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	numOfInstances := len(resp.DBInstances)
+	if numOfInstances == 0 {
+		return nil, errors.New("could not find any instances")
+	}
+
+	if numOfInstances > 1 {
+		return nil, fmt.Errorf("found more than one database for %s", database)
+	}
+
+	return &resp.DBInstances[0], nil
+}
+
 func waitForDbReady(
 	ctx context.Context,
 	db *gorm.DB,
@@ -100,9 +122,20 @@ func createDBReadReplica(
 				attempts += 1
 				time.Sleep(settings.PollAwsMinDelay)
 				continue
-			} else {
-				return createDbInstanceReadReplicaOutput, err
 			}
+
+			// Treat an already existing read replica as a success
+			var alreadyExistsErr *rdsTypes.DBInstanceAlreadyExistsFault
+			if errors.As(err, &alreadyExistsErr) {
+				logger.Info("read replica already exists", "replica", i.ReplicaDatabase)
+				existingReplica, describeErr := describeDatabaseInstance(ctx, rdsClient, i.ReplicaDatabase)
+				if describeErr != nil {
+					return nil, describeErr
+				}
+				return &rds.CreateDBInstanceReadReplicaOutput{DBInstance: existingReplica}, nil
+			}
+
+			return createDbInstanceReadReplicaOutput, err
 		}
 		createDbInstanceReplicaSuccess = true
 	}
