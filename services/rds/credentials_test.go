@@ -81,13 +81,20 @@ func TestGetCredentials(t *testing.T) {
 			},
 			password: "fake-pw",
 			expectedCreds: map[string]string{
-				"uri":      "oracle://user-1:fake-pw@host:1521/ORCL",
-				"username": "user-1",
-				"password": "fake-pw",
-				"host":     "host",
-				"port":     strconv.FormatInt(1521, 10),
-				"db_name":  "ORCL",
-				"name":     "ORCL",
+				"uri":                 `oracle://user-1:fake-pw@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=host)(PORT=2484))(CONNECT_DATA=(SID=ORCL)))`,
+				"jdbcUrl":             `jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=host)(PORT=2484))(CONNECT_DATA=(SID=ORCL)))`,
+				"username":            "user-1",
+				"password":            "fake-pw",
+				"host":                "host",
+				"port":                strconv.FormatInt(2484, 10),
+				"protocol":            "tcps",
+				"service_name":        "ORCL",
+				"sid":                 "ORCL",
+				"db_name":             "ORCL",
+				"name":                "ORCL",
+				"ssl_required":        "true",
+				"ssl_server_dn_match": "true",
+				"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
 			},
 		},
 		"unknown databse type": {
@@ -142,5 +149,61 @@ func TestGetCredentials(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestOracleBindingDoesNotLeakAdminMarkers(t *testing.T) {
+	u := &RDSCredentialUtils{}
+	i := &RDSInstance{
+		DbType:   "oracle-se2",
+		Username: "user-1",
+		Instance: base.Instance{
+			Host: "host",
+			Port: 1521,
+		},
+		Database:        "db-1",
+		credentialUtils: &RDSCredentialUtils{},
+	}
+
+	creds, err := u.getCredentials(i, "fake-pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, key := range []string{
+		"master_username",
+		"master_password",
+		"master_user_password",
+		"admin",
+		"admin_username",
+		"admin_password",
+		"is_master",
+		"role",
+	} {
+		if _, ok := creds[key]; ok {
+			t.Errorf("oracle binding must not expose admin key %q", key)
+		}
+	}
+
+	for _, key := range []string{
+		"uri",
+		"jdbcUrl",
+		"username",
+		"password",
+		"host",
+		"port",
+		"service_name",
+		"sid",
+		"ssl_required",
+		"ssl_server_dn_match",
+		"ca_cert_bundle_url",
+	} {
+		if _, ok := creds[key]; !ok {
+			t.Errorf("oracle binding missing expected key %q", key)
+		}
+	}
+
+	if creds["ssl_required"] != "true" {
+		t.Errorf("oracle binding ssl_required = %q, want true", creds["ssl_required"])
 	}
 }
