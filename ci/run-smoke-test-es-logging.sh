@@ -49,7 +49,7 @@ cf run-task "$TEST_APP" --command "python run.py -s $TEST_SERVICE -r $REGION"
 test_app_guid=$(cf curl "/v3/apps?names=$TEST_APP" | jq -r ".resources[0].guid")
 get_task_state "$test_app_guid"
 
-# Upgrade the engine version to target
+# Enable slow logs
 cf update-service "$TEST_SERVICE" -c '{"log_publishing": {"search_slow_logs": true}}'
 
 # Wait for update to complete
