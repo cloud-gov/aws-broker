@@ -28,7 +28,7 @@ func TestFormatOracleDBName(t *testing.T) {
 	dbIdentifier := "db" + helpers.RandStrNoCaps(15)
 	i := &RDSInstance{
 		Database: dbIdentifier,
-		DbType: "oracle-se2",
+		DbType:   "oracle-se2",
 	}
 	dbName := formatDBName(i.Database, i.DbType)
 	if dbName != "ORCL" {
@@ -65,6 +65,29 @@ func TestGetCredentials(t *testing.T) {
 				"port":     strconv.FormatInt(5432, 10),
 				"db_name":  "db1",
 				"name":     "db1",
+			},
+		},
+		"oracle-se2": {
+			credentialUtils: &RDSCredentialUtils{},
+			rdsInstance: &RDSInstance{
+				DbType:   "oracle-se2",
+				Username: "user-1",
+				Instance: base.Instance{
+					Host: "host",
+					Port: 1521,
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+			},
+			password: "fake-pw",
+			expectedCreds: map[string]string{
+				"uri":      "oracle://user-1:fake-pw@host:1521/ORCL",
+				"username": "user-1",
+				"password": "fake-pw",
+				"host":     "host",
+				"port":     strconv.FormatInt(1521, 10),
+				"db_name":  "ORCL",
+				"name":     "ORCL",
 			},
 		},
 		"unknown databse type": {
