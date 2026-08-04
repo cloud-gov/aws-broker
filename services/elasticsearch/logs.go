@@ -103,12 +103,12 @@ func ensureLogGroups(
 		_, err := logsClient.CreateLogGroup(ctx, &cloudwatchlogs.CreateLogGroupInput{
 			LogGroupName: aws.String(name),
 		})
-		if err != nil {
-			var alreadyExists *cloudwatchTypes.ResourceAlreadyExistsException
-			if !errors.As(err, &alreadyExists) {
-				logger.Error("ensureLogGroups: CreateLogGroup err", "err", err, "logGroup", name)
-				return err
-			}
+
+		var alreadyExists *cloudwatchTypes.ResourceAlreadyExistsException
+		groupAlreadyExists := errors.As(err, &alreadyExists)
+		if err != nil && !groupAlreadyExists {
+			logger.Error("ensureLogGroups: CreateLogGroup err", "err", err, "logGroup", name)
+			return err
 		}
 
 		if retentionDays > 0 {
