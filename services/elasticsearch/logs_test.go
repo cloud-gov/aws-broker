@@ -8,31 +8,31 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cloudwatchTypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/cloud-gov/aws-broker/testutil"
 	"github.com/go-test/deep"
 )
 
 func TestApplyLogOptions(t *testing.T) {
 	testCases := map[string]struct {
-		initial                  ElasticsearchInstance
-		options                  ElasticsearchLogOptions
-		expectedAudit            bool
-		expectedError            bool
-		expectedSearchSlow       bool
-		expectedIndexSlow        bool
-		expectedAdvancedSecurity bool
+		initial  ElasticsearchInstance
+		options  ElasticsearchLogOptions
+		expected ElasticsearchInstance
 	}{
 		"create with nothing set leaves everything off": {
-			options: ElasticsearchLogOptions{},
+			options:  ElasticsearchLogOptions{},
+			expected: ElasticsearchInstance{},
 		},
 		"enable error logs only": {
-			options:       ElasticsearchLogOptions{ErrorLogs: aws.Bool(true)},
-			expectedError: true,
+			options:  ElasticsearchLogOptions{ErrorLogs: aws.Bool(true)},
+			expected: ElasticsearchInstance{ErrorLogsEnabled: true},
 		},
 		"enabling audit logs turns on FGAC": {
-			options:                  ElasticsearchLogOptions{AuditLogs: aws.Bool(true)},
-			expectedAudit:            true,
-			expectedAdvancedSecurity: true,
+			options: ElasticsearchLogOptions{AuditLogs: aws.Bool(true)},
+			expected: ElasticsearchInstance{
+				AuditLogsEnabled:        true,
+				AdvancedSecurityEnabled: true,
+			},
 		},
 		"nil pointers on modify leave existing settings unchanged": {
 			initial: ElasticsearchInstance{
@@ -40,19 +40,23 @@ func TestApplyLogOptions(t *testing.T) {
 				AuditLogsEnabled:        true,
 				AdvancedSecurityEnabled: true,
 			},
-			options:                  ElasticsearchLogOptions{},
-			expectedError:            true,
-			expectedAudit:            true,
-			expectedAdvancedSecurity: true,
+			options: ElasticsearchLogOptions{},
+			expected: ElasticsearchInstance{
+				ErrorLogsEnabled:        true,
+				AuditLogsEnabled:        true,
+				AdvancedSecurityEnabled: true,
+			},
 		},
 		"disabling audit logs leaves FGAC enabled (one way op)": {
 			initial: ElasticsearchInstance{
 				AuditLogsEnabled:        true,
 				AdvancedSecurityEnabled: true,
 			},
-			options:                  ElasticsearchLogOptions{AuditLogs: aws.Bool(false)},
-			expectedAudit:            false,
-			expectedAdvancedSecurity: true,
+			options: ElasticsearchLogOptions{AuditLogs: aws.Bool(false)},
+			expected: ElasticsearchInstance{
+				AuditLogsEnabled:        false,
+				AdvancedSecurityEnabled: true,
+			},
 		},
 	}
 
@@ -60,20 +64,8 @@ func TestApplyLogOptions(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			i := test.initial
 			i.applyLogOptions(test.options)
-			if i.AuditLogsEnabled != test.expectedAudit {
-				t.Errorf("AuditLogsEnabled: got %v, expected %v", i.AuditLogsEnabled, test.expectedAudit)
-			}
-			if i.ErrorLogsEnabled != test.expectedError {
-				t.Errorf("ErrorLogsEnabled: got %v, expected %v", i.ErrorLogsEnabled, test.expectedError)
-			}
-			if i.SearchSlowLogsEnabled != test.expectedSearchSlow {
-				t.Errorf("SearchSlowLogsEnabled: got %v, expected %v", i.SearchSlowLogsEnabled, test.expectedSearchSlow)
-			}
-			if i.IndexSlowLogsEnabled != test.expectedIndexSlow {
-				t.Errorf("IndexSlowLogsEnabled: got %v, expected %v", i.IndexSlowLogsEnabled, test.expectedIndexSlow)
-			}
-			if i.AdvancedSecurityEnabled != test.expectedAdvancedSecurity {
-				t.Errorf("AdvancedSecurityEnabled: got %v, expected %v", i.AdvancedSecurityEnabled, test.expectedAdvancedSecurity)
+			if diff := deep.Equal(i, test.expected); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -152,162 +144,196 @@ func TestLogGroupName(t *testing.T) {
 
 func TestBuildLogPublishingOptions(t *testing.T) {
 	testCases := map[string]struct {
-		instance     *ElasticsearchInstance
-		expectedKeys map[string]bool // log type -> expected enable value
+		instance *ElasticsearchInstance
+		expected map[string]opensearchTypes.LogPublishingOption
 	}{
 		"no groups created yields empty map": {
-			instance:     &ElasticsearchInstance{},
-			expectedKeys: map[string]bool{},
+			instance: &ElasticsearchInstance{},
+			expected: map[string]opensearchTypes.LogPublishingOption{},
 		},
 		"enabled type with group is published enabled": {
 			instance: &ElasticsearchInstance{
 				ErrorLogsEnabled:  true,
 				ErrorLogsGroupARN: "arn:test",
 			},
-			expectedKeys: map[string]bool{"ES_APPLICATION_LOGS": true},
+			expected: map[string]opensearchTypes.LogPublishingOption{
+				"ES_APPLICATION_LOGS": {
+					CloudWatchLogsLogGroupArn: aws.String("arn:test"),
+					Enabled:                   aws.Bool(true),
+				},
+			},
 		},
 		"disabled type that still has a group is published disabled": {
 			instance: &ElasticsearchInstance{
 				ErrorLogsEnabled:  false,
 				ErrorLogsGroupARN: "arn:test",
 			},
-			expectedKeys: map[string]bool{"ES_APPLICATION_LOGS": false},
+			expected: map[string]opensearchTypes.LogPublishingOption{
+				"ES_APPLICATION_LOGS": {
+					CloudWatchLogsLogGroupArn: aws.String("arn:test"),
+					Enabled:                   aws.Bool(false),
+				},
+			},
 		},
 		"enabled type without a group ARN is skipped": {
 			instance: &ElasticsearchInstance{
 				SearchSlowLogsEnabled: true,
 			},
-			expectedKeys: map[string]bool{},
+			expected: map[string]opensearchTypes.LogPublishingOption{},
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			options := buildLogPublishingOptions(test.instance)
-			if len(options) != len(test.expectedKeys) {
-				t.Fatalf("got %d options, expected %d: %+v", len(options), len(test.expectedKeys), options)
-			}
-			for key, wantEnabled := range test.expectedKeys {
-				opt, ok := options[key]
-				if !ok {
-					t.Fatalf("expected log type %q in options", key)
-				}
-				if opt.Enabled == nil || *opt.Enabled != wantEnabled {
-					t.Errorf("%s Enabled: got %v, want %v", key, opt.Enabled, wantEnabled)
-				}
-				if opt.CloudWatchLogsLogGroupArn == nil || *opt.CloudWatchLogsLogGroupArn == "" {
-					t.Errorf("%s expected a non-empty log group ARN", key)
-				}
+			if diff := deep.Equal(options, test.expected); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
 }
 
 func TestAdvancedSecurityOptionsForAudit(t *testing.T) {
-	got, err := advancedSecurityOptionsForAudit(&ElasticsearchInstance{})
-	if err != nil {
-		t.Fatalf("unexpected error when FGAC disabled: %s", err)
-	}
-	if got != nil {
-		t.Errorf("expected nil when FGAC disabled, got %+v", got)
+	testCases := map[string]struct {
+		instance  *ElasticsearchInstance
+		expected  *opensearchTypes.AdvancedSecurityOptionsInput
+		expectErr bool
+	}{
+		"FGAC disabled returns nil": {
+			instance: &ElasticsearchInstance{},
+			expected: nil,
+		},
+		"FGAC enabled without IamUserARN is an error": {
+			instance:  &ElasticsearchInstance{AdvancedSecurityEnabled: true},
+			expectErr: true,
+		},
+		"FGAC enabled with IamUserARN sets the master user": {
+			instance: &ElasticsearchInstance{
+				AdvancedSecurityEnabled: true,
+				IamUserARN:              "arn:test",
+			},
+			expected: &opensearchTypes.AdvancedSecurityOptionsInput{
+				Enabled:                     aws.Bool(true),
+				InternalUserDatabaseEnabled: aws.Bool(false),
+				MasterUserOptions: &opensearchTypes.MasterUserOptions{
+					MasterUserARN: aws.String("arn:test"),
+				},
+			},
+		},
 	}
 
-	if _, err := advancedSecurityOptionsForAudit(&ElasticsearchInstance{
-		AdvancedSecurityEnabled: true,
-	}); err == nil {
-		t.Error("expected an error when FGAC is enabled but IamUserARN is empty, got nil")
-	}
-
-	options, err := advancedSecurityOptionsForAudit(&ElasticsearchInstance{
-		AdvancedSecurityEnabled: true,
-		IamUserARN:              "arn:aws-us-gov:iam::123456789012:user/test-domain",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
-	if options == nil {
-		t.Fatal("expected non-nil advanced security options")
-	}
-	if options.MasterUserOptions == nil || *options.MasterUserOptions.MasterUserARN != "arn:aws-us-gov:iam::123456789012:user/test-domain" {
-		t.Errorf("expected IAM user as master user ARN, got %+v", options.MasterUserOptions)
-	}
-	if options.InternalUserDatabaseEnabled == nil || *options.InternalUserDatabaseEnabled {
-		t.Error("expected internal user database to be disabled")
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			got, err := advancedSecurityOptionsForAudit(test.instance)
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected an error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if diff := deep.Equal(got, test.expected); diff != nil {
+				t.Error(diff)
+			}
+		})
 	}
 }
 
 func TestEnsureLogGroups(t *testing.T) {
 	logger := slog.New(&testutil.MockLogHandler{})
 
-	t.Run("creates groups, sets retention and ARNS for enabled types", func(t *testing.T) {
-		client := &mockCloudwatchLogsClient{}
-		i := &ElasticsearchInstance{
-			Domain:           "cg-broker-abc",
-			ErrorLogsEnabled: true,
-			AuditLogsEnabled: true,
-		}
+	const (
+		applicationLogGroup = "/aws/OpenSearchService/domains/cg-broker-abc/application-logs"
+		auditLogGroup       = "/aws/OpenSearchService/domains/cg-broker-abc/audit-logs"
+		applicationLogArn   = "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:" + applicationLogGroup
+		auditLogArn         = "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:" + auditLogGroup
+	)
 
-		err := ensureLogGroups(context.Background(), client, logger, i, 3, "us-gov-west-1", "123456789012")
-		if err != nil {
-			t.Fatal(err)
-		}
+	testCases := map[string]struct {
+		initial             *ElasticsearchInstance
+		createLogGroupError error
+		expectedCreated     []string
+		expectedRetention   []string
+		expected            *ElasticsearchInstance
+	}{
+		"create groups, sets retention and ARNs for enabled types": {
+			initial: &ElasticsearchInstance{
+				Domain:           "cg-broker-abc",
+				ErrorLogsEnabled: true,
+				AuditLogsEnabled: true,
+			},
+			expectedCreated:   []string{auditLogGroup, applicationLogGroup},
+			expectedRetention: []string{auditLogGroup, applicationLogGroup},
+			expected: &ElasticsearchInstance{
+				Domain:            "cg-broker-abc",
+				ErrorLogsEnabled:  true,
+				AuditLogsEnabled:  true,
+				ErrorLogsGroupARN: applicationLogArn,
+				AuditLogsGroupARN: auditLogArn,
+			},
+		},
+		"skips types whose ARN is already set": {
+			initial: &ElasticsearchInstance{
+				Domain:            "cg-broker-abc",
+				ErrorLogsEnabled:  true,
+				ErrorLogsGroupARN: "arn:already-set",
+			},
+			expectedCreated:   nil,
+			expectedRetention: nil,
+			expected: &ElasticsearchInstance{
+				Domain:            "cg-broker-abc",
+				ErrorLogsEnabled:  true,
+				ErrorLogsGroupARN: "arn:already-set",
+			},
+		},
+		"treats already existing log group as a success": {
+			initial: &ElasticsearchInstance{
+				Domain:           "cg-broker-abc",
+				ErrorLogsEnabled: true,
+			},
+			createLogGroupError: &cloudwatchTypes.ResourceAlreadyExistsException{},
+			expectedCreated:     nil,
+			expectedRetention:   []string{applicationLogGroup},
+			expected: &ElasticsearchInstance{
+				Domain:            "cg-broker-abc",
+				ErrorLogsEnabled:  true,
+				ErrorLogsGroupARN: applicationLogArn,
+			},
+		},
+	}
 
-		if len(client.createdLogGroups) != 2 {
-			t.Errorf("expected 2 created log groups, got %v", client.createdLogGroups)
-		}
-		if len(client.putRetentionLogGroups) != 2 {
-			t.Errorf("expected retention set on 2 log groups, got %v", client.putRetentionLogGroups)
-		}
-		expectedErrorArn := "arn:aws-us-gov:logs:us-gov-west-1:123456789012:log-group:/aws/OpenSearchService/domains/cg-broker-abc/application-logs"
-		if i.ErrorLogsGroupARN != expectedErrorArn {
-			t.Errorf("ErrorLogGroupsARN: got %q, expected %q", i.ErrorLogsGroupARN, expectedErrorArn)
-		}
-		if i.AuditLogsGroupARN == "" {
-			t.Error("expected AuditLogsGroupARN to be set")
-		}
-		if i.SearchSlowLogsGroupARN != "" || i.IndexSlowLogsGroupARN != "" {
-			t.Error("did not expect groups for disabled log types")
-		}
-	})
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			client := &mockCloudwatchLogsClient{createLogGroupErr: test.createLogGroupError}
 
-	t.Run("skips types whose group ARN is already set", func(t *testing.T) {
-		client := &mockCloudwatchLogsClient{}
-		i := &ElasticsearchInstance{
-			Domain:            "cg-broker-abc",
-			ErrorLogsEnabled:  true,
-			ErrorLogsGroupARN: "arn:already-set",
-		}
+			err := ensureLogGroups(context.Background(), client, logger, test.initial, 3, "us-gov-west-1", "123456789012")
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		err := ensureLogGroups(context.Background(), client, logger, i, 3, "us-gov-west-1", "123456789012")
-		if err != nil {
-			t.Fatal(err)
-		}
+			gotCreated := append([]string{}, client.createdLogGroups...)
+			wantCreated := append([]string{}, test.expectedCreated...)
+			sort.Strings(gotCreated)
+			sort.Strings(wantCreated)
+			if diff := deep.Equal(gotCreated, wantCreated); diff != nil {
+				t.Errorf("createdLogGroups: %v", diff)
+			}
 
-		if len(client.createdLogGroups) != 0 {
-			t.Errorf("expected 0 created log groups, got %v", client.createdLogGroups)
-		}
-		if i.ErrorLogsGroupARN != "arn:already-set" {
-			t.Errorf("expected existing ARN preserved, got %q", i.ErrorLogsGroupARN)
-		}
-	})
+			gotRetention := append([]string{}, client.putRetentionLogGroups...)
+			wantRetention := append([]string{}, test.expectedRetention...)
+			sort.Strings(gotRetention)
+			sort.Strings(wantRetention)
+			if diff := deep.Equal(gotRetention, wantRetention); diff != nil {
+				t.Errorf("putRetentionLogGroups: %v", diff)
+			}
 
-	t.Run("treates an already-existing log group as success", func(t *testing.T) {
-		client := &mockCloudwatchLogsClient{
-			createLogGroupErr: &cloudwatchTypes.ResourceAlreadyExistsException{},
-		}
-		i := &ElasticsearchInstance{
-			Domain:           "cg-broker-abc",
-			ErrorLogsEnabled: true,
-		}
-
-		err := ensureLogGroups(context.Background(), client, logger, i, 3, "us-gov-west-1", "123456789012")
-		if err != nil {
-			t.Fatalf("expected AlreadyExists exception to pass without error, got %s", err)
-		}
-		if i.ErrorLogsGroupARN == "" {
-			t.Error("expectedARN to be set even when the group already existed")
-		}
-	})
+			if diff := deep.Equal(test.initial, test.expected); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
 }
 
 func TestCleanupLogGroups(t *testing.T) {
