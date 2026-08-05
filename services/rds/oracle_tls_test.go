@@ -7,11 +7,6 @@ import (
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 )
 
-// oracle_tls_test.go — the SSL/TCPS option baseline is the RDS-side change that
-// makes brokered Oracle connections actually use TLS. These tests assert the
-// FedRAMP-Moderate posture is shipped and that the create-time provisioning path
-// creates + attaches the option group.
-
 func sslSettingsMap(opt rdsTypes.OptionConfiguration) map[string]string {
 	m := map[string]string{}
 	for _, s := range opt.OptionSettings {
@@ -41,9 +36,8 @@ func TestOracleBaselineOptionsBuildsSSL(t *testing.T) {
 	}
 }
 
-// TestOracleSSLBaselineIsFedRAMPCompliant is the CI gate for the SSL security
-// posture: TLS 1.2 + FIPS on + a FedRAMP/FIPS allowlisted cipher. A weakened
-// oracle_tls.go fails go test and never merges.
+// TestOracleSSLBaselineIsFedRAMPCompliant gates the SSL posture: TLS 1.2 + FIPS
+// on + a FedRAMP/FIPS allowlisted cipher.
 func TestOracleSSLBaselineIsFedRAMPCompliant(t *testing.T) {
 	fedrampCiphers := map[string]struct{}{
 		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384": {},
@@ -71,8 +65,7 @@ func TestOracleSSLBaselineIsFedRAMPCompliant(t *testing.T) {
 	}
 }
 
-// TestOracleBaselineOptionsNoOpForNonOracle: postgres/mysql have no baseline
-// option group, so their create path is unchanged (nil options).
+// TestOracleBaselineOptionsNoOpForNonOracle: postgres/mysql yield nil options.
 func TestOracleBaselineOptionsNoOpForNonOracle(t *testing.T) {
 	for _, eng := range []string{"postgres", "mysql", ""} {
 		opts, err := oracleBaselineOptions(&RDSInstance{DbType: eng})
@@ -87,8 +80,7 @@ func TestOracleBaselineOptionsNoOpForNonOracle(t *testing.T) {
 func TestProvisionBaselineOptionGroup_Oracle(t *testing.T) {
 	optionGroupNotFound := &rdsTypes.OptionGroupNotFoundFault{}
 	mockRDS := &mockRDSClient{
-		// First describe (does the target group exist?) returns not-found so the
-		// group is created.
+		// not-found → the group is created
 		describeOptionGroupsErrs: []error{optionGroupNotFound},
 		dbEngineVersions: []rdsTypes.DBEngineVersion{
 			{MajorEngineVersion: aws.String("19")},
@@ -131,8 +123,8 @@ func TestProvisionBaselineOptionGroup_Oracle(t *testing.T) {
 	}
 }
 
-// TestProvisionBaselineOptionGroup_NoOpForNonOracle: postgres/mysql must not touch
-// option groups at create time.
+// TestProvisionBaselineOptionGroup_NoOpForNonOracle: postgres/mysql must not
+// touch option groups at create time.
 func TestProvisionBaselineOptionGroup_NoOpForNonOracle(t *testing.T) {
 	mockRDS := &mockRDSClient{}
 	o := newTestOptionGroupClient(mockRDS)

@@ -152,9 +152,8 @@ func optionsFromGroup(optionGroup *rdsTypes.OptionGroup) []rdsTypes.OptionConfig
 }
 
 // ensureOptionGroupWithOptions is the shared describe→(create if absent)→modify
-// sequence used by both the create-time baseline path and the upgrade-reconcile
-// path. Idempotent: a group that already exists is not recreated; the options are
-// (re)applied via ModifyOptionGroup. Returns whether it created the group.
+// sequence used by both the create-time baseline and upgrade-reconcile paths.
+// Idempotent; returns whether it created the group.
 func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
 	groupName, engineName, majorVersion, dbName string,
 	opts []rdsTypes.OptionConfiguration,
@@ -191,23 +190,16 @@ func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
 }
 
 // ProvisionBaselineOptionGroup creates + attaches a broker-managed option group at
-// CREATE time for engines that ship a baseline option set (Oracle SE2: the SSL
-// option that opens the TCPS listener for FedRAMP-Moderate TLS). Unlike
-// ProvisionOrModifyCustomOptionGroup (which only reconciles an already-attached
-// group on major-version upgrade), this runs on a brand-new instance. It is a
-// no-op for engines with no baseline options (postgres/mysql), so their create
-// path is unchanged.
-//
-// On success it sets i.OptionGroupName so the create worker attaches it via
-// CreateDBInstanceInput.OptionGroupName. Fails closed: any AWS error aborts the
-// provision rather than leaving an Oracle instance without its TLS listener.
+// create time for engines with a baseline option set (Oracle SE2: the SSL/TCPS
+// option). No-op for engines without one (postgres/mysql). On success it sets
+// i.OptionGroupName so the create worker attaches it. Fails closed.
 func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
 	opts, err := oracleBaselineOptions(i)
 	if err != nil {
 		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
 	}
 	if len(opts) == 0 {
-		return nil // engine has no baseline option group (postgres/mysql)
+		return nil
 	}
 
 	majorVersion, err := o.getMajorEngineVersion(i)
@@ -264,8 +256,8 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 	createdOptionGroup, err := o.ensureOptionGroupWithOptions(
 		targetOptionGroupName, i.DbType, targetMajorVersion, formatDBName(i.Database, i.DbType), existingOptions, rdsTags)
 	if err != nil {
-		// Preserve the original contract: any error on this path returns
-		// created=false, even if the group was created before the modify failed.
+		// created=false on any error, even if the group was created before the
+		// modify failed (preserves the original contract).
 		return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: %w", err)
 	}
 
