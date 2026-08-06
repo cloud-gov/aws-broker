@@ -169,6 +169,29 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching RDS plan")
 	}
 
+	// Oracle provisioning is behind a staged-rollout switch (ENABLE_ORACLE) — a new
+	// offering not yet validated on a live foundation, so operators control when it
+	// appears. This is NOT a security/boundary control: Oracle uses the same
+	// credential model as the postgres/mysql plans (master credential per binding;
+	// the customer creates their own least-privilege in-database users).
+	if isOracleEngine(plan.DbType) && !broker.settings.EnableOracleFeature {
+		return apiresponses.NewFailureResponse(
+			fmt.Errorf("oracle plans are not enabled in this environment; set ENABLE_ORACLE to opt in (staged rollout of a new offering)"),
+			http.StatusBadRequest,
+			"oracle feature disabled",
+		)
+	}
+
+	// Oracle create-parameter allowlist: reject MySQL/Postgres-only knobs,
+	// version selection, public accessibility, and out-of-allowlist log exports so
+	// a self-service customer cannot weaken the born-hardened baseline or get a
+	// misleading silent no-op. Runs only for Oracle; other engines unaffected.
+	if isOracleEngine(plan.DbType) {
+		if err := validateOracleOptions(options); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate oracle parameters")
+		}
+	}
+
 	// make sure it's a valid major version.
 	if options.Version != "" {
 		// Check to make sure that the version specified is allowed by the plan.
@@ -308,6 +331,25 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 			http.StatusBadRequest,
 			"modify RDS instance",
 		)
+	}
+
+	// Oracle guards also apply on UPDATE: the ENABLE_ORACLE
+	// staged-rollout switch and the create-parameter allowlist must not be
+	// bypassable via cf update-service. Without this, an operator who has not
+	// enabled Oracle could still have existing Oracle instances updated, and a
+	// customer could pass MySQL/Postgres-only or baseline-weakening params on
+	// update.
+	if isOracleEngine(existingInstance.DbType) {
+		if !broker.settings.EnableOracleFeature {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("oracle plans are not enabled in this environment; set ENABLE_ORACLE to opt in (staged rollout of a new offering)"),
+				http.StatusBadRequest,
+				"oracle feature disabled",
+			)
+		}
+		if err := validateOracleOptions(options); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate oracle parameters")
+		}
 	}
 
 	tags, err := broker.tagManager.GenerateTags(

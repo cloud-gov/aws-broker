@@ -17,3 +17,6 @@ go.work
 go.work.sum
 
 *.sqlite*
+
+# compiled smoke-test binary (build artifact)
+ci/smoke-tests/aws-rds/aws-rds

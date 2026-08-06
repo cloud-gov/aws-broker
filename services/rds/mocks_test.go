@@ -81,6 +81,9 @@ type mockOptionGroupClient struct {
 	provisionOrModifyCalled      bool
 	provisionOrModifyCreated     bool
 	provisionOrModifyOptGroupErr error
+	provisionBaselineCalled      bool
+	provisionBaselineErr         error
+	baselineOptionGroupName      string
 	deleteOptionGroupErr         error
 	deletedOptionGroupName       string
 	isCustomOptionGroup          bool
@@ -97,6 +100,17 @@ func (m *mockOptionGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 		i.OptionGroupName = m.optionGroupName
 	}
 	return m.provisionOrModifyCreated, nil
+}
+
+func (m *mockOptionGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	m.provisionBaselineCalled = true
+	if m.provisionBaselineErr != nil {
+		return m.provisionBaselineErr
+	}
+	if m.baselineOptionGroupName != "" {
+		i.OptionGroupName = m.baselineOptionGroupName
+	}
+	return nil
 }
 
 func (m *mockOptionGroupClient) CleanupCustomOptionGroups() error {
@@ -161,29 +175,32 @@ type mockRDSClient struct {
 	describeEngineDefaultParamsErr      error
 	describeEngineDefaultParamsNumPages int
 	describeEngineDefaultParamsPageNum  int
-	describeDbParamsResults             []*rds.DescribeDBParametersOutput
-	describeDbParamsNumPages            int
-	describeDbParamsPageNum             int
-	describeDBInstancesCallNum          int
-	describeDbInstancesResults          []*rds.DescribeDBInstancesOutput
-	describeDbInstancesErrs             []error
-	modifyDbErrs                        []error
-	modifyDbCallNum                     int
-	modifyDbParamGroupErr               error
-	addTagsToResourceErr                error
-	describeDBParameterGroupsOutput     []*rds.DescribeDBParameterGroupsOutput
-	describeDBParameterGroupsCallNum    int
-	deleteDbParameterGroupErrs          []error
-	deleteDbParameterGroupCallNum       int
-	describeOptionGroupsResults         []*rds.DescribeOptionGroupsOutput
-	describeOptionGroupsErrs            []error
-	describeOptionGroupsCallNum         int
-	createOptionGroupInput              *rds.CreateOptionGroupInput
-	createOptionGroupErr                error
-	modifyOptionGroupInput              *rds.ModifyOptionGroupInput
-	modifyOptionGroupErr                error
-	deleteOptionGroupErrs               []error
-	deleteOptionGroupCallNum            int
+	// capture fields for assertions (option-group create/modify integration test)
+	capturedModifyParamGroupInputs   []*rds.ModifyDBParameterGroupInput
+	capturedCreateParamGroupInputs   []*rds.CreateDBParameterGroupInput
+	describeDbParamsResults          []*rds.DescribeDBParametersOutput
+	describeDbParamsNumPages         int
+	describeDbParamsPageNum          int
+	describeDBInstancesCallNum       int
+	describeDbInstancesResults       []*rds.DescribeDBInstancesOutput
+	describeDbInstancesErrs          []error
+	modifyDbErrs                     []error
+	modifyDbCallNum                  int
+	modifyDbParamGroupErr            error
+	addTagsToResourceErr             error
+	describeDBParameterGroupsOutput  []*rds.DescribeDBParameterGroupsOutput
+	describeDBParameterGroupsCallNum int
+	deleteDbParameterGroupErrs       []error
+	deleteDbParameterGroupCallNum    int
+	describeOptionGroupsResults      []*rds.DescribeOptionGroupsOutput
+	describeOptionGroupsErrs         []error
+	describeOptionGroupsCallNum      int
+	createOptionGroupInput           *rds.CreateOptionGroupInput
+	createOptionGroupErr             error
+	modifyOptionGroupInput           *rds.ModifyOptionGroupInput
+	modifyOptionGroupErr             error
+	deleteOptionGroupErrs            []error
+	deleteOptionGroupCallNum         int
 }
 
 func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.CreateOptionGroupInput, optFns ...func(*rds.Options)) (*rds.CreateOptionGroupOutput, error) {
@@ -252,6 +269,7 @@ func (m *mockRDSClient) CreateDBInstanceReadReplica(ctx context.Context, params 
 }
 
 func (m *mockRDSClient) CreateDBParameterGroup(ctx context.Context, params *rds.CreateDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.CreateDBParameterGroupOutput, error) {
+	m.capturedCreateParamGroupInputs = append(m.capturedCreateParamGroupInputs, params)
 	if m.createDbParamGroupErr != nil {
 		return nil, m.createDbParamGroupErr
 	}
@@ -325,6 +343,7 @@ func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.De
 }
 
 func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {
+	m.capturedModifyParamGroupInputs = append(m.capturedModifyParamGroupInputs, params)
 	if m.modifyDbParamGroupErr != nil {
 		return nil, m.modifyDbParamGroupErr
 	}

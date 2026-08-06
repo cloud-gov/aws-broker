@@ -229,6 +229,15 @@ func (i *RDSInstance) init(
 	i.Database = generateDatabaseName(settings)
 	i.Username = buildUsername()
 
+	// Fail-closed identifier validation before any AWS call. The
+	// per-engine baseline enforces engine constraints (e.g. Oracle SID <=8 upper,
+	// master username 8..30 non-reserved). Unknown engines: no-op.
+	if b, ok := baselineFor(i.DbType); ok {
+		if err := b.ValidateIdentifiers(b.FormatDBName(i.Database), i.Username); err != nil {
+			return err
+		}
+	}
+
 	err := i.generateCredentials(settings)
 	if err != nil {
 		return err
@@ -253,6 +262,12 @@ func (i *RDSInstance) init(
 	}
 
 	i.setEnabledCloudwatchLogGroupExports(options.EnableCloudWatchLogGroupExports) //nolint:errcheck // decide fail-vs-best-effort on log-export config failure
+	// At create only, fall back to the engine's default log-export set when the
+	// customer supplied none (Oracle STIG posture). Not applied on modify.
+	// Fails closed if the born-hardened baseline cannot be loaded.
+	if err := i.applyDefaultLogExportsIfUnset(); err != nil {
+		return err
+	}
 
 	if plan.ReadReplica {
 		i.AddReadReplica = true
@@ -294,8 +309,15 @@ func (i *RDSInstance) setPgQueryLogging(options Options) error {
 }
 
 func (i *RDSInstance) hasEngineVersionUpdate(options Options) bool {
-	// Currently only supported for MySQL and PostgreSQL instances.
-	return (i.DbType == "postgres" || i.DbType == "mysql") && options.Version != ""
+	// Delegates to the per-engine RDSBaseline. Postgres/MySQL support
+	// version updates; Oracle does not in this iteration. Unknown engines: no.
+	if options.Version == "" {
+		return false
+	}
+	if b, ok := baselineFor(i.DbType); ok {
+		return b.SupportsEngineVersionUpdate()
+	}
+	return false
 }
 
 func (i *RDSInstance) setEngineVersion(plan catalog.RDSPlan, options Options) {
@@ -347,9 +369,33 @@ func (i *RDSInstance) getTags() map[string]string {
 	return i.Tags
 }
 
-func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
+func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) {
 	if len(enabledLogGroups) > 0 {
 		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
+	}
+}
+
+// applyDefaultLogExportsIfUnset applies the engine's default CloudWatch log-export
+// set (Oracle: alert/audit/listener — part of the STIG posture) ONLY
+// when the instance has none set. It is called at create/init, NOT on modify:
+// applying defaults on every modify would silently re-add exports a customer had
+// removed on a later unrelated update. Engines with no default
+// (postgres/mysql) are unaffected. Fails closed if a born-hardened engine's
+// embedded baseline cannot be loaded.
+func (i *RDSInstance) applyDefaultLogExportsIfUnset() error {
+	if len(i.EnabledCloudwatchLogGroupExports) > 0 {
+		return nil
+	}
+	b, ok := baselineFor(i.DbType)
+	if !ok {
+		return nil
+	}
+	defaults, err := b.DefaultLogExports()
+	if err != nil {
+		return fmt.Errorf("resolving default log exports for %s: %w", i.DbType, err)
+	}
+	if len(defaults) > 0 {
+		i.EnabledCloudwatchLogGroupExports = defaults
 	}
 	return nil
 }

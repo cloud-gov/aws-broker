@@ -285,3 +285,62 @@ rds:
         environment: "cf-env"
         client: "the client"
         service: "aws-broker"
+    # ------------------------------------------------------------------------
+    # Oracle Database 19c (dev/test plan) — epic #519, WS2 #522.
+    # ------------------------------------------------------------------------
+    # Oracle Database 19c — Standard Edition 2, License Included (dev/test plan).
+    # NOT production-ready. SE2 + License Included: AWS holds the Oracle
+    # license (bundled into the instance price), so there is NO unlicensed state —
+    # cloud.gov never facilitates an unlicensed Oracle DB. License Included is
+    # SE2-only on RDS (Enterprise Edition is BYOL-only); the SE2 STIG deviations
+    # (no Oracle-native TDE — rely on RDS-KMS at-rest encryption; no Fine-Grained
+    # Auditing — rely on standard/unified auditing) are documented in
+    # docs/oracle19c/licensing.md and accepted via ISSO risk/deviation.
+    # Private-only + encrypted; born with a hardened parameter-group baseline
+    # (see docs/oracle19c/hardening-baseline.md). STIG posture is
+    # validated out-of-band by cg-oracle-database-19c-stig-overlay,
+    # never by this broker. SID/DBName is Oracle-constrained (<=8, uppercase).
+    #
+    # CUSTOMER MODEL: consumed self-service by app developers (not operators) via
+    # `cf create-service aws-rds oracle-se2-license-included-dev my-db` +
+    # `cf bind-service`, exactly like the documented micro-psql/small-mysql plans.
+    # This is a DEV-tier plan (…-dev suffix mirrors the sandbox-only
+    # micro-psql/small-mysql tier). Future production plans follow the documented
+    # family naming, e.g. small-oracle-se2-license-included / …-redundant, added
+    # only AFTER the live dev proof (WS15). Credential model matches postgres/mysql
+    # (master credential per binding; customer creates least-privilege users).
+    #
+    # Oracle provisioning is additionally gated behind the broker's ENABLE_ORACLE
+    # staged-rollout switch (new offering, not a security control) until validated.
+    # ------------------------------------------------------------------------
+    - id: "b48f5f9e-7f8a-4c2b-9a1d-0f4e8c2a7d10"
+      name: "oracle-se2-license-included-dev"
+      description: "Dedicated RDS Oracle Database 19c Standard Edition 2, License Included (DEV/TEST ONLY — STIG hardening in progress, not production-ready)"
+      metadata:
+        bullets:
+          - "Dedicated RDS Oracle Database 19c instance"
+          - "Standard Edition 2 (SE2), License Included — Oracle license bundled by AWS"
+          - "Private-only, encrypted at rest"
+          - "STIG-hardened baseline (validation via cg-oracle-database-19c-stig-overlay)"
+          - "DEV/TEST plan — not production-ready"
+        displayName: "Dedicated Oracle 19c SE2 (License Included, dev)"
+      free: false
+      adapter: dedicated
+      instanceClass: db.t3.medium
+      dbType: oracle-se2
+      dbVersion: "19.0.0.0.ru-2024-07.rur-2024-07.r1"
+      licenseModel: license-included
+      allocatedStorage: 20
+      approvedMajorVersions: &rds-oracle-approved-major-versions
+        - "19"
+      plan_updateable: true
+      redundant: false
+      encrypted: true
+      storage_type: gp3
+      backup_retention_period: 14
+      securityGroup: oracle-sg-123456
+      subnetGroup: subnet-group
+      tags:
+        environment: "cf-env"
+        client: "the client"
+        service: "aws-broker"

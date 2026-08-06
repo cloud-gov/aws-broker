@@ -89,7 +89,7 @@ func (w *CreateWorker) prepareCreateDbInput(
 		// Instance class is defined by the plan
 		DBInstanceClass:         &plan.InstanceClass,
 		DBInstanceIdentifier:    &i.Database,
-		DBName:                  aws.String(formatDBName(i.Database)),
+		DBName:                  aws.String(formatDBNameForEngine(i.DbType, i.Database)),
 		Engine:                  aws.String(i.DbType),
 		MasterUserPassword:      &password,
 		MasterUsername:          &i.Username,
@@ -125,6 +125,16 @@ func (w *CreateWorker) prepareCreateDbInput(
 	}
 	if i.ParameterGroupName != "" {
 		params.DBParameterGroupName = aws.String(i.ParameterGroupName)
+	}
+
+	// Provision + attach the engine's baseline option group at create time
+	// (Oracle SE2: the SSL/TCPS option for FedRAMP-Moderate TLS).
+	// No-op for engines with an empty baseline (postgres/mysql). Fails closed.
+	if err = w.optionGroupClient.ProvisionBaselineOptionGroup(i, rdsTags); err != nil {
+		return nil, err
+	}
+	if i.OptionGroupName != "" {
+		params.OptionGroupName = aws.String(i.OptionGroupName)
 	}
 
 	return params, nil

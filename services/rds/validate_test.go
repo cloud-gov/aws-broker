@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -230,5 +231,80 @@ func TestValidateRetentionPeriod(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 		})
+	}
+}
+
+func TestValidateOracleOptions(t *testing.T) {
+	boolPtr := func(b bool) *bool { return &b }
+	testCases := map[string]struct {
+		options     Options
+		expectedErr bool
+	}{
+		"empty is valid":                       {options: Options{}, expectedErr: false},
+		"allowed log exports":                  {options: Options{EnableCloudWatchLogGroupExports: []string{"alert", "audit", "listener"}}, expectedErr: false},
+		"storage + backup ok":                  {options: Options{AllocatedStorage: 50, BackupRetentionPeriod: aws.Int64(30)}, expectedErr: false},
+		"publicly_accessible rejected":         {options: Options{PubliclyAccessible: true}, expectedErr: true},
+		"enable_functions rejected":            {options: Options{EnableFunctions: true}, expectedErr: true},
+		"binary_log_format rejected":           {options: Options{BinaryLogFormat: "ROW"}, expectedErr: true},
+		"enable_pg_cron rejected":              {options: Options{EnablePgCron: boolPtr(true)}, expectedErr: true},
+		"version rejected":                     {options: Options{Version: "19.0.0.0"}, expectedErr: true},
+		"allow_major_version_upgrade rejected": {options: Options{AllowMajorVersionUpgrade: boolPtr(true)}, expectedErr: true},
+		"trace log export allowed":             {options: Options{EnableCloudWatchLogGroupExports: []string{"trace", "oemagent"}}, expectedErr: false},
+		"bad log export rejected":              {options: Options{EnableCloudWatchLogGroupExports: []string{"slowquery"}}, expectedErr: true},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateOracleOptions(test.options)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}
+
+// TestOracleLogExportAllowlistMatchesBaseline is a drift guard. The
+// customer-facing log-export allowlist enforced by validateOracleOptions
+// (validOracleLogExports) MUST be exactly the embedded baseline's `supported`
+// set, and the baseline's `default_exports` (what the create path enables when
+// the customer supplies none) MUST be a subset of that supported set. If a future
+// refactor reintroduces a hand-maintained Go literal, or edits log_exports.yml
+// inconsistently, this test fails instead of silently drifting.
+func TestOracleLogExportAllowlistMatchesBaseline(t *testing.T) {
+	baseline, err := loadOracleLogExports()
+	if err != nil {
+		t.Fatalf("loadOracleLogExports: %v", err)
+	}
+
+	// 1. The enforced allowlist is derived from — and equal to — the baseline
+	//    `supported` set (single source of truth; no duplication).
+	allow, err := validOracleLogExports()
+	if err != nil {
+		t.Fatalf("validOracleLogExports: %v", err)
+	}
+	if !slices.Equal(allow, baseline.Supported) {
+		t.Errorf("validOracleLogExports() = %v, want baseline supported set %v (they must not drift)",
+			allow, baseline.Supported)
+	}
+
+	// 2. default_exports is a subset of supported — you cannot default-enable an
+	//    export the engine does not support (create path would advertise an
+	//    invalid request).
+	for _, d := range baseline.DefaultExports {
+		if !slices.Contains(baseline.Supported, d) {
+			t.Errorf("default export %q is not in the supported set %v", d, baseline.Supported)
+		}
+	}
+
+	// 3. Every default export the create path enables must pass the same allowlist
+	//    a customer request is validated against (i.e. the born-hardened default
+	//    posture can never be self-rejected by validateOracleOptions).
+	if err := validateOracleOptions(Options{
+		EnableCloudWatchLogGroupExports: baseline.DefaultExports,
+	}); err != nil {
+		t.Errorf("default log exports %v rejected by validateOracleOptions: %v",
+			baseline.DefaultExports, err)
 	}
 }
