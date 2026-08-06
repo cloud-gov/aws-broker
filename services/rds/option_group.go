@@ -151,8 +151,17 @@ func optionsFromGroup(optionGroup *rdsTypes.OptionGroup) []rdsTypes.OptionConfig
 	return optionConfigs
 }
 
-// ensureOptionGroupWithOptions is the shared describe→(create if absent)→modify
-// sequence used by both the create-time baseline and upgrade-reconcile paths.
+// ensureOptionGroupWithOptions is the single shared describe→(create if
+// absent)→modify sequence. Both public entry points funnel their AWS calls
+// through here so there is one implementation of the create/modify mechanics:
+//   - ProvisionBaselineOptionGroup (create-time): supplies the engine baseline
+//     options for a brand-new group.
+//   - ProvisionOrModifyCustomOptionGroup (modify-time): supplies the options
+//     copied from an existing custom group when migrating it to a new major
+//     version.
+//
+// The two callers differ only in *when* they fire and *which* options they
+// pass; the group create/modify mechanics live here and are not duplicated.
 // Idempotent; returns whether it created the group.
 func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
 	groupName, engineName, majorVersion, dbName string,
@@ -193,6 +202,10 @@ func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
 // create time for engines with a baseline option set (Oracle SE2: the SSL/TCPS
 // option). No-op for engines without one (postgres/mysql). On success it sets
 // i.OptionGroupName so the create worker attaches it. Fails closed.
+//
+// Distinct from ProvisionOrModifyCustomOptionGroup: this is the *create-time*
+// path (there is no prior group; options come from the engine baseline). Both
+// share ensureOptionGroupWithOptions for the actual create/modify calls.
 func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
 	opts, err := oracleBaselineOptions(i)
 	if err != nil {
@@ -218,6 +231,11 @@ func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rds
 
 // Ensures that an instance with a custom option group keeps a valid one for its target database version.
 // On a major version upgrade, we create a new option group with the new target version carrying the same options.
+//
+// Distinct from ProvisionBaselineOptionGroup: this is the *modify-time* path.
+// It only acts on instances that already carry a custom option group and only
+// when the major version changes, carrying the existing options forward. Both
+// share ensureOptionGroupWithOptions for the actual create/modify calls.
 func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
 	// For now, we only manage an option group for instances that
 	// already have a custom one attached (which is captured during the reconcile step)

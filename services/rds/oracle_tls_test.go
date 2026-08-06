@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/go-test/deep"
 )
 
 func sslSettingsMap(opt rdsTypes.OptionConfiguration) map[string]string {
@@ -21,18 +22,17 @@ func TestOracleBaselineOptionsBuildsSSL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("oracleBaselineOptions error: %v", err)
 	}
-	if len(opts) != 1 {
-		t.Fatalf("expected 1 baseline option (SSL), got %d", len(opts))
+
+	expected := []rdsTypes.OptionConfiguration{
+		{
+			OptionName:                  aws.String(oracleSSLOptionName),
+			Port:                        aws.Int32(oracleSSLPort),
+			OptionSettings:              oracleSSLOptionSettings,
+			VpcSecurityGroupMemberships: []string{"sg-1"},
+		},
 	}
-	ssl := opts[0]
-	if aws.ToString(ssl.OptionName) != "SSL" {
-		t.Errorf("option name = %q, want SSL", aws.ToString(ssl.OptionName))
-	}
-	if aws.ToInt32(ssl.Port) != 2484 {
-		t.Errorf("SSL option port = %d, want 2484", aws.ToInt32(ssl.Port))
-	}
-	if len(ssl.VpcSecurityGroupMemberships) != 1 || ssl.VpcSecurityGroupMemberships[0] != "sg-1" {
-		t.Errorf("SSL option must reference the instance SG, got %v", ssl.VpcSecurityGroupMemberships)
+	if diff := deep.Equal(opts, expected); diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -50,12 +50,20 @@ func TestOracleSSLBaselineIsFedRAMPCompliant(t *testing.T) {
 	}
 	s := sslSettingsMap(opts[0])
 
-	if v := s["SQLNET.SSL_VERSION"]; v != "1.2" {
-		t.Errorf("SQLNET.SSL_VERSION=%q, require exactly \"1.2\" (FedRAMP floor; RDS Oracle ceiling)", v)
+	// Exact-match settings: compare as a map so a failure prints the full diff.
+	fixed := map[string]string{
+		"SQLNET.SSL_VERSION": s["SQLNET.SSL_VERSION"],
+		"FIPS.SSLFIPS_140":   s["FIPS.SSLFIPS_140"],
 	}
-	if v := s["FIPS.SSLFIPS_140"]; v != "TRUE" {
-		t.Errorf("FIPS.SSLFIPS_140=%q, require TRUE (SC-13)", v)
+	wantFixed := map[string]string{
+		"SQLNET.SSL_VERSION": "1.2",  // FedRAMP floor; RDS Oracle ceiling
+		"FIPS.SSLFIPS_140":   "TRUE", // SC-13
 	}
+	if diff := deep.Equal(fixed, wantFixed); diff != nil {
+		t.Error(diff)
+	}
+
+	// Cipher is an allowlist membership check, not a single fixed value.
 	cipher, ok := s["SQLNET.CIPHER_SUITE"]
 	if !ok || cipher == "" {
 		t.Fatal("SQLNET.CIPHER_SUITE missing from SSL baseline")
@@ -69,8 +77,11 @@ func TestOracleSSLBaselineIsFedRAMPCompliant(t *testing.T) {
 func TestOracleBaselineOptionsNoOpForNonOracle(t *testing.T) {
 	for _, eng := range []string{"postgres", "mysql", ""} {
 		opts, err := oracleBaselineOptions(&RDSInstance{DbType: eng})
-		if err != nil || opts != nil {
-			t.Errorf("%q oracleBaselineOptions = (%v,%v), want (nil,nil)", eng, opts, err)
+		if err != nil {
+			t.Errorf("%q oracleBaselineOptions returned error %v, want nil", eng, err)
+		}
+		if diff := deep.Equal(opts, []rdsTypes.OptionConfiguration(nil)); diff != nil {
+			t.Errorf("%q: %v", eng, diff)
 		}
 	}
 }
