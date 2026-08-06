@@ -94,7 +94,6 @@ func TestGetCredentials(t *testing.T) {
 				"name":                "ORCL",
 				"ssl_required":        "true",
 				"ssl_server_dn_match": "true",
-				"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
 			},
 		},
 		"unknown databse type": {
@@ -196,7 +195,6 @@ func TestOracleBindingDoesNotLeakAdminMarkers(t *testing.T) {
 		"sid",
 		"ssl_required",
 		"ssl_server_dn_match",
-		"ca_cert_bundle_url",
 	} {
 		if _, ok := creds[key]; !ok {
 			t.Errorf("oracle binding missing expected key %q", key)

@@ -141,7 +141,8 @@ func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) (ma
 		"name":                serviceName,
 		"ssl_required":        "true",
 		"ssl_server_dn_match": "true",
-		"ca_cert_bundle_url":  "https://truststore.pki.us-gov-west-1.rds.amazonaws.com/global/global-bundle.pem",
+		// No ca_cert_bundle_url: the RDS GovCloud truststore host is not on the
+		// platform egress allowlist, so apps must vendor the CA bundle offline.
 	}, nil
 }
 
