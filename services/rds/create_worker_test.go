@@ -296,8 +296,9 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 			},
 			worker: &CreateWorker{
-				settings: &config.Settings{},
-				rds:      &mockRDSClient{},
+				settings:          &config.Settings{},
+				rds:               &mockRDSClient{},
+				optionGroupClient: &mockOptionGroupClient{},
 				parameterGroupClient: &mockParameterGroupClient{
 					provisionNewParamGroupErr: testErr,
 					rds:                       &mockRDSClient{},
@@ -327,7 +328,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				settings: &config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
-				rds: &mockRDSClient{},
+				rds:               &mockRDSClient{},
+				optionGroupClient: &mockOptionGroupClient{},
 				parameterGroupClient: &mockParameterGroupClient{
 					rds:              &mockRDSClient{},
 					customPgroupName: "parameter-group-1",
@@ -390,7 +392,8 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				settings: &config.Settings{
 					PubliclyAccessibleFeature: true,
 				},
-				rds: &mockRDSClient{},
+				rds:               &mockRDSClient{},
+				optionGroupClient: &mockOptionGroupClient{},
 				parameterGroupClient: &mockParameterGroupClient{
 					rds:              &mockRDSClient{},
 					customPgroupName: "parameter-group-1",
@@ -817,6 +820,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				rds:                  &mockRDSClient{},
+				optionGroupClient:    &mockOptionGroupClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               slog.New(&testutil.MockLogHandler{}),
 			},
@@ -843,6 +847,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				rds:                  &mockRDSClient{},
+				optionGroupClient:    &mockOptionGroupClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               slog.New(&testutil.MockLogHandler{}),
 			},
@@ -876,6 +881,7 @@ func TestCreateDBReadReplica(t *testing.T) {
 						&rdsTypes.InvalidDBInstanceStateFault{},
 					},
 				},
+				optionGroupClient:    &mockOptionGroupClient{},
 				parameterGroupClient: &mockParameterGroupClient{},
 				logger:               slog.New(&testutil.MockLogHandler{}),
 			},

@@ -19,9 +19,14 @@ type CredentialUtils interface {
 	generateCredentials(settings *config.Settings) (string, string, error)
 }
 
-func formatDBName(database string) string {
-	re, _ := regexp.Compile("(i?)[^a-z0-9]")
-	return re.ReplaceAllString(database, "")
+func formatDBName(database string, dbType string) string {
+	switch dbType {
+	case "oracle-se1", "oracle-se2":
+		return "ORCL"
+	default:
+		re, _ := regexp.Compile("(i?)[^a-z0-9]")
+		return re.ReplaceAllString(database, "")
+	}
 }
 
 type RDSCredentialUtils struct {
@@ -64,11 +69,17 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	switch i.DbType {
 	case "postgres", "mysql":
 		dbScheme = i.DbType
+	case "oracle-se1", "oracle-se2":
+		dbScheme = "oracle"
 	default:
 		return nil, errors.New("Cannot generate credentials for unsupported db type: " + i.DbType)
 	}
 
-	dbName := formatDBName(i.Database)
+	dbName := formatDBName(i.Database, i.DbType)
+	if i.DbType == "oracle-se1" || i.DbType == "oracle-se2" {
+		return oracleCredentials(i, password, dbScheme, dbName)
+	}
+
 	uri := fmt.Sprintf(
 		"%s://%s:%s@%s:%d/%s",
 		dbScheme,
@@ -103,6 +114,34 @@ func (u *RDSCredentialUtils) getCredentials(i *RDSInstance, password string) (ma
 	}
 
 	return credentials, nil
+}
+
+func oracleCredentials(i *RDSInstance, password, scheme, serviceName string) (map[string]string, error) {
+	const sslPort int64 = 2484
+	descriptor := fmt.Sprintf(
+		"(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=%s)(PORT=%d))(CONNECT_DATA=(SID=%s)))",
+		i.Host,
+		sslPort,
+		serviceName,
+	)
+	uri := fmt.Sprintf("%s://%s:%s@%s", scheme, i.Username, password, descriptor)
+	jdbcURL := fmt.Sprintf("jdbc:oracle:thin:@%s", descriptor)
+
+	return map[string]string{
+		"uri":                 uri,
+		"jdbcUrl":             jdbcURL,
+		"username":            i.Username,
+		"password":            password,
+		"host":                i.Host,
+		"port":                strconv.FormatInt(sslPort, 10),
+		"protocol":            "tcps",
+		"service_name":        serviceName,
+		"sid":                 serviceName,
+		"db_name":             serviceName,
+		"name":                serviceName,
+		"ssl_required":        "true",
+		"ssl_server_dn_match": "true",
+	}, nil
 }
 
 func (u *RDSCredentialUtils) generateCredentials(

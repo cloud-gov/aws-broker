@@ -81,6 +81,9 @@ type mockOptionGroupClient struct {
 	provisionOrModifyCalled      bool
 	provisionOrModifyCreated     bool
 	provisionOrModifyOptGroupErr error
+	provisionBaselineCalled      bool
+	provisionBaselineErr         error
+	baselineOptionGroupName      string
 	deleteOptionGroupErr         error
 	deletedOptionGroupName       string
 	isCustomOptionGroup          bool
@@ -97,6 +100,17 @@ func (m *mockOptionGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 		i.OptionGroupName = m.optionGroupName
 	}
 	return m.provisionOrModifyCreated, nil
+}
+
+func (m *mockOptionGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	m.provisionBaselineCalled = true
+	if m.provisionBaselineErr != nil {
+		return m.provisionBaselineErr
+	}
+	if m.baselineOptionGroupName != "" {
+		i.OptionGroupName = m.baselineOptionGroupName
+	}
+	return nil
 }
 
 func (m *mockOptionGroupClient) CleanupCustomOptionGroups() error {
