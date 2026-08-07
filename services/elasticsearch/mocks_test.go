@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -66,4 +67,41 @@ func (o *mockOpensearchClient) UpgradeDomain(ctx context.Context, params *opense
 
 func (o *mockOpensearchClient) GetCompatibleVersions(ctx context.Context, params *opensearch.GetCompatibleVersionsInput, optFns ...func(*opensearch.Options)) (*opensearch.GetCompatibleVersionsOutput, error) {
 	return &opensearch.GetCompatibleVersionsOutput{CompatibleVersions: o.compatibleVersions}, o.compatibleVersionsErr
+}
+
+type mockCloudwatchLogsClient struct {
+	createdLogGroups      []string
+	deletedLogGroups      []string
+	putRetentionLogGroups []string
+	createLogGroupErr     error
+	putRetentionPolicyErr error
+	deleteLogGroupErr     error
+}
+
+func (m *mockCloudwatchLogsClient) CreateLogGroup(ctx context.Context, params *cloudwatchlogs.CreateLogGroupInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.CreateLogGroupOutput, error) {
+	if m.createLogGroupErr != nil {
+		return nil, m.createLogGroupErr
+	}
+	m.createdLogGroups = append(m.createdLogGroups, *params.LogGroupName)
+	return &cloudwatchlogs.CreateLogGroupOutput{}, nil
+}
+
+func (m *mockCloudwatchLogsClient) PutRetentionPolicy(ctx context.Context, params *cloudwatchlogs.PutRetentionPolicyInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.PutRetentionPolicyOutput, error) {
+	if m.putRetentionPolicyErr != nil {
+		return nil, m.putRetentionPolicyErr
+	}
+	m.putRetentionLogGroups = append(m.putRetentionLogGroups, *params.LogGroupName)
+	return &cloudwatchlogs.PutRetentionPolicyOutput{}, nil
+}
+
+func (m *mockCloudwatchLogsClient) DescribeLogGroups(ctx context.Context, params *cloudwatchlogs.DescribeLogGroupsInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+	return &cloudwatchlogs.DescribeLogGroupsOutput{}, nil
+}
+
+func (m *mockCloudwatchLogsClient) DeleteLogGroup(ctx context.Context, params *cloudwatchlogs.DeleteLogGroupInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DeleteLogGroupOutput, error) {
+	if m.deleteLogGroupErr != nil {
+		return nil, m.deleteLogGroupErr
+	}
+	m.deletedLogGroups = append(m.deletedLogGroups, *params.LogGroupName)
+	return &cloudwatchlogs.DeleteLogGroupOutput{}, nil
 }

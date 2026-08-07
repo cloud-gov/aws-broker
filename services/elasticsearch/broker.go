@@ -29,11 +29,19 @@ type ElasticsearchAdvancedOptions struct {
 	IndicesQueryBoolMaxClauseCount string `json:"indices.query.bool.max_clause_count,omitempty"`
 }
 
+type ElasticsearchLogOptions struct {
+	AuditLogs      *bool `json:"audit_logs,omitempty"`
+	ErrorLogs      *bool `json:"error_logs,omitempty"`
+	SearchSlowLogs *bool `json:"search_slow_logs,omitempty"`
+	IndexSlowLogs  *bool `json:"index_slow_logs,omitempty"`
+}
+
 type ElasticsearchOptions struct {
 	ElasticsearchVersion string                       `json:"elasticsearchVersion"`
 	Bucket               string                       `json:"bucket"`
 	AdvancedOptions      ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
 	VolumeType           string                       `json:"volume_type"`
+	LogPublishing        ElasticsearchLogOptions      `json:"log_publishing,omitempty"`
 }
 
 func (o ElasticsearchOptions) HasNonVersionChanges() bool {
@@ -173,6 +181,10 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 		)
 	}
 
+	if err := newInstance.validateAuditLogSupport(); err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
+	}
+
 	// Create the elasticsearch instance.
 	status, err := broker.adapter.createElasticsearch(&newInstance, newInstance.ClearPassword)
 	if err != nil {
@@ -255,6 +267,10 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 	if err != nil {
 		broker.logger.Error("Updating instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "updating service instance")
+	}
+
+	if err := esInstance.validateAuditLogSupport(); err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 	}
 
 	state, err := broker.adapter.modifyElasticsearch(&esInstance)

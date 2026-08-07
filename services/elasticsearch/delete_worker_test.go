@@ -52,6 +52,10 @@ func (m *mockEsApiClient) GetSnapshotStatus(repositoryName string, snapshotName 
 	return status, nil
 }
 
+func (m *mockEsApiClient) EnableAuditLogging(engineVersion string) error {
+	return nil
+}
+
 type mockS3Client struct {
 	putObjectErr error
 }
@@ -241,6 +245,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 					},
 				},
 				&mockS3Client{},
+				&mockCloudwatchLogsClient{},
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedState: base.InstanceReady,
@@ -310,6 +315,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 					},
 				},
 				&mockS3Client{},
+				&mockCloudwatchLogsClient{},
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedState: base.InstanceReady,
@@ -351,6 +357,7 @@ func TestPollForSnapshotCreation(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedGetSnapshotCalls: 1,
@@ -365,6 +372,7 @@ func TestPollForSnapshotCreation(t *testing.T) {
 					PollAwsMinDelay:   1 * time.Millisecond,
 					PollAwsMaxRetries: 3,
 				},
+				nil,
 				nil,
 				nil,
 				nil,
@@ -385,6 +393,7 @@ func TestPollForSnapshotCreation(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedGetSnapshotCalls: 3,
@@ -400,6 +409,7 @@ func TestPollForSnapshotCreation(t *testing.T) {
 					PollAwsMinDelay:   1 * time.Millisecond,
 					PollAwsMaxRetries: 1,
 				},
+				nil,
 				nil,
 				nil,
 				nil,

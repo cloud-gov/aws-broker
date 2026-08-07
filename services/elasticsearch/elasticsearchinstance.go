@@ -66,6 +66,21 @@ type ElasticsearchInstance struct {
 	ErrorLogsGroupARN      string `sql:"size(2048)"`
 	AuditLogsGroupARN      string `sql:"size(2048)"`
 
+	// Cloudwatch log publishing toggles
+	SearchSlowLogsEnabled bool `sql:"size(255)"`
+	IndexSlowLogsEnabled  bool `sql:"size(255)"`
+	ErrorLogsEnabled      bool `sql:"size(255)"`
+	AuditLogsEnabled      bool `sql:"size(255)"`
+
+	// AdvancedSecurityEnabled is for FGAC which is a prereq for audit logs
+	AdvancedSecurityEnabled bool `sql:"size(255)"`
+
+	// AuditRestConfigApplied records that the one-time OpenSearch security REST call that
+	// turns on audit logging has succeeded
+	AuditRestConfigApplied bool `sql:"size(255)"`
+
+	IamUserARN string `sql:"size(2048)"`
+
 	Protocol string `gorm:"-"`
 }
 
@@ -193,7 +208,7 @@ func (i *ElasticsearchInstance) init(
 		// Default to the version provided by the plan chosen in catalog.
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
-
+	i.applyLogOptions(options.LogPublishing)
 	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
 
 	return nil
@@ -212,6 +227,7 @@ func (i *ElasticsearchInstance) update(
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
 	i.IndicesQueryBoolMaxClauseCount = options.AdvancedOptions.IndicesQueryBoolMaxClauseCount
+	i.applyLogOptions(options.LogPublishing)
 	return nil
 }
 

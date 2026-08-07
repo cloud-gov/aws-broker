@@ -2,6 +2,8 @@ package elasticsearch
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -20,21 +22,121 @@ var snapshotName = "backup"
 var region = "us-east-1"
 var rolearn = "arn:aws:iam::123456789012:role/snapshot-role"
 
-// MockRoundTripper is a mock implementation of http.RoundTripper
+type recordedRequest struct {
+	method string
+	path   string
+	body   string
+}
+
 type MockRoundTripper struct {
-	Response *http.Response
-	Err      error
+	getResponse string
+	statusCode  int
+	err         error
+	requests    []recordedRequest
 }
 
 // RoundTrip implements the http.RoundTripper interface
 func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return m.Response, m.Err
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	rec := recordedRequest{method: req.Method, path: req.URL.Path}
+	if req.Body != nil {
+		b, _ := io.ReadAll(req.Body)
+		rec.body = string(b)
+	}
+	m.requests = append(m.requests, rec)
+
+	status := m.statusCode
+	if status == 0 {
+		status = http.StatusOK
+	}
+
+	body := `{"status":"OK"}`
+	if req.Method == http.MethodGet {
+		body = m.getResponse
+	}
+
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     header,
+	}, nil
 }
 
 func NewTestEsAPIHandler(client *opensearch.Client, logger *slog.Logger) *EsApiHandler {
 	return &EsApiHandler{
+		ctx:              context.Background(),
 		opensearchClient: client,
 		logger:           logger,
+	}
+}
+
+func TestAuditApiBasePath(t *testing.T) {
+	cases := map[string]string{
+		"OpenSearch_2.3":    "/_plugins/_security/api/audit",
+		"OpenSearch_1.3":    "/_plugins/_security/api/audit",
+		"openSearch_1.3":    "/_plugins/_security/api/audit",
+		"Elasticsearch_7.4": "/_opendistro/_security/api/audit",
+		"elasticsearch_7.4": "/_opendistro/_security/api/audit",
+		"7.4":               "/_opendistro/_security/api/audit",
+	}
+
+	for version, exp := range cases {
+		if got := auditApiBasePath(version); got != exp {
+			t.Errorf("auditApiBasePath(%q) = %q, exp %q", version, got, exp)
+		}
+	}
+}
+
+func TestEnableAuditLogging(t *testing.T) {
+	getConfig := `{"config": {"enabled": false, "audit": {"enable_rest": false, "ignore_users": ["kibanaserver"]}, "compliance": {"enabled": false}}}`
+
+	tripper := &MockRoundTripper{getResponse: getConfig}
+	client, err := opensearch.NewClient(opensearch.Config{
+		Addresses: []string{"https://fake-domain"},
+		Transport: tripper,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
+
+	if err := es.EnableAuditLogging("OpenSearch_2.3"); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tripper.requests) != 2 {
+		t.Fatalf("expected a 2 requests (GET, PUT), got %d: %+v", len(tripper.requests), tripper.requests)
+	}
+
+	get := tripper.requests[0]
+	if get.method != http.MethodGet || get.path != "/_plugins/_security/api/audit" {
+		t.Errorf("expected GET /_plugins/_security/api/audit, got %s %s", get.method, get.path)
+	}
+
+	put := tripper.requests[1]
+	if put.method != http.MethodPut || put.path != "/_plugins/_security/api/audit/config" {
+		t.Errorf("expected PUT /_plugins/_security/api/audit/config, got %s %s", put.method, put.path)
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal([]byte(put.body), &body); err != nil {
+		t.Fatalf("PUT body is not valid JSON: %s", err)
+	}
+	if body["enabled"] != true {
+		t.Errorf("expected enabled=true in PUT body, got %v", body["enabled"])
+	}
+	auditSection, ok := body["audit"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected audit section in PUT body, got %v", body["audit"])
+	}
+	if auditSection["enable_rest"] != true {
+		t.Errorf("expected audit.enable_rest = true, got %v", auditSection["enable_rest"])
 	}
 }
 
@@ -54,16 +156,9 @@ func TestNewSnapShotRepo(t *testing.T) {
 }
 
 func TestCreateSnapshotRepoSuccess(t *testing.T) {
-	mockResponse := &http.Response{
-		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(bytes.NewBufferString(`{"message": "success"}`)),
-		Header:     make(http.Header),
-	}
-	mockResponse.Header.Set("Content-Type", "application/json")
-
 	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{"fake://url"},
-		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
+		Transport: &MockRoundTripper{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -78,16 +173,9 @@ func TestCreateSnapshotRepoSuccess(t *testing.T) {
 }
 
 func TestCreateSnapshot(t *testing.T) {
-	mockResponse := &http.Response{
-		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(bytes.NewBufferString(`{"message": "success"}`)),
-		Header:     make(http.Header),
-	}
-	mockResponse.Header.Set("Content-Type", "application/json")
-
 	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{"fake://url"},
-		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
+		Transport: &MockRoundTripper{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -101,16 +189,9 @@ func TestCreateSnapshot(t *testing.T) {
 }
 
 func TestGetSnapshotStatus(t *testing.T) {
-	mockResponse := &http.Response{
-		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(bytes.NewBufferString(`{"snapshots": [{ "state": "SUCCESS" }]}`)),
-		Header:     make(http.Header),
-	}
-	mockResponse.Header.Set("Content-Type", "application/json")
-
 	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{"fake://url"},
-		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
+		Transport: &MockRoundTripper{getResponse: `{"snapshots": [{ "state": "SUCCESS" }]}`},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -129,16 +210,9 @@ func TestGetSnapshotStatus(t *testing.T) {
 }
 
 func TestGetSnapshotStatusNotFound(t *testing.T) {
-	mockResponse := &http.Response{
-		StatusCode: http.StatusNotFound,
-		Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
-		Header:     make(http.Header),
-	}
-	mockResponse.Header.Set("Content-Type", "application/json")
-
 	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{"fake://url"},
-		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
+		Transport: &MockRoundTripper{statusCode: http.StatusNotFound, getResponse: `{}`},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -157,16 +231,9 @@ func TestGetSnapshotStatusNotFound(t *testing.T) {
 }
 
 func TestGetSnapshotStatusNoSnapshots(t *testing.T) {
-	mockResponse := &http.Response{
-		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(bytes.NewBufferString(`{"snapshots": []}`)),
-		Header:     make(http.Header),
-	}
-	mockResponse.Header.Set("Content-Type", "application/json")
-
 	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{"fake://url"},
-		Transport: &MockRoundTripper{Response: mockResponse, Err: nil},
+		Transport: &MockRoundTripper{getResponse: `{"snapshots": []}`},
 	})
 	if err != nil {
 		t.Fatal(err)
