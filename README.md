@@ -151,7 +151,7 @@ When an authenticated, authorized CloudFoundry user runs `cf create-service aws-
 curl -X PUT https://username:password@aws-broker..../v2/service_instances/:instance_id
 ```
 
-The broker expects the `AUTH_PASS`and `AUTH_USER` as specified in the environment, which the Platform has provided (see above)
+The broker expects the `AUTH_PASS`and `AUTH_USER` as specified in the environment, which the Platform has provided (see above).
 
 The response indicates if the provisioning request has been accepted.
 
