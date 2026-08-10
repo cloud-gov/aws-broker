@@ -98,7 +98,7 @@ func NewEsApiHandler(ctx context.Context, svcInfo map[string]string, region stri
 		return nil, err
 	}
 
-	logger.Debug(fmt.Sprintf("starting connection to API on %s", svcInfo["uri"]))
+	logger.Debug("starting connection to API")
 	client, err := opensearch.NewClient(opensearch.Config{
 		Addresses: []string{svcInfo["uri"]},
 		Signer:    signer,
