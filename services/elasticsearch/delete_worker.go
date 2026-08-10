@@ -41,6 +41,7 @@ type DeleteWorker struct {
 	opensearch OpensearchClientInterface
 	iam        awsiam.IAMClientInterface
 	s3         brokerAws.S3ClientInterface
+	logs       CloudwatchLogsClientInterface
 	logger     *slog.Logger
 }
 
@@ -50,6 +51,7 @@ func NewDeleteWorker(
 	opensearch OpensearchClientInterface,
 	iam awsiam.IAMClientInterface,
 	s3 brokerAws.S3ClientInterface,
+	logs CloudwatchLogsClientInterface,
 	logger *slog.Logger,
 ) *DeleteWorker {
 	return &DeleteWorker{
@@ -58,6 +60,7 @@ func NewDeleteWorker(
 		opensearch: opensearch,
 		iam:        iam,
 		s3:         s3,
+		logs:       logs,
 		logger:     logger,
 	}
 }
@@ -96,6 +99,14 @@ func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *El
 	err = w.cleanupElasticSearchDomain(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+	}
+
+	err = cleanupLogGroups(ctx, w.logs, w.logger, i)
+	if err != nil {
+		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupLogGroups returned error"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))

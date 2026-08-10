@@ -15,6 +15,7 @@ import (
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
@@ -98,6 +99,7 @@ func initializeAdapter(ctx context.Context, db *gorm.DB, s *config.Settings, log
 		iam:         iamSvc,
 		sts:         sts.NewFromConfig(cfg),
 		s3:          s3.NewFromConfig(cfg),
+		logs:        cloudwatchlogs.NewFromConfig(cfg),
 		riverClient: riverClient,
 	}
 
@@ -113,6 +115,7 @@ type dedicatedElasticsearchAdapter struct {
 	sts         STSClientInterface
 	opensearch  OpensearchClientInterface
 	s3          brokerAws.S3ClientInterface
+	logs        CloudwatchLogsClientInterface
 	riverClient *river.Client[*sql.Tx]
 }
 
@@ -144,8 +147,13 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	userParams := &iam.GetUserInput{
 		UserName: aws.String(i.Domain),
 	}
-	userResp, _ := d.iam.GetUser(d.ctx, userParams)
+	userResp, err := d.iam.GetUser(d.ctx, userParams)
+	if err != nil {
+		d.logger.Error("createElasticsearch: GetUser err", "err", err)
+		return base.InstanceNotCreated, err
+	}
 	uniqueUserArn := *(userResp.User.Arn)
+	i.IamUserARN = uniqueUserArn
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := d.sts.GetCallerIdentity(d.ctx, stsInput)
 	if err != nil {
@@ -154,6 +162,12 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 	}
 
 	accountID := result.Account
+
+	// Set up cloudwatch log groups
+	if err := d.setupLogging(i, *accountID); err != nil {
+		d.logger.Error("createElasticsearch: setupLogging err", "err", err)
+		return base.InstanceNotCreated, err
+	}
 
 	time.Sleep(5 * time.Second)
 
@@ -223,6 +237,13 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 		return base.InstanceInProgress, nil
 	}
 
+	// Ensure any newly request log groups exist and resolve the IAM master user ARN before referencing
+	// in the domain config update
+	if err := d.ensureLoggingForModify(i); err != nil {
+		d.logger.Error("modifyElasticsearch: ensureLoggingForModify err", "err", err)
+		return base.InstanceNotModified, err
+	}
+
 	params, err := prepareUpdateDomainConfigInput(i)
 	if err != nil {
 		return base.InstanceNotModified, err
@@ -235,6 +256,36 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	}
 
 	return base.InstanceInProgress, nil
+}
+
+// setupLogging ensures the cloudwatch log groups for every enabled log type exists.
+func (d *dedicatedElasticsearchAdapter) setupLogging(i *ElasticsearchInstance, accountID string) error {
+	if !i.anyLogsEnabled() {
+		return nil
+	}
+	return ensureLogGroups(d.ctx, d.logs, d.logger, i, d.settings.OpensearchLogRetentionDays, d.settings.Region, accountID)
+}
+
+func (d *dedicatedElasticsearchAdapter) ensureLoggingForModify(i *ElasticsearchInstance) error {
+	if !i.anyLogsEnabled() && !i.AdvancedSecurityEnabled {
+		return nil
+	}
+
+	result, err := d.sts.GetCallerIdentity(d.ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return err
+	}
+
+	// FGAC needs IAM user ARN as master user. Look it up if not already persisted to the instance.
+	if i.AdvancedSecurityEnabled && i.IamUserARN == "" {
+		userResp, err := d.iam.GetUser(d.ctx, &iam.GetUserInput{UserName: aws.String(i.Domain)})
+		if err != nil {
+			return err
+		}
+		i.IamUserARN = *userResp.User.Arn
+	}
+
+	return d.setupLogging(i, *result.Account)
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
@@ -326,6 +377,13 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 			if aws.ToBool(resp.DomainStatus.Processing) {
 				return base.InstanceInProgress, nil
 			}
+
+			// Audit logging requires a one-time REST call once the domain is ready
+			if err := d.configureAuditLoggingIfNeeded(i, resp); err != nil {
+				d.logger.Error("checkElasticsearchStatus: configureAuditLoggingIfNeeded err", "err", err)
+				return base.InstanceInProgress, nil
+			}
+
 			return base.InstanceReady, nil
 		} else {
 			// Instance not up yet.
@@ -334,6 +392,37 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	}
 	return base.InstanceNotCreated, nil
 
+}
+
+func (d *dedicatedElasticsearchAdapter) configureAuditLoggingIfNeeded(i *ElasticsearchInstance, resp *opensearch.DescribeDomainOutput) error {
+	if !i.AuditLogsEnabled || i.AuditRestConfigApplied {
+		return nil
+	}
+
+	endpoint := resp.DomainStatus.Endpoints["vpc"]
+	if endpoint == "" {
+		return errors.New("domain endpoint not available yet")
+	}
+
+	creds := map[string]string{
+		"access_key": i.AccessKey,
+		"secret_key": i.SecretKey,
+		"uri":        "https://" + endpoint,
+	}
+
+	esApi, err := NewEsApiHandler(d.ctx, creds, d.settings.Region, d.logger)
+	if err != nil {
+		return err
+	}
+
+	// Use the engine version reported bythe domain to pick the correct security API path
+	engineVersion := aws.ToString(resp.DomainStatus.EngineVersion)
+	if err := esApi.EnableAuditLogging(engineVersion); err != nil {
+		return err
+	}
+
+	i.AuditRestConfigApplied = true
+	return nil
 }
 
 func (d *dedicatedElasticsearchAdapter) checkCompatibleVersions(domainName, targetVersion string) error {
@@ -495,6 +584,18 @@ func prepareCreateDomainInput(
 		params.AdvancedOptions = AdvancedOptions
 	}
 
+	if logPublishingOptions := buildLogPublishingOptions(i); len(logPublishingOptions) > 0 {
+		params.LogPublishingOptions = logPublishingOptions
+	}
+
+	advancedSecurityOptions, err := advancedSecurityOptionsForAudit(i)
+	if err != nil {
+		return nil, err
+	}
+	if advancedSecurityOptions != nil {
+		params.AdvancedSecurityOptions = advancedSecurityOptions
+	}
+
 	if i.ElasticsearchVersion != "" {
 		params.EngineVersion = aws.String(i.ElasticsearchVersion)
 	}
@@ -533,6 +634,20 @@ func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.Updat
 			EBSEnabled: aws.Bool(true),
 			VolumeSize: aws.Int32(*volumeSize),
 			VolumeType: *volumeType,
+		}
+	}
+
+	if logPublishingOptions := buildLogPublishingOptions(i); len(logPublishingOptions) > 0 {
+		params.LogPublishingOptions = logPublishingOptions
+	}
+
+	if !i.AuditRestConfigApplied {
+		advancedSecurityOptions, err := advancedSecurityOptionsForAudit(i)
+		if err != nil {
+			return nil, err
+		}
+		if advancedSecurityOptions != nil {
+			params.AdvancedSecurityOptions = advancedSecurityOptions
 		}
 	}
 
