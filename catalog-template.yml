@@ -1301,6 +1301,39 @@ rds:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         broker: "AWS broker"
+    - id: "7bbb10f9-ddd5-4269-b267-177a97a5b1b1"
+      name: &medium-oracle-se2-redundant-name "medium-oracle-se2-redundant"
+      description: "Multi-AZ RDS instance of Oracle SE2, minimum 2 core, minimum 4 GiB memory"
+      metadata:
+        bullets:
+          - *multi-az-rds
+          - *oracle-se2
+          - *minimum-2-cores
+          - *minimum-4-gib-memory
+          - *default-20-gb-storage
+          - *license-included
+        costs:
+          - amount:
+              usd: 236
+            unit: "MONTHLY"
+        displayName: *medium-oracle-se2-redundant-name
+      free: false
+      adapter: dedicated
+      instanceClass: db.t3.medium
+      allocatedStorage: 20
+      dbType: oracle-se2
+      dbVersion: "19.0.0.0.ru-2026-04.rur-2026-04.r1"
+      licenseModel: license-included
+      redundant: true
+      encrypted: true
+      storage_type: gp3
+      backup_retention_period: 14
+      securityGroup: (( grab meta.aws_broker.oracle_security_group ))
+      subnetGroup: (( grab meta.aws_broker.subnet_group ))
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        broker: "AWS broker"
 
 redis:
   id: "cda65825-e357-4a93-a24b-9ab138d97815"
