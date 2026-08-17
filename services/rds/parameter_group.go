@@ -334,6 +334,12 @@ func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
 		return true
 	}
 
+	// Oracle SE2 always gets a broker-managed parameter group: the STIG-hardened
+	// baseline in getNewParameters is applied by default, not gated on any option.
+	if i.DbType == "oracle-se2" {
+		return true
+	}
+
 	return false
 }
 
@@ -579,6 +585,50 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 				}
 			}
 
+		}
+	}
+
+	// Oracle 19c STIG-hardened parameter baseline, applied to every brokered
+	// oracle-se2 instance (needCustomParameters returns true for oracle-se2).
+	// Each parameter maps to a DISA Oracle Database 19c STIG control. Apply
+	// methods: Oracle static (spfile) parameters take "pending-reboot"; dynamic
+	// (session/system-alterable) parameters take "immediate". These are the
+	// documented Oracle classifications; confirm against RDS engine defaults on
+	// the first live apply (DescribeEngineDefaultParameters ApplyType).
+	if i.DbType == "oracle-se2" {
+		customRDSParameters["oracle-se2"] = map[string]paramDetails{
+			// SRG-APP-000091 (AU-12): enable database auditing (extended). Static.
+			"audit_trail": {
+				value:       "DB,EXTENDED",
+				applyMethod: "pending-reboot",
+			},
+			// V-270623 / AU-12: audit privileged SYS operations. Static.
+			"audit_sys_operations": {
+				value:       "TRUE",
+				applyMethod: "pending-reboot",
+			},
+			// V-270606 / IA-5: enforce case-sensitive passwords. Dynamic.
+			"sec_case_sensitive_logon": {
+				value:       "TRUE",
+				applyMethod: "immediate",
+			},
+			// V-270650 / IA-2: disable remote OS password-file authentication. Static.
+			"remote_login_passwordfile": {
+				value:       "NONE",
+				applyMethod: "pending-reboot",
+			},
+			// AC-10 / SRG-APP-000001: enforce profile resource limits (session
+			// caps, etc.). Dynamic.
+			"resource_limit": {
+				value:       "TRUE",
+				applyMethod: "immediate",
+			},
+			// AC-3 / SRG-APP-000033: SQL92 DML-predicate least-privilege semantics.
+			// Static.
+			"sql92_security": {
+				value:       "TRUE",
+				applyMethod: "pending-reboot",
+			},
 		}
 	}
 

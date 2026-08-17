@@ -261,6 +261,16 @@ func TestNeedCustomParameters(t *testing.T) {
 				settings: &config.Settings{},
 			},
 		},
+		"oracle-se2 always needs a custom (STIG-hardened) parameter group": {
+			dbInstance: &RDSInstance{
+				DbType:          "oracle-se2",
+				credentialUtils: &RDSCredentialUtils{},
+			},
+			expectedOk: true,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -1087,6 +1097,43 @@ func TestGetNewParameters(t *testing.T) {
 			expectedParams: map[string]map[string]paramDetails{
 				"postgres": {
 					"log_connections": {value: "all", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
+			},
+		},
+		"oracle-se2 STIG-hardened parameter baseline": {
+			dbInstance: &RDSInstance{
+				DbType: "oracle-se2",
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				"oracle-se2": {
+					"audit_trail": paramDetails{
+						value:       "DB,EXTENDED",
+						applyMethod: "pending-reboot",
+					},
+					"audit_sys_operations": paramDetails{
+						value:       "TRUE",
+						applyMethod: "pending-reboot",
+					},
+					"sec_case_sensitive_logon": paramDetails{
+						value:       "TRUE",
+						applyMethod: "immediate",
+					},
+					"remote_login_passwordfile": paramDetails{
+						value:       "NONE",
+						applyMethod: "pending-reboot",
+					},
+					"resource_limit": paramDetails{
+						value:       "TRUE",
+						applyMethod: "immediate",
+					},
+					"sql92_security": paramDetails{
+						value:       "TRUE",
+						applyMethod: "pending-reboot",
+					},
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
