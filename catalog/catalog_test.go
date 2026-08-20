@@ -14,6 +14,9 @@ var rdsMySQLTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c7"
 var rdsMySQLValidVersion = "8.4"
 var rdsMySQLInvalidVersion = "5.6"
 
+var rdsOracleSE2TestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c8"
+var rdsOracleSE2RedundantTestPlanID = "da91e15c-98c9-46a9-b114-02b8d28062c9"
+
 // Helper function to call os.Getwd with error checking
 func checkedGetwd(t *testing.T) string {
 	wd, err := os.Getwd()
@@ -122,6 +125,41 @@ func TestRDSMySQLCheckVersion(t *testing.T) {
 
 	if validVersion {
 		t.Error("Invalid RDS version check failed.")
+	}
+}
+
+func TestRDSOracleSE2Plans(t *testing.T) {
+	wd := checkedGetwd(t)
+	path := filepath.Join(wd, "..")
+	catalog := InitCatalog(path)
+
+	// Non-redundant (Single-AZ) Oracle SE2 plan.
+	base, err := catalog.RdsService.FetchPlan(rdsOracleSE2TestPlanID)
+	if err != nil {
+		t.Fatal("Could not fetch plan " + rdsOracleSE2TestPlanID)
+	}
+	if base.DbType != "oracle-se2" {
+		t.Errorf("base Oracle plan DbType = %q, want oracle-se2", base.DbType)
+	}
+	if base.Redundant {
+		t.Error("base medium-oracle-se2 plan must be Single-AZ (Redundant=false)")
+	}
+
+	// Redundant (Multi-AZ) Oracle SE2 plan.
+	redundant, err := catalog.RdsService.FetchPlan(rdsOracleSE2RedundantTestPlanID)
+	if err != nil {
+		t.Fatal("Could not fetch plan " + rdsOracleSE2RedundantTestPlanID)
+	}
+	if redundant.DbType != "oracle-se2" {
+		t.Errorf("redundant Oracle plan DbType = %q, want oracle-se2", redundant.DbType)
+	}
+	if !redundant.Redundant {
+		t.Error("medium-oracle-se2-redundant plan must be Multi-AZ (Redundant=true)")
+	}
+	// Oracle SE2 is not ReadReplicaCapable on RDS; the redundant plan must not
+	// request a read replica (would otherwise trip the ReadReplica && Redundant path).
+	if redundant.ReadReplica {
+		t.Error("Oracle SE2 redundant plan must not enable read_replica (SE2 is not replica-capable)")
 	}
 }
 
