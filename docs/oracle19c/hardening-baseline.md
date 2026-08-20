@@ -16,9 +16,10 @@ page documents the durable deltas and the controls they map to.
 | `remote_login_passwordfile` | `NONE` | pending-reboot | disable remote OS password-file auth |
 | `resource_limit` | `TRUE` | immediate | enforce profile resource limits |
 | `sql92_security` | `TRUE` | pending-reboot | SQL92 DML-predicate least privilege |
+| `max_idle_time` | `15` | immediate | terminate idle sessions after 15 min (SV-270497 / AC-12) |
 
 `pending-reboot` parameters take effect after a reboot; the broker surfaces
-pending-reboot state via the existing async/modify path. All six are base Oracle
+pending-reboot state via the existing async/modify path. All seven are base Oracle
 init parameters available in SE2 (none are EE-only), so the baseline fully applies.
 
 ## Log exports (`baselines/oracle19c/log_exports.yml`)

@@ -54,6 +54,7 @@ func TestOracleParameterBaselineContent(t *testing.T) {
 		"remote_login_passwordfile": "NONE",
 		"resource_limit":            "TRUE",
 		"sql92_security":            "TRUE",
+		"max_idle_time":             "15",
 	}
 	for name, want := range wantHardened {
 		got, ok := byName[name]
@@ -68,6 +69,10 @@ func TestOracleParameterBaselineContent(t *testing.T) {
 	// audit_trail is a static parameter — must be pending-reboot.
 	if byName["audit_trail"].ApplyMethod != "pending-reboot" {
 		t.Errorf("audit_trail must be pending-reboot (static), got %q", byName["audit_trail"].ApplyMethod)
+	}
+	// max_idle_time is a dynamic parameter — must apply immediately.
+	if byName["max_idle_time"].ApplyMethod != "immediate" {
+		t.Errorf("max_idle_time must be immediate (dynamic), got %q", byName["max_idle_time"].ApplyMethod)
 	}
 }
 

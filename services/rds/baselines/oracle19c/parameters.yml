@@ -62,6 +62,17 @@ parameters:
     apply_method: pending-reboot
     stig_intent: "SQL92 security semantics (least privilege on DML predicates)."
 
+  # Automatically terminate idle user sessions after an organization-defined
+  # number of minutes (SV-270497 / AC-12). The STIG assumes 15 minutes when the
+  # organization has not documented a value. max_idle_time is a DYNAMIC parameter
+  # (confirmed modifiable on the RDS oracle-se2-19 family in GovCloud
+  # us-gov-west-1: IsModifiable=true, ApplyType=dynamic, AllowedValues
+  # 0-2147483647), so it applies immediately.
+  - name: max_idle_time
+    value: "15"
+    apply_method: immediate
+    stig_intent: "Terminate idle sessions after 15 minutes (SRG-APP-000295 / AC-12)."
+
   # Limit the number of concurrent connections a login may hold (defense in depth).
   # Left commented — value is deployment-specific and must be sized against app
   # concurrency before enabling.
