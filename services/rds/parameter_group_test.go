@@ -730,6 +730,7 @@ func TestGetNewParameters(t *testing.T) {
 					"remote_login_passwordfile": paramDetails{value: "NONE", applyMethod: "pending-reboot"},
 					"resource_limit":            paramDetails{value: "TRUE", applyMethod: "immediate"},
 					"sql92_security":            paramDetails{value: "TRUE", applyMethod: "pending-reboot"},
+					"max_idle_time":             paramDetails{value: "15", applyMethod: "immediate"},
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -2635,6 +2636,7 @@ func TestOracleBornHardenedParamsReachAWS(t *testing.T) {
 		"remote_login_passwordfile": {"NONE", rdsTypes.ApplyMethodPendingReboot},
 		"resource_limit":            {"TRUE", rdsTypes.ApplyMethodImmediate},
 		"sql92_security":            {"TRUE", rdsTypes.ApplyMethodPendingReboot},
+		"max_idle_time":             {"15", rdsTypes.ApplyMethodImmediate},
 	}
 	for name, w := range want {
 		p, ok := got[name]
