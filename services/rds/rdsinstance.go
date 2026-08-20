@@ -116,13 +116,13 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		return nil, errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
 	}
 
-	// Storage autoscaling max (#540). A customer-supplied max_storage overrides
-	// the plan/instance value on modify; 0 leaves the existing setting unchanged
-	// (avoids silently disabling an already-enabled autoscaling policy).
+	// Storage autoscaling max (#540) is opt-in (never a plan default). A
+	// customer-supplied max_storage sets/updates it; 0 leaves the existing
+	// instance setting unchanged (so a modify does not silently DISABLE an
+	// already-opted-in autoscaling policy). We intentionally do NOT fall back to
+	// a plan value — plans carry no autoscaling default.
 	if options.MaxAllocatedStorage > 0 {
 		modifiedInstance.MaxAllocatedStorage = options.MaxAllocatedStorage
-	} else if modifiedInstance.MaxAllocatedStorage == 0 {
-		modifiedInstance.MaxAllocatedStorage = newPlan.MaxAllocatedStorage
 	}
 
 	if options.StorageType != modifiedInstance.StorageType {
@@ -261,13 +261,11 @@ func (i *RDSInstance) init(
 	if i.AllocatedStorage == 0 {
 		i.AllocatedStorage = plan.AllocatedStorage
 	}
-	// Storage autoscaling (#540): RDS grows storage automatically up to
-	// MaxAllocatedStorage when free space runs low, avoiding out-of-space
-	// outages. A customer-supplied max overrides the plan default; 0 = disabled.
+	// Storage autoscaling (#540) is OPT-IN only: it is enabled solely by a
+	// customer-supplied `max_storage` (Options.MaxAllocatedStorage), never by a
+	// plan default. This avoids surprise cost growth — a customer charged by
+	// storage must explicitly ask for autoscaling. 0/unset = disabled.
 	i.MaxAllocatedStorage = options.MaxAllocatedStorage
-	if i.MaxAllocatedStorage == 0 {
-		i.MaxAllocatedStorage = plan.MaxAllocatedStorage
-	}
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible
 	i.BinaryLogFormat = options.BinaryLogFormat
