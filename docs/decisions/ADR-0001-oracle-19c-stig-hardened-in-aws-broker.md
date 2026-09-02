@@ -26,7 +26,7 @@ performed externally** by the CINC/InSpec overlay plus SQL-based hardening.
    `licenseModel: license-included`). See *Licensing* below — this is a liability
    decision, not a cost preference.
 3. **The broker provisions; the overlay validates.** `aws-broker` never runs
-   InSpec/Cinc. STIG controls, SQL assessment, RDS-applicability mapping, and
+   InSpec/Cinc. STIG controls, SQL hardening, RDS-applicability mapping, and
    evidence generation live in
    [`cg-oracle-database-19c-stig-overlay`](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay).
    Separation of duties: the thing being audited does not audit itself.
@@ -38,7 +38,7 @@ SE2-only; Enterprise Edition is BYOL-only.** They are mutually exclusive — LI 
 is not available.
 
 The deciding factor is platform liability. Under **BYOL**, nothing technically
-prevents a tenant provisioning Oracle **without** a valid license, and cloud.gov
+prevents a tenant provisioning Oracle **without** a valid license, and Cloud.gov
 does not want to facilitate an unlicensed Oracle database on GSA-operated
 infrastructure. Attestation reallocates that liability but does not remove it.
 Under **License Included there is no unlicensed state** — AWS holds the license and
