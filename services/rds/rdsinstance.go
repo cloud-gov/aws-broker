@@ -121,7 +121,24 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 	// instance setting unchanged (so a modify does not silently DISABLE an
 	// already-opted-in autoscaling policy). We intentionally do NOT fall back to
 	// a plan value — plans carry no autoscaling default.
+	//
+	// The max must exceed the instance's allocated storage as it will be AFTER
+	// this modify, because RDS requires MaxAllocatedStorage > AllocatedStorage.
+	// Options.Validate cannot make this check: it only sees the request, so it
+	// compares against a storage value supplied in the SAME request and has no
+	// view of the stored instance. Rejecting here rather than letting it through
+	// keeps the persisted row and the AWS parameter in agreement —
+	// prepareModifyDbInstanceInput omits MaxAllocatedStorage when it is not
+	// greater than AllocatedStorage, so accepting a too-low value would update
+	// the broker's record, skip the AWS call, and report success for a no-op.
 	if options.MaxAllocatedStorage > 0 {
+		if options.MaxAllocatedStorage <= modifiedInstance.AllocatedStorage {
+			return nil, fmt.Errorf(
+				"invalid max_storage %d; must be greater than the instance's storage %d to enable autoscaling",
+				options.MaxAllocatedStorage,
+				modifiedInstance.AllocatedStorage,
+			)
+		}
 		modifiedInstance.MaxAllocatedStorage = options.MaxAllocatedStorage
 	}
 
