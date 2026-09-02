@@ -32,6 +32,7 @@ type RDSInstance struct {
 	BackupRetentionPeriod int64  `sql:"size(255)"`
 	DbSubnetGroup         string `gorm:"-"`
 	AllocatedStorage      int64  `sql:"size(255)"`
+	MaxAllocatedStorage   int64  `sql:"size(255)"`
 	SecGroup              string `gorm:"-"`
 	PubliclyAccessible    bool   `gorm:"-"`
 
@@ -113,6 +114,15 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 
 	if options.StorageType == "gp3" && modifiedInstance.AllocatedStorage < 20 {
 		return nil, errors.New("the database must have at least 20 GB of storage to use gp3 storage volumes. Please update the \"storage\" value in your update-service command")
+	}
+
+	// Storage autoscaling max (#540) is opt-in (never a plan default). A
+	// customer-supplied max_storage sets/updates it; 0 leaves the existing
+	// instance setting unchanged (so a modify does not silently DISABLE an
+	// already-opted-in autoscaling policy). We intentionally do NOT fall back to
+	// a plan value — plans carry no autoscaling default.
+	if options.MaxAllocatedStorage > 0 {
+		modifiedInstance.MaxAllocatedStorage = options.MaxAllocatedStorage
 	}
 
 	if options.StorageType != modifiedInstance.StorageType {
@@ -251,6 +261,11 @@ func (i *RDSInstance) init(
 	if i.AllocatedStorage == 0 {
 		i.AllocatedStorage = plan.AllocatedStorage
 	}
+	// Storage autoscaling (#540) is OPT-IN only: it is enabled solely by a
+	// customer-supplied `max_storage` (Options.MaxAllocatedStorage), never by a
+	// plan default. This avoids surprise cost growth — a customer charged by
+	// storage must explicitly ask for autoscaling. 0/unset = disabled.
+	i.MaxAllocatedStorage = options.MaxAllocatedStorage
 	i.EnableFunctions = options.EnableFunctions
 	i.PubliclyAccessible = options.PubliclyAccessible
 	i.BinaryLogFormat = options.BinaryLogFormat

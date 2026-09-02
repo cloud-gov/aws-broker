@@ -91,6 +91,17 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		BackupRetentionPeriod:    backupRetentionPeriod,
 	}
 
+	// Storage autoscaling (#540): set the max when configured and greater than
+	// the current allocation (RDS requires MaxAllocatedStorage > AllocatedStorage).
+	// Left unset => the existing autoscaling policy is unchanged.
+	if i.MaxAllocatedStorage > i.AllocatedStorage {
+		maxAllocatedStorage, err := common.ConvertInt64ToInt32Safely(i.MaxAllocatedStorage)
+		if err != nil {
+			return nil, err
+		}
+		params.MaxAllocatedStorage = maxAllocatedStorage
+	}
+
 	rdsTags := ConvertTagsToRDSTags(i.getTags())
 
 	// If a custom parameter has been requested, and the feature is enabled,

@@ -42,6 +42,7 @@ type PgQueryLoggingOptions struct {
 // they are passed in via the "-c <JSON string or file>" flag.
 type Options struct {
 	AllocatedStorage                int64                  `json:"storage"`
+	MaxAllocatedStorage             int64                  `json:"max_storage"`
 	EnableFunctions                 bool                   `json:"enable_functions"`
 	PubliclyAccessible              bool                   `json:"publicly_accessible"`
 	Version                         string                 `json:"version"`
@@ -63,6 +64,18 @@ func (o Options) Validate(settings *config.Settings) error {
 	// allowed.  If allocated storage is passed in, the value defaults to 0.
 	if o.AllocatedStorage > settings.MaxAllocatedStorage {
 		return fmt.Errorf("invalid storage %d; must be <= %d", o.AllocatedStorage, settings.MaxAllocatedStorage)
+	}
+
+	// Storage-autoscaling ceiling (#540): a customer-supplied max_storage must
+	// stay within the platform maximum and, when both are supplied, must exceed
+	// the initial allocation (RDS requires MaxAllocatedStorage > AllocatedStorage).
+	if o.MaxAllocatedStorage > 0 {
+		if o.MaxAllocatedStorage > settings.MaxAllocatedStorage {
+			return fmt.Errorf("invalid max_storage %d; must be <= %d", o.MaxAllocatedStorage, settings.MaxAllocatedStorage)
+		}
+		if o.AllocatedStorage > 0 && o.MaxAllocatedStorage <= o.AllocatedStorage {
+			return fmt.Errorf("invalid max_storage %d; must be greater than storage %d to enable autoscaling", o.MaxAllocatedStorage, o.AllocatedStorage)
+		}
 	}
 
 	if o.BackupRetentionPeriod != nil && *o.BackupRetentionPeriod > settings.MaxBackupRetention {

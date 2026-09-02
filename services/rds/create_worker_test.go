@@ -435,6 +435,121 @@ func TestPrepareCreateDbInstanceInput(t *testing.T) {
 				EnableCloudwatchLogsExports: []string{"slowquery", "audit"},
 			},
 		},
+		"enables storage autoscaling when max > allocated": {
+			dbInstance: &RDSInstance{
+				AllocatedStorage:      20,
+				MaxAllocatedStorage:   100,
+				Database:              "db-1",
+				DbType:                "oracle-se2",
+				credentialUtils:       &RDSCredentialUtils{},
+				Username:              "fake-user",
+				StorageType:           "gp3",
+				BackupRetentionPeriod: 14,
+				DbSubnetGroup:         "subnet-group-1",
+				SecGroup:              "sec-group-1",
+			},
+			tags: map[string]string{
+				"foo": "bar",
+			},
+			worker: &CreateWorker{
+				settings:          &config.Settings{},
+				rds:               &mockRDSClient{},
+				optionGroupClient: &mockOptionGroupClient{},
+				parameterGroupClient: &mockParameterGroupClient{
+					rds:              &mockRDSClient{},
+					customPgroupName: "parameter-group-1",
+				},
+			},
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class-1",
+				Encrypted:     true,
+			},
+			password: "fake-password",
+			expectedParams: &rds.CreateDBInstanceInput{
+				AllocatedStorage:        aws.Int32(20),
+				MaxAllocatedStorage:     aws.Int32(100),
+				DBInstanceClass:         aws.String("class-1"),
+				DBInstanceIdentifier:    aws.String("db-1"),
+				DBName:                  aws.String("ORCL"),
+				Engine:                  aws.String("oracle-se2"),
+				MasterUserPassword:      aws.String("fake-password"),
+				MasterUsername:          aws.String("fake-user"),
+				AutoMinorVersionUpgrade: aws.Bool(true),
+				MultiAZ:                 aws.Bool(false),
+				StorageEncrypted:        aws.Bool(true),
+				StorageType:             aws.String("gp3"),
+				Tags: []rdsTypes.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
+				},
+				PubliclyAccessible:    aws.Bool(false),
+				BackupRetentionPeriod: aws.Int32(14),
+				DBSubnetGroupName:     aws.String("subnet-group-1"),
+				VpcSecurityGroupIds: []string{
+					"sec-group-1",
+				},
+				DBParameterGroupName: aws.String("parameter-group-1"),
+			},
+		},
+		"omits autoscaling when max not greater than allocated": {
+			dbInstance: &RDSInstance{
+				AllocatedStorage:      20,
+				MaxAllocatedStorage:   20,
+				Database:              "db-1",
+				DbType:                "oracle-se2",
+				credentialUtils:       &RDSCredentialUtils{},
+				Username:              "fake-user",
+				StorageType:           "gp3",
+				BackupRetentionPeriod: 14,
+				DbSubnetGroup:         "subnet-group-1",
+				SecGroup:              "sec-group-1",
+			},
+			tags: map[string]string{
+				"foo": "bar",
+			},
+			worker: &CreateWorker{
+				settings:          &config.Settings{},
+				rds:               &mockRDSClient{},
+				optionGroupClient: &mockOptionGroupClient{},
+				parameterGroupClient: &mockParameterGroupClient{
+					rds:              &mockRDSClient{},
+					customPgroupName: "parameter-group-1",
+				},
+			},
+			plan: &catalog.RDSPlan{
+				InstanceClass: "class-1",
+				Encrypted:     true,
+			},
+			password: "fake-password",
+			expectedParams: &rds.CreateDBInstanceInput{
+				AllocatedStorage:        aws.Int32(20),
+				DBInstanceClass:         aws.String("class-1"),
+				DBInstanceIdentifier:    aws.String("db-1"),
+				DBName:                  aws.String("ORCL"),
+				Engine:                  aws.String("oracle-se2"),
+				MasterUserPassword:      aws.String("fake-password"),
+				MasterUsername:          aws.String("fake-user"),
+				AutoMinorVersionUpgrade: aws.Bool(true),
+				MultiAZ:                 aws.Bool(false),
+				StorageEncrypted:        aws.Bool(true),
+				StorageType:             aws.String("gp3"),
+				Tags: []rdsTypes.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
+				},
+				PubliclyAccessible:    aws.Bool(false),
+				BackupRetentionPeriod: aws.Int32(14),
+				DBSubnetGroupName:     aws.String("subnet-group-1"),
+				VpcSecurityGroupIds: []string{
+					"sec-group-1",
+				},
+				DBParameterGroupName: aws.String("parameter-group-1"),
+			},
+		},
 	}
 
 	for name, test := range testCases {

@@ -244,6 +244,52 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		"max_storage exceeding platform maximum is rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{
+					MaxAllocatedStorage: 100,
+				},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"max_storage": 150}`),
+			},
+			expectedOptions: Options{
+				MaxAllocatedStorage: 150,
+			},
+			expectErr: true,
+		},
+		"max_storage not greater than storage is rejected": {
+			broker: &rdsBroker{
+				settings: &config.Settings{
+					MaxAllocatedStorage: 1000,
+				},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"storage": 50, "max_storage": 50}`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:    50,
+				MaxAllocatedStorage: 50,
+			},
+			expectErr: true,
+		},
+		"valid max_storage enabling autoscaling is accepted": {
+			broker: &rdsBroker{
+				settings: &config.Settings{
+					MaxAllocatedStorage: 1000,
+					MinBackupRetention:  14,
+					MaxBackupRetention:  35,
+				},
+			},
+			updateDetails: domain.UpdateDetails{
+				RawParameters: []byte(`{"storage": 20, "max_storage": 100}`),
+			},
+			expectedOptions: Options{
+				AllocatedStorage:    20,
+				MaxAllocatedStorage: 100,
+			},
+			expectErr: false,
+		},
 		"throws error on invalid JSON": {
 			broker: &rdsBroker{
 				settings: &config.Settings{},
