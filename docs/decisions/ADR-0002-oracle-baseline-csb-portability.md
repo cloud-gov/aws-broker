@@ -47,7 +47,7 @@ loading rather than the `RDSBaseline` engine interface this ADR proposes. This A
 records the intent and the reasoning so the option stays open; it does **not**
 describe current `main` architecture.
 
-Accepting it requires a decision that is not yet made: whether cloud.gov is
+Accepting it requires a decision that is not yet made: whether Cloud.gov is
 migrating RDS brokerage to the CSB at all. Building a portability abstraction for a
 migration that may not happen is speculative generality, and the honest current
 position is that the incremental imperative path is shipping working hardening
