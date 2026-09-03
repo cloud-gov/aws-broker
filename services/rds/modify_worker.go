@@ -188,18 +188,10 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 	existingParameterGroupName := i.ParameterGroupName
 	existingOptionGroupName := i.OptionGroupName
 
-	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database instance")
-	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
-		w.logger.Error("asyncModifyDb: asyncModifyDbInstance error", "err", err)
-		return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database instance %w ", err))
-	}
-
 	if i.AddReadReplica {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database replica")
 		// Add new read replica
-		err = waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
+		err := waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
 			w.logger.Error("asyncModifyDb: waitAndCreateDBReadReplica error", "err", err)
@@ -217,12 +209,20 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 
 	if i.DeleteReadReplica {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
-		err = deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
+		err := deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
 			w.logger.Error("asyncModifyDb: deleteDatabaseReadReplica error", "err", err)
 			return river.JobCancel(fmt.Errorf("asyncModifyDb: error deleting database replica %w ", err))
 		}
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database instance")
+	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
+	if err != nil {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
+		w.logger.Error("asyncModifyDb: asyncModifyDbInstance error", "err", err)
+		return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database instance %w ", err))
 	}
 
 	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {

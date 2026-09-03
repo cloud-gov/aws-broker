@@ -302,11 +302,12 @@ func (m *mockRDSClient) DescribeDBEngineVersions(ctx context.Context, params *rd
 }
 
 func (m *mockRDSClient) DescribeDBInstances(ctx context.Context, params *rds.DescribeDBInstancesInput, optFns ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error) {
-	if len(m.describeDbInstancesErrs) > 0 && m.describeDbInstancesErrs[m.describeDBInstancesCallNum] != nil {
-		return nil, m.describeDbInstancesErrs[m.describeDBInstancesCallNum]
-	}
-	output := m.describeDbInstancesResults[m.describeDBInstancesCallNum]
+	currentCallNum := m.describeDBInstancesCallNum
 	m.describeDBInstancesCallNum++
+	if len(m.describeDbInstancesErrs) > currentCallNum && m.describeDbInstancesErrs[currentCallNum] != nil {
+		return nil, m.describeDbInstancesErrs[currentCallNum]
+	}
+	output := m.describeDbInstancesResults[currentCallNum]
 	return output, nil
 }
 
