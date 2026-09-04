@@ -48,6 +48,7 @@ repos:
       # aws-broker has many shell scripts under ci/.
       - id: shellcheck
       - id: shfmt-check
+        args: ['--indent=2']
 
       # --- LINTING (Go) — NIST SA-11 / SSDF PW.7 ---
       - id: go-fmt
