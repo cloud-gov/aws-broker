@@ -122,7 +122,7 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 	}
 
 	if i.RotateCredentials && !isReplica {
-		password, err := w.credentialUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
+		password, err := w.credentialUtils.decryptCredential(i.Salt, i.Password, w.settings.EncryptionKey)
 		if err != nil {
 			return nil, err
 		}

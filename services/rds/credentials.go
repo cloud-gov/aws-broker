@@ -14,7 +14,7 @@ import (
 
 type CredentialUtils interface {
 	generatePassword(salt string, password string, key string) (string, error)
-	getPassword(salt string, password string, key string) (string, error)
+	decryptCredential(salt string, password string, key string) (string, error)
 	getCredentials(i *RDSInstance, password string) (map[string]string, error)
 	generateCredentials(settings *config.Settings) (string, string, error)
 }
@@ -47,14 +47,14 @@ func (u *RDSCredentialUtils) generatePassword(salt string, password string, key 
 	return encrypted, nil
 }
 
-func (u *RDSCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
-	if salt == "" || password == "" {
-		return "", errors.New("salt and password has to be set before getting the password")
+func (u *RDSCredentialUtils) decryptCredential(salt string, msg string, key string) (string, error) {
+	if salt == "" || msg == "" {
+		return "", errors.New("salt and msg has to be set before getting the decrypted msg")
 	}
 
 	iv, _ := base64.StdEncoding.DecodeString(salt)
 
-	decrypted, err := helpers.Decrypt(password, key, iv)
+	decrypted, err := helpers.Decrypt(msg, key, iv)
 	if err != nil {
 		return "", err
 	}

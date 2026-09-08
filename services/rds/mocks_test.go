@@ -157,7 +157,7 @@ func (m *mockCredentialUtils) generatePassword(salt string, password string, key
 	return m.mockEncryptedPassword, nil
 }
 
-func (m *mockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
+func (m *mockCredentialUtils) decryptCredential(salt string, password string, key string) (string, error) {
 	return m.mockClearPassword, m.mockGetPassworrdErr
 }
 
