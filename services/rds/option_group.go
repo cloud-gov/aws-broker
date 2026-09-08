@@ -20,6 +20,7 @@ const defaultOptionGroupPrefix = "default:"
 
 type optionGroupClient interface {
 	ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
+	ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomOptionGroups() error
 	DeleteOptionGroup(optionGroupName string) error
 	IsCustomOptionGroup(optionGroupName string) bool
@@ -54,7 +55,7 @@ func (o *awsOptionsGroupClient) IsBrokerOptionGroup(optionGroupName string) bool
 }
 
 func (o *awsOptionsGroupClient) getOptionGroupName(i *RDSInstance, majorEngineVersion string) string {
-	return o.optionGroupPrefix + formatDBName(i.Database) + "-option-" + formatDBVersion(majorEngineVersion)
+	return o.optionGroupPrefix + formatDBName(i.Database, i.DbType) + "-option-" + formatDBVersion(majorEngineVersion)
 }
 
 func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, error) {
@@ -150,8 +151,91 @@ func optionsFromGroup(optionGroup *rdsTypes.OptionGroup) []rdsTypes.OptionConfig
 	return optionConfigs
 }
 
+// ensureOptionGroupWithOptions is the single shared describe→(create if
+// absent)→modify sequence. Both public entry points funnel their AWS calls
+// through here so there is one implementation of the create/modify mechanics:
+//   - ProvisionBaselineOptionGroup (create-time): supplies the engine baseline
+//     options for a brand-new group.
+//   - ProvisionOrModifyCustomOptionGroup (modify-time): supplies the options
+//     copied from an existing custom group when migrating it to a new major
+//     version.
+//
+// The two callers differ only in *when* they fire and *which* options they
+// pass; the group create/modify mechanics live here and are not duplicated.
+// Idempotent; returns whether it created the group.
+func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
+	groupName, engineName, majorVersion, dbName string,
+	opts []rdsTypes.OptionConfiguration,
+	rdsTags []rdsTypes.Tag,
+) (bool, error) {
+	existing, err := o.describeOptionGroup(groupName)
+	if err != nil {
+		return false, err
+	}
+	created := false
+	if existing == nil {
+		log.Printf("creating option group %s for %s %s", groupName, engineName, majorVersion)
+		if _, err := o.rds.CreateOptionGroup(o.ctx, &rds.CreateOptionGroupInput{
+			OptionGroupName:        aws.String(groupName),
+			EngineName:             aws.String(engineName),
+			MajorEngineVersion:     aws.String(majorVersion),
+			OptionGroupDescription: aws.String("aws broker option group for " + dbName),
+			Tags:                   rdsTags,
+		}); err != nil {
+			return false, fmt.Errorf("create option group: %w", err)
+		}
+		created = true
+	}
+	if len(opts) > 0 {
+		if _, err := o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
+			OptionGroupName:  aws.String(groupName),
+			OptionsToInclude: opts,
+			ApplyImmediately: aws.Bool(true),
+		}); err != nil {
+			return created, fmt.Errorf("add options to option group: %w", err)
+		}
+	}
+	return created, nil
+}
+
+// ProvisionBaselineOptionGroup creates + attaches a broker-managed option group at
+// create time for engines with a baseline option set (Oracle SE2: the SSL/TCPS
+// option). No-op for engines without one (postgres/mysql). On success it sets
+// i.OptionGroupName so the create worker attaches it. Fails closed.
+//
+// Distinct from ProvisionOrModifyCustomOptionGroup: this is the *create-time*
+// path (there is no prior group; options come from the engine baseline). Both
+// share ensureOptionGroupWithOptions for the actual create/modify calls.
+func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error {
+	opts, err := oracleBaselineOptions(i)
+	if err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
+	}
+	if len(opts) == 0 {
+		return nil
+	}
+
+	majorVersion, err := o.getMajorEngineVersion(i)
+	if err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
+	}
+	groupName := o.getOptionGroupName(i, majorVersion)
+
+	if _, err := o.ensureOptionGroupWithOptions(groupName, i.DbType, majorVersion, formatDBName(i.Database, i.DbType), opts, rdsTags); err != nil {
+		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
+	}
+
+	i.OptionGroupName = groupName
+	return nil
+}
+
 // Ensures that an instance with a custom option group keeps a valid one for its target database version.
 // On a major version upgrade, we create a new option group with the new target version carrying the same options.
+//
+// Distinct from ProvisionBaselineOptionGroup: this is the *modify-time* path.
+// It only acts on instances that already carry a custom option group and only
+// when the major version changes, carrying the existing options forward. Both
+// share ensureOptionGroupWithOptions for the actual create/modify calls.
 func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error) {
 	// For now, we only manage an option group for instances that
 	// already have a custom one attached (which is captured during the reconcile step)
@@ -185,37 +269,14 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 		return false, nil
 	}
 
-	targetOptionGroup, err := o.describeOptionGroup(targetOptionGroupName)
-	if err != nil {
-		return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: %w", err)
-	}
-
-	createdOptionGroup := false
-	if targetOptionGroup == nil {
-		log.Printf("creating option group %s for %s %s", targetOptionGroupName, i.DbType, targetMajorVersion)
-		_, err = o.rds.CreateOptionGroup(o.ctx, &rds.CreateOptionGroupInput{
-			OptionGroupName:        aws.String(targetOptionGroupName),
-			EngineName:             aws.String(i.DbType),
-			MajorEngineVersion:     aws.String(targetMajorVersion),
-			OptionGroupDescription: aws.String("aws broker option group for " + formatDBName(i.Database)),
-			Tags:                   rdsTags,
-		})
-		if err != nil {
-			return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: error creating option group: %w", err)
-		}
-		createdOptionGroup = true
-	}
-
+	// Recreate the group for the new major version, carrying the same options.
 	existingOptions := optionsFromGroup(existingOptionGroup)
-	if len(existingOptions) > 0 {
-		_, err = o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
-			OptionGroupName:  aws.String(targetOptionGroupName),
-			OptionsToInclude: existingOptions,
-			ApplyImmediately: aws.Bool(true),
-		})
-		if err != nil {
-			return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: error adding options to option group: %w", err)
-		}
+	createdOptionGroup, err := o.ensureOptionGroupWithOptions(
+		targetOptionGroupName, i.DbType, targetMajorVersion, formatDBName(i.Database, i.DbType), existingOptions, rdsTags)
+	if err != nil {
+		// created=false on any error, even if the group was created before the
+		// modify failed (preserves the original contract).
+		return false, fmt.Errorf("ProvisionOrModifyCustomOptionGroup: %w", err)
 	}
 
 	i.OptionGroupName = targetOptionGroupName
