@@ -42,6 +42,10 @@ var opensearchInstanceTypeMap = map[string]opensearchTypes.OpenSearchPartitionIn
 	"m5.2xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
 	"m5.4xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceTypeM54xlargeSearch,
 	"m5.12xlarge.search": opensearchTypes.OpenSearchPartitionInstanceTypeM512xlargeSearch,
+	"r8g.medium.search":  opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+	"r8g.large.search":   opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+	"r8g.xlarge.search":  opensearchTypes.OpenSearchPartitionInstanceType("r8g.xlarge.search"),
+	"r8g.2xlarge.search": opensearchTypes.OpenSearchPartitionInstanceType("r8g.2xlarge.search"),
 }
 
 func getOpensearchInstanceTypeEnum(instanceTypeString string) (*opensearchTypes.OpenSearchPartitionInstanceType, error) {

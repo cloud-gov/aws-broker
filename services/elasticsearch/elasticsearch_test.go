@@ -16,6 +16,56 @@ import (
 	"github.com/go-test/deep"
 )
 
+func TestGetOpensearchInstanceTypeEnum(t *testing.T) {
+	testCases := map[string]struct {
+		instanceType string
+		expected     opensearchTypes.OpenSearchPartitionInstanceType
+		expectErr    bool
+	}{
+		"r8g medium": {
+			instanceType: "r8g.medium.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+		},
+		"r8g large": {
+			instanceType: "r8g.large.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+		},
+		"r8g xlarge": {
+			instanceType: "r8g.xlarge.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.xlarge.search"),
+		},
+		"r8g 2xlarge": {
+			instanceType: "r8g.2xlarge.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.2xlarge.search"),
+		},
+		"m5 2xlarge": {
+			instanceType: "m5.2xlarge.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceTypeM52xlargeSearch,
+		},
+		"invalid instance type returns error": {
+			instanceType: "bogus.instance.search",
+			expectErr:    true,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			instanceType, err := getOpensearchInstanceTypeEnum(test.instanceType)
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if *instanceType != test.expected {
+				t.Errorf("expected %q, got %q", test.expected, *instanceType)
+			}
+		})
+	}
+}
+
 func TestIsInvalidTypeException(t *testing.T) {
 	isInvalidType := isInvalidTypeException(&opensearchTypes.InvalidTypeException{})
 	if !isInvalidType {
@@ -128,6 +178,105 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				},
 				EncryptionAtRestOptions: &opensearchTypes.EncryptionAtRestOptions{
 					Enabled: aws.Bool(false),
+				},
+			},
+		},
+		"r8g single node": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                     "test-domain",
+				DataCount:                  1,
+				SubnetID2AZ2:               "az-2",
+				SecGroup:                   "group-1",
+				EncryptAtRest:              true,
+				VolumeSize:                 10,
+				VolumeType:                 "gp3",
+				InstanceType:               "r8g.large.search",
+				NodeToNodeEncryption:       true,
+				AutomatedSnapshotStartHour: 0,
+			},
+			accessPolicy: "fake-access-policy",
+			expectedParams: &opensearch.CreateDomainInput{
+				DomainName:     aws.String("test-domain"),
+				AccessPolicies: aws.String("fake-access-policy"),
+				VPCOptions: &opensearchTypes.VPCOptions{
+					SubnetIds:        []string{"az-2"},
+					SecurityGroupIds: []string{"group-1"},
+				},
+				DomainEndpointOptions: &opensearchTypes.DomainEndpointOptions{
+					EnforceHTTPS: aws.Bool(true),
+				},
+				EBSOptions: &opensearchTypes.EBSOptions{
+					EBSEnabled: aws.Bool(true),
+					VolumeSize: aws.Int32(int32(10)),
+					VolumeType: opensearchTypes.VolumeTypeGp3,
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+					InstanceCount: aws.Int32(int32(1)),
+				},
+				SnapshotOptions: &opensearchTypes.SnapshotOptions{
+					AutomatedSnapshotStartHour: aws.Int32(int32(0)),
+				},
+				NodeToNodeEncryptionOptions: &opensearchTypes.NodeToNodeEncryptionOptions{
+					Enabled: aws.Bool(true),
+				},
+				EncryptionAtRestOptions: &opensearchTypes.EncryptionAtRestOptions{
+					Enabled: aws.Bool(true),
+				},
+			},
+		},
+		"r8g HA with dedicated master": {
+			esInstance: &ElasticsearchInstance{
+				Domain:                     "test-domain",
+				DataCount:                  2,
+				SubnetID3AZ1:               "az-3",
+				SubnetID4AZ2:               "az-4",
+				SecGroup:                   "group-1",
+				EncryptAtRest:              true,
+				VolumeSize:                 10,
+				VolumeType:                 "gp3",
+				InstanceType:               "r8g.xlarge.search",
+				MasterEnabled:              true,
+				MasterCount:                3,
+				MasterInstanceType:         "r8g.large.search",
+				NodeToNodeEncryption:       true,
+				AutomatedSnapshotStartHour: 0,
+			},
+			accessPolicy: "fake-access-policy",
+			expectedParams: &opensearch.CreateDomainInput{
+				DomainName:     aws.String("test-domain"),
+				AccessPolicies: aws.String("fake-access-policy"),
+				VPCOptions: &opensearchTypes.VPCOptions{
+					SubnetIds:        []string{"az-3", "az-4"},
+					SecurityGroupIds: []string{"group-1"},
+				},
+				DomainEndpointOptions: &opensearchTypes.DomainEndpointOptions{
+					EnforceHTTPS: aws.Bool(true),
+				},
+				EBSOptions: &opensearchTypes.EBSOptions{
+					EBSEnabled: aws.Bool(true),
+					VolumeSize: aws.Int32(int32(10)),
+					VolumeType: opensearchTypes.VolumeTypeGp3,
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceType("r8g.xlarge.search"),
+					InstanceCount:          aws.Int32(int32(2)),
+					DedicatedMasterEnabled: aws.Bool(true),
+					DedicatedMasterCount:   aws.Int32(int32(3)),
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+					ZoneAwarenessEnabled:   aws.Bool(true),
+					ZoneAwarenessConfig: &opensearchTypes.ZoneAwarenessConfig{
+						AvailabilityZoneCount: aws.Int32(int32(2)),
+					},
+				},
+				SnapshotOptions: &opensearchTypes.SnapshotOptions{
+					AutomatedSnapshotStartHour: aws.Int32(int32(0)),
+				},
+				NodeToNodeEncryptionOptions: &opensearchTypes.NodeToNodeEncryptionOptions{
+					Enabled: aws.Bool(true),
+				},
+				EncryptionAtRestOptions: &opensearchTypes.EncryptionAtRestOptions{
+					Enabled: aws.Bool(true),
 				},
 			},
 		},
