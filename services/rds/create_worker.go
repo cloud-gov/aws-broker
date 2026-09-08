@@ -223,7 +223,7 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
 	operation := base.CreateOp
 
-	password, err := w.credentialUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
+	password, err := w.credentialUtils.decryptCredential(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
 		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))

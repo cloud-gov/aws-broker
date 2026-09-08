@@ -408,7 +408,7 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	password, err := existingInstance.decryptCredential(broker.settings.EncryptionKey)
 	if err != nil {
 		return binding, apiresponses.NewFailureResponse(
 			fmt.Errorf("unable to get instance password: %s", err),
@@ -451,7 +451,7 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 		return apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.getPassword(broker.settings.EncryptionKey)
+	password, err := existingInstance.decryptCredential(broker.settings.EncryptionKey)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			fmt.Errorf("unable to get instance password: %s", err),

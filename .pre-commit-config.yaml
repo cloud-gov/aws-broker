@@ -22,7 +22,7 @@
 
 repos:
   - repo: https://github.com/cloud-gov/pre-commit-templates
-    rev: v0.6.0
+    rev: v0.6.1
     hooks:
       # --- HYGIENE (all repos) — NIST SA-15 / SSDF PO.3 ---
       - id: check-merge-conflict
@@ -48,6 +48,7 @@ repos:
       # aws-broker has many shell scripts under ci/.
       - id: shellcheck
       - id: shfmt-check
+        args: ['--indent=2']
 
       # --- LINTING (Go) — NIST SA-11 / SSDF PW.7 ---
       - id: go-fmt

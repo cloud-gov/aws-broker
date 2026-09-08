@@ -449,6 +449,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				},
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						nil,
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
@@ -464,7 +465,7 @@ func TestAsyncModifyDb(t *testing.T) {
 							},
 						},
 					},
-					describeDbInstancesErrs: []error{nil, nil, dbInstanceNotFoundErr},
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
 				},
 				slog.New(&testutil.MockLogHandler{}),
 				&mockParameterGroupClient{},
