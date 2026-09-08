@@ -714,6 +714,22 @@ jobs:
                 DB_TYPE: mysql
                 ALLOW_MAJOR_VERSION_UPGRADE: true
 
+            - task: smoke-tests-replica-update-version-with-param-group
+              file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: micro-psql-replica
+                OLD_VERSION: 18.3
+                NEW_VERSION: 18.6
+                ENABLE_PG_CRON_ON_CREATE: 'true'
+                DB_TYPE: postgres
+
             - task: smoke-tests-oracle
               file: aws-broker-app/ci/run-smoke-tests.yml
               image: general-task

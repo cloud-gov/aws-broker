@@ -2,6 +2,7 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 # Log in to CF
@@ -19,6 +20,7 @@ ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS=${ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS:-""}
 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE=${ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE:-""}
 LONG_QUERY_TIME=${LONG_QUERY_TIME:-""}
 PG_QUERY_LOGGING=${PG_QUERY_LOGGING:-""}
+ENABLE_PG_CRON_ON_CREATE=${ENABLE_PG_CRON_ON_CREATE:-""}
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-update-$SERVICE_PLAN"
@@ -41,6 +43,10 @@ fi
 
 if [ -n "$ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE" ]; then
   create_service_args+=(-c "{\"enable_cloudwatch_log_groups_exports\": $ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS_ON_CREATE}")
+fi
+
+if [ -n "$ENABLE_PG_CRON_ON_CREATE" ]; then
+  create_service_args+=(-c "{\"enable_pg_cron\": true}")
 fi
 
 cf create-service "${create_service_args[@]}"

@@ -102,7 +102,7 @@ func (i *ElasticsearchInstance) setPassword(password, key string) error {
 	return nil
 }
 
-func (i *ElasticsearchInstance) getPassword(key string) (string, error) {
+func (i *ElasticsearchInstance) decryptCredential(key string) (string, error) {
 	if i.Salt == "" || i.Password == "" {
 		return "", errors.New("salt and password has to be set before writing the password")
 	}

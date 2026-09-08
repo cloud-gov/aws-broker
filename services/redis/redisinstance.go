@@ -67,7 +67,7 @@ func (i *RedisInstance) setPassword(password, key string) error {
 	return nil
 }
 
-func (i *RedisInstance) getPassword(key string) (string, error) {
+func (i *RedisInstance) decryptCredential(key string) (string, error) {
 	if i.Salt == "" || i.Password == "" {
 		return "", errors.New("salt and password has to be set before writing the password")
 	}

@@ -122,7 +122,7 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 	}
 
 	if i.RotateCredentials && !isReplica {
-		password, err := w.credentialUtils.getPassword(i.Salt, i.Password, w.settings.EncryptionKey)
+		password, err := w.credentialUtils.decryptCredential(i.Salt, i.Password, w.settings.EncryptionKey)
 		if err != nil {
 			return nil, err
 		}
@@ -138,18 +138,15 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 }
 
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
-	existingParameterGroupName := i.ParameterGroupName
-	existingOptionGroupName := i.OptionGroupName
+	databaseOperationTarget := "primary database"
+	if isReplica {
+		databaseOperationTarget = "replica database"
+	}
 
 	modifyParams, err := w.prepareModifyDbInstanceInput(i, plan, database, isReplica)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing database modify parameters: %s", err))
 		return fmt.Errorf("asyncModifyDb, error preparing modify database input: %w", err)
-	}
-
-	databaseOperationTarget := "primary database"
-	if isReplica {
-		databaseOperationTarget = "replica database"
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Waiting for %s to be ready", databaseOperationTarget))
@@ -173,25 +170,6 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 		return fmt.Errorf("asyncModifyDbInstance, error waiting for database to be ready: %w", err)
 	}
 
-	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting old %s parameter group", databaseOperationTarget))
-		err = w.parameterGroupClient.DeleteParameterGroup(existingParameterGroupName)
-		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
-			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
-		}
-	}
-
-	if existingOptionGroupName != "" && i.OptionGroupName != existingOptionGroupName {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting old %s option group", databaseOperationTarget))
-		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
-		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
-		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup")
-			w.logger.Warn("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup", "optionGroup", existingOptionGroupName, "err", err)
-		}
-	}
-
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Updating %s tags", databaseOperationTarget))
 	err = updateDBTags(ctx, w.rds, i, *modifyOutput.DBInstance.DBInstanceArn)
 	if err != nil {
@@ -207,18 +185,13 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 	serviceID := i.ServiceID
 	uuid := i.Uuid
 
-	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database instance")
-	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
-		w.logger.Error("asyncModifyDb: asyncModifyDbInstance error", "err", err)
-		return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database instance %w ", err))
-	}
+	existingParameterGroupName := i.ParameterGroupName
+	existingOptionGroupName := i.OptionGroupName
 
 	if i.AddReadReplica {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database replica")
 		// Add new read replica
-		err = waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
+		err := waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
 			w.logger.Error("asyncModifyDb: waitAndCreateDBReadReplica error", "err", err)
@@ -236,11 +209,38 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 
 	if i.DeleteReadReplica {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
-		err = deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
+		err := deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
 		if err != nil {
 			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
 			w.logger.Error("asyncModifyDb: deleteDatabaseReadReplica error", "err", err)
 			return river.JobCancel(fmt.Errorf("asyncModifyDb: error deleting database replica %w ", err))
+		}
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database instance")
+	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
+	if err != nil {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
+		w.logger.Error("asyncModifyDb: asyncModifyDbInstance error", "err", err)
+		return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database instance %w ", err))
+	}
+
+	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old parameter group")
+		err = w.parameterGroupClient.DeleteParameterGroup(existingParameterGroupName)
+		if err != nil {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
+			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+		}
+	}
+
+	if existingOptionGroupName != "" && i.OptionGroupName != existingOptionGroupName {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old option group")
+		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
+		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
+		if err != nil {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup")
+			w.logger.Warn("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup", "optionGroup", existingOptionGroupName, "err", err)
 		}
 	}
 

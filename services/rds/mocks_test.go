@@ -157,7 +157,7 @@ func (m *mockCredentialUtils) generatePassword(salt string, password string, key
 	return m.mockEncryptedPassword, nil
 }
 
-func (m *mockCredentialUtils) getPassword(salt string, password string, key string) (string, error) {
+func (m *mockCredentialUtils) decryptCredential(salt string, password string, key string) (string, error) {
 	return m.mockClearPassword, m.mockGetPassworrdErr
 }
 
@@ -302,11 +302,12 @@ func (m *mockRDSClient) DescribeDBEngineVersions(ctx context.Context, params *rd
 }
 
 func (m *mockRDSClient) DescribeDBInstances(ctx context.Context, params *rds.DescribeDBInstancesInput, optFns ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error) {
-	if len(m.describeDbInstancesErrs) > 0 && m.describeDbInstancesErrs[m.describeDBInstancesCallNum] != nil {
-		return nil, m.describeDbInstancesErrs[m.describeDBInstancesCallNum]
-	}
-	output := m.describeDbInstancesResults[m.describeDBInstancesCallNum]
+	currentCallNum := m.describeDBInstancesCallNum
 	m.describeDBInstancesCallNum++
+	if len(m.describeDbInstancesErrs) > currentCallNum && m.describeDbInstancesErrs[currentCallNum] != nil {
+		return nil, m.describeDbInstancesErrs[currentCallNum]
+	}
+	output := m.describeDbInstancesResults[currentCallNum]
 	return output, nil
 }
 
