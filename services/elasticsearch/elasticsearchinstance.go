@@ -235,6 +235,24 @@ func (i *ElasticsearchInstance) versionUpgradeInProgress() bool {
 	return i.TargetElasticsearchVersion != ""
 }
 
+// applyPlan applies the sizing and identity fields of a new plan to the instance
+// during a plan change (upgrade). It intentionally does NOT change subnet or
+// zone-awareness topology; the broker only permits same-HA-tier plan changes so
+// the AZ/subnet layout is unchanged.
+func (i *ElasticsearchInstance) applyPlan(plan catalog.ElasticsearchPlan) {
+	i.PlanID = plan.ID
+	i.Description = plan.Description
+	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
+	i.DataCount, _ = strconv.Atoi(plan.DataCount)
+	i.InstanceType = plan.InstanceType
+	i.MasterInstanceType = plan.MasterInstanceType
+	i.MasterEnabled = plan.MasterEnabled
+	if newVolumeSize, err := strconv.Atoi(plan.VolumeSize); err == nil && newVolumeSize > i.VolumeSize {
+		// Volume size can only grow on an existing domain.
+		i.VolumeSize = newVolumeSize
+	}
+}
+
 func (i *ElasticsearchInstance) setTags(
 	plan catalog.ElasticsearchPlan,
 	tags map[string]string,

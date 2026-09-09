@@ -1,6 +1,9 @@
 package catalog
 
 import (
+	"strconv"
+	"strings"
+
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 )
 
@@ -83,4 +86,71 @@ func (p ElasticsearchPlan) CheckVersion(version string) bool {
 	}
 
 	return false
+}
+
+// instanceSizeRank maps an OpenSearch/Elasticsearch instance type string to a
+// number so plans can be ordered from smallest to largest. Larger
+// numbers are bigger instances.
+var instanceSizeRank = map[string]int{
+	// r8g memory-optimized family (used by the memory-optimized plans)
+	"r8g.medium.search":  10,
+	"r8g.large.search":   20,
+	"r8g.xlarge.search":  30,
+	"r8g.2xlarge.search": 40,
+	// general-purpose / compute families
+	"t3.small.search":    1,
+	"c5.large.search":    15,
+	"c5.xlarge.search":   25,
+	"c5.2xlarge.search":  35,
+	"m5.2xlarge.search":  36,
+	"m5.4xlarge.search":  45,
+	"m5.12xlarge.search": 55,
+}
+
+// dataCount returns the plan's configured data-node count as an int (0 if unset/invalid).
+func (p ElasticsearchPlan) dataCount() int {
+	n, _ := strconv.Atoi(p.DataCount)
+	return n
+}
+
+// IsHighlyAvailable reports whether the plan is a highly-available (HA) plan.
+//
+// In the catalog, HA plans are named with an "-ha" suffix and run more data
+// nodes (4) than their non-HA counterparts (2),
+func (p ElasticsearchPlan) IsHighlyAvailable() bool {
+	return strings.HasSuffix(strings.ToLower(p.Name), "-ha")
+}
+
+// SizeRank returns a comparable number for the plan's overall size. It combines
+// the instance-type rank with the data-node count so that, within the same
+// instance type, more data nodes rank larger.
+func (p ElasticsearchPlan) SizeRank() int {
+	base, ok := instanceSizeRank[strings.ToLower(p.InstanceType)]
+	if !ok {
+		return -1
+	}
+	return base*100 + p.dataCount()
+}
+
+// CanUpgradeTo reports whether an instance currently on plan p may be updated to
+// target. The rules are:
+//   - HA status must match exactly (HA -> HA, non-HA -> non-HA). Crossing
+//     between HA and non-HA in either direction is not allowed, because AWS
+//     OpenSearch cannot toggle zone awareness / change subnet topology in place.
+//   - The target must be the same size or larger (no downgrades).
+func (p ElasticsearchPlan) CanUpgradeTo(target ElasticsearchPlan) (bool, string) {
+	if p.IsHighlyAvailable() != target.IsHighlyAvailable() {
+		return false, "cannot change between highly-available and non-highly-available plans; HA plans may only move to HA plans and non-HA to non-HA"
+	}
+
+	from := p.SizeRank()
+	to := target.SizeRank()
+	if from < 0 || to < 0 {
+		return false, "unable to determine plan sizes for the requested plan change"
+	}
+	if to < from {
+		return false, "downgrading to a smaller plan is not supported; the target plan must be the same size or larger"
+	}
+
+	return true, ""
 }

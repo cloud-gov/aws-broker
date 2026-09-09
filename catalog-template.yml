@@ -1494,6 +1494,7 @@ elasticsearch:
   name: "aws-elasticsearch"
   description: "AWS Elasticsearch Broker"
   bindable: true
+  plan_updateable: true
   tags:
   - "elasticsearch"
   - "aws"

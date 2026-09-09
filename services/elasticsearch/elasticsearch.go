@@ -619,6 +619,52 @@ func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.Updat
 		AdvancedOptions: AdvancedOptions,
 	}
 
+	// Apply cluster sizing so plan upgrades (instance type / data-node count /
+	// dedicated master config) take effect. We do NOT touch subnets or zone
+	// awareness here: the broker only allows same-HA-tier plan changes, so the
+	// AZ/subnet topology of the existing domain is unchanged.
+	if i.InstanceType != "" {
+		instanceType, err := getOpensearchInstanceTypeEnum(i.InstanceType)
+		if err != nil {
+			return nil, err
+		}
+
+		instanceCount, err := common.ConvertIntToInt32Safely(i.DataCount)
+		if err != nil {
+			return nil, err
+		}
+
+		clusterConfig := &opensearchTypes.ClusterConfig{
+			InstanceType:  *instanceType,
+			InstanceCount: aws.Int32(*instanceCount),
+		}
+
+		if i.DataCount > 1 {
+			clusterConfig.ZoneAwarenessEnabled = aws.Bool(true)
+			clusterConfig.ZoneAwarenessConfig = &opensearchTypes.ZoneAwarenessConfig{
+				AvailabilityZoneCount: aws.Int32(2),
+			}
+		}
+
+		if i.MasterEnabled {
+			masterInstanceType, err := getOpensearchInstanceTypeEnum(i.MasterInstanceType)
+			if err != nil {
+				return nil, err
+			}
+
+			masterCount, err := common.ConvertIntToInt32Safely(i.MasterCount)
+			if err != nil {
+				return nil, err
+			}
+
+			clusterConfig.DedicatedMasterEnabled = aws.Bool(true)
+			clusterConfig.DedicatedMasterCount = aws.Int32(*masterCount)
+			clusterConfig.DedicatedMasterType = *masterInstanceType
+		}
+
+		params.ClusterConfig = clusterConfig
+	}
+
 	if i.VolumeSize != 0 && i.VolumeType != "" {
 		volumeType, err := getOpensearchVolumeTypeEnum(i.VolumeType)
 		if err != nil {

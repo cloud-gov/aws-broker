@@ -244,8 +244,30 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 	}
 
 	if esInstance.PlanID != details.PlanID {
-		//nolint:staticcheck // ST1005: user-facing API error returned in the HTTP failure response; intentionally sentence-case for readability.
-		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
+		currentPlan, err := broker.catalog.ElasticsearchService.FetchPlan(esInstance.PlanID)
+		if err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching current plan")
+		}
+		newPlan, err := broker.catalog.ElasticsearchService.FetchPlan(details.PlanID)
+		if err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching requested plan")
+		}
+
+		if ok, reason := currentPlan.CanUpgradeTo(newPlan); !ok {
+			//nolint:staticcheck // ST1005: user-facing API error returned in the HTTP failure response; intentionally sentence-case for readability.
+			return apiresponses.NewFailureResponse(errors.New(reason), http.StatusBadRequest, "validate plan change")
+		}
+
+		// A plan change cannot be combined with a version upgrade in the same call.
+		if options.ElasticsearchVersion != "" {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("plan change cannot be combined with an engine version upgrade; please make a separate update-service call"),
+				http.StatusBadRequest,
+				"validate plan change",
+			)
+		}
+
+		esInstance.applyPlan(newPlan)
 	}
 
 	if options.ElasticsearchVersion != "" {
