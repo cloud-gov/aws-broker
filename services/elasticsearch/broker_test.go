@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"log/slog"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -117,6 +118,14 @@ func TestModifyInstance(t *testing.T) {
 		existingVersion          string
 		versionUpgradeInProgress bool
 		expectedErrMsg           string
+		// plan change fields
+		currentPlanName     string
+		currentInstanceType string
+		currentDataCount    string
+		targetPlanID        string
+		targetPlanName      string
+		targetInstanceType  string
+		targetDataCount     string
 	}{
 		"valid version accepted": {
 			options: ElasticsearchOptions{
@@ -140,6 +149,68 @@ func TestModifyInstance(t *testing.T) {
 			existingVersion: "OpenSearch_1.3",
 			expectedErrMsg:  "engine version upgrade cannot be combined with other configuration options",
 		},
+		"non-HA upgrade to larger plan accepted": {
+			currentPlanName:     "es-medium-memory-optimized",
+			currentInstanceType: "r8g.medium.search",
+			currentDataCount:    "2",
+			targetPlanID:        "plan-large",
+			targetPlanName:      "es-large-memory-optimized",
+			targetInstanceType:  "r8g.large.search",
+			targetDataCount:     "2",
+		},
+		"non-HA downgrade rejected": {
+			currentPlanName:     "es-large-memory-optimized",
+			currentInstanceType: "r8g.large.search",
+			currentDataCount:    "2",
+			targetPlanID:        "plan-medium",
+			targetPlanName:      "es-medium-memory-optimized",
+			targetInstanceType:  "r8g.medium.search",
+			targetDataCount:     "2",
+			expectedErrMsg:      "downgrading",
+		},
+		"non-HA to HA rejected": {
+			currentPlanName:     "es-medium-memory-optimized",
+			currentInstanceType: "r8g.medium.search",
+			currentDataCount:    "2",
+			targetPlanID:        "plan-medium-ha",
+			targetPlanName:      "es-medium-memory-optimized-ha",
+			targetInstanceType:  "r8g.medium.search",
+			targetDataCount:     "4",
+			expectedErrMsg:      "highly-available",
+		},
+		"HA to non-HA rejected": {
+			currentPlanName:     "es-large-memory-optimized-ha",
+			currentInstanceType: "r8g.large.search",
+			currentDataCount:    "4",
+			targetPlanID:        "plan-large",
+			targetPlanName:      "es-large-memory-optimized",
+			targetInstanceType:  "r8g.large.search",
+			targetDataCount:     "2",
+			expectedErrMsg:      "highly-available",
+		},
+		"HA upgrade to larger HA accepted": {
+			currentPlanName:     "es-medium-memory-optimized-ha",
+			currentInstanceType: "r8g.medium.search",
+			currentDataCount:    "4",
+			targetPlanID:        "plan-large-ha",
+			targetPlanName:      "es-large-memory-optimized-ha",
+			targetInstanceType:  "r8g.large.search",
+			targetDataCount:     "4",
+		},
+		"plan change with version upgrade rejected": {
+			options: ElasticsearchOptions{
+				ElasticsearchVersion: "OpenSearch_2.3",
+			},
+			existingVersion:     "OpenSearch_1.3",
+			currentPlanName:     "es-medium-memory-optimized",
+			currentInstanceType: "r8g.medium.search",
+			currentDataCount:    "2",
+			targetPlanID:        "plan-large",
+			targetPlanName:      "es-large-memory-optimized",
+			targetInstanceType:  "r8g.large.search",
+			targetDataCount:     "2",
+			expectedErrMsg:      "plan change cannot be combined with an engine version upgrade",
+		},
 	}
 
 	for name, test := range testCases {
@@ -162,6 +233,10 @@ func TestModifyInstance(t *testing.T) {
 					Uuid: instanceId,
 				},
 				ElasticsearchVersion: test.existingVersion,
+				InstanceType:         test.currentInstanceType,
+			}
+			if test.currentDataCount != "" {
+				existingInstance.DataCount, _ = strconv.Atoi(test.currentDataCount)
 			}
 			if test.versionUpgradeInProgress {
 				existingInstance.TargetElasticsearchVersion = "OpenSearch_2.3"
@@ -174,22 +249,35 @@ func TestModifyInstance(t *testing.T) {
 			}
 
 			rawParams, _ := json.Marshal(test.options)
+			targetPlanID := planId
+			if test.targetPlanID != "" {
+				targetPlanID = test.targetPlanID
+			}
 			updateDetails := domain.UpdateDetails{
-				PlanID:        planId,
+				PlanID:        targetPlanID,
 				RawParameters: rawParams,
+			}
+
+			plans := []catalog.ElasticsearchPlan{
+				{
+					ServicePlan:  domain.ServicePlan{ID: planId, Name: test.currentPlanName},
+					InstanceType: test.currentInstanceType,
+					DataCount:    test.currentDataCount,
+				},
+			}
+			if test.targetPlanID != "" {
+				plans = append(plans, catalog.ElasticsearchPlan{
+					ServicePlan:  domain.ServicePlan{ID: test.targetPlanID, Name: test.targetPlanName},
+					InstanceType: test.targetInstanceType,
+					DataCount:    test.targetDataCount,
+				})
 			}
 
 			broker := &elasticsearchBroker{
 				brokerDB: brokerDb,
 				catalog: &catalog.Catalog{
 					ElasticsearchService: catalog.ElasticsearchService{
-						ElasticsearchPlans: []catalog.ElasticsearchPlan{
-							{
-								ServicePlan: domain.ServicePlan{
-									ID: planId,
-								},
-							},
-						},
+						ElasticsearchPlans: plans,
 					},
 				},
 				settings: &config.Settings{

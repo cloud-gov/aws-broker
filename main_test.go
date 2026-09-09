@@ -1443,9 +1443,12 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(resp.Body.String(), "Updating Elasticsearch service instances is not supported at this time") {
-		t.Error(urlAcceptsIncomplete, "should return a message that Elasticsearch services cannot be modified at this time")
+	// The requested plan change (aws-standard -> aws-dev) is both a size
+	// downgrade and an HA-tier change, so it must be rejected.
+	if !strings.Contains(resp.Body.String(), "highly-available") &&
+		!strings.Contains(resp.Body.String(), "downgrading") &&
+		!strings.Contains(resp.Body.String(), "unable to determine plan sizes") {
+		t.Error(urlAcceptsIncomplete, "should return a message explaining why the plan change is not allowed")
 	}
 
 	// Reload the instance and check to see that the plan has not been modified.
