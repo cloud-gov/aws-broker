@@ -206,6 +206,12 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
+            aws-elasticsearch:es-medium-memory-optimized
+            aws-elasticsearch:es-medium-memory-optimized-ha
+            aws-elasticsearch:es-large-memory-optimized
+            aws-elasticsearch:es-large-memory-optimized-ha
+            aws-elasticsearch:es-xlarge-memory-optimized
+            aws-elasticsearch:es-xlarge-memory-optimized-ha
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
