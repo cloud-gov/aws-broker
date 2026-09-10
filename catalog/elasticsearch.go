@@ -121,6 +121,12 @@ func (p ElasticsearchPlan) IsHighlyAvailable() bool {
 	return strings.HasSuffix(strings.ToLower(p.Name), "-ha")
 }
 
+// IsZoneAware reports whether the plan's domain is created with zone awareness
+// enabled and spread across two subnets.
+func (p ElasticsearchPlan) IsZoneAware() bool {
+	return p.dataCount() > 1
+}
+
 // SizeRank returns a comparable number for the plan's overall size. It combines
 // the instance-type rank with the data-node count so that, within the same
 // instance type, more data nodes rank larger.
@@ -137,10 +143,17 @@ func (p ElasticsearchPlan) SizeRank() int {
 //   - HA status must match exactly (HA -> HA, non-HA -> non-HA). Crossing
 //     between HA and non-HA in either direction is not allowed, because AWS
 //     OpenSearch cannot toggle zone awareness / change subnet topology in place.
+//   - Zone awareness must match exactly. A single-data-node plan is created on one
+//     subnet with zone awareness off, so it may only move to another
+//     single-data-node plan.
 //   - The target must be the same size or larger (no downgrades).
 func (p ElasticsearchPlan) CanUpgradeTo(target ElasticsearchPlan) (bool, string) {
 	if p.IsHighlyAvailable() != target.IsHighlyAvailable() {
 		return false, "cannot change between highly-available and non-highly-available plans; HA plans may only move to HA plans and non-HA to non-HA"
+	}
+
+	if p.IsZoneAware() != target.IsZoneAware() {
+		return false, "cannot change between single-node and multi-node plans; a single-node plan runs on one subnet without zone awareness and may only move to another single-node plan"
 	}
 
 	from := p.SizeRank()

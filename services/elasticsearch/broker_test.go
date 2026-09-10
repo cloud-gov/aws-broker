@@ -3,11 +3,13 @@ package elasticsearch
 import (
 	"encoding/json"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"strings"
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
+	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
@@ -118,6 +120,7 @@ func TestModifyInstance(t *testing.T) {
 		existingVersion          string
 		versionUpgradeInProgress bool
 		expectedErrMsg           string
+		expectedStatus           int
 		// plan change fields
 		currentPlanName     string
 		currentInstanceType string
@@ -196,6 +199,28 @@ func TestModifyInstance(t *testing.T) {
 			targetPlanName:      "es-large-memory-optimized-ha",
 			targetInstanceType:  "r8g.large.search",
 			targetDataCount:     "4",
+		},
+		"single-node plan to multi-node plan rejected": {
+			currentPlanName:     "es-dev",
+			currentInstanceType: "t3.small.search",
+			currentDataCount:    "1",
+			targetPlanID:        "plan-medium",
+			targetPlanName:      "es-medium-memory-optimized",
+			targetInstanceType:  "r8g.medium.search",
+			targetDataCount:     "2",
+			expectedErrMsg:      "single-node and multi-node",
+			expectedStatus:      http.StatusBadRequest,
+		},
+		"multi-node plan to single-node plan rejected": {
+			currentPlanName:     "es-medium-memory-optimized",
+			currentInstanceType: "r8g.medium.search",
+			currentDataCount:    "2",
+			targetPlanID:        "plan-dev",
+			targetPlanName:      "es-dev",
+			targetInstanceType:  "t3.small.search",
+			targetDataCount:     "1",
+			expectedErrMsg:      "single-node and multi-node",
+			expectedStatus:      http.StatusBadRequest,
 		},
 		"plan change with version upgrade rejected": {
 			options: ElasticsearchOptions{
@@ -296,6 +321,24 @@ func TestModifyInstance(t *testing.T) {
 				}
 				if !strings.Contains(err.Error(), test.expectedErrMsg) {
 					t.Fatalf("expected error containing %q, got %q", test.expectedErrMsg, err.Error())
+				}
+				if test.expectedStatus != 0 {
+					failure, ok := err.(*apiresponses.FailureResponse)
+					if !ok {
+						t.Fatalf("expected *apiresponses.FailureResponse, got %T", err)
+					}
+					if got := failure.ValidatedStatusCode(nil); got != test.expectedStatus {
+						t.Fatalf("expected HTTP status %d, got %d", test.expectedStatus, got)
+					}
+				}
+				if test.targetPlanID != "" {
+					persisted := ElasticsearchInstance{}
+					if err := brokerDb.Where("uuid = ?", instanceId).First(&persisted).Error; err != nil {
+						t.Fatalf("reloading instance: %s", err)
+					}
+					if persisted.PlanID != planId {
+						t.Fatalf("expected instance to remain on plan %q after rejection, got %q", planId, persisted.PlanID)
+					}
 				}
 			} else {
 				if err != nil {

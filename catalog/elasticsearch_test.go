@@ -77,6 +77,8 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 	mediumHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized-ha"}, InstanceType: "r8g.medium.search", DataCount: "4"}
 	largeHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized-ha"}, InstanceType: "r8g.large.search", DataCount: "4"}
 	unknown := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-mystery"}, InstanceType: "z9z.mystery.search", DataCount: "2"}
+	esDev := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "t3.small.search", DataCount: "1"}
+	esDevMigration := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev-6.8-migration"}, InstanceType: "t3.small.search", DataCount: "1"}
 
 	testCases := map[string]struct {
 		from      ElasticsearchPlan
@@ -144,6 +146,28 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			to:        unknown,
 			expectOK:  false,
 			expectMsg: "unable to determine plan sizes",
+		},
+		"single node to multi-node non-HA blocked": {
+			from:      esDev,
+			to:        mediumNonHA,
+			expectOK:  false,
+			expectMsg: "single-node and multi-node",
+		},
+		"single node to same single node allowed": {
+			from:     esDev,
+			to:       esDev,
+			expectOK: true,
+		},
+		"single node to other single node plan allowed": {
+			from:     esDevMigration,
+			to:       esDev,
+			expectOK: true,
+		},
+		"multi-node to single node blocked": {
+			from:      mediumNonHA,
+			to:        esDev,
+			expectOK:  false,
+			expectMsg: "single-node and multi-node",
 		},
 	}
 
