@@ -56,6 +56,7 @@ func NewCreateWorker(
 		s3:         s3,
 		logs:       logs,
 		logger:     logger,
+		sts:        sts,
 	}
 }
 
