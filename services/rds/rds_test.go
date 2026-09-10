@@ -791,6 +791,30 @@ func TestReconcileDbState(t *testing.T) {
 			dbInstance: RDSInstance{},
 			expectErr:  true,
 		},
+		"remove replica properties": {
+			ctx: t.Context(),
+			dbAdapter: NewTestDedicatedDBAdapter(
+				t.Context(),
+				brokerDB,
+				&config.Settings{},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{}, // has no replica properties
+							},
+						},
+					},
+				},
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
+			),
+			dbInstance: RDSInstance{
+				ReplicaDatabase:     "replica",
+				ReplicaDatabaseHost: "host",
+			},
+			expectedInstance: &RDSInstance{},
+		},
 	}
 
 	for name, test := range testCases {

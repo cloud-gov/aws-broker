@@ -226,7 +226,7 @@ func deleteDatabaseReadReplica(
 	if err != nil {
 		return fmt.Errorf("deleteDatabaseReadReplica: %w", err)
 	}
-	i.ReplicaDatabase = ""
+	i.removeReplicaDatabaseProperties()
 	return nil
 }
 
