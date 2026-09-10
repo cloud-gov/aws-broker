@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -81,7 +82,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		Tags:     iamTags,
 	})
 	if err != nil {
-		errorMsg := "createElasticsearch: user.Create err"
+		errorMsg := "error creating user"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -104,7 +105,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 	userResp, err := w.iam.GetUser(ctx, userParams)
 	if err != nil {
-		errorMsg := "createElasticsearch: GetUser err"
+		errorMsg := "error getting user information"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -115,7 +116,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := w.sts.GetCallerIdentity(ctx, stsInput)
 	if err != nil {
-		errorMsg := "createElasticsearch: GetCallerIdentity err"
+		errorMsg := "error getting account information"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -125,7 +126,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 
 	// Set up cloudwatch log groups
 	if err := setupLogging(ctx, i, w.logs, w.logger, w.settings, *accountID); err != nil {
-		errorMsg := "createElasticsearch: setupLogging err"
+		errorMsg := "error setting up domain logging"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -136,7 +137,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
 	if err != nil {
-		errorMsg := "createElasticsearch: prepareCreateDomainInput err"
+		errorMsg := "error preparing domain creation input"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -155,9 +156,24 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		resp, err = w.opensearch.CreateDomain(ctx, params)
 	}
 
-	// Decide if AWS service call was successful
 	if err != nil {
-		errorMsg := "createElasticsearch: CreateDomain err"
+		errorMsg := "error creating domain"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+	}
+
+	err = w.waitForDomainReady(ctx, i)
+	if err != nil {
+		errorMsg := "error waiting for domain creation"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+	}
+
+	// Audit logging requires a one-time REST call once the domain is ready
+	if err := w.configureAuditLoggingIfNeeded(ctx, i, resp); err != nil {
+		errorMsg := "error configuring audit logging"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
@@ -199,6 +215,84 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	i.BrokerSnapshotsEnabled = true
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
 	return nil
+}
+
+func (w *CreateWorker) configureAuditLoggingIfNeeded(
+	ctx context.Context,
+	i *ElasticsearchInstance,
+	resp *opensearch.CreateDomainOutput,
+) error {
+	if !i.AuditLogsEnabled || i.AuditRestConfigApplied {
+		return nil
+	}
+
+	endpoint := resp.DomainStatus.Endpoints["vpc"]
+	if endpoint == "" {
+		return errors.New("domain endpoint not available yet")
+	}
+
+	creds := map[string]string{
+		"access_key": i.AccessKey,
+		"secret_key": i.SecretKey,
+		"uri":        "https://" + endpoint,
+	}
+
+	esApi, err := NewEsApiHandler(ctx, creds, w.settings.Region, w.logger)
+	if err != nil {
+		return err
+	}
+
+	// Use the engine version reported bythe domain to pick the correct security API path
+	engineVersion := aws.ToString(resp.DomainStatus.EngineVersion)
+	if err := esApi.EnableAuditLogging(engineVersion); err != nil {
+		return err
+	}
+
+	i.AuditRestConfigApplied = true
+	return nil
+}
+
+func (w *CreateWorker) waitForDomainReady(
+	ctx context.Context,
+	i *ElasticsearchInstance,
+) error {
+	w.logger.Debug(fmt.Sprintf("Waiting for domain %s to be available", i.Domain))
+
+	var resp *opensearch.DescribeDomainOutput
+	var err error
+	attempts := 1
+
+	for attempts <= getPollAwsMaxRetries(int(w.settings.PollAwsMaxRetries)) {
+		resp, err = w.opensearch.DescribeDomain(ctx, &opensearch.DescribeDomainInput{
+			DomainName: &i.Domain,
+		})
+		if err != nil {
+			w.logger.Error("describe domain failed", "err", err)
+			return err
+		}
+		if isDomainReady(resp) {
+			break
+		}
+		attempts += 1
+		time.Sleep(w.settings.PollAwsMinDelay)
+	}
+
+	if !isDomainReady(resp) {
+		return errors.New("could not verify creation of domain")
+	}
+
+	return nil
+}
+
+func getPollAwsMaxRetries(defaultMaxRetries int) int {
+	// give more retries waiting for domain operations, which can be
+	// very time consuming
+	return 2 * defaultMaxRetries
+}
+
+func isDomainReady(output *opensearch.DescribeDomainOutput) bool {
+	return output.DomainStatus.Created != nil && *(output.DomainStatus.Created) &&
+		output.DomainStatus.Endpoints != nil && output.DomainStatus.Endpoints["vpc"] != ""
 }
 
 func prepareCreateDomainInput(

@@ -177,14 +177,6 @@ func (d *dedicatedElasticsearchAdapter) modifyElasticsearch(i *ElasticsearchInst
 	return base.InstanceInProgress, nil
 }
 
-// setupLogging ensures the cloudwatch log groups for every enabled log type exists.
-func (d *dedicatedElasticsearchAdapter) setupLogging(i *ElasticsearchInstance, accountID string) error {
-	if !i.anyLogsEnabled() {
-		return nil
-	}
-	return ensureLogGroups(d.ctx, d.logs, d.logger, i, d.settings.OpensearchLogRetentionDays, d.settings.Region, accountID)
-}
-
 func (d *dedicatedElasticsearchAdapter) ensureLoggingForModify(i *ElasticsearchInstance) error {
 	if !i.anyLogsEnabled() && !i.AdvancedSecurityEnabled {
 		return nil
@@ -204,7 +196,7 @@ func (d *dedicatedElasticsearchAdapter) ensureLoggingForModify(i *ElasticsearchI
 		i.IamUserARN = *userResp.User.Arn
 	}
 
-	return d.setupLogging(i, *result.Account)
+	return setupLogging(d.ctx, i, d.logs, d.logger, &d.settings, *result.Account)
 }
 
 func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
@@ -297,12 +289,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 				return base.InstanceInProgress, nil
 			}
 
-			// Audit logging requires a one-time REST call once the domain is ready
-			if err := d.configureAuditLoggingIfNeeded(i, resp); err != nil {
-				d.logger.Error("checkElasticsearchStatus: configureAuditLoggingIfNeeded err", "err", err)
-				return base.InstanceInProgress, nil
-			}
-
 			return base.InstanceReady, nil
 		} else {
 			// Instance not up yet.
@@ -311,37 +297,6 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 	}
 	return base.InstanceNotCreated, nil
 
-}
-
-func (d *dedicatedElasticsearchAdapter) configureAuditLoggingIfNeeded(i *ElasticsearchInstance, resp *opensearch.DescribeDomainOutput) error {
-	if !i.AuditLogsEnabled || i.AuditRestConfigApplied {
-		return nil
-	}
-
-	endpoint := resp.DomainStatus.Endpoints["vpc"]
-	if endpoint == "" {
-		return errors.New("domain endpoint not available yet")
-	}
-
-	creds := map[string]string{
-		"access_key": i.AccessKey,
-		"secret_key": i.SecretKey,
-		"uri":        "https://" + endpoint,
-	}
-
-	esApi, err := NewEsApiHandler(d.ctx, creds, d.settings.Region, d.logger)
-	if err != nil {
-		return err
-	}
-
-	// Use the engine version reported bythe domain to pick the correct security API path
-	engineVersion := aws.ToString(resp.DomainStatus.EngineVersion)
-	if err := esApi.EnableAuditLogging(engineVersion); err != nil {
-		return err
-	}
-
-	i.AuditRestConfigApplied = true
-	return nil
 }
 
 func (d *dedicatedElasticsearchAdapter) checkCompatibleVersions(domainName, targetVersion string) error {

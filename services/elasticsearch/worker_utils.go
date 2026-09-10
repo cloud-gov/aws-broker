@@ -174,30 +174,3 @@ func setupLogging(
 	}
 	return ensureLogGroups(ctx, logs, logger, i, settings.OpensearchLogRetentionDays, settings.Region, accountID)
 }
-
-// func ensureLoggingForModify(
-// 	ctx context.Context,
-// 	stsClient STSClientInterface,
-// 	iamClient awsiam.IAMClientInterface,
-// 	i *ElasticsearchInstance,
-// ) error {
-// 	if !i.anyLogsEnabled() && !i.AdvancedSecurityEnabled {
-// 		return nil
-// 	}
-
-// 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// FGAC needs IAM user ARN as master user. Look it up if not already persisted to the instance.
-// 	if i.AdvancedSecurityEnabled && i.IamUserARN == "" {
-// 		userResp, err := iamClient.GetUser(ctx, &iam.GetUserInput{UserName: aws.String(i.Domain)})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		i.IamUserARN = *userResp.User.Arn
-// 	}
-
-// 	return setupLogging(i, *result.Account)
-// }
