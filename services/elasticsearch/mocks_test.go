@@ -51,13 +51,13 @@ func (o *mockOpensearchClient) DeleteDomain(ctx context.Context, params *opensea
 }
 
 func (o *mockOpensearchClient) DescribeDomain(ctx context.Context, params *opensearch.DescribeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeDomainOutput, error) {
-	if len(o.describeDomainErrs) > 0 && o.describeDomainErrs[o.describeDomainCallNum] != nil {
-		return nil, o.describeDomainErrs[o.describeDomainCallNum]
+	callNum := o.describeDomainCallNum
+	o.describeDomainCallNum++
+	if len(o.describeDomainErrs) > 0 && o.describeDomainErrs[callNum] != nil {
+		return nil, o.describeDomainErrs[callNum]
 	}
 	if len(o.describeDomainResults) > 0 {
-		result := o.describeDomainResults[o.describeDomainCallNum]
-		o.describeDomainCallNum++
-		return result, nil
+		return o.describeDomainResults[callNum], nil
 	}
 	return nil, nil
 }

@@ -66,6 +66,16 @@ func TestCreateWorkerWork(t *testing.T) {
 							ARN: aws.String("arn"),
 						},
 					},
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": "endpoint",
+								},
+							},
+						},
+					},
 				},
 				&mockIamClient{
 					createAccessKeyOutput: &iam.CreateAccessKeyOutput{
@@ -329,6 +339,16 @@ func TestCreateWorkerWork(t *testing.T) {
 							ARN: aws.String("arn"),
 						},
 					},
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": "endpoint",
+								},
+							},
+						},
+					},
 				},
 				&mockIamClient{
 					createAccessKeyOutput: &iam.CreateAccessKeyOutput{
@@ -381,6 +401,16 @@ func TestCreateWorkerWork(t *testing.T) {
 					createDomainOutput: &opensearch.CreateDomainOutput{
 						DomainStatus: &opensearchTypes.DomainStatus{
 							ARN: aws.String("arn"),
+						},
+					},
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": "endpoint",
+								},
+							},
 						},
 					},
 				},
@@ -440,6 +470,16 @@ func TestCreateWorkerWork(t *testing.T) {
 					createDomainOutput: &opensearch.CreateDomainOutput{
 						DomainStatus: &opensearchTypes.DomainStatus{
 							ARN: aws.String("arn"),
+						},
+					},
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": "endpoint",
+								},
+							},
 						},
 					},
 				},

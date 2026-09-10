@@ -215,6 +215,15 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 
 	i.BrokerSnapshotsEnabled = true
+	i.State = base.InstanceReady
+	err = w.db.Save(i).Error
+	if err != nil {
+		errorMsg := "error updating instance"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+	}
+
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
 	return nil
 }
