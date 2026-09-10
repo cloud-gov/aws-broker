@@ -3,7 +3,6 @@ package elasticsearch
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -106,9 +105,6 @@ func createUpdateBucketRolesAndPolicies(
 }
 
 func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, iam awsiam.IAMClientInterface, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
-	logger.Debug(fmt.Sprintf("current instance state: %d", i.State))
-	logger.Debug(fmt.Sprintf("current instance host: %s", i.Host))
-
 	if i.Host == "" {
 		params := &opensearch.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
@@ -130,7 +126,6 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 		}
 
-		logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
 		i.Host = resp.DomainStatus.Endpoints["vpc"]
 		i.ARN = *(resp.DomainStatus.ARN)
 		i.State = base.InstanceReady
@@ -164,3 +159,45 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials()
 }
+
+// setupLogging ensures the cloudwatch log groups for every enabled log type exists.
+func setupLogging(
+	ctx context.Context,
+	i *ElasticsearchInstance,
+	logs CloudwatchLogsClientInterface,
+	logger *slog.Logger,
+	settings *config.Settings,
+	accountID string,
+) error {
+	if !i.anyLogsEnabled() {
+		return nil
+	}
+	return ensureLogGroups(ctx, logs, logger, i, settings.OpensearchLogRetentionDays, settings.Region, accountID)
+}
+
+// func ensureLoggingForModify(
+// 	ctx context.Context,
+// 	stsClient STSClientInterface,
+// 	iamClient awsiam.IAMClientInterface,
+// 	i *ElasticsearchInstance,
+// ) error {
+// 	if !i.anyLogsEnabled() && !i.AdvancedSecurityEnabled {
+// 		return nil
+// 	}
+
+// 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// FGAC needs IAM user ARN as master user. Look it up if not already persisted to the instance.
+// 	if i.AdvancedSecurityEnabled && i.IamUserARN == "" {
+// 		userResp, err := iamClient.GetUser(ctx, &iam.GetUserInput{UserName: aws.String(i.Domain)})
+// 		if err != nil {
+// 			return err
+// 		}
+// 		i.IamUserARN = *userResp.User.Arn
+// 	}
+
+// 	return setupLogging(i, *result.Account)
+// }

@@ -328,17 +328,10 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 	}
 
 	var state base.InstanceState
-	var needAsyncJobState bool
-	var instanceOperation base.Operation
 	var statusMessage string
 
-	switch details.OperationData {
-	case base.DeleteOp.String():
-		needAsyncJobState = broker.AsyncOperationRequired(base.DeleteOp)
-		instanceOperation = base.DeleteOp
-	default: //all other ops use synchronous checking of aws api
-		needAsyncJobState = false
-	}
+	instanceOperation := base.ConvertOperationStringToConstant(details.OperationData)
+	needAsyncJobState := broker.AsyncOperationRequired(instanceOperation)
 
 	if needAsyncJobState {
 		asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(broker.brokerDB, existingInstance.ServiceID, existingInstance.Uuid, instanceOperation)

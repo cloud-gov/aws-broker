@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"log/slog"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -123,104 +121,25 @@ type dedicatedElasticsearchAdapter struct {
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
-	// IAM User and policy before domain starts creating so it can be used to create access control policy
-	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
-	_, err := d.iam.CreateUser(d.ctx, &iam.CreateUserInput{
-		UserName: aws.String(i.Domain),
-		Path:     nil,
-		Tags:     iamTags,
-	})
-	if err != nil {
-		d.logger.Error("createElasticsearch: user.Create err", "err", err)
+	tx := d.db.Begin()
+	if err := tx.Error; err != nil {
 		return base.InstanceNotCreated, err
 	}
+	defer tx.Rollback()
 
-	createAccessKeyOutput, err := d.iam.CreateAccessKey(d.ctx, &iam.CreateAccessKeyInput{
-		UserName: aws.String(i.Domain),
-	})
-	if err != nil {
-		return base.InstanceNotCreated, err
-	}
-	i.AccessKey = *createAccessKeyOutput.AccessKey.AccessKeyId
-	i.SecretKey = *createAccessKeyOutput.AccessKey.SecretAccessKey
+	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
-	userParams := &iam.GetUserInput{
-		UserName: aws.String(i.Domain),
-	}
-	userResp, err := d.iam.GetUser(d.ctx, userParams)
-	if err != nil {
-		d.logger.Error("createElasticsearch: GetUser err", "err", err)
-		return base.InstanceNotCreated, err
-	}
-	uniqueUserArn := *(userResp.User.Arn)
-	i.IamUserARN = uniqueUserArn
-	stsInput := &sts.GetCallerIdentityInput{}
-	result, err := d.sts.GetCallerIdentity(d.ctx, stsInput)
-	if err != nil {
-		d.logger.Error("createElasticsearch: GetCallerIdentity err", "err", err)
-		return base.InstanceNotCreated, nil
-	}
-
-	accountID := result.Account
-
-	// Set up cloudwatch log groups
-	if err := d.setupLogging(i, *accountID); err != nil {
-		d.logger.Error("createElasticsearch: setupLogging err", "err", err)
-		return base.InstanceNotCreated, err
-	}
-
-	time.Sleep(5 * time.Second)
-
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + d.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
-	params, err := prepareCreateDomainInput(i, accessControlPolicy)
-	if err != nil {
-		d.logger.Error("createElasticsearch: prepareCreateDomainInput err", "err", err)
-		return base.InstanceNotCreated, err
-	}
-
-	resp, err := d.opensearch.CreateDomain(d.ctx, params)
-	if isInvalidTypeException(err) {
-		// IAM is eventually consistent, meaning new IAM users may not be immediately available for read, such as when
-		// Opensearch goes to validate the IAM user specified as the AWS principal in the access
-		// policy. The error returned in this case is an "InvalidTypeException", so if we catch that specific error,
-		// we wait for 5 seconds to retry the domain creation to hopefully allow IAM to become consistent.
-		//
-		// see https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency
-		log.Println("Retrying domain creation because of possible IAM eventual consistency issue")
-		time.Sleep(5 * time.Second)
-		resp, err = d.opensearch.CreateDomain(d.ctx, params)
-	}
-
-	// Decide if AWS service call was successful
-	if err != nil {
-		d.logger.Error("createElasticsearch: CreateDomain err", "err", err)
-		return base.InstanceNotCreated, err
-	}
-
-	i.ARN = *(resp.DomainStatus.ARN)
-	esARNs := make([]string, 0)
-	esARNs = append(esARNs, i.ARN)
-	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
-	policyARN, err := awsiam.CreatePolicyFromTemplate(d.ctx, d.iam, d.logger, i.Domain, "/", policy, esARNs, iamTags)
+	_, err := d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
+		Instance: i,
+	}, nil)
 	if err != nil {
 		return base.InstanceNotCreated, err
 	}
 
-	if _, err = d.iam.AttachUserPolicy(d.ctx, &iam.AttachUserPolicyInput{
-		PolicyArn: aws.String(policyARN),
-		UserName:  aws.String(i.Domain),
-	}); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		return base.InstanceNotCreated, err
 	}
-	i.IamPolicy = policy
-	i.IamPolicyARN = policyARN
 
-	//try setup of roles and policies on create
-	err = createUpdateBucketRolesAndPolicies(d.ctx, d.iam, d.logger, i, d.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
-	if err != nil {
-		return base.InstanceNotCreated, nil
-	}
-	i.BrokerSnapshotsEnabled = true
 	return base.InstanceInProgress, nil
 }
 
