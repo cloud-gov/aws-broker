@@ -121,6 +121,11 @@ type dedicatedElasticsearchAdapter struct {
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
 func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Creating domain")
+	if err != nil {
+		return base.InstanceNotCreated, err
+	}
+
 	tx := d.db.Begin()
 	if err := tx.Error; err != nil {
 		return base.InstanceNotCreated, err
@@ -129,7 +134,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
-	_, err := d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
 		Instance: i,
 	}, nil)
 	if err != nil {
