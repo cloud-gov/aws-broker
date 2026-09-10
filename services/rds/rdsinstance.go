@@ -181,7 +181,7 @@ func (i RDSInstance) modify(options Options, currentPlan *catalog.RDSPlan, newPl
 		modifiedInstance.DeleteReadReplica = true
 	}
 
-	modifiedInstance.setTags(newPlan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
+	modifiedInstance.setTags(newPlan, tags)
 
 	return &modifiedInstance, nil
 }
@@ -234,7 +234,7 @@ func (i *RDSInstance) init(
 		return err
 	}
 
-	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
+	i.setTags(plan, tags)
 
 	i.StorageType = plan.StorageType
 
@@ -318,7 +318,7 @@ func (i *RDSInstance) initMutex() {
 func (i *RDSInstance) setTags(
 	plan *catalog.RDSPlan,
 	tags map[string]string,
-) error {
+) {
 	i.initMutex()
 	i.mu.Lock()
 	defer i.mu.Unlock()
@@ -332,7 +332,6 @@ func (i *RDSInstance) setTags(
 	for k, v := range tags {
 		i.Tags[k] = v
 	}
-	return nil
 }
 
 func (i *RDSInstance) getTags() map[string]string {
