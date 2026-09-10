@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"time"
@@ -9,8 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/awsiam"
+	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
@@ -65,6 +68,8 @@ func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) err
 }
 
 func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstance) error {
+	operation := base.CreateOp
+
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 	_, err := w.iam.CreateUser(ctx, &iam.CreateUserInput{
@@ -73,15 +78,20 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		Tags:     iamTags,
 	})
 	if err != nil {
-		w.logger.Error("createElasticsearch: user.Create err", "err", err)
-		return err
+		errorMsg := "createElasticsearch: user.Create err"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	createAccessKeyOutput, err := w.iam.CreateAccessKey(ctx, &iam.CreateAccessKeyInput{
 		UserName: aws.String(i.Domain),
 	})
 	if err != nil {
-		return err
+		errorMsg := "error creating access keys"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 	i.AccessKey = *createAccessKeyOutput.AccessKey.AccessKeyId
 	i.SecretKey = *createAccessKeyOutput.AccessKey.SecretAccessKey
@@ -91,8 +101,10 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 	userResp, err := w.iam.GetUser(ctx, userParams)
 	if err != nil {
-		w.logger.Error("createElasticsearch: GetUser err", "err", err)
-		return err
+		errorMsg := "createElasticsearch: GetUser err"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 	uniqueUserArn := *(userResp.User.Arn)
 	i.IamUserARN = uniqueUserArn
@@ -100,16 +112,20 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := w.sts.GetCallerIdentity(ctx, stsInput)
 	if err != nil {
-		w.logger.Error("createElasticsearch: GetCallerIdentity err", "err", err)
-		return err
+		errorMsg := "createElasticsearch: GetCallerIdentity err"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	accountID := result.Account
 
 	// Set up cloudwatch log groups
 	if err := setupLogging(ctx, i, w.logs, w.logger, w.settings, *accountID); err != nil {
-		w.logger.Error("createElasticsearch: setupLogging err", "err", err)
-		return err
+		errorMsg := "createElasticsearch: setupLogging err"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	time.Sleep(5 * time.Second)
@@ -117,8 +133,10 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
 	if err != nil {
-		w.logger.Error("createElasticsearch: prepareCreateDomainInput err", "err", err)
-		return err
+		errorMsg := "createElasticsearch: prepareCreateDomainInput err"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	resp, err := w.opensearch.CreateDomain(ctx, params)
@@ -136,8 +154,10 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 
 	// Decide if AWS service call was successful
 	if err != nil {
-		w.logger.Error("createElasticsearch: CreateDomain err", "err", err)
-		return err
+		errorMsg := "createElasticsearch: CreateDomain err"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	i.ARN = *(resp.DomainStatus.ARN)
@@ -146,14 +166,20 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
 	policyARN, err := awsiam.CreatePolicyFromTemplate(ctx, w.iam, w.logger, i.Domain, "/", policy, esARNs, iamTags)
 	if err != nil {
-		return err
+		errorMsg := "error creating IAM policy"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	if _, err = w.iam.AttachUserPolicy(ctx, &iam.AttachUserPolicyInput{
 		PolicyArn: aws.String(policyARN),
 		UserName:  aws.String(i.Domain),
 	}); err != nil {
-		return err
+		errorMsg := "error attaching IAM user policy"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 	i.IamPolicy = policy
 	i.IamPolicyARN = policyARN
@@ -161,9 +187,13 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	//try setup of roles and policies on create
 	err = createUpdateBucketRolesAndPolicies(ctx, w.iam, w.logger, i, w.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
 	if err != nil {
-		return err
+		errorMsg := "error setting up snapshot bucket roles and policies"
+		w.logger.Error(errorMsg, "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
+		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
 	i.BrokerSnapshotsEnabled = true
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
 	return nil
 }

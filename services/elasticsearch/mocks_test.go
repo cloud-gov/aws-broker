@@ -26,6 +26,7 @@ func testDBInit() (*gorm.DB, error) {
 }
 
 type mockOpensearchClient struct {
+	createDomainErr    error
 	createDomainOutput *opensearch.CreateDomainOutput
 
 	describeDomainCallNum int
@@ -42,7 +43,7 @@ type mockOpensearchClient struct {
 }
 
 func (o *mockOpensearchClient) CreateDomain(ctx context.Context, params *opensearch.CreateDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.CreateDomainOutput, error) {
-	return o.createDomainOutput, nil
+	return o.createDomainOutput, o.createDomainErr
 }
 
 func (o *mockOpensearchClient) DeleteDomain(ctx context.Context, params *opensearch.DeleteDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DeleteDomainOutput, error) {
@@ -148,20 +149,26 @@ func (s *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput,
 }
 
 type mockIamClient struct {
+	attachUserPolicyErr      error
+	createAccessKeyErr       error
 	createAccessKeyOutput    *iam.CreateAccessKeyOutput
+	createPolicyErr          error
 	createPolicyOutput       *iam.CreatePolicyOutput
 	createRoleCallNum        int
 	createRoleOutput         []*iam.CreateRoleOutput
+	createRoleErrs           []error
+	createUserErr            error
+	getUserErr               error
 	getUserOutput            *iam.GetUserOutput
 	listPolicyVersionsOutput *iam.ListPolicyVersionsOutput
 }
 
 func (m *mockIamClient) CreateAccessKey(ctx context.Context, params *iam.CreateAccessKeyInput, optFns ...func(*iam.Options)) (*iam.CreateAccessKeyOutput, error) {
-	return m.createAccessKeyOutput, nil
+	return m.createAccessKeyOutput, m.createAccessKeyErr
 }
 
 func (m *mockIamClient) CreatePolicy(ctx context.Context, params *iam.CreatePolicyInput, optFns ...func(*iam.Options)) (*iam.CreatePolicyOutput, error) {
-	return m.createPolicyOutput, nil
+	return m.createPolicyOutput, m.createPolicyErr
 }
 
 func (m *mockIamClient) DeleteAccessKey(ctx context.Context, params *iam.DeleteAccessKeyInput, optFns ...func(*iam.Options)) (*iam.DeleteAccessKeyOutput, error) {
@@ -197,13 +204,16 @@ func (m *mockIamClient) CreatePolicyVersion(ctx context.Context, params *iam.Cre
 }
 
 func (m *mockIamClient) CreateRole(ctx context.Context, params *iam.CreateRoleInput, optFns ...func(*iam.Options)) (*iam.CreateRoleOutput, error) {
-	output := m.createRoleOutput[m.createRoleCallNum]
+	callNum := m.createRoleCallNum
 	m.createRoleCallNum++
-	return output, nil
+	if len(m.createRoleErrs) > callNum && m.createRoleErrs[callNum] != nil {
+		return nil, m.createRoleErrs[callNum]
+	}
+	return m.createRoleOutput[callNum], nil
 }
 
 func (m *mockIamClient) CreateUser(ctx context.Context, params *iam.CreateUserInput, optFns ...func(*iam.Options)) (*iam.CreateUserOutput, error) {
-	return nil, nil
+	return nil, m.createUserErr
 }
 
 func (m *mockIamClient) DeletePolicy(ctx context.Context, params *iam.DeletePolicyInput, optFns ...func(*iam.Options)) (*iam.DeletePolicyOutput, error) {
@@ -227,7 +237,7 @@ func (m *mockIamClient) GetRole(ctx context.Context, params *iam.GetRoleInput, o
 }
 
 func (m *mockIamClient) GetUser(ctx context.Context, params *iam.GetUserInput, optFns ...func(*iam.Options)) (*iam.GetUserOutput, error) {
-	return m.getUserOutput, nil
+	return m.getUserOutput, m.getUserErr
 }
 
 func (m *mockIamClient) ListAttachedRolePolicies(ctx context.Context, params *iam.ListAttachedRolePoliciesInput, optFns ...func(*iam.Options)) (*iam.ListAttachedRolePoliciesOutput, error) {
@@ -243,9 +253,10 @@ func (m *mockIamClient) ListPolicyVersions(ctx context.Context, params *iam.List
 }
 
 type mockSTSClient struct {
+	getCallerIdentityErr    error
 	getCallerIdentityOutput *sts.GetCallerIdentityOutput
 }
 
 func (s *mockSTSClient) GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
-	return s.getCallerIdentityOutput, nil
+	return s.getCallerIdentityOutput, s.getCallerIdentityErr
 }
