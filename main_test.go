@@ -1446,6 +1446,7 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	// The requested plan change (aws-standard -> aws-dev) is both a size
 	// downgrade and an HA-tier change, so it must be rejected.
 	if !strings.Contains(resp.Body.String(), "highly-available") &&
+		!strings.Contains(resp.Body.String(), "single-node and multi-node") &&
 		!strings.Contains(resp.Body.String(), "downgrading") &&
 		!strings.Contains(resp.Body.String(), "unable to determine plan sizes") {
 		t.Error(urlAcceptsIncomplete, "should return a message explaining why the plan change is not allowed")
