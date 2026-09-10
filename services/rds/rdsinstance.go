@@ -354,6 +354,11 @@ func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []str
 	return nil
 }
 
+func (i *RDSInstance) removeReplicaDatabaseProperties() {
+	i.ReplicaDatabase = ""
+	i.ReplicaDatabaseHost = ""
+}
+
 func (existing *PgQueryLoggingOptions) merge(updates *PgQueryLoggingOptions) *PgQueryLoggingOptions {
 	merged := *existing
 
