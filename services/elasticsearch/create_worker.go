@@ -9,11 +9,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
@@ -196,4 +199,147 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	i.BrokerSnapshotsEnabled = true
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
 	return nil
+}
+
+func prepareCreateDomainInput(
+	i *ElasticsearchInstance,
+	accessControlPolicy string,
+) (*opensearch.CreateDomainInput, error) {
+	elasticsearchTags := ConvertTagsToOpensearchTags(i.Tags)
+
+	volumeType, err := getOpensearchVolumeTypeEnum(i.VolumeType)
+	if err != nil {
+		return nil, err
+	}
+
+	instanceType, err := getOpensearchInstanceTypeEnum(i.InstanceType)
+	if err != nil {
+		return nil, err
+	}
+
+	volumeSize, err := common.ConvertIntToInt32Safely(i.VolumeSize)
+	if err != nil {
+		return nil, err
+	}
+
+	instanceCount, err := common.ConvertIntToInt32Safely(i.DataCount)
+	if err != nil {
+		return nil, err
+	}
+
+	ebsoptions := &opensearchTypes.EBSOptions{
+		EBSEnabled: aws.Bool(true),
+		VolumeSize: aws.Int32(*volumeSize),
+		VolumeType: *volumeType,
+	}
+
+	esclusterconfig := &opensearchTypes.ClusterConfig{
+		InstanceType:  *instanceType,
+		InstanceCount: aws.Int32(*instanceCount),
+	}
+
+	if i.MasterEnabled {
+		masterInstanceType, err := getOpensearchInstanceTypeEnum(i.MasterInstanceType)
+		if err != nil {
+			return nil, err
+		}
+
+		masterCount, err := common.ConvertIntToInt32Safely(i.MasterCount)
+		if err != nil {
+			return nil, err
+		}
+
+		esclusterconfig.DedicatedMasterEnabled = aws.Bool(i.MasterEnabled)
+		esclusterconfig.DedicatedMasterCount = aws.Int32(*masterCount)
+		esclusterconfig.DedicatedMasterType = *masterInstanceType
+	}
+
+	// Check AutomatedSnapshotStartHour is in valid range before casting.
+	if i.AutomatedSnapshotStartHour < 0 || i.AutomatedSnapshotStartHour > 23 {
+		return nil, fmt.Errorf("AutomatedSnapshotStartHour must be between 0 and 23, got %d", i.AutomatedSnapshotStartHour)
+	}
+	snapshotOptions := &opensearchTypes.SnapshotOptions{
+		AutomatedSnapshotStartHour: aws.Int32(int32(i.AutomatedSnapshotStartHour)),
+	}
+
+	nodeOptions := &opensearchTypes.NodeToNodeEncryptionOptions{
+		Enabled: aws.Bool(i.NodeToNodeEncryption),
+	}
+
+	domainOptions := &opensearchTypes.DomainEndpointOptions{
+		EnforceHTTPS: aws.Bool(true),
+	}
+
+	encryptionAtRestOptions := &opensearchTypes.EncryptionAtRestOptions{
+		Enabled: aws.Bool(i.EncryptAtRest),
+	}
+
+	VPCOptions := &opensearchTypes.VPCOptions{
+		SecurityGroupIds: []string{
+			i.SecGroup,
+		},
+	}
+
+	AdvancedOptions := make(map[string]string)
+
+	if i.IndicesFieldDataCacheSize != "" {
+		AdvancedOptions["indices.fielddata.cache.size"] = i.IndicesFieldDataCacheSize
+	}
+
+	if i.IndicesQueryBoolMaxClauseCount != "" {
+		AdvancedOptions["indices.query.bool.max_clause_count"] = i.IndicesQueryBoolMaxClauseCount
+	}
+
+	if i.DataCount > 1 {
+		VPCOptions.SubnetIds = []string{
+			i.SubnetID3AZ1,
+			i.SubnetID4AZ2,
+		}
+		esclusterconfig.ZoneAwarenessEnabled = aws.Bool(true)
+		azCount := 2 // AZ count MUST match number of subnets, max value is 3
+		zoneAwarenessConfig := &opensearchTypes.ZoneAwarenessConfig{
+			AvailabilityZoneCount: aws.Int32(int32(azCount)),
+		}
+		esclusterconfig.ZoneAwarenessConfig = zoneAwarenessConfig
+	} else {
+		VPCOptions.SubnetIds = []string{
+			i.SubnetID2AZ2,
+		}
+	}
+
+	// Standard Parameters
+	params := &opensearch.CreateDomainInput{
+		AccessPolicies:              &accessControlPolicy,
+		DomainName:                  aws.String(i.Domain),
+		EBSOptions:                  ebsoptions,
+		ClusterConfig:               esclusterconfig,
+		SnapshotOptions:             snapshotOptions,
+		NodeToNodeEncryptionOptions: nodeOptions,
+		DomainEndpointOptions:       domainOptions,
+		EncryptionAtRestOptions:     encryptionAtRestOptions,
+		VPCOptions:                  VPCOptions,
+		TagList:                     elasticsearchTags,
+	}
+
+	if len(AdvancedOptions) > 0 {
+		params.AdvancedOptions = AdvancedOptions
+	}
+
+	if logPublishingOptions := buildLogPublishingOptions(i); len(logPublishingOptions) > 0 {
+		params.LogPublishingOptions = logPublishingOptions
+	}
+
+	advancedSecurityOptions, err := advancedSecurityOptionsForAudit(i)
+	if err != nil {
+		return nil, err
+	}
+	if advancedSecurityOptions != nil {
+		params.AdvancedSecurityOptions = advancedSecurityOptions
+	}
+
+	if i.ElasticsearchVersion != "" {
+		params.EngineVersion = aws.String(i.ElasticsearchVersion)
+	}
+
+	return params, nil
 }
