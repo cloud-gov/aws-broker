@@ -163,6 +163,8 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for domain to be ready")
+
 	err = w.waitForDomainReady(ctx, i)
 	if err != nil {
 		errorMsg := "error waiting for domain creation"
