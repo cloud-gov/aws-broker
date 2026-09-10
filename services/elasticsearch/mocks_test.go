@@ -196,7 +196,7 @@ func (m *mockIamClient) AttachRolePolicy(ctx context.Context, params *iam.Attach
 }
 
 func (m *mockIamClient) AttachUserPolicy(ctx context.Context, params *iam.AttachUserPolicyInput, optFns ...func(*iam.Options)) (*iam.AttachUserPolicyOutput, error) {
-	return nil, nil
+	return nil, m.attachUserPolicyErr
 }
 
 func (m *mockIamClient) CreatePolicyVersion(ctx context.Context, params *iam.CreatePolicyVersionInput, optFns ...func(*iam.Options)) (*iam.CreatePolicyVersionOutput, error) {
