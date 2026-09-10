@@ -134,7 +134,7 @@ func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInst
 
 	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
-	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
+	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &CreateArgs{
 		Instance: i,
 	}, nil)
 	if err != nil {
