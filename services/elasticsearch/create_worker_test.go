@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,7 +72,9 @@ func TestCreateWorkerWork(t *testing.T) {
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
 					Request: request.Request{
-						ServiceID: "aws-elasticsearch",
+						ServiceID:        "aws-elasticsearch",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
 					},
 				},
 			},
@@ -80,20 +83,25 @@ func TestCreateWorkerWork(t *testing.T) {
 				InstanceType: "t3.small.search",
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: "aws-elasticsearch",
+						ServiceID:        "aws-elasticsearch",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
 					},
 					State: base.InstanceReady,
+					Host:  "endpoint",
 				},
 				AccessKey:              "fake-id",
 				SecretKey:              "fake-secret",
 				IamUserARN:             "user-arn",
-				ARN:                    "arn",
+				ARN:                    "domain-arn",
 				IamPolicy:              `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`,
 				IamPolicyARN:           "user-policy-arn",
 				BrokerSnapshotsEnabled: true,
 				SnapshotARN:            "role-arn",
 				IamPassRolePolicyARN:   "pass-role-policy-arn",
 				SnapshotPolicyARN:      "snapshot-policy-arn",
+				SnapshotPath:           "/org-1/space-1/aws-elasticsearch/",
+				ElasticsearchVersion:   "opensearch",
 			},
 			worker: NewCreateWorker(
 				brokerDB,
@@ -116,6 +124,8 @@ func TestCreateWorkerWork(t *testing.T) {
 								Endpoints: map[string]string{
 									"vpc": "endpoint",
 								},
+								EngineVersion: aws.String("opensearch"),
+								ARN:           aws.String("domain-arn"),
 							},
 						},
 					},
@@ -178,7 +188,9 @@ func TestCreateWorkerWork(t *testing.T) {
 				Instance: base.Instance{
 					Uuid: uuid.NewString(),
 					Request: request.Request{
-						ServiceID: "aws-elasticsearch",
+						ServiceID:        "aws-elasticsearch",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
 					},
 					Port: testApiPort, // included only for testing
 				},
@@ -190,15 +202,18 @@ func TestCreateWorkerWork(t *testing.T) {
 				InstanceType: "t3.small.search",
 				Instance: base.Instance{
 					Request: request.Request{
-						ServiceID: "aws-elasticsearch",
+						ServiceID:        "aws-elasticsearch",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
 					},
+					Host:  testApiUrl.Hostname(),
 					State: base.InstanceReady,
 					Port:  testApiPort, // included only for testing
 				},
 				AccessKey:              "fake-id",
 				SecretKey:              "fake-secret",
 				IamUserARN:             "user-arn",
-				ARN:                    "arn",
+				ARN:                    "domain-arn",
 				IamPolicy:              `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`,
 				IamPolicyARN:           "user-policy-arn",
 				BrokerSnapshotsEnabled: true,
@@ -208,6 +223,7 @@ func TestCreateWorkerWork(t *testing.T) {
 				AuditRestConfigApplied: true,
 				AuditLogsGroupARN:      "arn:aws-us-gov:logs:fake-region:account:log-group:/aws/OpenSearchService/domains//audit-logs",
 				AuditLogsEnabled:       true,
+				ElasticsearchVersion:   "opensearch",
 			},
 			worker: NewCreateWorker(
 				brokerDB,
@@ -231,15 +247,8 @@ func TestCreateWorkerWork(t *testing.T) {
 								Endpoints: map[string]string{
 									"vpc": testApiUrl.Hostname(),
 								},
-							},
-						},
-						{
-							DomainStatus: &opensearchTypes.DomainStatus{
-								Created: aws.Bool(true),
-								Endpoints: map[string]string{
-									"vpc": testApiUrl.Hostname(),
-								},
-								EngineVersion: aws.String("opensearch2"),
+								EngineVersion: aws.String("opensearch"),
+								ARN:           aws.String("domain-arn"),
 							},
 						},
 					},
@@ -526,6 +535,8 @@ func TestCreateWorkerWork(t *testing.T) {
 								Endpoints: map[string]string{
 									"vpc": "endpoint",
 								},
+								EngineVersion: aws.String("opensearch"),
+								ARN:           aws.String("domain-arn"),
 							},
 						},
 					},
@@ -590,6 +601,8 @@ func TestCreateWorkerWork(t *testing.T) {
 								Endpoints: map[string]string{
 									"vpc": "endpoint",
 								},
+								EngineVersion: aws.String("opensearch"),
+								ARN:           aws.String("domain-arn"),
 							},
 						},
 					},
@@ -666,6 +679,8 @@ func TestCreateWorkerWork(t *testing.T) {
 								Endpoints: map[string]string{
 									"vpc": "endpoint",
 								},
+								EngineVersion: aws.String("opensearch"),
+								ARN:           aws.String("domain-arn"),
 							},
 						},
 					},
@@ -727,6 +742,10 @@ func TestCreateWorkerWork(t *testing.T) {
 				instance := &ElasticsearchInstance{}
 				brokerDB.Where("uuid = ?", test.instance.Uuid).First(&instance)
 				test.expectedInstance.Uuid = test.instance.Uuid
+				if test.expectedInstance.SnapshotPath != "" && !strings.HasPrefix(instance.SnapshotPath, test.expectedInstance.SnapshotPath) {
+					t.Errorf("expected snapshot path to start with %s", test.expectedInstance.SnapshotPath)
+				}
+				test.expectedInstance.SnapshotPath = instance.SnapshotPath
 				if diff := deep.Equal(instance, test.expectedInstance); diff != nil {
 					t.Error(diff)
 				}

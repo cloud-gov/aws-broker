@@ -1,13 +1,18 @@
 package elasticsearch
 
 import (
+	"context"
 	"crypto/aes"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
+	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/helpers"
 
@@ -209,7 +214,7 @@ func (i *ElasticsearchInstance) init(
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
 	i.applyLogOptions(options.LogPublishing)
-	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
+	i.setTags(plan, tags)
 
 	return nil
 }
@@ -238,12 +243,58 @@ func (i *ElasticsearchInstance) versionUpgradeInProgress() bool {
 func (i *ElasticsearchInstance) setTags(
 	plan catalog.ElasticsearchPlan,
 	tags map[string]string,
-) error {
+) {
 	i.Tags = plan.Tags
 
 	for k, v := range tags {
 		i.Tags[k] = v
 	}
+}
 
+func (i *ElasticsearchInstance) brokerSnapshotsAreEnabled() bool {
+	return i.BrokerSnapshotsEnabled
+}
+
+func (i *ElasticsearchInstance) enableBrokerSnapshots(
+	ctx context.Context,
+	iam awsiam.IAMClientInterface,
+	settings *config.Settings,
+	iamTags []iamTypes.Tag,
+	logger *slog.Logger,
+) error {
+	if i.SnapshotPath == "" {
+		i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
+	}
+
+	err := createUpdateBucketRolesAndPolicies(ctx, iam, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	if err != nil {
+		return err
+	}
+
+	i.BrokerSnapshotsEnabled = true
 	return nil
+}
+
+func (i *ElasticsearchInstance) setUserIAMPolicyAttributes(policy string, policyARN string) {
+	i.IamPolicy = policy
+	i.IamPolicyARN = policyARN
+}
+
+func (i *ElasticsearchInstance) setAccessCredentials(accessKey string, secretKey string) {
+	i.AccessKey = accessKey
+	i.SecretKey = secretKey
+}
+
+func (i *ElasticsearchInstance) setUserARN(userARN string) {
+	i.IamUserARN = userARN
+}
+
+func (i *ElasticsearchInstance) setDomainProperties(domainStatus *opensearchTypes.DomainStatus) {
+	i.Host = domainStatus.Endpoints["vpc"]
+	i.ARN = *(domainStatus.ARN)
+	i.ElasticsearchVersion = *(domainStatus.EngineVersion)
+}
+
+func (i *ElasticsearchInstance) hasDomainProperties() bool {
+	return i.Host != "" && i.ARN != "" && i.ElasticsearchVersion != ""
 }

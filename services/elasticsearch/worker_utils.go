@@ -92,7 +92,7 @@ func createUpdateBucketRolesAndPolicies(
 		i.SnapshotPolicyARN = policyarn
 
 	} else {
-		// snaphost policy has already been created so we need to add the new statements for this new bucket
+		// snapshot policy has already been created so we need to add the new statements for this new bucket
 		// to the existing policy version.
 		_, err := awsiam.UpdateExistingPolicy(ctx, iam, logger, i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
@@ -105,7 +105,7 @@ func createUpdateBucketRolesAndPolicies(
 }
 
 func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, iam awsiam.IAMClientInterface, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
-	if i.Host == "" {
+	if !i.hasDomainProperties() {
 		params := &opensearch.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
@@ -126,27 +126,18 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 		}
 
-		i.Host = resp.DomainStatus.Endpoints["vpc"]
-		i.ARN = *(resp.DomainStatus.ARN)
+		i.setDomainProperties(resp.DomainStatus)
 		i.State = base.InstanceReady
-		i.ElasticsearchVersion = *(resp.DomainStatus.EngineVersion)
-		// Should only be one regardless. Just return now.
 	}
 
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 
-	// add broker snapshot bucket and create roles and policies if it hasnt been done.
-	if !i.BrokerSnapshotsEnabled {
-		if i.SnapshotPath == "" {
-			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
-		}
-
-		err := createUpdateBucketRolesAndPolicies(ctx, iam, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	// add broker snapshot bucket and create roles and policies if it hasn't been done.
+	if !i.brokerSnapshotsAreEnabled() {
+		err := i.enableBrokerSnapshots(ctx, iam, settings, iamTags, logger)
 		if err != nil {
-			logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
 		}
-		i.BrokerSnapshotsEnabled = true
 	}
 
 	// add client bucket and adjust policies and roles if present
@@ -156,6 +147,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, err
 		}
 	}
+
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials()
 }
