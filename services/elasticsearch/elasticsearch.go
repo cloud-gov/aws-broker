@@ -194,7 +194,7 @@ func (d *dedicatedElasticsearchAdapter) ensureLoggingForModify(i *ElasticsearchI
 
 	// FGAC needs IAM user ARN as master user. Look it up if not already persisted to the instance.
 	if i.AdvancedSecurityEnabled && i.IamUserARN == "" {
-		userResp, err := d.iam.GetUser(d.ctx, &iam.GetUserInput{UserName: aws.String(i.Domain)})
+		userResp, err := d.iam.GetUser(d.ctx, &iam.GetUserInput{UserName: aws.String(i.getIamUsername())})
 		if err != nil {
 			return err
 		}

@@ -27,6 +27,10 @@ const (
 	CreateKind = "elasticsearch-create"
 )
 
+var (
+	ErrUpdatingInstance = errors.New("error saving updated instance")
+)
+
 type CreateArgs struct {
 	Instance *ElasticsearchInstance `json:"instance"`
 }
@@ -70,7 +74,7 @@ func NewCreateWorker(
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
 	operation := base.CreateOp
 	i := job.Args.Instance
-	err := w.createDomain(ctx, i)
+	err := w.createDomain(ctx, i, operation)
 	if err != nil {
 		w.logger.Error(err.Error(), "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, err.Error())
@@ -79,13 +83,11 @@ func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) err
 	return nil
 }
 
-func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstance) error {
-	operation := base.CreateOp
-
+func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstance, operation base.Operation) error {
 	// IAM User and policy before domain starts creating so it can be used to create access control policy
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
-	_, err := w.iam.CreateUser(ctx, &iam.CreateUserInput{
-		UserName: aws.String(i.Domain),
+	resp, err := w.iam.CreateUser(ctx, &iam.CreateUserInput{
+		UserName: aws.String(i.getIamUsername()),
 		Path:     nil,
 		Tags:     iamTags,
 	})
@@ -93,17 +95,27 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		return fmt.Errorf("error creating user: %w", err)
 	}
 
+	i.setIamUserARN(*resp.User.Arn)
+	err = w.saveUpdatedInstance(i)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+	}
+
 	createAccessKeyOutput, err := w.iam.CreateAccessKey(ctx, &iam.CreateAccessKeyInput{
-		UserName: aws.String(i.Domain),
+		UserName: aws.String(i.getIamUsername()),
 	})
 	if err != nil {
 		return fmt.Errorf("error creating access keys: %w", err)
 	}
 
 	i.setAccessCredentials(*createAccessKeyOutput.AccessKey.AccessKeyId, *createAccessKeyOutput.AccessKey.SecretAccessKey)
+	err = w.saveUpdatedInstance(i)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+	}
 
 	userParams := &iam.GetUserInput{
-		UserName: aws.String(i.Domain),
+		UserName: aws.String(i.getIamUsername()),
 	}
 	userResp, err := w.iam.GetUser(ctx, userParams)
 	if err != nil {
@@ -112,6 +124,10 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 
 	uniqueUserArn := *(userResp.User.Arn)
 	i.setUserARN(uniqueUserArn)
+	err = w.saveUpdatedInstance(i)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+	}
 
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := w.sts.GetCallerIdentity(ctx, stsInput)
@@ -164,6 +180,10 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 
 	i.setDomainProperties(domainStatus)
+	err = w.saveUpdatedInstance(i)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+	}
 
 	esARNs := make([]string, 0)
 	esARNs = append(esARNs, i.ARN)
@@ -175,12 +195,16 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 
 	if _, err = w.iam.AttachUserPolicy(ctx, &iam.AttachUserPolicyInput{
 		PolicyArn: aws.String(policyARN),
-		UserName:  aws.String(i.Domain),
+		UserName:  aws.String(i.getIamUsername()),
 	}); err != nil {
 		return fmt.Errorf("error attaching IAM user policy: %w", err)
 	}
 
 	i.setUserIAMPolicyAttributes(policy, policyARN)
+	err = w.saveUpdatedInstance(i)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+	}
 
 	//try setup of roles and policies on create
 	err = i.enableBrokerSnapshots(ctx, w.iam, w.settings, iamTags, w.logger)
@@ -189,13 +213,17 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 
 	i.State = base.InstanceReady
-	err = w.db.Save(i).Error
+	err = w.saveUpdatedInstance(i)
 	if err != nil {
-		return fmt.Errorf("error updating instance: %w", err)
+		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
 	return nil
+}
+
+func (w *CreateWorker) saveUpdatedInstance(i *ElasticsearchInstance) error {
+	return w.db.Save(i).Error
 }
 
 func (w *CreateWorker) configureAuditLoggingIfNeeded(
