@@ -90,7 +90,19 @@ func TestDeleteWorkerWork(t *testing.T) {
 					SnapshotsRepoName: snapshotRepo,
 				},
 				&mockOpensearchClient{
-					describeDomainErrs: []error{&types.ResourceNotFoundException{}},
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &types.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": testApiUrl.Hostname(),
+								},
+								ARN:           aws.String("fake-arn"),
+								EngineVersion: aws.String("version"),
+							},
+						},
+					},
+					describeDomainErrs: []error{nil, &types.ResourceNotFoundException{}},
 				},
 				&mockIamClient{
 					createRoleOutput: []*iam.CreateRoleOutput{
