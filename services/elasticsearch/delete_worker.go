@@ -66,50 +66,46 @@ func NewDeleteWorker(
 }
 
 func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) error {
-	return w.asyncDeleteElasticSearchDomain(ctx, job.Args.Instance)
+	i := job.Args.Instance
+	operation := base.DeleteOp
+	err := w.asyncDeleteElasticSearchDomain(ctx, i, operation)
+	if err != nil {
+		w.logger.Error("error during domain deletion", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
+		return err
+	}
+	return nil
 }
 
-func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance) error {
-	operation := base.DeleteOp
-
+func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance, operation base.Operation) error {
 	err := w.takeLastSnapshot(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t takeLastSnapshot returned error"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("%s: %w ", errorMsg, err)
 	}
 
 	err = w.writeManifestToS3(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t writeManifestToS3 returned error"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("%s: %w ", errorMsg, err)
 	}
 
 	err = w.cleanupRolesAndPolicies(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupRolesAndPolicies returned error"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("%s: %w ", errorMsg, err)
 	}
 
 	err = w.cleanupElasticSearchDomain(ctx, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupElasticSearchDomain returned error"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("%s: %w ", errorMsg, err)
 	}
 
 	err = cleanupLogGroups(ctx, w.logs, w.logger, i)
 	if err != nil {
 		errorMsg := "asyncDeleteElasticSearchDomain - \t cleanupLogGroups returned error"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("%s: %w ", errorMsg, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted resources")

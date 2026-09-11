@@ -76,7 +76,7 @@ func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) err
 	i := job.Args.Instance
 	err := w.createDomain(ctx, i, operation)
 	if err != nil {
-		w.logger.Error(err.Error(), "err", err)
+		w.logger.Error("error during domain creation", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, err.Error())
 		return river.JobCancel(err)
 	}
