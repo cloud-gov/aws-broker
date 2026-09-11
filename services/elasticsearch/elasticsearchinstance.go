@@ -252,3 +252,15 @@ func (i *ElasticsearchInstance) setDomainProperties(domainStatus *opensearchType
 func (i *ElasticsearchInstance) hasDomainProperties() bool {
 	return i.Host != "" && i.ARN != "" && i.ElasticsearchVersion != ""
 }
+
+func (i *ElasticsearchInstance) getSnapshotRoleName() string {
+	return fmt.Sprintf("%s-to-s3-SnapshotRole", i.Domain)
+}
+
+func (i *ElasticsearchInstance) getSnapshotRolePolicyName() string {
+	return fmt.Sprintf("%s-to-S3-RolePolicy", i.Domain)
+}
+
+func (i *ElasticsearchInstance) getPassRolePolicyName() string {
+	return fmt.Sprintf("%s-to-S3-ESRolePolicy", i.Domain)
+}

@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -26,7 +27,7 @@ func createUpdateBucketRolesAndPolicies(
 
 	// create snapshotrole if not done yet
 	if i.SnapshotARN == "" {
-		rolename := i.Domain + "-to-s3-SnapshotRole"
+		rolename := i.getSnapshotRoleName()
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := awsiam.CreateAssumeRole(ctx, iam, logger, policy, rolename, iamTags)
 		if err != nil {
@@ -41,8 +42,27 @@ func createUpdateBucketRolesAndPolicies(
 
 	// create PassRolePolicy if DNE
 	if i.IamPassRolePolicyARN == "" {
-		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
-		policyname := i.Domain + "-to-S3-ESRolePolicy"
+		passRoleStatement := awsiam.PolicyStatementEntry{
+			Action:   []string{"iam:PassRole"},
+			Effect:   "Allow",
+			Resource: []string{i.SnapshotARN},
+		}
+		esHttpPutStatement := awsiam.PolicyStatementEntry{
+			Action:   []string{"es:ESHttpPut"},
+			Effect:   "Allow",
+			Resource: []string{fmt.Sprintf("%s/*", i.SnapshotARN)},
+		}
+		policyDoc := awsiam.PolicyDocument{
+			Version:   "2012-10-17",
+			Statement: []awsiam.PolicyStatementEntry{passRoleStatement, esHttpPutStatement},
+		}
+		policy, err := policyDoc.ToString()
+		if err != nil {
+			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
+			return err
+		}
+
+		policyname := i.getPassRolePolicyName()
 		username := i.Domain
 		policyarn, err := awsiam.CreateUserPolicy(ctx, iam, logger, policy, policyname, username, iamTags)
 		if err != nil {
@@ -54,7 +74,7 @@ func createUpdateBucketRolesAndPolicies(
 
 	// Create PolicyDoc Statements
 	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
-	bucketArn := "arn:aws-us-gov:s3:::" + bucket
+	bucketArn := fmt.Sprintf("arn:aws-us-gov:s3:::%s", bucket)
 	listStatement := awsiam.PolicyStatementEntry{
 		Action:   []string{"s3:ListBucket"},
 		Effect:   "Allow",
@@ -72,13 +92,12 @@ func createUpdateBucketRolesAndPolicies(
 
 	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
 	if i.SnapshotPolicyARN == "" {
-
 		policyDoc := awsiam.PolicyDocument{
 			Version:   "2012-10-17",
 			Statement: []awsiam.PolicyStatementEntry{listStatement, objectStatement},
 		}
 
-		policyname := i.Domain + "-to-S3-RolePolicy"
+		policyname := i.getSnapshotRolePolicyName()
 		policy, err := policyDoc.ToString()
 		if err != nil {
 			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)

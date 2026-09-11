@@ -206,55 +206,67 @@ func (w *DeleteWorker) pollForSnapshotCreation(esApi EsApiClient, snapshotName s
 
 // in which we clean up all the roles and policies for the ES domain
 func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *ElasticsearchInstance) error {
-	if _, err := w.iam.DetachUserPolicy(ctx, &iam.DetachUserPolicyInput{
-		PolicyArn: aws.String(i.IamPolicyARN),
-		UserName:  aws.String(i.Domain),
-	}); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", "err", err)
-		return err
+	if i.IamPolicyARN != "" {
+		if _, err := w.iam.DetachUserPolicy(ctx, &iam.DetachUserPolicyInput{
+			PolicyArn: aws.String(i.IamPolicyARN),
+			UserName:  aws.String(i.Domain),
+		}); err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", "err", err)
+			return err
+		}
 	}
 
-	if _, err := w.iam.DeleteAccessKey(ctx, &iam.DeleteAccessKeyInput{
-		UserName:    aws.String(i.Domain),
-		AccessKeyId: aws.String(i.AccessKey),
-	}); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", "err", err)
-		return err
+	if i.AccessKey != "" {
+		if _, err := w.iam.DeleteAccessKey(ctx, &iam.DeleteAccessKeyInput{
+			UserName:    aws.String(i.Domain),
+			AccessKeyId: aws.String(i.AccessKey),
+		}); err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", "err", err)
+			return err
+		}
 	}
 
-	if _, err := w.iam.DetachUserPolicy(ctx, &iam.DetachUserPolicyInput{
-		PolicyArn: aws.String(i.IamPassRolePolicyARN),
-		UserName:  aws.String(i.Domain),
-	}); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", "err", err)
-		return err
+	if i.IamPassRolePolicyARN != "" {
+		if _, err := w.iam.DetachUserPolicy(ctx, &iam.DetachUserPolicyInput{
+			PolicyArn: aws.String(i.IamPassRolePolicyARN),
+			UserName:  aws.String(i.Domain),
+		}); err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", "err", err)
+			return err
+		}
 	}
 
-	if _, err := w.iam.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
-		PolicyArn: aws.String(i.SnapshotPolicyARN),
-		RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
-	}); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", "err", err)
-		return err
+	if i.SnapshotPolicyARN != "" {
+		if _, err := w.iam.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
+			PolicyArn: aws.String(i.SnapshotPolicyARN),
+			RoleName:  aws.String(i.getSnapshotRoleName()),
+		}); err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", "err", err)
+			return err
+		}
+
+		err := awsiam.DeletePolicy(ctx, w.iam, w.logger, i.SnapshotPolicyARN)
+		if err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", "err", err)
+			return err
+		}
 	}
 
-	err := awsiam.DeletePolicy(ctx, w.iam, w.logger, i.SnapshotPolicyARN)
-	if err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", "err", err)
-		return err
+	if i.SnapshotARN != "" {
+		if _, err := w.iam.DeleteRole(ctx, &iam.DeleteRoleInput{
+			RoleName: aws.String(i.getSnapshotRoleName()),
+		}); err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", "err", err)
+			return err
+		}
 	}
 
-	if _, err := w.iam.DeleteRole(ctx, &iam.DeleteRoleInput{
-		RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
-	}); err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", "err", err)
-		return err
-	}
-
-	err = awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPassRolePolicyARN)
-	if err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", "err", err)
-		return err
+	if i.IamPassRolePolicyARN != "" {
+		err := awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPassRolePolicyARN)
+		if err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", "err", err)
+			return err
+		}
 	}
 
 	deleteUserInput := &iam.DeleteUserInput{
@@ -265,10 +277,12 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 		return err
 	}
 
-	err = awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPolicyARN)
-	if err != nil {
-		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", "err", err)
-		return err
+	if i.IamPolicyARN != "" {
+		err := awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPolicyARN)
+		if err != nil {
+			w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", "err", err)
+			return err
+		}
 	}
 	return nil
 }
