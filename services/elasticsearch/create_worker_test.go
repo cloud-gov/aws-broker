@@ -32,12 +32,13 @@ func TestCreateWorkerWork(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		ctx           context.Context
-		instance      *ElasticsearchInstance
-		expectedState base.InstanceState
-		password      string
-		expectErr     bool
-		worker        *CreateWorker
+		ctx              context.Context
+		instance         *ElasticsearchInstance
+		expectedInstance *ElasticsearchInstance
+		expectedState    base.InstanceState
+		password         string
+		expectErr        bool
+		worker           *CreateWorker
 	}{
 		"success": {
 			ctx:      t.Context(),
@@ -51,6 +52,26 @@ func TestCreateWorkerWork(t *testing.T) {
 						ServiceID: "aws-elasticsearch",
 					},
 				},
+			},
+			expectedInstance: &ElasticsearchInstance{
+				VolumeType:   "gp3",
+				InstanceType: "t3.small.search",
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "aws-elasticsearch",
+					},
+					State: base.InstanceReady,
+				},
+				AccessKey:              "fake-id",
+				SecretKey:              "fake-secret",
+				IamUserARN:             "user-arn",
+				ARN:                    "arn",
+				IamPolicy:              `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`,
+				IamPolicyARN:           "user-policy-arn",
+				BrokerSnapshotsEnabled: true,
+				SnapshotARN:            "role-arn",
+				IamPassRolePolicyARN:   "pass-role-policy-arn",
+				SnapshotPolicyARN:      "snapshot-policy-arn",
 			},
 			worker: NewCreateWorker(
 				brokerDB,
@@ -84,15 +105,28 @@ func TestCreateWorkerWork(t *testing.T) {
 							SecretAccessKey: aws.String("fake-secret"),
 						},
 					},
-					createPolicyOutput: &iam.CreatePolicyOutput{
-						Policy: &types.Policy{
-							Arn: aws.String("policy-arn"),
+					createPolicyOutput: []*iam.CreatePolicyOutput{
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("user-policy-arn"),
+							},
+						},
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("pass-role-policy-arn"),
+							},
+						},
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("snapshot-policy-arn"),
+							},
 						},
 					},
 					createRoleOutput: []*iam.CreateRoleOutput{
 						{
 							Role: &types.Role{
-								Arn: aws.String("role-arn"),
+								Arn:      aws.String("role-arn"),
+								RoleName: aws.String("role-name"),
 							},
 						},
 					},
@@ -357,7 +391,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							SecretAccessKey: aws.String("fake-secret"),
 						},
 					},
-					createPolicyErr: errors.New("error creating policy"),
+					createPolicyErrs: []error{errors.New("error creating policy")},
 					getUserOutput: &iam.GetUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
@@ -421,9 +455,16 @@ func TestCreateWorkerWork(t *testing.T) {
 							SecretAccessKey: aws.String("fake-secret"),
 						},
 					},
-					createPolicyOutput: &iam.CreatePolicyOutput{
-						Policy: &types.Policy{
-							Arn: aws.String("policy-arn"),
+					createPolicyOutput: []*iam.CreatePolicyOutput{
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("user-policy-arn"),
+							},
+						},
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("pass-role-policy-arn"),
+							},
 						},
 					},
 					getUserOutput: &iam.GetUserOutput{
@@ -490,9 +531,16 @@ func TestCreateWorkerWork(t *testing.T) {
 							SecretAccessKey: aws.String("fake-secret"),
 						},
 					},
-					createPolicyOutput: &iam.CreatePolicyOutput{
-						Policy: &types.Policy{
-							Arn: aws.String("policy-arn"),
+					createPolicyOutput: []*iam.CreatePolicyOutput{
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("user-policy-arn"),
+							},
+						},
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("pass-role-policy-arn"),
+							},
 						},
 					},
 					getUserOutput: &iam.GetUserOutput{
@@ -528,6 +576,14 @@ func TestCreateWorkerWork(t *testing.T) {
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")
+			}
+			if test.expectedInstance != nil {
+				instance := &ElasticsearchInstance{}
+				brokerDB.Where("uuid = ?", test.instance.Uuid).First(&instance)
+				test.expectedInstance.Uuid = test.instance.Uuid
+				if diff := deep.Equal(instance, test.expectedInstance); diff != nil {
+					t.Error(diff)
+				}
 			}
 			message, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.CreateOp)
 			if err != nil {

@@ -152,8 +152,9 @@ type mockIamClient struct {
 	attachUserPolicyErr      error
 	createAccessKeyErr       error
 	createAccessKeyOutput    *iam.CreateAccessKeyOutput
-	createPolicyErr          error
-	createPolicyOutput       *iam.CreatePolicyOutput
+	createPolicyCallNum      int
+	createPolicyErrs         []error
+	createPolicyOutput       []*iam.CreatePolicyOutput
 	createRoleCallNum        int
 	createRoleOutput         []*iam.CreateRoleOutput
 	createRoleErrs           []error
@@ -168,7 +169,12 @@ func (m *mockIamClient) CreateAccessKey(ctx context.Context, params *iam.CreateA
 }
 
 func (m *mockIamClient) CreatePolicy(ctx context.Context, params *iam.CreatePolicyInput, optFns ...func(*iam.Options)) (*iam.CreatePolicyOutput, error) {
-	return m.createPolicyOutput, m.createPolicyErr
+	callNum := m.createPolicyCallNum
+	m.createPolicyCallNum++
+	if len(m.createPolicyErrs) > callNum && m.createPolicyErrs[callNum] != nil {
+		return nil, m.createPolicyErrs[callNum]
+	}
+	return m.createPolicyOutput[callNum], nil
 }
 
 func (m *mockIamClient) DeleteAccessKey(ctx context.Context, params *iam.DeleteAccessKeyInput, optFns ...func(*iam.Options)) (*iam.DeleteAccessKeyOutput, error) {
