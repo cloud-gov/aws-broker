@@ -24,7 +24,7 @@ rds:
           - &default-postgresql-v18 "Default PostgreSQL v18"
           - &minimum-1-core "minimum 1 core"
           - &minimum-1-gib-memory "minimum 1 GiB memory"
-          - &default-10-gb-storage "Default 10 GB storage"
+          - &default-20-gb-storage "Default 20 GB storage"
         displayName: *micro-psql-name
       free: true
       adapter: dedicated
@@ -57,10 +57,11 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-1-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *micro-psql-redundant-name
       free: false
       adapter: dedicated
+      allocatedStorage: 20
       instanceClass: db.t3.micro
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -86,7 +87,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-1-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *micro-psql-replica-name
       free: false
       adapter: dedicated
@@ -116,7 +117,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - &minimum-2-gib-memory "minimum 2 GiB memory"
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *small-psql-name
       free: false
       adapter: dedicated
@@ -145,7 +146,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-2-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *small-psql-redundant-name
       free: false
       adapter: dedicated
@@ -175,7 +176,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-2-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *small-psql-replica-name
       free: false
       adapter: dedicated
@@ -205,7 +206,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - &minimum-4-gib-memory "minimum 4 GiB memory"
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-psql-name
       free: false
       adapter: dedicated
@@ -234,7 +235,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-4-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-psql-redundant-name
       free: false
       adapter: dedicated
@@ -264,7 +265,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-4-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-psql-replica-name
       free: false
       adapter: dedicated
@@ -294,7 +295,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - &minimum-8-gib-memory "minimum 8 GiB memory"
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-gp-psql-name
       free: false
       adapter: dedicated
@@ -323,7 +324,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-gp-psql-redundant
       free: false
       adapter: dedicated
@@ -353,7 +354,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-gp-psql-replica
       free: false
       adapter: dedicated
@@ -383,7 +384,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *large-gp-psql-name
       free: false
       adapter: dedicated
@@ -412,7 +413,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *large-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -441,7 +442,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *large-gp-psql-replica-name
       free: false
       adapter: dedicated
@@ -471,7 +472,7 @@ rds:
           - *default-postgresql-v18
           - &minimum-2-cores "minimum 2 cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-psql-name
       free: false
       adapter: dedicated
@@ -500,7 +501,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-2-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -530,7 +531,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-2-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-psql-replica-name
       free: false
       adapter: dedicated
@@ -561,7 +562,7 @@ rds:
           - *default-postgresql-v18
           - &minimum-4-cores "minimum 4 cores"
           - &minimum-32-gib-memory "minimum 32 GiB memory"
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *2xlarge-gp-psql-name
       free: false
       adapter: dedicated
@@ -590,7 +591,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-4-cores
           - *minimum-32-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *2xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
@@ -620,7 +621,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-4-cores
           - *minimum-32-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *2xlarge-gp-psql-replica-name
       free: false
       adapter: dedicated
@@ -651,7 +652,7 @@ rds:
           - *default-postgresql-v18
           - &minimum-4-cores "minimum 4 graviton cores"
           - &minimum-16-gib-memory "minimum 16 GiB memory"
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-psql-m6-name
       free: false
       adapter: dedicated
@@ -680,7 +681,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-4-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-psql-m6-redundant-name
       free: false
       adapter: dedicated
@@ -710,7 +711,7 @@ rds:
           - *default-postgresql-v18
           - *minimum-4-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-psql-m6-replica-name
       free: false
       adapter: dedicated
@@ -741,7 +742,7 @@ rds:
           - &default-mysql-description "Default MySQL v8"
           - *minimum-1-core
           - *minimum-1-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *micro-mysql-name
       free: true
       adapter: dedicated
@@ -773,7 +774,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-1-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *micro-mysql-replica-name
       free: true
       adapter: dedicated
@@ -803,7 +804,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-1-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *micro-mysql-name
       free: true
       adapter: dedicated
@@ -832,7 +833,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-2-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *small-mysql-name
       free: true
       adapter: dedicated
@@ -861,7 +862,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-2-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *small-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -891,7 +892,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-2-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *small-mysql-replica-name
       free: false
       adapter: dedicated
@@ -921,7 +922,7 @@ rds:
           - *default-mysql-description
           - *minimum-2-cores
           - *minimum-4-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-mysql-name
       free: false
       adapter: dedicated
@@ -950,7 +951,7 @@ rds:
           - *default-mysql-description
           - *minimum-2-cores
           - *minimum-4-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -980,7 +981,7 @@ rds:
           - *default-mysql-description
           - *minimum-2-cores
           - *minimum-4-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1010,7 +1011,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-gp-mysql-name
       free: false
       adapter: dedicated
@@ -1039,7 +1040,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1069,7 +1070,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *medium-gp-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1099,7 +1100,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *large-gp-mysql-name
       free: false
       adapter: dedicated
@@ -1128,7 +1129,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *large-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1158,7 +1159,7 @@ rds:
           - *default-mysql-description
           - *minimum-1-core
           - *minimum-8-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *large-gp-mysql-replica-name
       free: false
       adapter: dedicated
@@ -1188,7 +1189,7 @@ rds:
           - *default-mysql-description
           - *minimum-2-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-mysql-name
       free: false
       adapter: dedicated
@@ -1217,7 +1218,7 @@ rds:
           - *default-mysql-description
           - *minimum-2-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-mysql-redundant-name
       free: false
       adapter: dedicated
@@ -1247,7 +1248,7 @@ rds:
           - *default-mysql-description
           - *minimum-2-cores
           - *minimum-16-gib-memory
-          - *default-10-gb-storage
+          - *default-20-gb-storage
         displayName: *xlarge-gp-mysql-replica-name
       free: false
       adapter: dedicated

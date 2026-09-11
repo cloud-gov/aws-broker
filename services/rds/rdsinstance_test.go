@@ -983,6 +983,86 @@ func TestModifyInstance(t *testing.T) {
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
+		// Storage autoscaling (#540). max_storage must exceed the instance's
+		// CURRENT allocated storage, not just any storage supplied in the same
+		// request. Without this check the modify was accepted, persisted to the
+		// instance row, and then silently dropped in prepareModifyDbInstanceInput
+		// (which only sets the AWS parameter when Max > Allocated) — leaving the
+		// broker's record disagreeing with AWS and the customer seeing success
+		// for a no-op.
+		"rejects max_storage below the instance's current allocated storage": {
+			options: Options{
+				StorageType:         "gp3",
+				MaxAllocatedStorage: 50,
+			},
+			existingInstance: &RDSInstance{
+				AllocatedStorage: 100,
+				StorageType:      "gp3",
+			},
+			expectedInstance: nil,
+			currentPlan:      &catalog.RDSPlan{},
+			newPlan:          &catalog.RDSPlan{},
+			settings:         &config.Settings{},
+			expectErr:        true,
+		},
+		"rejects max_storage equal to the instance's current allocated storage": {
+			options: Options{
+				StorageType:         "gp3",
+				MaxAllocatedStorage: 100,
+			},
+			existingInstance: &RDSInstance{
+				AllocatedStorage: 100,
+				StorageType:      "gp3",
+			},
+			expectedInstance: nil,
+			currentPlan:      &catalog.RDSPlan{},
+			newPlan:          &catalog.RDSPlan{},
+			settings:         &config.Settings{},
+			expectErr:        true,
+		},
+		"accepts max_storage above the instance's current allocated storage": {
+			options: Options{
+				StorageType:         "gp3",
+				MaxAllocatedStorage: 200,
+			},
+			existingInstance: &RDSInstance{
+				AllocatedStorage: 100,
+				StorageType:      "gp3",
+			},
+			expectedInstance: &RDSInstance{
+				AllocatedStorage:    100,
+				MaxAllocatedStorage: 200,
+				StorageType:         "gp3",
+				Tags:                map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
+		// A storage increase in the same request is compared against the NEW
+		// allocation, not the old one.
+		"accepts max_storage above a storage increase in the same request": {
+			options: Options{
+				StorageType:         "gp3",
+				AllocatedStorage:    150,
+				MaxAllocatedStorage: 200,
+			},
+			existingInstance: &RDSInstance{
+				AllocatedStorage: 100,
+				StorageType:      "gp3",
+			},
+			expectedInstance: &RDSInstance{
+				AllocatedStorage:    150,
+				MaxAllocatedStorage: 200,
+				StorageType:         "gp3",
+				Tags:                map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
 	}
 
 	for name, test := range testCases {
