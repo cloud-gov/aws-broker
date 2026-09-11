@@ -5,6 +5,8 @@ context, and its consequences. Status reflects reality on `main`:
 
 - **Accepted** — decided and reflected in the codebase.
 - **Proposed** — decided in principle but **not yet implemented** on `main`.
+- **Rejected** — considered and declined, with the reason recorded. Kept rather than
+  deleted so the option is not silently re-proposed.
 - **Superseded** — replaced by a later decision (noted in-file).
 
 An ADR reaching **Accepted** is evidenced by PR approval from a team member other
@@ -15,7 +17,4 @@ than its authors, not by self-assertion.
 | ADR | Decision | Status |
 | --- | --- | --- |
 | [ADR-0001](ADR-0001-oracle-19c-stig-hardened-in-aws-broker.md) | Implement STIG-hardened Oracle 19c in aws-broker: SE2 + License Included, validation performed externally by the CINC/InSpec overlay | Accepted |
-
-A **proposed** ADR covering future Cloud Service Broker portability (an
-`RDSBaseline` engine abstraction + structured YAML) is raised separately, since it
-is not implemented on `main`.
+| [ADR-0002](ADR-0002-oracle-baseline-csb-portability.md) | Design the Oracle baseline behind an `RDSBaseline` engine abstraction for future CSB portability | **Rejected** |
