@@ -1,9 +1,10 @@
 # ADR-0002 — Design the Oracle baseline for future Cloud Service Broker portability
 
-- **Status:** Proposed — **not implemented on `main`**
-- **Date:** 2026-07-17 (raised separately 2026-08-31)
+- **Status:** **Rejected** (2026-09-11) — proposed 2026-08-31, declined on review
+- **Date:** 2026-07-17 (raised 2026-08-31; rejected 2026-09-11)
 - **Epic:** [#519](https://github.com/cloud-gov/aws-broker/issues/519)
-- **Tracking:** [#568](https://github.com/cloud-gov/aws-broker/issues/568)
+- **Decision-makers:** @markdboyd (rejecting rationale), @wz-gsa (author)
+- **Superseded by:** nothing — see *Revisiting* below
 
 ## Context
 
@@ -12,72 +13,83 @@ Oracle 19c in `aws-broker` rather than as a Cloud Service Broker brokerpak, and
 noted that a future migration to `cloud-gov/csb` remains open. That migration is not
 scheduled and may never happen.
 
-The Oracle work that has landed so far took a deliberately **minimal, imperative**
-path: [#564](https://github.com/cloud-gov/aws-broker/pull/564) added
+The Oracle work that has landed took a deliberately **minimal, imperative** path:
+[#564](https://github.com/cloud-gov/aws-broker/pull/564) added
 `services/rds/oracle_tls.go` for the SSL option group, with Oracle specifics written
-directly into Go. Subsequent hardening (parameter-group baseline, log exports) is
-following the same shape.
+directly into Go. Subsequent hardening (parameter-group baseline, log exports)
+followed the same shape.
 
-The question this ADR raises: should Oracle's STIG-relevant configuration be
-expressed as **declarative data behind an engine abstraction**, so it could be
-consumed by a CSB brokerpak later without re-deriving the hardening posture?
+The question this ADR raised: should Oracle's STIG-relevant configuration be
+expressed as **declarative data behind an engine abstraction**, so a CSB brokerpak
+could consume it later without re-deriving the hardening posture?
 
-## Proposed decision
+## Decision — rejected
 
-Introduce an **`RDSBaseline` engine abstraction** with each engine's STIG-relevant
-configuration expressed as **structured YAML** (parameter-group settings, option
-groups, log exports, plan constraints) rather than imperative Go.
+**Do not introduce an `RDSBaseline` engine abstraction for CSB portability.** Keep
+`aws-broker`'s RDS code as imperative Go.
 
-Rationale: the hardening posture is *data* — a list of parameters with values,
-apply-methods, and STIG intent. Expressed as data it can be validated, diffed
-against a scan result, reviewed by an ISSO without reading Go, and read by a second
-consumer (a brokerpak) without a rewrite. Expressed as imperative Go it is coupled
-to this broker's control flow.
+The proposal was to express each engine's STIG-relevant configuration (parameter
+groups, option groups, log exports, plan constraints) as structured data behind an
+engine interface, on the argument that the hardening posture *is* data and would then
+be reviewable, diffable against a scan result, and reusable by a second consumer.
 
-## Status: why this is Proposed and not Accepted
+That argument was not persuasive enough to justify the cost, for the reason recorded
+below.
 
-**`main` does not do this.** The engine abstraction does not exist on `main`;
-Oracle configuration there is imperative Go (`services/rds/oracle_tls.go`).
+## Rationale for rejection
 
-The long-lived integration branch `feat/oracle-19c-stig-brokered-rds` has moved
-partway toward this decision — it carries `services/rds/baselines.go` plus
-per-engine YAML (`services/rds/baselines/oracle19c/parameters.yml`, `options.yml`,
-`log_exports.yml`) — but that has not merged to `main`, and it is baseline *data*
-loading rather than the `RDSBaseline` engine interface this ADR proposes. This ADR
-records the intent and the reasoning so the option stays open; it does **not**
-describe current `main` architecture.
+> "A migration of the AWS broker to the CSB may or may not ever happen. I understand
+> that the ADR is saying that we should leave the option open for a future CSB
+> migration, but I don't think the effort is worthwhile, especially when the currently
+> imperative Golang code allows us to move faster. While this broker remains, I think
+> its code should be maintained in a consistent way as imperative Golang code.
+> Introducing new abstractions that have no immediate value for a possible future
+> migration just doesn't seem worthwhile."
+>
+> — @markdboyd, [#575 review](https://github.com/cloud-gov/aws-broker/pull/575)
 
-Accepting it requires a decision that is not yet made: whether Cloud.gov is
-migrating RDS brokerage to the CSB at all. Building a portability abstraction for a
-migration that may not happen is speculative generality, and the honest current
-position is that the incremental imperative path is shipping working hardening
-faster.
+Three points, in order of weight:
 
-## Consequences if accepted
+1. **The second consumer does not exist and may never.** An abstraction whose only
+   justification is a hypothetical future caller is speculative generality. The
+   portability benefit is unrealised unless a CSB migration is actually decided.
+2. **Codebase consistency has present value; portability has contingent value.**
+   While this broker is the RDS brokering path, its code should look like one thing.
+   A data-driven engine layer for Oracle alongside imperative Go for Postgres/MySQL
+   would leave two idioms in `services/rds/` indefinitely.
+3. **Velocity.** The imperative path is shipping working hardening now. A refactor of
+   working code, paid for up front against a contingent benefit, slows that down.
 
-- **Positive:** hardening posture becomes reviewable data rather than code; a CSB
-  brokerpak could consume the same baseline; parameter drift becomes diffable
-  against overlay scan output.
-- **Negative:** a refactor of already-working code, against a migration that has not
-  been decided. Adds an abstraction layer whose second consumer does not exist —
-  the classic premature-generalisation risk.
-- **Cost of deferring:** if the CSB migration is later approved, the Oracle posture
-  must be re-derived from imperative Go, with the risk that a STIG-relevant setting
-  is dropped in translation.
+This ADR anticipated its own rejection — it stated that accepting it required an
+undecided migration question, called the abstraction "speculative generality," and
+required an explicit disposition rather than being left indefinitely Proposed. The
+review supplied the reason. Recording it as Rejected is the disposition.
 
-## Alternatives considered
+## Accepted cost of rejecting
 
-- **Keep the imperative path** (current `main`) — simplest, ships fastest, no
-  speculative abstraction. Cost is paid only if a CSB migration happens.
-- **Build the CSB brokerpak now** — rejected in ADR-0001: premature second RDS
-  operating model.
-- **Extract the baseline data without an engine abstraction** — a middle option
-  worth considering, and the one the integration branch has effectively taken:
-  per-engine YAML under `services/rds/baselines/` may capture most of the
-  portability benefit without an interface refactor.
+**If a CSB migration is later approved, the Oracle hardening posture must be
+re-derived from imperative Go**, with the attendant risk that a STIG-relevant setting
+is dropped in translation. That cost is accepted, and it is bounded by two things:
 
-## Decision needed
+- The DISA STIG and the
+  [`cg-oracle-database-19c-stig-overlay`](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay)
+  remain the authoritative statement of the required posture, independent of this
+  broker's code. A re-derivation can be validated against the overlay rather than
+  reverse-engineered from Go.
+- The long-lived branch `feat/oracle-19c-stig-brokered-rds` already carries per-engine
+  YAML (`services/rds/baselines/oracle19c/parameters.yml`, `options.yml`,
+  `log_exports.yml`) loaded by `services/rds/baselines.go`. That is baseline *data*
+  without an engine *interface* — it captures much of the reviewability benefit and is
+  **not** rejected by this ADR. Rejection applies to the `RDSBaseline` abstraction,
+  not to keeping hardened values in reviewable YAML.
 
-This ADR should be **Accepted, rejected, or superseded** as part of deciding the
-CSB migration question — not left indefinitely Proposed. If the migration is ruled
-out, this should be marked **Rejected** with that reason recorded.
+## Revisiting
+
+Reopen as a **new** ADR, not by editing this one, if either becomes true:
+
+- Cloud.gov decides to migrate RDS brokerage to the CSB, giving the abstraction a
+  real second consumer; or
+- a second engine needs the same STIG-baseline treatment, making the abstraction
+  justified by present duplication rather than future portability.
+
+Absent one of those, this decision stands.
