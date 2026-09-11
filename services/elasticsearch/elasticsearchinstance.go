@@ -239,10 +239,6 @@ func (i *ElasticsearchInstance) setAccessCredentials(accessKey string, secretKey
 	i.SecretKey = secretKey
 }
 
-func (i *ElasticsearchInstance) setUserARN(userARN string) {
-	i.IamUserARN = userARN
-}
-
 func (i *ElasticsearchInstance) setDomainProperties(domainStatus *opensearchTypes.DomainStatus) {
 	i.Host = domainStatus.Endpoints["vpc"]
 	i.ARN = *(domainStatus.ARN)
@@ -271,4 +267,8 @@ func (i *ElasticsearchInstance) getPassRolePolicyName() string {
 
 func (i *ElasticsearchInstance) setIamUserARN(userARN string) {
 	i.IamUserARN = userARN
+}
+
+func (i *ElasticsearchInstance) getIamUserARN() string {
+	return i.IamUserARN
 }

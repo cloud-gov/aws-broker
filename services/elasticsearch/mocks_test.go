@@ -158,6 +158,7 @@ type mockIamClient struct {
 	createRoleCallNum        int
 	createRoleOutput         []*iam.CreateRoleOutput
 	createRoleErrs           []error
+	createUserOutput         *iam.CreateUserOutput
 	createUserErr            error
 	getUserErr               error
 	getUserOutput            *iam.GetUserOutput
@@ -219,7 +220,7 @@ func (m *mockIamClient) CreateRole(ctx context.Context, params *iam.CreateRoleIn
 }
 
 func (m *mockIamClient) CreateUser(ctx context.Context, params *iam.CreateUserInput, optFns ...func(*iam.Options)) (*iam.CreateUserOutput, error) {
-	return nil, m.createUserErr
+	return m.createUserOutput, m.createUserErr
 }
 
 func (m *mockIamClient) DeletePolicy(ctx context.Context, params *iam.DeletePolicyInput, optFns ...func(*iam.Options)) (*iam.DeletePolicyOutput, error) {

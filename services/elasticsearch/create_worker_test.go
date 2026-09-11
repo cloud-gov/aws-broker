@@ -159,7 +159,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							},
 						},
 					},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},
@@ -281,7 +281,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							},
 						},
 					},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},
@@ -353,44 +353,11 @@ func TestCreateWorkerWork(t *testing.T) {
 				&mockOpensearchClient{},
 				&mockIamClient{
 					createAccessKeyErr: errors.New("error creating access keys"),
-				},
-				&mockS3Client{},
-				&mockCloudwatchLogsClient{},
-				&mockSTSClient{},
-				slog.New(&testutil.MockLogHandler{}),
-			),
-			expectErr:     true,
-			expectedState: base.InstanceNotCreated,
-		},
-		"error getting user": {
-			ctx: t.Context(),
-			instance: &ElasticsearchInstance{
-				VolumeType:   "gp3",
-				InstanceType: "t3.small.search",
-				Instance: base.Instance{
-					Uuid: uuid.NewString(),
-					Request: request.Request{
-						ServiceID: "aws-elasticsearch",
-					},
-				},
-			},
-			worker: NewCreateWorker(
-				brokerDB,
-				&config.Settings{
-					PollAwsMaxDuration: 1 * time.Millisecond,
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxRetries:  1,
-					DbConfig:           &db.DBConfig{},
-				},
-				&mockOpensearchClient{},
-				&mockIamClient{
-					createAccessKeyOutput: &iam.CreateAccessKeyOutput{
-						AccessKey: &types.AccessKey{
-							AccessKeyId:     aws.String("fake-id"),
-							SecretAccessKey: aws.String("fake-secret"),
+					createUserOutput: &iam.CreateUserOutput{
+						User: &types.User{
+							Arn: aws.String("user-arn"),
 						},
 					},
-					getUserErr: errors.New("error getting user"),
 				},
 				&mockS3Client{},
 				&mockCloudwatchLogsClient{},
@@ -428,7 +395,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							SecretAccessKey: aws.String("fake-secret"),
 						},
 					},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},
@@ -474,7 +441,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							SecretAccessKey: aws.String("fake-secret"),
 						},
 					},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},
@@ -539,7 +506,7 @@ func TestCreateWorkerWork(t *testing.T) {
 						},
 					},
 					createPolicyErrs: []error{errors.New("error creating policy")},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},
@@ -615,7 +582,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							},
 						},
 					},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},
@@ -692,7 +659,7 @@ func TestCreateWorkerWork(t *testing.T) {
 							},
 						},
 					},
-					getUserOutput: &iam.GetUserOutput{
+					createUserOutput: &iam.CreateUserOutput{
 						User: &types.User{
 							Arn: aws.String("user-arn"),
 						},

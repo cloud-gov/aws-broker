@@ -114,21 +114,6 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
 	}
 
-	userParams := &iam.GetUserInput{
-		UserName: aws.String(i.getIamUsername()),
-	}
-	userResp, err := w.iam.GetUser(ctx, userParams)
-	if err != nil {
-		return fmt.Errorf("error getting user information: %w", err)
-	}
-
-	uniqueUserArn := *(userResp.User.Arn)
-	i.setUserARN(uniqueUserArn)
-	err = w.saveUpdatedInstance(i)
-	if err != nil {
-		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
-	}
-
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := w.sts.GetCallerIdentity(ctx, stsInput)
 	if err != nil {
@@ -144,7 +129,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 
 	time.Sleep(w.settings.PollAwsMinDelay)
 
-	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
+	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + i.getIamUserARN() + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
 	if err != nil {
 		return fmt.Errorf("error preparing domain creation input: %w", err)
