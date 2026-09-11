@@ -34,18 +34,18 @@ import (
 )
 
 type ElasticsearchAdapter interface {
-	createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error)
+	createElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	modifyElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkElasticsearchStatus(i *ElasticsearchInstance) (base.InstanceState, error)
 	checkCompatibleVersions(domainName, targetVersion string) error
-	bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error)
-	deleteElasticsearch(i *ElasticsearchInstance, passoword string) (base.InstanceState, error)
+	bindElasticsearchToApp(i *ElasticsearchInstance) (map[string]string, error)
+	deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error)
 }
 
 type mockElasticsearchAdapter struct {
 }
 
-func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
 	return base.InstanceInProgress, nil
 }
 
@@ -61,11 +61,11 @@ func (d *mockElasticsearchAdapter) checkCompatibleVersions(domainName, targetVer
 	return nil
 }
 
-func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
+func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance) (map[string]string, error) {
 	return i.getCredentials()
 }
 
-func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
 	return base.InstanceInProgress, nil
 }
 
@@ -120,7 +120,7 @@ type dedicatedElasticsearchAdapter struct {
 // This is the prefix for all pgroups created by the broker.
 const PgroupPrefix = "cg-elasticsearch-broker-"
 
-func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedElasticsearchAdapter) createElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
 	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.CreateOp, base.InstanceInProgress, "Creating domain")
 	if err != nil {
 		return base.InstanceNotCreated, err
@@ -204,12 +204,12 @@ func (d *dedicatedElasticsearchAdapter) ensureLoggingForModify(i *ElasticsearchI
 	return setupLogging(d.ctx, i, d.logs, d.logger, &d.settings, *result.Account)
 }
 
-func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance, password string) (map[string]string, error) {
+func (d *dedicatedElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance) (map[string]string, error) {
 	return bindElasticsearchToApp(d.ctx, d.opensearch, d.iam, &d.settings, d.logger, i)
 }
 
 // we make the deletion async, set status to in-progress and rollup to return a 202
-func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance, password string) (base.InstanceState, error) {
+func (d *dedicatedElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
 	err := asyncmessage.WriteAsyncJobMessage(d.db, i.ServiceID, i.Uuid, base.DeleteOp, base.InstanceInProgress, "Deleting resources")
 	if err != nil {
 		return base.InstanceNotGone, err

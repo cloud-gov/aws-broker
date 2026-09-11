@@ -2,9 +2,6 @@ package elasticsearch
 
 import (
 	"context"
-	"crypto/aes"
-	"encoding/base64"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -26,8 +23,6 @@ type ElasticsearchInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password                       string `sql:"size(255)"`
-	Salt                           string `sql:"size(255)"`
 	AccessKey                      string `sql:"size(255)"`
 	SecretKey                      string `sql:"size(255)"`
 	IamPolicy                      string `sql:"size(255)"`
@@ -53,8 +48,6 @@ type ElasticsearchInstance struct {
 	IamPassRolePolicyARN           string `sql:"size(255)"`
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
-
-	ClearPassword string `gorm:"-"`
 
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
@@ -87,39 +80,6 @@ type ElasticsearchInstance struct {
 	IamUserARN string `sql:"size(2048)"`
 
 	Protocol string `gorm:"-"`
-}
-
-func (i *ElasticsearchInstance) setPassword(password, key string) error {
-	if i.Salt == "" {
-		return errors.New("salt has to be set before writing the password")
-	}
-
-	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
-
-	encrypted, err := helpers.Encrypt(password, key, iv)
-	if err != nil {
-		return err
-	}
-
-	i.Password = encrypted
-	i.ClearPassword = password
-
-	return nil
-}
-
-func (i *ElasticsearchInstance) decryptCredential(key string) (string, error) {
-	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
-	}
-
-	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
-
-	decrypted, err := helpers.Decrypt(i.Password, key, iv)
-	if err != nil {
-		return "", err
-	}
-
-	return decrypted, nil
 }
 
 func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
@@ -181,12 +141,6 @@ func (i *ElasticsearchInstance) init(
 	i.Description = plan.Description
 
 	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
-
-	i.Salt = helpers.GenerateSalt(aes.BlockSize)
-	password := helpers.RandStr(25)
-	if err := i.setPassword(password, s.EncryptionKey); err != nil {
-		return err
-	}
 
 	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
 	i.DataCount, _ = strconv.Atoi(plan.DataCount)

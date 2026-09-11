@@ -186,7 +186,7 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 	}
 
 	// Create the elasticsearch instance.
-	status, err := broker.adapter.createElasticsearch(&newInstance, newInstance.ClearPassword)
+	status, err := broker.adapter.createElasticsearch(&newInstance)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,
@@ -408,20 +408,12 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.decryptCredential(broker.settings.EncryptionKey)
-	if err != nil {
-		return binding, apiresponses.NewFailureResponse(
-			fmt.Errorf("unable to get instance password: %s", err),
-			http.StatusInternalServerError,
-			"get instance password",
-		)
-	}
-
 	// Get the correct database logic depending on the type of plan
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	existingInstance.setBucket(options.Bucket) //nolint:errcheck // confirm setBucket failure semantics
-	if credentials, err = broker.adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
+	credentials, err := broker.adapter.bindElasticsearchToApp(&existingInstance)
+	if err != nil {
 		return binding, apiresponses.NewFailureResponse(
 			fmt.Errorf("there was an error binding the service to the application: %s", err),
 			http.StatusInternalServerError,
@@ -451,17 +443,8 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 		return apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.decryptCredential(broker.settings.EncryptionKey)
-	if err != nil {
-		return apiresponses.NewFailureResponse(
-			fmt.Errorf("unable to get instance password: %s", err),
-			http.StatusInternalServerError,
-			"get instance password",
-		)
-	}
-
 	// send async deletion request.
-	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password)
+	status, err := broker.adapter.deleteElasticsearch(&existingInstance)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)

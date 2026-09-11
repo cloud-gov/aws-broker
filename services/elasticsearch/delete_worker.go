@@ -320,10 +320,6 @@ func (w *DeleteWorker) cleanupElasticSearchDomain(ctx context.Context, i *Elasti
 // so to provide machine readable information for restoration.
 func (w *DeleteWorker) writeManifestToS3(ctx context.Context, i *ElasticsearchInstance) error {
 	//  marshall instance to bytes.
-	// #nosec G117 -- Password is the AES-encrypted ciphertext (plaintext lives
-	// only in the unpersisted ClearPassword). Marshaled into required restore
-	// metadata written to the broker's private, SSE-AES256 snapshots bucket;
-	// never logged or returned to clients.
 	data, err := json.Marshal(i)
 	if err != nil {
 		return err
