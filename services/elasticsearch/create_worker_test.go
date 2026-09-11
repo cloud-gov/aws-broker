@@ -962,11 +962,7 @@ func TestWaitForDomainReady(t *testing.T) {
 		"success": {
 			ctx: t.Context(),
 			instance: &ElasticsearchInstance{
-				VolumeType:   "gp3",
-				InstanceType: "t3.small.search",
-				Instance: base.Instance{
-					Uuid: uuid.NewString(),
-				},
+				Domain: uuid.NewString(),
 			},
 			worker: NewCreateWorker(
 				brokerDB,
@@ -977,11 +973,6 @@ func TestWaitForDomainReady(t *testing.T) {
 					DbConfig:           &db.DBConfig{},
 				},
 				&mockOpensearchClient{
-					createDomainOutput: &opensearch.CreateDomainOutput{
-						DomainStatus: &opensearchTypes.DomainStatus{
-							ARN: aws.String("arn"),
-						},
-					},
 					describeDomainResults: []*opensearch.DescribeDomainOutput{
 						{
 							DomainStatus: &opensearchTypes.DomainStatus{
@@ -995,60 +986,131 @@ func TestWaitForDomainReady(t *testing.T) {
 						},
 					},
 				},
-				&mockIamClient{
-					createAccessKeyOutput: &iam.CreateAccessKeyOutput{
-						AccessKey: &types.AccessKey{
-							AccessKeyId:     aws.String("fake-id"),
-							SecretAccessKey: aws.String("fake-secret"),
-						},
-					},
-					createPolicyOutput: []*iam.CreatePolicyOutput{
-						{
-							Policy: &types.Policy{
-								Arn: aws.String("user-policy-arn"),
-							},
-						},
-						{
-							Policy: &types.Policy{
-								Arn: aws.String("pass-role-policy-arn"),
-							},
-						},
-						{
-							Policy: &types.Policy{
-								Arn: aws.String("snapshot-policy-arn"),
-							},
-						},
-					},
-					createRoleOutput: []*iam.CreateRoleOutput{
-						{
-							Role: &types.Role{
-								Arn:      aws.String("role-arn"),
-								RoleName: aws.String("role-name"),
-							},
-						},
-					},
-					getUserOutput: &iam.GetUserOutput{
-						User: &types.User{
-							Arn: aws.String("user-arn"),
-						},
-					},
-				},
+				&mockIamClient{},
 				&mockS3Client{},
 				&mockCloudwatchLogsClient{},
 				&mockSTSClient{},
 				slog.New(&testutil.MockLogHandler{}),
 			),
+			expectedDomainStatus: &opensearchTypes.DomainStatus{
+				Created: aws.Bool(true),
+				Endpoints: map[string]string{
+					"vpc": "endpoint",
+				},
+				EngineVersion: aws.String("opensearch"),
+				ARN:           aws.String("domain-arn"),
+			},
+		},
+		"success on retry": {
+			ctx: t.Context(),
+			instance: &ElasticsearchInstance{
+				Domain: uuid.NewString(),
+			},
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxRetries:  2,
+					DbConfig:           &db.DBConfig{},
+				},
+				&mockOpensearchClient{
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+							},
+						},
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+							},
+						},
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": "endpoint",
+								},
+								EngineVersion: aws.String("opensearch"),
+								ARN:           aws.String("domain-arn"),
+							},
+						},
+					},
+				},
+				&mockIamClient{},
+				&mockS3Client{},
+				&mockCloudwatchLogsClient{},
+				&mockSTSClient{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectedDomainStatus: &opensearchTypes.DomainStatus{
+				Created: aws.Bool(true),
+				Endpoints: map[string]string{
+					"vpc": "endpoint",
+				},
+				EngineVersion: aws.String("opensearch"),
+				ARN:           aws.String("domain-arn"),
+			},
+		},
+		"gives up after maximum retries": {
+			ctx: t.Context(),
+			instance: &ElasticsearchInstance{
+				Domain: uuid.NewString(),
+			},
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxRetries:  2,
+					DbConfig:           &db.DBConfig{},
+				},
+				&mockOpensearchClient{
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+							},
+						},
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+							},
+						},
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+							},
+						},
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+							},
+						},
+					},
+				},
+				&mockIamClient{},
+				&mockS3Client{},
+				&mockCloudwatchLogsClient{},
+				&mockSTSClient{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectErr: true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			_, err = test.worker.waitForDomainReady(t.Context(), test.instance)
+			domainStatus, err := test.worker.waitForDomainReady(test.ctx, test.instance)
 			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")
+			}
+			if diff := deep.Equal(domainStatus, test.expectedDomainStatus); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
