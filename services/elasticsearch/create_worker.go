@@ -68,7 +68,15 @@ func NewCreateWorker(
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	return w.createDomain(ctx, job.Args.Instance)
+	operation := base.CreateOp
+	i := job.Args.Instance
+	err := w.createDomain(ctx, i)
+	if err != nil {
+		w.logger.Error(err.Error(), "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, err.Error())
+		return river.JobCancel(err)
+	}
+	return nil
 }
 
 func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstance) error {
@@ -82,20 +90,14 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		Tags:     iamTags,
 	})
 	if err != nil {
-		errorMsg := "error creating user"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error creating user: %w", err)
 	}
 
 	createAccessKeyOutput, err := w.iam.CreateAccessKey(ctx, &iam.CreateAccessKeyInput{
 		UserName: aws.String(i.Domain),
 	})
 	if err != nil {
-		errorMsg := "error creating access keys"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error creating access keys: %w", err)
 	}
 
 	i.setAccessCredentials(*createAccessKeyOutput.AccessKey.AccessKeyId, *createAccessKeyOutput.AccessKey.SecretAccessKey)
@@ -105,10 +107,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 	userResp, err := w.iam.GetUser(ctx, userParams)
 	if err != nil {
-		errorMsg := "error getting user information"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error getting user information: %w", err)
 	}
 
 	uniqueUserArn := *(userResp.User.Arn)
@@ -117,20 +116,14 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := w.sts.GetCallerIdentity(ctx, stsInput)
 	if err != nil {
-		errorMsg := "error getting account information"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error getting account information: %w", err)
 	}
 
 	accountID := result.Account
 
 	// Set up cloudwatch log groups
 	if err := setupLogging(ctx, i, w.logs, w.logger, w.settings, *accountID); err != nil {
-		errorMsg := "error setting up domain logging"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error setting up domain logging: %w", err)
 	}
 
 	time.Sleep(w.settings.PollAwsMinDelay)
@@ -138,10 +131,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
 	if err != nil {
-		errorMsg := "error preparing domain creation input"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error preparing domain creation input: %w", err)
 	}
 
 	_, err = w.opensearch.CreateDomain(ctx, params)
@@ -158,28 +148,19 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 
 	if err != nil {
-		errorMsg := "error creating domain"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error creating domain: %w", err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for domain to be ready")
 
 	domainStatus, err := w.waitForDomainReady(ctx, i)
 	if err != nil {
-		errorMsg := "error waiting for domain creation"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error waiting for domain creation: %w", err)
 	}
 
 	// Audit logging requires a one-time REST call once the domain is ready
 	if err := w.configureAuditLoggingIfNeeded(ctx, i, domainStatus); err != nil {
-		errorMsg := "error configuring audit logging"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error configuring audit logging: %w", err)
 	}
 
 	i.setDomainProperties(domainStatus)
@@ -189,20 +170,14 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
 	policyARN, err := awsiam.CreatePolicyFromTemplate(ctx, w.iam, w.logger, i.Domain, "/", policy, esARNs, iamTags)
 	if err != nil {
-		errorMsg := "error creating IAM policy"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error creating IAM policy: %w", err)
 	}
 
 	if _, err = w.iam.AttachUserPolicy(ctx, &iam.AttachUserPolicyInput{
 		PolicyArn: aws.String(policyARN),
 		UserName:  aws.String(i.Domain),
 	}); err != nil {
-		errorMsg := "error attaching IAM user policy"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error attaching IAM user policy: %w", err)
 	}
 
 	i.setUserIAMPolicyAttributes(policy, policyARN)
@@ -210,19 +185,13 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	//try setup of roles and policies on create
 	err = i.enableBrokerSnapshots(ctx, w.iam, w.settings, iamTags, w.logger)
 	if err != nil {
-		errorMsg := "error setting up snapshot bucket roles and policies"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error setting up snapshot bucket roles and policies: %w", err)
 	}
 
 	i.State = base.InstanceReady
 	err = w.db.Save(i).Error
 	if err != nil {
-		errorMsg := "error updating instance"
-		w.logger.Error(errorMsg, "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
-		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
+		return fmt.Errorf("error updating instance: %w", err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
