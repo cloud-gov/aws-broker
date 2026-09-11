@@ -132,7 +132,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		return river.JobCancel(fmt.Errorf("%s: %w ", errorMsg, err))
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(w.settings.PollAwsMinDelay)
 
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + uniqueUserArn + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
@@ -152,7 +152,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		//
 		// see https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency
 		log.Println("Retrying domain creation because of possible IAM eventual consistency issue")
-		time.Sleep(5 * time.Second)
+		time.Sleep(w.settings.PollAwsMinDelay)
 		resp, err = w.opensearch.CreateDomain(ctx, params)
 	}
 
@@ -248,10 +248,9 @@ func (w *CreateWorker) configureAuditLoggingIfNeeded(
 		return errors.New("domain endpoint not available yet")
 	}
 
-	creds := map[string]string{
-		"access_key": i.AccessKey,
-		"secret_key": i.SecretKey,
-		"uri":        "https://" + endpoint,
+	creds, err := i.getCredentials()
+	if err != nil {
+		return err
 	}
 
 	esApi, err := NewEsApiHandler(ctx, creds, w.settings.Region, w.logger)

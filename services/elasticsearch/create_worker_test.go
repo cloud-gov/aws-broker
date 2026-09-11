@@ -3,7 +3,12 @@ package elasticsearch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -27,6 +32,23 @@ import (
 
 func TestCreateWorkerWork(t *testing.T) {
 	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if r.RequestURI == "/_plugins/_security/api/audit" {
+			fmt.Fprintln(w, `{"state":"SUCCESS"}`) //nolint:errcheck // test fixture writer; Fprintln to a test buffer
+		}
+	}))
+	defer ts.Close()
+	testApiUrl, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testApiPort, err := strconv.ParseInt(testApiUrl.Port(), 10, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +116,130 @@ func TestCreateWorkerWork(t *testing.T) {
 								Endpoints: map[string]string{
 									"vpc": "endpoint",
 								},
+							},
+						},
+					},
+				},
+				&mockIamClient{
+					createAccessKeyOutput: &iam.CreateAccessKeyOutput{
+						AccessKey: &types.AccessKey{
+							AccessKeyId:     aws.String("fake-id"),
+							SecretAccessKey: aws.String("fake-secret"),
+						},
+					},
+					createPolicyOutput: []*iam.CreatePolicyOutput{
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("user-policy-arn"),
+							},
+						},
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("pass-role-policy-arn"),
+							},
+						},
+						{
+							Policy: &types.Policy{
+								Arn: aws.String("snapshot-policy-arn"),
+							},
+						},
+					},
+					createRoleOutput: []*iam.CreateRoleOutput{
+						{
+							Role: &types.Role{
+								Arn:      aws.String("role-arn"),
+								RoleName: aws.String("role-name"),
+							},
+						},
+					},
+					getUserOutput: &iam.GetUserOutput{
+						User: &types.User{
+							Arn: aws.String("user-arn"),
+						},
+					},
+				},
+				&mockS3Client{},
+				&mockCloudwatchLogsClient{},
+				&mockSTSClient{
+					getCallerIdentityOutput: &sts.GetCallerIdentityOutput{
+						Account: aws.String("account"),
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectedState: base.InstanceReady,
+		},
+		"success with audit logs enabled": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			instance: &ElasticsearchInstance{
+				VolumeType:   "gp3",
+				InstanceType: "t3.small.search",
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+					Request: request.Request{
+						ServiceID: "aws-elasticsearch",
+					},
+					Port: testApiPort, // included only for testing
+				},
+				Protocol:         "http", // included only for testing
+				AuditLogsEnabled: true,
+			},
+			expectedInstance: &ElasticsearchInstance{
+				VolumeType:   "gp3",
+				InstanceType: "t3.small.search",
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "aws-elasticsearch",
+					},
+					State: base.InstanceReady,
+					Port:  testApiPort, // included only for testing
+				},
+				AccessKey:              "fake-id",
+				SecretKey:              "fake-secret",
+				IamUserARN:             "user-arn",
+				ARN:                    "arn",
+				IamPolicy:              `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`,
+				IamPolicyARN:           "user-policy-arn",
+				BrokerSnapshotsEnabled: true,
+				SnapshotARN:            "role-arn",
+				IamPassRolePolicyARN:   "pass-role-policy-arn",
+				SnapshotPolicyARN:      "snapshot-policy-arn",
+				AuditRestConfigApplied: true,
+				AuditLogsGroupARN:      "arn:aws-us-gov:logs:fake-region:account:log-group:/aws/OpenSearchService/domains//audit-logs",
+				AuditLogsEnabled:       true,
+			},
+			worker: NewCreateWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
+					DbConfig:           &db.DBConfig{},
+					Region:             "fake-region",
+				},
+				&mockOpensearchClient{
+					createDomainOutput: &opensearch.CreateDomainOutput{
+						DomainStatus: &opensearchTypes.DomainStatus{
+							ARN: aws.String("arn"),
+						},
+					},
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": testApiUrl.Hostname(),
+								},
+							},
+						},
+						{
+							DomainStatus: &opensearchTypes.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": testApiUrl.Hostname(),
+								},
+								EngineVersion: aws.String("opensearch2"),
 							},
 						},
 					},

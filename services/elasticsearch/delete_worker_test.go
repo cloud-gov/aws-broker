@@ -111,6 +111,11 @@ func TestDeleteWorkerWork(t *testing.T) {
 								Arn: aws.String("policy-1"),
 							},
 						},
+						{
+							Policy: &iamTypes.Policy{
+								Arn: aws.String("policy-1"),
+							},
+						},
 					},
 					listPolicyVersionsOutput: &iam.ListPolicyVersionsOutput{
 						Versions: []iamTypes.PolicyVersion{},
@@ -178,6 +183,11 @@ func TestDeleteWorkerWork(t *testing.T) {
 						},
 					},
 					createPolicyOutput: []*iam.CreatePolicyOutput{
+						{
+							Policy: &iamTypes.Policy{
+								Arn: aws.String("policy-1"),
+							},
+						},
 						{
 							Policy: &iamTypes.Policy{
 								Arn: aws.String("policy-1"),
