@@ -19,7 +19,7 @@ func TestInitInstanceTags(t *testing.T) {
 		"tag-1": "bar",
 	}
 
-	instance := &ElasticsearchInstance{}
+	instance := NewElasticsearchInstance()
 	instance.init( //nolint:errcheck // test setup; init failure surfaces downstream in the test
 		"uuid-1",
 		"org-1",

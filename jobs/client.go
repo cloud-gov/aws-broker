@@ -88,6 +88,14 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 		}
 		instanceID = args.Instance.Uuid
 		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
+	case elasticsearch.CreateKind:
+		args := elasticsearch.CreateArgs{}
+		err = json.Unmarshal(job.EncodedArgs, &args)
+		if err != nil {
+			break
+		}
+		instanceID = args.Instance.Uuid
+		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.CreateOp, base.InstanceNotCreated, "job panicked")
 	case elasticsearch.DeleteKind:
 		args := elasticsearch.DeleteArgs{}
 		err = json.Unmarshal(job.EncodedArgs, &args)

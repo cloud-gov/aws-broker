@@ -16,21 +16,37 @@ const (
 	UnBindOp
 )
 
+const (
+	createOpString = "create"
+	modifyOpString = "modify"
+	deleteOpString = "delete"
+	bindOpString   = "bind"
+	unbindOpString = "unbind"
+)
+
 func (o Operation) String() string {
 	switch o {
 	case CreateOp:
-		return "create"
+		return createOpString
 	case ModifyOp:
-		return "modify"
+		return modifyOpString
 	case DeleteOp:
-		return "delete"
+		return deleteOpString
 	case BindOp:
-		return "bind"
+		return bindOpString
 	case UnBindOp:
-		return "unbind"
+		return unbindOpString
 	default:
 		return "unknown"
 	}
+}
+
+var operationStringToConstantMap = map[string]Operation{
+	createOpString: CreateOp,
+	modifyOpString: ModifyOp,
+	deleteOpString: DeleteOp,
+	bindOpString:   BindOp,
+	unbindOpString: UnBindOp,
 }
 
 // Broker is the interface that every type of broker should implement.
@@ -41,4 +57,8 @@ type Broker interface {
 	DeleteInstance(string) error
 	LastOperation(string, domain.PollDetails) (domain.LastOperation, error)
 	BindInstance(string, domain.BindDetails) (domain.Binding, error)
+}
+
+func ConvertOperationStringToConstant(operation string) Operation {
+	return operationStringToConstantMap[operation]
 }

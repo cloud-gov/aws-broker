@@ -27,7 +27,7 @@ func createUpdateBucketRolesAndPolicies(
 
 	// create snapshotrole if not done yet
 	if i.SnapshotARN == "" {
-		rolename := i.Domain + "-to-s3-SnapshotRole"
+		rolename := i.getSnapshotRoleName()
 		policy := `{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "es.amazonaws.com"},"Action": "sts:AssumeRole"}]}`
 		arole, err := awsiam.CreateAssumeRole(ctx, iam, logger, policy, rolename, iamTags)
 		if err != nil {
@@ -42,8 +42,27 @@ func createUpdateBucketRolesAndPolicies(
 
 	// create PassRolePolicy if DNE
 	if i.IamPassRolePolicyARN == "" {
-		policy := `{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Action": "iam:PassRole","Resource": "` + i.SnapshotARN + `"},{"Effect": "Allow","Action": "es:ESHttpPut","Resource": "` + i.ARN + `/*"}]}`
-		policyname := i.Domain + "-to-S3-ESRolePolicy"
+		passRoleStatement := awsiam.PolicyStatementEntry{
+			Action:   []string{"iam:PassRole"},
+			Effect:   "Allow",
+			Resource: []string{i.SnapshotARN},
+		}
+		esHttpPutStatement := awsiam.PolicyStatementEntry{
+			Action:   []string{"es:ESHttpPut"},
+			Effect:   "Allow",
+			Resource: []string{fmt.Sprintf("%s/*", i.SnapshotARN)},
+		}
+		policyDoc := awsiam.PolicyDocument{
+			Version:   "2012-10-17",
+			Statement: []awsiam.PolicyStatementEntry{passRoleStatement, esHttpPutStatement},
+		}
+		policy, err := policyDoc.ToString()
+		if err != nil {
+			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
+			return err
+		}
+
+		policyname := i.getPassRolePolicyName()
 		username := i.Domain
 		policyarn, err := awsiam.CreateUserPolicy(ctx, iam, logger, policy, policyname, username, iamTags)
 		if err != nil {
@@ -55,7 +74,7 @@ func createUpdateBucketRolesAndPolicies(
 
 	// Create PolicyDoc Statements
 	// looks like: {"Action": ["s3:ListBucket"],"Effect": "Allow","Resource": ["arn:aws-us-gov:s3:::` + i.Bucket + `"]}
-	bucketArn := "arn:aws-us-gov:s3:::" + bucket
+	bucketArn := fmt.Sprintf("arn:aws-us-gov:s3:::%s", bucket)
 	listStatement := awsiam.PolicyStatementEntry{
 		Action:   []string{"s3:ListBucket"},
 		Effect:   "Allow",
@@ -73,13 +92,12 @@ func createUpdateBucketRolesAndPolicies(
 
 	// create s3 access Policy for snapshot role if DNE, else update policy to include another set of statements for this bucket
 	if i.SnapshotPolicyARN == "" {
-
 		policyDoc := awsiam.PolicyDocument{
 			Version:   "2012-10-17",
 			Statement: []awsiam.PolicyStatementEntry{listStatement, objectStatement},
 		}
 
-		policyname := i.Domain + "-to-S3-RolePolicy"
+		policyname := i.getSnapshotRolePolicyName()
 		policy, err := policyDoc.ToString()
 		if err != nil {
 			logger.Error("createUpdateBucketRolesAndPolcies -- policyDoc.ToString Error", "err", err)
@@ -93,7 +111,7 @@ func createUpdateBucketRolesAndPolicies(
 		i.SnapshotPolicyARN = policyarn
 
 	} else {
-		// snaphost policy has already been created so we need to add the new statements for this new bucket
+		// snapshot policy has already been created so we need to add the new statements for this new bucket
 		// to the existing policy version.
 		_, err := awsiam.UpdateExistingPolicy(ctx, iam, logger, i.SnapshotPolicyARN, []awsiam.PolicyStatementEntry{listStatement, objectStatement})
 		if err != nil {
@@ -106,10 +124,7 @@ func createUpdateBucketRolesAndPolicies(
 }
 
 func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClientInterface, iam awsiam.IAMClientInterface, settings *config.Settings, logger *slog.Logger, i *ElasticsearchInstance) (map[string]string, error) {
-	logger.Debug(fmt.Sprintf("current instance state: %d", i.State))
-	logger.Debug(fmt.Sprintf("current instance host: %s", i.Host))
-
-	if i.Host == "" {
+	if !i.hasDomainProperties() {
 		params := &opensearch.DescribeDomainInput{
 			DomainName: aws.String(i.Domain), // Required
 		}
@@ -130,28 +145,18 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, errors.New("invalid memory for endpoint and/or endpoint members")
 		}
 
-		logger.Debug(fmt.Sprintf("endpoint: %s ARN: %s \n", resp.DomainStatus.Endpoints["vpc"], *(resp.DomainStatus.ARN)))
-		i.Host = resp.DomainStatus.Endpoints["vpc"]
-		i.ARN = *(resp.DomainStatus.ARN)
+		i.setDomainProperties(resp.DomainStatus)
 		i.State = base.InstanceReady
-		i.ElasticsearchVersion = *(resp.DomainStatus.EngineVersion)
-		// Should only be one regardless. Just return now.
 	}
 
 	iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
 
-	// add broker snapshot bucket and create roles and policies if it hasnt been done.
-	if !i.BrokerSnapshotsEnabled {
-		if i.SnapshotPath == "" {
-			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
-		}
-
-		err := createUpdateBucketRolesAndPolicies(ctx, iam, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	// add broker snapshot bucket and create roles and policies if it hasn't been done.
+	if !i.brokerSnapshotsAreEnabled() {
+		err := i.enableBrokerSnapshots(ctx, iam, settings, iamTags, logger)
 		if err != nil {
-			logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return nil, err
 		}
-		i.BrokerSnapshotsEnabled = true
 	}
 
 	// add client bucket and adjust policies and roles if present
@@ -161,6 +166,22 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 			return nil, err
 		}
 	}
+
 	// If we get here that means the instance is up and we have the information for it.
-	return i.getCredentials()
+	return i.getCredentials(settings)
+}
+
+// setupLogging ensures the cloudwatch log groups for every enabled log type exists.
+func setupLogging(
+	ctx context.Context,
+	i *ElasticsearchInstance,
+	logs CloudwatchLogsClientInterface,
+	logger *slog.Logger,
+	settings *config.Settings,
+	accountID string,
+) error {
+	if !i.anyLogsEnabled() {
+		return nil
+	}
+	return ensureLogGroups(ctx, logs, logger, i, settings.OpensearchLogRetentionDays, settings.Region, accountID)
 }
