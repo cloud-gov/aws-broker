@@ -174,7 +174,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 
 	// Audit logging requires a one-time REST call once the domain is ready
-	if err := w.configureAuditLoggingIfNeeded(ctx, i, resp); err != nil {
+	if err := w.configureAuditLoggingIfNeeded(ctx, i); err != nil {
 		errorMsg := "error configuring audit logging"
 		w.logger.Error(errorMsg, "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("%s: %s ", errorMsg, err))
@@ -231,10 +231,16 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 func (w *CreateWorker) configureAuditLoggingIfNeeded(
 	ctx context.Context,
 	i *ElasticsearchInstance,
-	resp *opensearch.CreateDomainOutput,
 ) error {
 	if !i.AuditLogsEnabled || i.AuditRestConfigApplied {
 		return nil
+	}
+
+	resp, err := w.opensearch.DescribeDomain(ctx, &opensearch.DescribeDomainInput{
+		DomainName: &i.Domain,
+	})
+	if err != nil {
+		return err
 	}
 
 	endpoint := resp.DomainStatus.Endpoints["vpc"]
