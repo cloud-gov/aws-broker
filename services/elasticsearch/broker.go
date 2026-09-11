@@ -107,7 +107,7 @@ func (broker *elasticsearchBroker) AsyncOperationRequired(o base.Operation) bool
 }
 
 func (broker *elasticsearchBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
-	newInstance := ElasticsearchInstance{}
+	newInstance := NewElasticsearchInstance()
 
 	options := ElasticsearchOptions{}
 	if len(details.RawParameters) > 0 {
@@ -186,7 +186,7 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 	}
 
 	// Create the elasticsearch instance.
-	status, err := broker.adapter.createElasticsearch(&newInstance)
+	status, err := broker.adapter.createElasticsearch(newInstance)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,
@@ -223,8 +223,7 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 }
 
 func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.UpdateDetails) error {
-
-	esInstance := ElasticsearchInstance{}
+	esInstance := NewElasticsearchInstance()
 	options := ElasticsearchOptions{}
 	if len(details.RawParameters) > 0 {
 		err := json.Unmarshal(details.RawParameters, &options)
@@ -273,7 +272,7 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 	}
 
-	state, err := broker.adapter.modifyElasticsearch(&esInstance)
+	state, err := broker.adapter.modifyElasticsearch(esInstance)
 	if err != nil {
 		broker.logger.Error("AWS call updating instance failed", "err", err)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "modifying Elasticsearch instance")
@@ -291,7 +290,7 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 
 func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollDetails) (domain.LastOperation, error) {
 	lastOperation := domain.LastOperation{}
-	existingInstance := ElasticsearchInstance{}
+	existingInstance := NewElasticsearchInstance()
 
 	baseInstance, err := base.FindBaseInstance(broker.brokerDB, id)
 	if err != nil {
@@ -352,7 +351,7 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 		state = asyncJobMsg.JobState.State
 		statusMessage = asyncJobMsg.JobState.Message
 	} else {
-		instanceStatus, statusErr := broker.adapter.checkElasticsearchStatus(&existingInstance)
+		instanceStatus, statusErr := broker.adapter.checkElasticsearchStatus(existingInstance)
 		if statusErr != nil {
 			broker.logger.Error("Error checking Elasticsearch status", "err", statusErr)
 			return lastOperation, apiresponses.NewFailureResponse(
@@ -388,7 +387,7 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 	binding := domain.Binding{
 		OperationData: base.BindOp.String(),
 	}
-	existingInstance := ElasticsearchInstance{}
+	existingInstance := NewElasticsearchInstance()
 
 	options := ElasticsearchOptions{}
 	if len(details.RawParameters) > 0 {
@@ -412,7 +411,7 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	existingInstance.setBucket(options.Bucket) //nolint:errcheck // confirm setBucket failure semantics
-	credentials, err := broker.adapter.bindElasticsearchToApp(&existingInstance)
+	credentials, err := broker.adapter.bindElasticsearchToApp(existingInstance)
 	if err != nil {
 		return binding, apiresponses.NewFailureResponse(
 			fmt.Errorf("there was an error binding the service to the application: %s", err),
@@ -435,7 +434,7 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 }
 
 func (broker *elasticsearchBroker) DeleteInstance(id string) error {
-	existingInstance := ElasticsearchInstance{}
+	existingInstance := NewElasticsearchInstance()
 	var count int64
 
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
@@ -444,7 +443,7 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	}
 
 	// send async deletion request.
-	status, err := broker.adapter.deleteElasticsearch(&existingInstance)
+	status, err := broker.adapter.deleteElasticsearch(existingInstance)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)

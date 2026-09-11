@@ -21,8 +21,11 @@ import (
 type ElasticsearchInstance struct {
 	base.Instance
 
+	credentialUtils CredentialUtils `gorm:"-"`
+
 	Description string `sql:"size(255)"`
 
+	Salt                           string `sql:"size(255)"`
 	AccessKey                      string `sql:"size(255)"`
 	SecretKey                      string `sql:"size(255)"`
 	IamPolicy                      string `sql:"size(255)"`
@@ -82,7 +85,13 @@ type ElasticsearchInstance struct {
 	Protocol string `gorm:"-"`
 }
 
-func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
+func NewElasticsearchInstance() *ElasticsearchInstance {
+	return &ElasticsearchInstance{
+		credentialUtils: &ElasticsearchCredentialUtils{},
+	}
+}
+
+func (i *ElasticsearchInstance) getCredentials(settings *config.Settings) (map[string]string, error) {
 	var credentials map[string]string
 
 	if i.Protocol == "" {
@@ -94,11 +103,21 @@ func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 		uri = fmt.Sprintf("%s:%d", uri, i.Port)
 	}
 
+	accessKey, err := i.credentialUtils.decryptCredential(i.Salt, i.AccessKey, settings.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	secretKey, err := i.credentialUtils.decryptCredential(i.Salt, i.SecretKey, settings.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(i.Bucket) > 0 {
 		credentials = map[string]string{
 			"uri":                           uri,
-			"access_key":                    i.AccessKey,
-			"secret_key":                    i.SecretKey,
+			"access_key":                    accessKey,
+			"secret_key":                    secretKey,
 			"host":                          i.Host,
 			"current_elasticsearch_version": i.ElasticsearchVersion,
 			"bucket":                        i.Bucket,
@@ -107,8 +126,8 @@ func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
 	} else {
 		credentials = map[string]string{
 			"uri":                           uri,
-			"access_key":                    i.AccessKey,
-			"secret_key":                    i.SecretKey,
+			"access_key":                    accessKey,
+			"secret_key":                    secretKey,
 			"host":                          i.Host,
 			"current_elasticsearch_version": i.ElasticsearchVersion,
 		}
@@ -141,6 +160,8 @@ func (i *ElasticsearchInstance) init(
 	i.Description = plan.Description
 
 	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
+
+	i.Salt = i.credentialUtils.generateSalt()
 
 	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
 	i.DataCount, _ = strconv.Atoi(plan.DataCount)
@@ -234,9 +255,18 @@ func (i *ElasticsearchInstance) setUserIAMPolicyAttributes(policy string, policy
 	i.IamPolicyARN = policyARN
 }
 
-func (i *ElasticsearchInstance) setAccessCredentials(accessKey string, secretKey string) {
-	i.AccessKey = accessKey
-	i.SecretKey = secretKey
+func (i *ElasticsearchInstance) setAccessCredentials(accessKey string, secretKey string, encryptionKey string) error {
+	encryptedAccessKey, err := i.credentialUtils.encryptCredential(i.Salt, accessKey, encryptionKey)
+	if err != nil {
+		return err
+	}
+	i.AccessKey = encryptedAccessKey
+	encryptedSecretKey, err := i.credentialUtils.encryptCredential(i.Salt, secretKey, encryptionKey)
+	if err != nil {
+		return err
+	}
+	i.SecretKey = encryptedSecretKey
+	return nil
 }
 
 func (i *ElasticsearchInstance) setDomainProperties(domainStatus *opensearchTypes.DomainStatus) {

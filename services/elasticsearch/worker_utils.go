@@ -168,7 +168,7 @@ func bindElasticsearchToApp(ctx context.Context, opensearchClient OpensearchClie
 	}
 
 	// If we get here that means the instance is up and we have the information for it.
-	return i.getCredentials()
+	return i.getCredentials(settings)
 }
 
 // setupLogging ensures the cloudwatch log groups for every enabled log type exists.

@@ -62,7 +62,7 @@ func (d *mockElasticsearchAdapter) checkCompatibleVersions(domainName, targetVer
 }
 
 func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance) (map[string]string, error) {
-	return i.getCredentials()
+	return i.getCredentials(&config.Settings{})
 }
 
 func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {

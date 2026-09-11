@@ -267,3 +267,30 @@ type mockSTSClient struct {
 func (s *mockSTSClient) GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
 	return s.getCallerIdentityOutput, s.getCallerIdentityErr
 }
+
+type mockCredentialUtils struct {
+	encryptCallNum int
+	encryptedCreds []string
+	decryptCallNum int
+	decryptedCreds []string
+	decryptErrs    []error
+}
+
+func (m *mockCredentialUtils) encryptCredential(salt string, credential string, key string) (string, error) {
+	callNum := m.encryptCallNum
+	m.encryptCallNum++
+	return m.encryptedCreds[callNum], nil
+}
+
+func (m *mockCredentialUtils) decryptCredential(salt string, credential string, key string) (string, error) {
+	callNum := m.decryptCallNum
+	m.decryptCallNum++
+	if len(m.decryptErrs) > callNum && m.decryptErrs[callNum] != nil {
+		return "", m.decryptErrs[callNum]
+	}
+	return m.decryptedCreds[callNum], nil
+}
+
+func (m *mockCredentialUtils) generateSalt() string {
+	return ""
+}

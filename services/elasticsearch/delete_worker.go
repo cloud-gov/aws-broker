@@ -127,7 +127,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 			return err
 		}
 	} else {
-		creds, err = i.getCredentials()
+		creds, err = i.getCredentials(w.settings)
 		if err != nil {
 			w.logger.Error("takeLastSnapshot: getCredentials failed", "err", err)
 			return err
