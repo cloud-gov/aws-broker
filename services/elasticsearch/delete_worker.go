@@ -123,7 +123,7 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 	var err error
 
 	// check if instance was never bound and thus never set host...
-	if i.Host == "" {
+	if !i.hasDomainProperties() {
 		w.logger.Debug("instance was never bound. binding to get credentials now")
 		creds, err = bindElasticsearchToApp(ctx, w.opensearch, w.iam, w.settings, w.logger, i)
 		if err != nil {
@@ -139,17 +139,12 @@ func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchIns
 	}
 
 	// add broker snapshot bucket and create roles and policies if it hasnt been done.
-	if !i.BrokerSnapshotsEnabled {
-		if i.SnapshotPath == "" {
-			i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
-		}
+	if !i.brokerSnapshotsAreEnabled() {
 		iamTags := awsiam.ConvertTagsMapToIAMTags(i.Tags)
-		err := createUpdateBucketRolesAndPolicies(ctx, w.iam, w.logger, i, w.settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+		err = i.enableBrokerSnapshots(ctx, w.iam, w.settings, iamTags, w.logger)
 		if err != nil {
-			w.logger.Error("bindElasticsearchToApp - Error in createUpdateRolesAndPolicies", "err", err)
 			return err
 		}
-		i.BrokerSnapshotsEnabled = true
 	}
 
 	// EsApiHandler takes care of v4 signing of requests, and other header/ request formation.
