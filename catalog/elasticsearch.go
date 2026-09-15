@@ -89,22 +89,27 @@ func (p ElasticsearchPlan) CheckVersion(version string) bool {
 }
 
 // instanceSizeRank maps an OpenSearch/Elasticsearch instance type string to a
-// number so plans can be ordered from smallest to largest. Larger
-// numbers are bigger instances.
+// number so plans can be ordered from smallest to largest. Larger numbers are
+// bigger instances.
 var instanceSizeRank = map[string]int{
-	// r8g memory-optimized family (used by the memory-optimized plans)
-	"r8g.medium.search":  10,
-	"r8g.large.search":   20,
-	"r8g.xlarge.search":  30,
-	"r8g.2xlarge.search": 40,
-	// general-purpose / compute families
-	"t3.small.search":    1,
-	"c5.large.search":    15,
-	"c5.xlarge.search":   25,
-	"c5.2xlarge.search":  35,
-	"m5.2xlarge.search":  36,
-	"m5.4xlarge.search":  45,
-	"m5.12xlarge.search": 55,
+	// dev tier (single node)
+	"t3.small.search": 10,
+	// medium tier
+	"c5.large.search":   20,
+	"r8g.medium.search": 20,
+	// large tier
+	"c5.xlarge.search": 30,
+	"r8g.large.search": 30,
+	// xlarge tier
+	"c5.2xlarge.search": 40,
+	"r8g.xlarge.search": 40,
+	// 2xlarge tier
+	"m5.2xlarge.search":  50,
+	"r8g.2xlarge.search": 50,
+	// 4xlarge tier
+	"m5.4xlarge.search": 60,
+	// 12xlarge tier
+	"m5.12xlarge.search": 70,
 }
 
 // dataCount returns the plan's configured data-node count as an int (0 if unset/invalid).

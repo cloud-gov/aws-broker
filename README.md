@@ -161,6 +161,80 @@ The broker application calls the AWS API with the AWS Access Key and Secret Key,
 
 When the provisioning is complete, the broker takes the following actions:
 
+### Updating an Elasticsearch instance's plan
+
+Elasticsearch/OpenSearch instances can be moved to a different plan in place with
+`cf update-service SERVICE_NAME -p NEW_PLAN`. The broker only allows plan changes
+that are an in-place upgrade; it validates the request before calling AWS and
+returns an HTTP 400 with an explanatory message when the change is not allowed.
+
+The rules are:
+
+- **HA tier must match.** A highly-available (`-ha`) plan may only move to another
+  `-ha` plan, and a non-HA plan may only move to another non-HA plan. Crossing
+  between HA and non-HA in either direction is rejected, because AWS OpenSearch
+  cannot toggle multi-AZ zone awareness / change the subnet topology of an
+  existing domain in place.
+- **Single-node plans stay single-node.** A plan with one data node (`es-dev`,
+  `es-dev-6.8-migration`) is provisioned on a single subnet with zone awareness
+  off, so it may only move to another single-data-node plan. Moving it to any
+  multi-node plan is rejected: that would enable zone awareness on a domain that
+  still has only one subnet, which AWS rejects with `You must specify exactly two
+  subnets because you've set zone count to two.`
+- **Same size or larger only.** The target plan must be the same size or larger
+  than the current plan. Size is determined by the instance type's tier rank (see
+  `instanceSizeRank` in `catalog/elasticsearch.go`) plus the data-node count.
+  Downgrading to a smaller plan is rejected.
+- **One change at a time.** A plan change cannot be combined with an engine
+  version upgrade in the same `update-service` call; make them as separate calls.
+
+Instance types are ranked by *plan tier*, not by any single hardware dimension, so
+the `r8g` memory-optimized types share a rank with the `c5` types used by the
+equivalently named plans (`c5.large` and `r8g.medium` are both the "medium" tier,
+and so on). `r8g` trades vCPUs for substantially more memory, so neither family is
+strictly larger than the other; treating them as peers means switching families at
+the same tier is a permitted lateral move in both directions, while moves to a
+larger or smaller tier are still ordered correctly.
+
+The resulting non-HA order, smallest to largest (the `-ha` plans follow the same
+order among themselves):
+
+```text
+es-dev
+es-medium  /  es-medium-memory-optimized
+es-large   /  es-large-memory-optimized
+es-xlarge  /  es-xlarge-memory-optimized
+es-2xlarge-gp
+es-4xlarge-gp
+es-12xlarge-gp
+```
+
+Examples:
+
+| From | To | Allowed? | Why |
+|------|----|----------|-----|
+| `es-medium-memory-optimized` | `es-large-memory-optimized` | Yes | non-HA -> larger non-HA |
+| `es-medium-memory-optimized-ha` | `es-large-memory-optimized-ha` | Yes | HA -> larger HA |
+| `es-medium` | `es-medium-memory-optimized` | Yes | same tier, lateral family switch |
+| `es-medium-memory-optimized` | `es-medium` | Yes | same tier, lateral family switch |
+| `es-medium` | `es-large-memory-optimized` | Yes | cross-family upgrade to a larger tier |
+| `es-large-memory-optimized` | `es-medium-memory-optimized` | No | downgrade |
+| `es-large` | `es-medium-memory-optimized` | No | downgrade (larger tier -> smaller tier) |
+| `es-medium-memory-optimized` | `es-medium-memory-optimized-ha` | No | non-HA -> HA (topology change) |
+| `es-large-memory-optimized-ha` | `es-large-memory-optimized` | No | HA -> non-HA (topology change) |
+| `es-dev` | `es-medium-memory-optimized` | No | single-node -> multi-node (topology change) |
+
+Note that a lateral family switch still triggers an AWS blue/green deployment: the
+instance type genuinely changes, so it is not a no-op.
+
+To move between HA and non-HA, from a single-node plan to a multi-node plan, or to
+a smaller plan, create a new instance on the desired plan and migrate data rather
+than updating in place.
+
+When a plan upgrade is accepted, the broker applies the new plan's instance type,
+data-node count, dedicated-master configuration, and (if larger) volume size, and
+issues an asynchronous AWS `UpdateDomainConfig` to resize the domain.
+
 - For RDS and Redis, it creates a username/password in the AWS service, and stores the credentials in the broker database
 - For AWS Elasticsearch, it creates an IAM user with privileges to the new instance, then stores the credentials in the broker database
 

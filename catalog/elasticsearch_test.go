@@ -79,6 +79,9 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 	unknown := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-mystery"}, InstanceType: "z9z.mystery.search", DataCount: "2"}
 	esDev := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "t3.small.search", DataCount: "1"}
 	esDevMigration := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev-6.8-migration"}, InstanceType: "t3.small.search", DataCount: "1"}
+	mediumC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium"}, InstanceType: "c5.large.search", DataCount: "2"}
+	largeC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large"}, InstanceType: "c5.xlarge.search", DataCount: "2"}
+	mediumC5HA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-ha"}, InstanceType: "c5.large.search", DataCount: "4"}
 
 	testCases := map[string]struct {
 		from      ElasticsearchPlan
@@ -168,6 +171,43 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			to:        esDev,
 			expectOK:  false,
 			expectMsg: "single-node and multi-node",
+		},
+		"same tier c5 to memory-optimized allowed": {
+			from:     mediumC5NonHA,
+			to:       mediumNonHA,
+			expectOK: true,
+		},
+		"same tier memory-optimized to c5 allowed": {
+			from:     mediumNonHA,
+			to:       mediumC5NonHA,
+			expectOK: true,
+		},
+		"same tier family switch allowed at large tier": {
+			from:     largeC5NonHA,
+			to:       largeNonHA,
+			expectOK: true,
+		},
+		"cross-family upgrade to larger tier allowed": {
+			from:     mediumC5NonHA,
+			to:       largeNonHA,
+			expectOK: true,
+		},
+		"cross-family downgrade to smaller tier blocked": {
+			from:      largeC5NonHA,
+			to:        mediumNonHA,
+			expectOK:  false,
+			expectMsg: "downgrading",
+		},
+		"cross-family same tier still respects HA tier": {
+			from:      mediumC5NonHA,
+			to:        mediumHA,
+			expectOK:  false,
+			expectMsg: "highly-available",
+		},
+		"cross-family same tier HA to HA allowed": {
+			from:     mediumC5HA,
+			to:       mediumHA,
+			expectOK: true,
 		},
 	}
 

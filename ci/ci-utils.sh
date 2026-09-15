@@ -36,6 +36,94 @@ wait_for_service_instance_success() {
   fi
 }
 
+# Like wait_for_service_instance_success, but gives up after a bounded number of
+# seconds instead of polling forever. Long OpenSearch operations (a plan change is
+# a blue/green deployment) can take tens of minutes, and a wedged update would
+# otherwise pin a CI worker indefinitely.
+wait_for_service_instance_success_with_timeout() {
+  local service_name=$1
+  local timeout_seconds=$2
+  local interval=60
+  local waited=0
+  local guid status
+
+  guid=$(cf service --guid "$service_name")
+
+  while true; do
+    status=$(cf curl "/v2/service_instances/$guid" | jq -r '.entity.last_operation.state')
+
+    case "$status" in
+    succeeded)
+      echo "$service_name: $status"
+      return 0
+      ;;
+    failed)
+      echo "FAIL: $service_name reported last_operation state 'failed'"
+      cf service "$service_name"
+      return 1
+      ;;
+    esac
+
+    if [ "$waited" -ge "$timeout_seconds" ]; then
+      echo "FAIL: timed out after ${timeout_seconds}s waiting for $service_name (last state: $status)"
+      cf service "$service_name"
+      return 1
+    fi
+
+    sleep "$interval"
+    waited=$((waited + interval))
+  done
+}
+
+# Assert that a `cf update-service` call is rejected by the broker.
+#
+# The broker validates plan changes and version upgrades before calling AWS and
+# returns an HTTP 400, which the CF CLI surfaces as a non-zero exit. A rejection is
+# therefore a *synchronous* failure with an explanatory message -- distinct from an
+# accepted update whose asynchronous job later fails.
+expect_update_service_rejected() {
+  local service_name=$1
+  local expected_message=$2
+  shift 2
+  local out
+
+  if out=$(cf update-service "$service_name" "$@" 2>&1); then
+    echo "FAIL: expected 'cf update-service $service_name $*' to be rejected, but it was accepted."
+    echo "----- output -----"
+    echo "$out"
+    return 1
+  fi
+
+  if ! printf '%s' "$out" | grep -qF -- "$expected_message"; then
+    echo "FAIL: expected rejection message to contain:"
+    echo "  $expected_message"
+    echo "----- actual output -----"
+    echo "$out"
+    return 1
+  fi
+
+  echo "PASS: rejected as expected (matched: $expected_message)"
+}
+
+# Assert that a service instance is currently on the expected plan. Used after a
+# rejected plan change to prove the broker did not persist the requested plan.
+assert_service_plan() {
+  local service_name=$1
+  local expected_plan=$2
+  local plan_guid actual_plan
+
+  plan_guid=$(cf curl "/v3/service_instances?names=$service_name" |
+    jq -r '.resources[0].relationships.service_plan.data.guid')
+  actual_plan=$(cf curl "/v3/service_plans/$plan_guid" | jq -r '.name')
+
+  if [ "$actual_plan" != "$expected_plan" ]; then
+    echo "FAIL: expected $service_name to be on plan '$expected_plan', but it is on '$actual_plan'"
+    return 1
+  fi
+
+  echo "PASS: $service_name is on plan '$actual_plan'"
+}
+
 wait_for_deletion() {
   while true; do
     if ! cf service "$1"; then
@@ -57,7 +145,6 @@ wait_for_service_bindable() {
     sleep 60
   done
 }
-
 
 # Function for getting task state
 get_task_state() {

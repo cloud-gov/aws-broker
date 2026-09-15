@@ -418,6 +418,22 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-medium
                 REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: es-medium
+                NEW_SERVICE_PLAN: es-large-memory-optimized
+                HA_PLAN: es-medium-ha
+                SINGLE_NODE_PLAN: es-dev
+                REGION: ((development-aws-default-region))
     on_failure:
       put: slack
       params:
@@ -763,8 +779,6 @@ jobs:
         trigger: true
       - set_pipeline: deploy-aws-broker
         file: aws-broker-app/ci/pipeline.yml
-        var_files:
-          - aws-broker-app/ci/config.yml
 
   - name: deploy-aws-broker-staging
     serial: true
