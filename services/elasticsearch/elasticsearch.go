@@ -25,7 +25,6 @@ import (
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
-	"github.com/cloud-gov/aws-broker/helpers"
 
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/common"
@@ -63,21 +62,7 @@ func (d *mockElasticsearchAdapter) checkCompatibleVersions(domainName, targetVer
 }
 
 func (d *mockElasticsearchAdapter) bindElasticsearchToApp(i *ElasticsearchInstance) (map[string]string, error) {
-	settings := &config.Settings{
-		EncryptionKey: helpers.RandStr(32),
-	}
-	i.Salt = i.credentialUtils.generateSalt()
-	accessKey, err := i.credentialUtils.encryptCredential(i.Salt, "fake", settings.EncryptionKey)
-	if err != nil {
-		return nil, err
-	}
-	i.AccessKey = accessKey
-	secretKey, err := i.credentialUtils.encryptCredential(i.Salt, "fake", settings.EncryptionKey)
-	if err != nil {
-		return nil, err
-	}
-	i.SecretKey = secretKey
-	return i.getCredentials(settings)
+	return i.getCredentials(&config.Settings{})
 }
 
 func (d *mockElasticsearchAdapter) deleteElasticsearch(i *ElasticsearchInstance) (base.InstanceState, error) {
