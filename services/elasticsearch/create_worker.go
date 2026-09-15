@@ -108,11 +108,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		return fmt.Errorf("error creating access keys: %w", err)
 	}
 
-	err = i.setAccessCredentials(*createAccessKeyOutput.AccessKey.AccessKeyId, *createAccessKeyOutput.AccessKey.SecretAccessKey, w.settings.EncryptionKey)
-	if err != nil {
-		return fmt.Errorf("error saving user credentials: %w", err)
-	}
-
+	i.setAccessCredentials(*createAccessKeyOutput.AccessKey.AccessKeyId, *createAccessKeyOutput.AccessKey.SecretAccessKey)
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
@@ -229,7 +225,7 @@ func (w *CreateWorker) configureAuditLoggingIfNeeded(
 		return errors.New("domain endpoint not available yet")
 	}
 
-	creds, err := i.getCredentials(w.settings)
+	creds, err := i.getCredentials()
 	if err != nil {
 		return err
 	}

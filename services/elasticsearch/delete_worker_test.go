@@ -76,9 +76,6 @@ func TestDeleteWorkerWork(t *testing.T) {
 				AccessKey: "fake-key",
 				SecretKey: "fake-secret",
 				Protocol:  testApiUrl.Scheme,
-				credentialUtils: &mockCredentialUtils{
-					decryptedCreds: []string{"cred1", "cred2"},
-				},
 			},
 			worker: NewDeleteWorker(
 				brokerDB,
@@ -156,9 +153,6 @@ func TestDeleteWorkerWork(t *testing.T) {
 				AccessKey: "fake-key",
 				SecretKey: "fake-secret",
 				Protocol:  testApiUrl.Scheme,
-				credentialUtils: &mockCredentialUtils{
-					decryptedCreds: []string{"cred1", "cred2"},
-				},
 			},
 			worker: NewDeleteWorker(
 				brokerDB,

@@ -74,10 +74,6 @@ func TestCreateWorkerWork(t *testing.T) {
 						SpaceGUID:        "space-1",
 					},
 				},
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
-					decryptedCreds: []string{"decrypted1", "decrypted2"},
-				},
 			},
 			expectedInstance: &ElasticsearchInstance{
 				VolumeType:   "gp3",
@@ -91,8 +87,8 @@ func TestCreateWorkerWork(t *testing.T) {
 					State: base.InstanceReady,
 					Host:  "endpoint",
 				},
-				AccessKey:              "cred1",
-				SecretKey:              "cred2",
+				AccessKey:              "fake-id",
+				SecretKey:              "fake-secret",
 				IamUserARN:             "user-arn",
 				ARN:                    "domain-arn",
 				IamPolicy:              `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`,
@@ -196,10 +192,6 @@ func TestCreateWorkerWork(t *testing.T) {
 				},
 				Protocol:         "http", // included only for testing
 				AuditLogsEnabled: true,
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
-					decryptedCreds: []string{"decrypted1", "decrypted2"},
-				},
 			},
 			expectedInstance: &ElasticsearchInstance{
 				VolumeType:   "gp3",
@@ -214,8 +206,8 @@ func TestCreateWorkerWork(t *testing.T) {
 					State: base.InstanceReady,
 					Port:  testApiPort, // included only for testing
 				},
-				AccessKey:              "cred1",
-				SecretKey:              "cred2",
+				AccessKey:              "fake-id",
+				SecretKey:              "fake-secret",
 				IamUserARN:             "user-arn",
 				ARN:                    "domain-arn",
 				IamPolicy:              `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`,
@@ -386,9 +378,6 @@ func TestCreateWorkerWork(t *testing.T) {
 						ServiceID: "aws-elasticsearch",
 					},
 				},
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
-				},
 			},
 			worker: NewCreateWorker(
 				brokerDB,
@@ -432,9 +421,6 @@ func TestCreateWorkerWork(t *testing.T) {
 					Request: request.Request{
 						ServiceID: "aws-elasticsearch",
 					},
-				},
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
 				},
 			},
 			worker: NewCreateWorker(
@@ -483,9 +469,6 @@ func TestCreateWorkerWork(t *testing.T) {
 					Request: request.Request{
 						ServiceID: "aws-elasticsearch",
 					},
-				},
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
 				},
 			},
 			worker: NewCreateWorker(
@@ -551,9 +534,6 @@ func TestCreateWorkerWork(t *testing.T) {
 					Request: request.Request{
 						ServiceID: "aws-elasticsearch",
 					},
-				},
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
 				},
 			},
 			worker: NewCreateWorker(
@@ -631,9 +611,6 @@ func TestCreateWorkerWork(t *testing.T) {
 					Request: request.Request{
 						ServiceID: "aws-elasticsearch",
 					},
-				},
-				credentialUtils: &mockCredentialUtils{
-					encryptedCreds: []string{"cred1", "cred2"},
 				},
 			},
 			worker: NewCreateWorker(
