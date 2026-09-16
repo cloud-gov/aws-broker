@@ -238,7 +238,7 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			if ok != tc.expectOK {
 				t.Fatalf("expected ok=%v, got %v (msg=%q)", tc.expectOK, ok, msg)
 			}
-			if !tc.expectOK && tc.expectMsg != "" && !contains(msg, tc.expectMsg) {
+			if !tc.expectOK && tc.expectMsg != "" && !strings.Contains(msg, tc.expectMsg) {
 				t.Fatalf("expected message containing %q, got %q", tc.expectMsg, msg)
 			}
 		})
