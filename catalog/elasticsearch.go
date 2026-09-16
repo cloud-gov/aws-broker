@@ -119,9 +119,6 @@ func (p ElasticsearchPlan) dataCount() int {
 }
 
 // IsHighlyAvailable reports whether the plan is a highly-available (HA) plan.
-//
-// In the catalog, HA plans are named with an "-ha" suffix and run more data
-// nodes (4) than their non-HA counterparts (2),
 func (p ElasticsearchPlan) IsHighlyAvailable() bool {
 	return strings.HasSuffix(strings.ToLower(p.Name), "-ha")
 }

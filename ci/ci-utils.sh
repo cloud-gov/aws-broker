@@ -40,8 +40,7 @@ wait_for_service_instance_success() {
 
 # Like wait_for_service_instance_success, but gives up after a bounded number of
 # seconds instead of polling forever. Long OpenSearch operations (a plan change is
-# a blue/green deployment) can take tens of minutes, and a wedged update would
-# otherwise pin a CI worker indefinitely.
+# a blue/green deployment) can take awhile, tens of minutes add up.
 wait_for_service_instance_success_with_timeout() {
   local service_name=$1
   local timeout_seconds=$2
@@ -78,11 +77,6 @@ wait_for_service_instance_success_with_timeout() {
 }
 
 # Assert that a `cf update-service` call is rejected by the broker.
-#
-# The broker validates plan changes and version upgrades before calling AWS and
-# returns an HTTP 400, which the CF CLI surfaces as a non-zero exit. A rejection is
-# therefore a *synchronous* failure with an explanatory message -- distinct from an
-# accepted update whose asynchronous job later fails.
 expect_update_service_rejected() {
   local service_name=$1
   local expected_message=$2

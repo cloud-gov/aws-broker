@@ -121,14 +121,13 @@ func TestModifyInstance(t *testing.T) {
 		versionUpgradeInProgress bool
 		expectedErrMsg           string
 		expectedStatus           int
-		// plan change fields
-		currentPlanName     string
-		currentInstanceType string
-		currentDataCount    string
-		targetPlanID        string
-		targetPlanName      string
-		targetInstanceType  string
-		targetDataCount     string
+		currentPlanName          string
+		currentInstanceType      string
+		currentDataCount         string
+		targetPlanID             string
+		targetPlanName           string
+		targetInstanceType       string
+		targetDataCount          string
 	}{
 		"valid version accepted": {
 			options: ElasticsearchOptions{
