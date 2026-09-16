@@ -115,7 +115,7 @@ func (p ElasticsearchPlan) SizeRank() int {
 //   - HA status must match or be upgrade (HA -> HA, non-HA -> non-HA). Crossing
 //     between HA and non-HA is only allowed for upgrading to HA,
 //   - The target must be the same size or larger (no downgrades).
-func (p ElasticsearchPlan) CanUpgradeTo(target ElasticsearchPlan) (bool, string) {
+func (p ElasticsearchPlan) CanUpgradeTo(target ElasticsearchPlan) (bool, error) {
 	if target.dataCount() < p.dataCount() {
 		return false, "cannot reduce the number of data nodes; the target plan must have at least as many data nodes as the current plan (highly-available -ha plans run 4 data nodes and non-HA plans run 2)"
 	}
