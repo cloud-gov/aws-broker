@@ -431,7 +431,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: es-medium
                 NEW_SERVICE_PLAN: es-large-memory-optimized
-                HA_PLAN: es-medium-ha
+                HA_PLAN: es-large-memory-optimized-ha
                 SINGLE_NODE_PLAN: es-dev
                 REGION: ((development-aws-default-region))
     on_failure:

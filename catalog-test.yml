@@ -26,6 +26,7 @@ elasticsearch:
     masterCount: 2
     dataCount: 2
     instanceType: c5.large.elasticsearch
+    instanceSizeRank: 20
     masterInstanceType: c5.large.elasticsearch
     volumeSize: 10
     volumeType: gp3
@@ -54,6 +55,7 @@ elasticsearch:
     elasticsearchVersion: 7.4
     dataCount: 1
     instanceType: t3.small.elasticsearch
+    instanceSizeRank: 10
     volumeSize: 10
     volumeType: gp3
     encryptAtRest: true

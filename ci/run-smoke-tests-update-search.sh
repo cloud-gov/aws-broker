@@ -8,6 +8,10 @@ set -euxo pipefail
 UPGRADE_TIMEOUT_SECONDS=${UPGRADE_TIMEOUT_SECONDS:-5400}
 INVALID_VERSION=${INVALID_VERSION:-Elasticsearch_6.8}
 VALID_VERSION=${VALID_VERSION:-OpenSearch_2.11}
+# Expected data-node counts for the plans under test. In the catalog every
+# multi-node non-HA plan runs 2 data nodes and every -ha plan runs 4.
+NEW_SERVICE_PLAN_DATA_NODES=${NEW_SERVICE_PLAN_DATA_NODES:-2}
+HA_PLAN_DATA_NODES=${HA_PLAN_DATA_NODES:-4}
 
 # Log in to CF
 login
@@ -16,6 +20,26 @@ TEST_ID="$RANDOM"
 APP_NAME="search-smoke-tests-update-$SERVICE_PLAN-$TEST_ID-app"
 SERVICE_NAME="search-smoke-tests-update-$SERVICE_PLAN-$TEST_ID-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/aws-elasticsearch/"
+
+# Re-bind to pick up credentials for the resized domain, then confirm the cluster
+# still indexes and returns documents. Takes an optional expected data-node count,
+# which is asserted against the live cluster health.
+rebind_and_verify() {
+  local expected_data_nodes=${1:-}
+  local task_command="python run.py -s $SERVICE_NAME -r $REGION"
+  local app_guid
+
+  if [ -n "$expected_data_nodes" ]; then
+    task_command="$task_command --expected-data-nodes $expected_data_nodes"
+  fi
+
+  cf unbind-service "$APP_NAME" "$SERVICE_NAME"
+  wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
+  cf restage "$APP_NAME"
+  cf run-task "$APP_NAME" --command "$task_command"
+  app_guid=$(cf curl "/v3/apps?names=$APP_NAME" | jq -r ".resources[0].guid")
+  get_task_state "$app_guid"
+}
 
 # Clean up any leftovers from a previous run
 cf delete -f "$APP_NAME"
@@ -43,20 +67,11 @@ get_task_state "$app_guid"
 # HTTP 400 before calling AWS, so no asynchronous job is created.
 #
 
-# Crossing the HA tier changes zone awareness / subnet topology, which AWS cannot
-# do in place on an existing domain.
+# Dropping to a single data node removes data nodes, which the broker refuses: a
+# one-node plan is provisioned on a single subnet with zone awareness off, and
+# shrinking the cluster would discard the shards those nodes hold.
 expect_update_service_rejected "$SERVICE_NAME" \
-  "cannot change between highly-available and non-highly-available plans" \
-  -p "$HA_PLAN"
-assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
-
-# Dropping to a single data node is also a topology change: a one-node plan is
-# provisioned on a single subnet with zone awareness off. Without this guard the
-# broker sends AWS a zone-count of two for a domain that has one subnet, and AWS
-# fails the update with "You must specify exactly two subnets because you've set
-# zone count to two."
-expect_update_service_rejected "$SERVICE_NAME" \
-  "cannot change between single-node and multi-node plans" \
+  "cannot reduce the number of data nodes" \
   -p "$SINGLE_NODE_PLAN"
 assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
 
@@ -80,21 +95,33 @@ assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
 cf update-service "$SERVICE_NAME" -p "$NEW_SERVICE_PLAN"
 wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$UPGRADE_TIMEOUT_SECONDS"
 assert_service_plan "$SERVICE_NAME" "$NEW_SERVICE_PLAN"
-
-# Re-bind to pick up credentials for the resized domain, then confirm the cluster
-# still indexes and returns documents.
-cf unbind-service "$APP_NAME" "$SERVICE_NAME"
-wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
-cf restage "$APP_NAME"
-cf run-task "$APP_NAME" --command "python run.py -s $SERVICE_NAME -r $REGION"
-app_guid=$(cf curl "/v3/apps?names=$APP_NAME" | jq -r ".resources[0].guid")
-get_task_state "$app_guid"
+rebind_and_verify "$NEW_SERVICE_PLAN_DATA_NODES"
 
 # Now that the instance is on the larger plan, going back down must be rejected.
 expect_update_service_rejected "$SERVICE_NAME" \
   "downgrading to a smaller plan is not supported" \
   -p "$SERVICE_PLAN"
 assert_service_plan "$SERVICE_NAME" "$NEW_SERVICE_PLAN"
+
+#
+# Upgrading to the highly-available plan. This grows the data-node count (2 -> 4)
+# on the existing domain rather than creating a new one, so it is a second AWS
+# blue/green deployment.
+#
+cf update-service "$SERVICE_NAME" -p "$HA_PLAN"
+wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$UPGRADE_TIMEOUT_SECONDS"
+assert_service_plan "$SERVICE_NAME" "$HA_PLAN"
+
+# Confirm the cluster serves traffic on the HA plan AND that AWS actually added the
+# data nodes; asserting the plan name alone would not prove the resize happened.
+rebind_and_verify "$HA_PLAN_DATA_NODES"
+
+# Going back to a non-HA plan removes data nodes and must be rejected, even though
+# the instance is on a larger tier than where it started.
+expect_update_service_rejected "$SERVICE_NAME" \
+  "cannot reduce the number of data nodes" \
+  -p "$NEW_SERVICE_PLAN"
+assert_service_plan "$SERVICE_NAME" "$HA_PLAN"
 
 # Clean up app and service
 cf delete -f "$APP_NAME"

@@ -69,19 +69,19 @@ func TestElasticsearchServiceToBrokerAPIService(t *testing.T) {
 }
 
 func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
-	// helper plans
-	mediumNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized"}, InstanceType: "r8g.medium.search", DataCount: "2"}
-	largeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized"}, InstanceType: "r8g.large.search", DataCount: "2"}
-	xlargeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-xlarge-memory-optimized"}, InstanceType: "r8g.xlarge.search", DataCount: "2"}
-	singleNode := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "r8g.large.search", DataCount: "1"}
-	mediumHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized-ha"}, InstanceType: "r8g.medium.search", DataCount: "4"}
-	largeHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized-ha"}, InstanceType: "r8g.large.search", DataCount: "4"}
-	unknown := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-mystery"}, InstanceType: "z9z.mystery.search", DataCount: "2"}
-	esDev := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "t3.small.search", DataCount: "1"}
-	esDevMigration := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev-6.8-migration"}, InstanceType: "t3.small.search", DataCount: "1"}
-	mediumC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium"}, InstanceType: "c5.large.search", DataCount: "2"}
-	largeC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large"}, InstanceType: "c5.xlarge.search", DataCount: "2"}
-	mediumC5HA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-ha"}, InstanceType: "c5.large.search", DataCount: "4"}
+
+	mediumNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized"}, InstanceType: "r8g.medium.search", InstanceSizeRank: 20, DataCount: "2"}
+	largeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized"}, InstanceType: "r8g.large.search", InstanceSizeRank: 30, DataCount: "2"}
+	xlargeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-xlarge-memory-optimized"}, InstanceType: "r8g.xlarge.search", InstanceSizeRank: 40, DataCount: "2"}
+	singleNode := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "r8g.large.search", InstanceSizeRank: 30, DataCount: "1"}
+	mediumHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized-ha"}, InstanceType: "r8g.medium.search", InstanceSizeRank: 20, DataCount: "4"}
+	largeHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized-ha"}, InstanceType: "r8g.large.search", InstanceSizeRank: 30, DataCount: "4"}
+	unranked := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-mystery"}, InstanceType: "z9z.mystery.search", DataCount: "2"}
+	esDev := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "t3.small.search", InstanceSizeRank: 10, DataCount: "1"}
+	esDevMigration := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev-6.8-migration"}, InstanceType: "t3.small.search", InstanceSizeRank: 10, DataCount: "1"}
+	mediumC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium"}, InstanceType: "c5.large.search", InstanceSizeRank: 20, DataCount: "2"}
+	largeC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large"}, InstanceType: "c5.xlarge.search", InstanceSizeRank: 30, DataCount: "2"}
+	mediumC5HA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-ha"}, InstanceType: "c5.large.search", InstanceSizeRank: 20, DataCount: "4"}
 
 	testCases := map[string]struct {
 		from      ElasticsearchPlan
@@ -126,27 +126,49 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			expectOK:  false,
 			expectMsg: "downgrading",
 		},
-		"non-HA to HA blocked": {
-			from:      mediumNonHA,
+		"non-HA to HA allowed": {
+			from:     mediumNonHA,
+			to:       mediumHA,
+			expectOK: true,
+		},
+		"non-HA to larger tier HA allowed": {
+			from:     mediumNonHA,
+			to:       largeHA,
+			expectOK: true,
+		},
+		"non-HA to smaller tier HA blocked": {
+			from:      largeNonHA,
 			to:        mediumHA,
 			expectOK:  false,
-			expectMsg: "highly-available",
+			expectMsg: "downgrading",
 		},
 		"HA to non-HA blocked": {
 			from:      largeHA,
 			to:        largeNonHA,
 			expectOK:  false,
-			expectMsg: "highly-available",
+			expectMsg: "reduce the number of data nodes",
+		},
+		"HA to larger tier non-HA blocked": {
+			from:      mediumHA,
+			to:        largeNonHA,
+			expectOK:  false,
+			expectMsg: "reduce the number of data nodes",
 		},
 		"single node to HA blocked": {
 			from:      singleNode,
 			to:        mediumHA,
 			expectOK:  false,
-			expectMsg: "highly-available",
+			expectMsg: "single-node plan to a multi-node plan",
 		},
-		"unknown target instance type blocked": {
+		"unranked target blocked": {
 			from:      mediumNonHA,
-			to:        unknown,
+			to:        unranked,
+			expectOK:  false,
+			expectMsg: "unable to determine plan sizes",
+		},
+		"unranked source blocked": {
+			from:      unranked,
+			to:        largeNonHA,
 			expectOK:  false,
 			expectMsg: "unable to determine plan sizes",
 		},
@@ -154,7 +176,7 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			from:      esDev,
 			to:        mediumNonHA,
 			expectOK:  false,
-			expectMsg: "single-node and multi-node",
+			expectMsg: "single-node plan to a multi-node plan",
 		},
 		"single node to same single node allowed": {
 			from:     esDev,
@@ -170,7 +192,7 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			from:      mediumNonHA,
 			to:        esDev,
 			expectOK:  false,
-			expectMsg: "single-node and multi-node",
+			expectMsg: "reduce the number of data nodes",
 		},
 		"same tier c5 to memory-optimized allowed": {
 			from:     mediumC5NonHA,
@@ -198,11 +220,10 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			expectOK:  false,
 			expectMsg: "downgrading",
 		},
-		"cross-family same tier still respects HA tier": {
-			from:      mediumC5NonHA,
-			to:        mediumHA,
-			expectOK:  false,
-			expectMsg: "highly-available",
+		"cross-family non-HA to same tier HA allowed": {
+			from:     mediumC5NonHA,
+			to:       mediumHA,
+			expectOK: true,
 		},
 		"cross-family same tier HA to HA allowed": {
 			from:     mediumC5HA,

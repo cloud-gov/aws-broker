@@ -620,9 +620,10 @@ func prepareUpdateDomainConfigInput(i *ElasticsearchInstance) (*opensearch.Updat
 	}
 
 	// Apply cluster sizing so plan upgrades (instance type / data-node count /
-	// dedicated master config) take effect. We do NOT touch subnets or zone
-	// awareness here: the broker only allows same-HA-tier plan changes, so the
-	// AZ/subnet topology of the existing domain is unchanged.
+	// dedicated master config) take effect. We do NOT touch subnets here: the
+	// broker only allows plan changes between multi-node plans, which are all
+	// created on the same two subnets, so the subnet topology of the existing
+	// domain is unchanged and only the data-node count within it grows.
 	if i.InstanceType != "" {
 		instanceType, err := getOpensearchInstanceTypeEnum(i.InstanceType)
 		if err != nil {

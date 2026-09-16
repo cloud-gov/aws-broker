@@ -236,9 +236,10 @@ func (i *ElasticsearchInstance) versionUpgradeInProgress() bool {
 }
 
 // applyPlan applies the sizing and identity fields of a new plan to the instance
-// during a plan change (upgrade). It intentionally does NOT change subnet or
-// zone-awareness topology; the broker only permits same-HA-tier plan changes so
-// the AZ/subnet layout is unchanged.
+// during a plan change (upgrade). It intentionally does NOT change subnet
+// topology; the broker only permits plan changes between multi-node plans, which
+// all use the same two subnets, so the AZ/subnet layout is unchanged even when the
+// data-node count grows.
 func (i *ElasticsearchInstance) applyPlan(plan catalog.ElasticsearchPlan) {
 	i.PlanID = plan.ID
 	i.Description = plan.Description

@@ -1443,10 +1443,10 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// The requested plan change (aws-standard -> aws-dev) is both a size
-	// downgrade and an HA-tier change, so it must be rejected.
-	if !strings.Contains(resp.Body.String(), "highly-available") &&
-		!strings.Contains(resp.Body.String(), "single-node and multi-node") &&
+	// The requested plan change (aws-standard -> aws-dev) reduces the data-node
+	// count from 2 to 1 and is also a size downgrade, so it must be rejected.
+	if !strings.Contains(resp.Body.String(), "reduce the number of data nodes") &&
+		!strings.Contains(resp.Body.String(), "single-node plan to a multi-node plan") &&
 		!strings.Contains(resp.Body.String(), "downgrading") &&
 		!strings.Contains(resp.Body.String(), "unable to determine plan sizes") {
 		t.Error(urlAcceptsIncomplete, "should return a message explaining why the plan change is not allowed")

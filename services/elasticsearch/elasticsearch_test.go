@@ -504,6 +504,34 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 				},
 			},
 		},
+		"scaling up to a highly-available plan grows the data-node count": {
+			esInstance: &ElasticsearchInstance{
+				Domain:             "fake-domain",
+				InstanceType:       "r8g.medium.search",
+				DataCount:          4,
+				MasterEnabled:      true,
+				MasterCount:        3,
+				MasterInstanceType: "r8g.medium.search",
+			},
+			expectedParams: &opensearch.UpdateDomainConfigInput{
+				DomainName:      aws.String("fake-domain"),
+				AdvancedOptions: map[string]string{},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+					InstanceCount: aws.Int32(4),
+					// Zone awareness stays enabled with the same two-AZ count the
+					// domain was created with; only the node count changes, so no
+					// subnet change is requested.
+					ZoneAwarenessEnabled: aws.Bool(true),
+					ZoneAwarenessConfig: &opensearchTypes.ZoneAwarenessConfig{
+						AvailabilityZoneCount: aws.Int32(2),
+					},
+					DedicatedMasterEnabled: aws.Bool(true),
+					DedicatedMasterCount:   aws.Int32(3),
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+				},
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {

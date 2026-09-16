@@ -123,10 +123,12 @@ func TestModifyInstance(t *testing.T) {
 		expectedStatus           int
 		currentPlanName          string
 		currentInstanceType      string
+		currentSizeRank          int
 		currentDataCount         string
 		targetPlanID             string
 		targetPlanName           string
 		targetInstanceType       string
+		targetSizeRank           int
 		targetDataCount          string
 	}{
 		"valid version accepted": {
@@ -154,71 +156,96 @@ func TestModifyInstance(t *testing.T) {
 		"non-HA upgrade to larger plan accepted": {
 			currentPlanName:     "es-medium-memory-optimized",
 			currentInstanceType: "r8g.medium.search",
+			currentSizeRank:     20,
 			currentDataCount:    "2",
 			targetPlanID:        "plan-large",
 			targetPlanName:      "es-large-memory-optimized",
 			targetInstanceType:  "r8g.large.search",
+			targetSizeRank:      30,
 			targetDataCount:     "2",
 		},
 		"non-HA downgrade rejected": {
 			currentPlanName:     "es-large-memory-optimized",
 			currentInstanceType: "r8g.large.search",
+			currentSizeRank:     30,
 			currentDataCount:    "2",
 			targetPlanID:        "plan-medium",
 			targetPlanName:      "es-medium-memory-optimized",
 			targetInstanceType:  "r8g.medium.search",
+			targetSizeRank:      20,
 			targetDataCount:     "2",
 			expectedErrMsg:      "downgrading",
 		},
-		"non-HA to HA rejected": {
+		"non-HA to HA accepted": {
 			currentPlanName:     "es-medium-memory-optimized",
 			currentInstanceType: "r8g.medium.search",
+			currentSizeRank:     20,
 			currentDataCount:    "2",
 			targetPlanID:        "plan-medium-ha",
 			targetPlanName:      "es-medium-memory-optimized-ha",
 			targetInstanceType:  "r8g.medium.search",
+			targetSizeRank:      20,
 			targetDataCount:     "4",
-			expectedErrMsg:      "highly-available",
 		},
 		"HA to non-HA rejected": {
 			currentPlanName:     "es-large-memory-optimized-ha",
 			currentInstanceType: "r8g.large.search",
+			currentSizeRank:     30,
 			currentDataCount:    "4",
 			targetPlanID:        "plan-large",
 			targetPlanName:      "es-large-memory-optimized",
 			targetInstanceType:  "r8g.large.search",
+			targetSizeRank:      30,
 			targetDataCount:     "2",
-			expectedErrMsg:      "highly-available",
+			expectedErrMsg:      "reduce the number of data nodes",
 		},
 		"HA upgrade to larger HA accepted": {
 			currentPlanName:     "es-medium-memory-optimized-ha",
 			currentInstanceType: "r8g.medium.search",
+			currentSizeRank:     20,
 			currentDataCount:    "4",
 			targetPlanID:        "plan-large-ha",
 			targetPlanName:      "es-large-memory-optimized-ha",
 			targetInstanceType:  "r8g.large.search",
+			targetSizeRank:      30,
 			targetDataCount:     "4",
+		},
+		"plan without a size rank rejected": {
+			currentPlanName:     "es-medium-memory-optimized",
+			currentInstanceType: "r8g.medium.search",
+			currentSizeRank:     20,
+			currentDataCount:    "2",
+			targetPlanID:        "plan-unranked",
+			targetPlanName:      "es-unranked",
+			targetInstanceType:  "r8g.large.search",
+			targetDataCount:     "2",
+			expectedErrMsg:      "unable to determine plan sizes",
+			expectedStatus:      http.StatusBadRequest,
 		},
 		"single-node plan to multi-node plan rejected": {
 			currentPlanName:     "es-dev",
 			currentInstanceType: "t3.small.search",
+			currentSizeRank:     10,
 			currentDataCount:    "1",
 			targetPlanID:        "plan-medium",
 			targetPlanName:      "es-medium-memory-optimized",
 			targetInstanceType:  "r8g.medium.search",
+			targetSizeRank:      20,
 			targetDataCount:     "2",
-			expectedErrMsg:      "single-node and multi-node",
+			expectedErrMsg:      "single-node plan to a multi-node plan",
 			expectedStatus:      http.StatusBadRequest,
 		},
 		"multi-node plan to single-node plan rejected": {
 			currentPlanName:     "es-medium-memory-optimized",
 			currentInstanceType: "r8g.medium.search",
+			currentSizeRank:     20,
 			currentDataCount:    "2",
 			targetPlanID:        "plan-dev",
 			targetPlanName:      "es-dev",
 			targetInstanceType:  "t3.small.search",
+			targetSizeRank:      10,
 			targetDataCount:     "1",
-			expectedErrMsg:      "single-node and multi-node",
+			expectedErrMsg:      "reduce the number of data nodes",
 			expectedStatus:      http.StatusBadRequest,
 		},
 		"plan change with version upgrade rejected": {
@@ -228,10 +255,12 @@ func TestModifyInstance(t *testing.T) {
 			existingVersion:     "OpenSearch_1.3",
 			currentPlanName:     "es-medium-memory-optimized",
 			currentInstanceType: "r8g.medium.search",
+			currentSizeRank:     20,
 			currentDataCount:    "2",
 			targetPlanID:        "plan-large",
 			targetPlanName:      "es-large-memory-optimized",
 			targetInstanceType:  "r8g.large.search",
+			targetSizeRank:      30,
 			targetDataCount:     "2",
 			expectedErrMsg:      "plan change cannot be combined with an engine version upgrade",
 		},
@@ -284,16 +313,18 @@ func TestModifyInstance(t *testing.T) {
 
 			plans := []catalog.ElasticsearchPlan{
 				{
-					ServicePlan:  domain.ServicePlan{ID: planId, Name: test.currentPlanName},
-					InstanceType: test.currentInstanceType,
-					DataCount:    test.currentDataCount,
+					ServicePlan:      domain.ServicePlan{ID: planId, Name: test.currentPlanName},
+					InstanceType:     test.currentInstanceType,
+					InstanceSizeRank: test.currentSizeRank,
+					DataCount:        test.currentDataCount,
 				},
 			}
 			if test.targetPlanID != "" {
 				plans = append(plans, catalog.ElasticsearchPlan{
-					ServicePlan:  domain.ServicePlan{ID: test.targetPlanID, Name: test.targetPlanName},
-					InstanceType: test.targetInstanceType,
-					DataCount:    test.targetDataCount,
+					ServicePlan:      domain.ServicePlan{ID: test.targetPlanID, Name: test.targetPlanName},
+					InstanceType:     test.targetInstanceType,
+					InstanceSizeRank: test.targetSizeRank,
+					DataCount:        test.targetDataCount,
 				})
 			}
 

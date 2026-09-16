@@ -1525,6 +1525,7 @@ elasticsearch:
     - "Elasticsearch_7.4"
     dataCount: 1
     instanceType: t3.small.search
+    instanceSizeRank: 10
     volumeSize: 15
     volumeType: gp3
     encryptAtRest: true
@@ -1555,6 +1556,7 @@ elasticsearch:
     - "Elasticsearch_7.10"
     dataCount: 1
     instanceType: t3.small.search
+    instanceSizeRank: 10
     volumeSize: 15
     volumeType: gp3
     encryptAtRest: true
@@ -1585,6 +1587,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: c5.large.search
+    instanceSizeRank: 20
     masterInstanceType: c5.large.search
     volumeSize: 15
     volumeType: gp3
@@ -1618,6 +1621,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: c5.large.search
+    instanceSizeRank: 20
     masterInstanceType: c5.large.search
     volumeSize: 15
     volumeType: gp3
@@ -1651,6 +1655,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: c5.xlarge.search
+    instanceSizeRank: 30
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1684,6 +1689,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: c5.xlarge.search
+    instanceSizeRank: 30
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1717,6 +1723,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: c5.2xlarge.search
+    instanceSizeRank: 40
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1750,6 +1757,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: c5.2xlarge.search
+    instanceSizeRank: 40
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1784,6 +1792,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: r8g.medium.search
+    instanceSizeRank: 20
     masterInstanceType: r8g.medium.search
     volumeSize: 15
     volumeType: gp3
@@ -1818,6 +1827,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: r8g.medium.search
+    instanceSizeRank: 20
     masterInstanceType: r8g.medium.search
     volumeSize: 15
     volumeType: gp3
@@ -1852,6 +1862,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: r8g.large.search
+    instanceSizeRank: 30
     masterInstanceType: r8g.large.search
     volumeSize: 30
     volumeType: gp3
@@ -1886,6 +1897,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: r8g.large.search
+    instanceSizeRank: 30
     masterInstanceType: r8g.large.search
     volumeSize: 30
     volumeType: gp3
@@ -1920,6 +1932,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: r8g.xlarge.search
+    instanceSizeRank: 40
     masterInstanceType: r8g.xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1954,6 +1967,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: r8g.xlarge.search
+    instanceSizeRank: 40
     masterInstanceType: r8g.xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1987,6 +2001,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: m5.2xlarge.search
+    instanceSizeRank: 50
     masterInstanceType: m5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -2020,6 +2035,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: m5.2xlarge.search
+    instanceSizeRank: 50
     masterInstanceType: m5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -2053,6 +2069,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: m5.4xlarge.search
+    instanceSizeRank: 60
     masterInstanceType: m5.4xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -2086,6 +2103,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: m5.4xlarge.search
+    instanceSizeRank: 60
     masterInstanceType: m5.4xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -2120,6 +2138,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: m5.12xlarge.search
+    instanceSizeRank: 70
     masterInstanceType: m5.12xlarge.search
     volumeSize: 50
     volumeType: gp3
@@ -2153,6 +2172,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: m5.12xlarge.search
+    instanceSizeRank: 70
     masterInstanceType: m5.12xlarge.search
     volumeSize: 50
     volumeType: gp3

@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"strconv"
-	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 )
@@ -54,6 +53,7 @@ type ElasticsearchPlan struct {
 	MasterCount                string            `yaml:"masterCount" json:"-"`
 	DataCount                  string            `yaml:"dataCount" json:"-" validate:"required"`
 	InstanceType               string            `yaml:"instanceType" json:"-" validate:"required"`
+	InstanceSizeRank           int               `yaml:"instanceSizeRank" json:"-"`
 	MasterInstanceType         string            `yaml:"masterInstanceType" json:"-"`
 	VolumeSize                 string            `yaml:"volumeSize" json:"-" validate:"required"`
 	VolumeType                 string            `yaml:"volumeType" json:"-" validate:"required"`
@@ -88,39 +88,10 @@ func (p ElasticsearchPlan) CheckVersion(version string) bool {
 	return false
 }
 
-// instanceSizeRank maps an OpenSearch/Elasticsearch instance type string to a
-// number so plans can be ordered from smallest to largest. Larger numbers are
-// bigger instances.
-var instanceSizeRank = map[string]int{
-	// dev tier (single node)
-	"t3.small.search": 10,
-	// medium tier
-	"c5.large.search":   20,
-	"r8g.medium.search": 20,
-	// large tier
-	"c5.xlarge.search": 30,
-	"r8g.large.search": 30,
-	// xlarge tier
-	"c5.2xlarge.search": 40,
-	"r8g.xlarge.search": 40,
-	// 2xlarge tier
-	"m5.2xlarge.search":  50,
-	"r8g.2xlarge.search": 50,
-	// 4xlarge tier
-	"m5.4xlarge.search": 60,
-	// 12xlarge tier
-	"m5.12xlarge.search": 70,
-}
-
 // dataCount returns the plan's configured data-node count as an int (0 if unset/invalid).
 func (p ElasticsearchPlan) dataCount() int {
 	n, _ := strconv.Atoi(p.DataCount)
 	return n
-}
-
-// IsHighlyAvailable reports whether the plan is a highly-available (HA) plan.
-func (p ElasticsearchPlan) IsHighlyAvailable() bool {
-	return strings.HasSuffix(strings.ToLower(p.Name), "-ha")
 }
 
 // IsZoneAware reports whether the plan's domain is created with zone awareness
@@ -133,29 +104,24 @@ func (p ElasticsearchPlan) IsZoneAware() bool {
 // the instance-type rank with the data-node count so that, within the same
 // instance type, more data nodes rank larger.
 func (p ElasticsearchPlan) SizeRank() int {
-	base, ok := instanceSizeRank[strings.ToLower(p.InstanceType)]
-	if !ok {
+	if p.InstanceSizeRank <= 0 {
 		return -1
 	}
-	return base*100 + p.dataCount()
+	return p.InstanceSizeRank*100 + p.dataCount()
 }
 
 // CanUpgradeTo reports whether an instance currently on plan p may be updated to
 // target. The rules are:
-//   - HA status must match exactly (HA -> HA, non-HA -> non-HA). Crossing
-//     between HA and non-HA in either direction is not allowed, because AWS
-//     OpenSearch cannot toggle zone awareness / change subnet topology in place.
-//   - Zone awareness must match exactly. A single-data-node plan is created on one
-//     subnet with zone awareness off, so it may only move to another
-//     single-data-node plan.
+//   - HA status must match or be upgrade (HA -> HA, non-HA -> non-HA). Crossing
+//     between HA and non-HA is only allowed for upgrading to HA,
 //   - The target must be the same size or larger (no downgrades).
 func (p ElasticsearchPlan) CanUpgradeTo(target ElasticsearchPlan) (bool, string) {
-	if p.IsHighlyAvailable() != target.IsHighlyAvailable() {
-		return false, "cannot change between highly-available and non-highly-available plans; HA plans may only move to HA plans and non-HA to non-HA"
+	if target.dataCount() < p.dataCount() {
+		return false, "cannot reduce the number of data nodes; the target plan must have at least as many data nodes as the current plan (highly-available -ha plans run 4 data nodes and non-HA plans run 2)"
 	}
 
-	if p.IsZoneAware() != target.IsZoneAware() {
-		return false, "cannot change between single-node and multi-node plans; a single-node plan runs on one subnet without zone awareness and may only move to another single-node plan"
+	if !p.IsZoneAware() && target.IsZoneAware() {
+		return false, "cannot move from a single-node plan to a multi-node plan; a single-node plan runs one data node on one subnet without zone awareness, so data nodes cannot be added in place"
 	}
 
 	from := p.SizeRank()
