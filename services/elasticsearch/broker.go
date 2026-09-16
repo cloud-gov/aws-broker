@@ -254,7 +254,6 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 		}
 
 		if ok, reason := currentPlan.CanUpgradeTo(newPlan); !ok {
-			//nolint:staticcheck // ST1005: user-facing API error returned in the HTTP failure response; intentionally sentence-case for readability.
 			return apiresponses.NewFailureResponse(errors.New(reason), http.StatusBadRequest, "validate plan change")
 		}
 
