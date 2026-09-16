@@ -366,7 +366,7 @@ func TestModifyInstance(t *testing.T) {
 					if err := brokerDb.Where("uuid = ?", instanceId).First(&persisted).Error; err != nil {
 						t.Fatalf("reloading instance: %s", err)
 					}
-					if persisted.PlanID != planId {
+					if persisted.PlanID != test.targetPlanID {
 						t.Fatalf("expected instance to remain on plan %q after rejection, got %q", planId, persisted.PlanID)
 					}
 				}
