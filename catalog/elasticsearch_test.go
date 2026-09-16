@@ -245,15 +245,3 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(substr) == 0 || (len(s) >= len(substr) && indexOf(s, substr) >= 0)
-}
-
-func indexOf(s, substr string) int {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
-}
