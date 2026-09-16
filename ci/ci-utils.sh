@@ -16,11 +16,11 @@ wait_for_service_instance() {
   # instance does not exist
   guid=$(cf service --guid "$service_name" || true)
   local status
-  status=$(cf curl "/v2/service_instances/$guid" | jq -r '.entity.last_operation.state')
+  status=$(cf curl "/v3/service_instances/$guid" | jq -r '.entity.last_operation.state')
 
   while [ "$status" == "in progress" ]; do
     sleep 60
-    status=$(cf curl "/v2/service_instances/$guid" | jq -r '.entity.last_operation.state')
+    status=$(cf curl "/v3/service_instances/$guid" | jq -r '.entity.last_operation.state')
   done
 
   echo "$status"
@@ -50,7 +50,7 @@ wait_for_service_instance_success_with_timeout() {
   guid=$(cf service --guid "$service_name")
 
   while true; do
-    status=$(cf curl "/v2/service_instances/$guid" | jq -r '.entity.last_operation.state')
+    status=$(cf curl "/v3/service_instances/$guid" | jq -r '.entity.last_operation.state')
 
     case "$status" in
     succeeded)
