@@ -376,6 +376,10 @@ func (d *dedicatedDBAdapter) reconcileDbState(ctx context.Context, i RDSInstance
 		reconciledInstance.AllocatedStorage = int64(*dbInstanceState.AllocatedStorage)
 	}
 
+	if len(dbInstanceState.ReadReplicaDBInstanceIdentifiers) == 0 && (reconciledInstance.ReplicaDatabase != "" || reconciledInstance.ReplicaDatabaseHost != "") {
+		reconciledInstance.removeReplicaDatabaseProperties()
+	}
+
 	return &reconciledInstance, nil
 }
 
