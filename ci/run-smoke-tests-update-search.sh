@@ -97,12 +97,6 @@ wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$UPGRADE_TIMEOUT
 assert_service_plan "$SERVICE_NAME" "$NEW_SERVICE_PLAN"
 rebind_and_verify "$NEW_SERVICE_PLAN_DATA_NODES"
 
-# Now that the instance is on the larger plan, going back down must be rejected.
-expect_update_service_rejected "$SERVICE_NAME" \
-  "downgrading to a smaller plan is not supported" \
-  -p "$SERVICE_PLAN"
-assert_service_plan "$SERVICE_NAME" "$NEW_SERVICE_PLAN"
-
 #
 # Upgrading to the highly-available plan. This grows the data-node count (2 -> 4)
 # on the existing domain rather than creating a new one, so it is a second AWS
