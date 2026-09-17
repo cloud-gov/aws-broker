@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"strings"
 	"testing"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
@@ -234,14 +235,22 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			ok, msg := tc.from.CanUpgradeTo(tc.to)
+			ok, err := tc.from.CanUpgradeTo(tc.to)
 			if ok != tc.expectOK {
-				t.Fatalf("expected ok=%v, got %v (msg=%q)", tc.expectOK, ok, msg)
+				t.Fatalf("expected ok=%v, got %v (err=%v)", tc.expectOK, ok, err)
 			}
-			if !tc.expectOK && tc.expectMsg != "" && !strings.Contains(msg, tc.expectMsg) {
-				t.Fatalf("expected message containing %q, got %q", tc.expectMsg, msg)
+			if tc.expectOK {
+				if err != nil {
+					t.Fatalf("expected no error for an allowed plan change, got %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected an error explaining the rejection, got nil")
+			}
+			if tc.expectMsg != "" && !strings.Contains(err.Error(), tc.expectMsg) {
+				t.Fatalf("expected message containing %q, got %q", tc.expectMsg, err.Error())
 			}
 		})
 	}
 }
-

@@ -253,8 +253,8 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching requested plan")
 		}
 
-		if ok, reason := currentPlan.CanUpgradeTo(newPlan); !ok {
-			return apiresponses.NewFailureResponse(errors.New(reason), http.StatusBadRequest, "validate plan change")
+		if ok, err := currentPlan.CanUpgradeTo(newPlan); !ok {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate plan change")
 		}
 
 		// A plan change cannot be combined with a version upgrade in the same call.
