@@ -232,14 +232,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{
-					PollAwsMinDelay: 1 * time.Millisecond,
-					// PollAwsMaxDuration is a wall-clock ceiling on the SDK waiter, not
-					// a sleep, so a generous value costs nothing here: the mock returns
-					// instantly and the waiter stops as soon as it sees "available".
-					// This case is the only one that requires the waiter to retry, and
-					// with a budget in the low milliseconds the two jittered backoff
-					// sleeps could overrun it on a loaded CI worker, failing the test
-					// for scheduler latency rather than broker behaviour.
+					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 30 * time.Second,
 				},
 				&mockRedisClient{
@@ -296,10 +289,6 @@ func TestAsyncModifyRedis(t *testing.T) {
 			},
 			expectedState: base.InstanceReady,
 		},
-		// The replication group goes available but the requested replica never
-		// appears, so verifyIncreasedReplicaCount exhausts every attempt. This must
-		// be reported as a failure: the tenant asked for a replica and did not get
-		// one, and marking the instance ready would hide that permanently.
 		"replica never appears before attempts are exhausted": {
 			ctx: t.Context(),
 			worker: NewModifyWorker(
@@ -350,9 +339,6 @@ func TestAsyncModifyRedis(t *testing.T) {
 	}
 }
 
-// availableWithoutReplica describes a replication group that AWS reports as
-// available but which holds only its primary: the state the broker sees when a
-// requested replica has not been created.
 func availableWithoutReplica() *elasticache.DescribeReplicationGroupsOutput {
 	return &elasticache.DescribeReplicationGroupsOutput{
 		ReplicationGroups: []elasticacheTypes.ReplicationGroup{

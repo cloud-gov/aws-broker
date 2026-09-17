@@ -142,6 +142,20 @@ wait_for_service_bindable() {
   done
 }
 
+app_name_from_guid() {
+  local app_guid=$1
+  local app_name
+
+  app_name=$(cf curl "/v3/apps/$app_guid" 2>/dev/null | jq -r '.name // empty')
+
+  if [ -z "$app_name" ]; then
+    echo "$app_guid"
+    return 0
+  fi
+
+  echo "$app_name"
+}
+
 # Function for getting task state
 get_task_state() {
   local app_guid=$1
@@ -155,8 +169,10 @@ get_task_state() {
 
   # If task FAILED exit with error
   if [[ "$task_state" == "FAILED" ]]; then
+    local app_name
+    app_name=$(app_name_from_guid "$app_guid")
     echo "Smoke test failed."
-    echo "Check '$> cf logs $TEST_APP --recent' for more info."
+    echo "Check 'cf logs $app_name --recent' for more info."
     exit 1
   fi
 
