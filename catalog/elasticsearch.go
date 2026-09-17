@@ -54,7 +54,7 @@ type ElasticsearchPlan struct {
 	MasterCount                string            `yaml:"masterCount" json:"-"`
 	DataCount                  string            `yaml:"dataCount" json:"-" validate:"required"`
 	InstanceType               string            `yaml:"instanceType" json:"-" validate:"required"`
-	InstanceSizeRank           int               `yaml:"instanceSizeRank" json:"-"`
+	InstanceSizeRank           int               `yaml:"instanceSizeRank" json:"-" validate:"required,gt=0"`
 	MasterInstanceType         string            `yaml:"masterInstanceType" json:"-"`
 	VolumeSize                 string            `yaml:"volumeSize" json:"-" validate:"required"`
 	VolumeType                 string            `yaml:"volumeType" json:"-" validate:"required"`
@@ -112,19 +112,10 @@ func (p ElasticsearchPlan) SizeRank() int {
 }
 
 // CanUpgradeTo reports whether an instance currently on plan p may be updated to
-// target. When the change is not allowed it returns false and an error explaining
-// why, suitable for returning to the user. The rules are:
-//   - The data-node count may grow but never shrink. Highly-available ("-ha")
-//     plans run 4 data nodes and their non-HA counterparts run 2, so upgrading
-//     from a non-HA plan to an HA plan is allowed; the reverse is not, because
-//     removing data nodes discards the shards they hold.
-//   - Single-data-node plans may only move to other single-data-node plans. A
-//     single-data-node domain is created on one subnet with zone awareness off, so
-//     adding data nodes would require enabling zone awareness on a domain that has
-//     only one subnet, which AWS rejects.
-//   - The target must be the same size or larger (no downgrades). Size comes from
-//     the plan's instanceSizeRank in the catalog plus its data-node count; a plan
-//     without a rank cannot be compared and the change is refused.
+// target. The rules are:
+//   - HA status must match or be upgrade (HA -> HA, non-HA -> non-HA). Crossing
+//     between HA and non-HA is only allowed for upgrading to HA,
+//   - The target must be the same size or larger (no downgrades).
 func (p ElasticsearchPlan) CanUpgradeTo(target ElasticsearchPlan) (bool, error) {
 	if target.dataCount() < p.dataCount() {
 		return false, errors.New("cannot reduce the number of data nodes; the target plan must have at least as many data nodes as the current plan (highly-available -ha plans run 4 data nodes and non-HA plans run 2)")

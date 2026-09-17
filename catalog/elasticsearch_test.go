@@ -1,6 +1,10 @@
 package catalog
 
 import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -253,4 +257,105 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestElasticsearchCatalogPlanSizeRanks(t *testing.T) {
+	catalog := parseCatalogTemplate(t)
+	plans := catalog.ElasticsearchService.ElasticsearchPlans
+
+	if len(plans) == 0 {
+		t.Fatal("parsed no Elasticsearch plans from catalog-template.yml")
+	}
+
+	byName := make(map[string]ElasticsearchPlan, len(plans))
+	for _, plan := range plans {
+		byName[plan.Name] = plan
+	}
+
+	for _, plan := range plans {
+		t.Run(plan.Name, func(t *testing.T) {
+			if plan.InstanceSizeRank <= 0 {
+				t.Errorf("plan has instanceSizeRank=%d; every plan needs a positive rank or CanUpgradeTo cannot compare it",
+					plan.InstanceSizeRank)
+			}
+			if plan.SizeRank() < 0 {
+				t.Errorf("SizeRank()=%d; plan cannot participate in any plan change", plan.SizeRank())
+			}
+			if plan.dataCount() <= 0 {
+				t.Errorf("dataCount=%q does not parse to a positive node count", plan.DataCount)
+			}
+		})
+	}
+
+	// Every -ha plan must share its tier's rank and add data nodes. This is what
+	// makes the intended non-HA -> same-tier-HA upgrade reachable: SizeRank breaks
+	// the tie on data-node count only when the instance rank is equal.
+	for _, plan := range plans {
+		base, isHA := strings.CutSuffix(plan.Name, "-ha")
+		if !isHA {
+			continue
+		}
+		t.Run(plan.Name+" pairs with "+base, func(t *testing.T) {
+			counterpart, found := byName[base]
+			if !found {
+				t.Fatalf("no non-HA counterpart %q found for HA plan", base)
+			}
+			if counterpart.InstanceSizeRank != plan.InstanceSizeRank {
+				t.Errorf("HA plan rank %d != non-HA counterpart rank %d; the pair is not the same tier",
+					plan.InstanceSizeRank, counterpart.InstanceSizeRank)
+			}
+			if plan.dataCount() <= counterpart.dataCount() {
+				t.Errorf("HA plan has %d data nodes, counterpart has %d; HA must add nodes",
+					plan.dataCount(), counterpart.dataCount())
+			}
+			if ok, err := counterpart.CanUpgradeTo(plan); !ok {
+				t.Errorf("%s -> %s must be an allowed upgrade, got: %v", base, plan.Name, err)
+			}
+		})
+	}
+}
+
+// TestParseCatalogRejectsMissingSizeRank pins the fail-closed behaviour: an
+// Elasticsearch plan with no instanceSizeRank must be rejected at catalog load,
+// not accepted and then found unrankable at the first upgrade attempt.
+func TestParseCatalogRejectsMissingSizeRank(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "catalog-test.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Sanity check: the fixture validates as-is, so a failure below is caused by
+	// the removal and not by unrelated drift in catalog-test.yml.
+	if _, err := parseCatalog(data); err != nil {
+		t.Fatalf("catalog-test.yml does not validate before mutation: %v", err)
+	}
+
+	stripped := regexp.MustCompile(`(?m)^\s*instanceSizeRank:.*\n`).ReplaceAll(data, nil)
+	if bytes.Equal(stripped, data) {
+		t.Fatal("catalog-test.yml contains no instanceSizeRank lines to remove; test cannot prove anything")
+	}
+
+	if _, err := parseCatalog(stripped); err == nil {
+		t.Fatal("parseCatalog accepted a catalog whose Elasticsearch plans have no instanceSizeRank")
+	} else if !strings.Contains(err.Error(), "InstanceSizeRank") {
+		t.Errorf("expected the validation error to name InstanceSizeRank, got: %v", err)
+	}
+}
+
+func parseCatalogTemplate(t *testing.T) *Catalog {
+	t.Helper()
+
+	// catalog-template.yml is the source of truth that spruce renders into the
+	// deployed catalog.yml, so it is what must be asserted against; the rendered
+	// catalog.yml is gitignored and absent in a clean checkout.
+	data, err := os.ReadFile(filepath.Join("..", "catalog-template.yml"))
+	if err != nil {
+		t.Fatalf("reading catalog-template.yml: %v", err)
+	}
+
+	catalog, err := parseCatalog(data)
+	if err != nil {
+		t.Fatalf("parsing catalog-template.yml: %v", err)
+	}
+	return catalog
 }
