@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -231,8 +232,15 @@ func TestAsyncModifyRedis(t *testing.T) {
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{
-					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 10 * time.Millisecond,
+					PollAwsMinDelay: 1 * time.Millisecond,
+					// PollAwsMaxDuration is a wall-clock ceiling on the SDK waiter, not
+					// a sleep, so a generous value costs nothing here: the mock returns
+					// instantly and the waiter stops as soon as it sees "available".
+					// This case is the only one that requires the waiter to retry, and
+					// with a budget in the low milliseconds the two jittered backoff
+					// sleeps could overrun it on a loaded CI worker, failing the test
+					// for scheduler latency rather than broker behaviour.
+					PollAwsMaxDuration: 30 * time.Second,
 				},
 				&mockRedisClient{
 					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
@@ -288,6 +296,42 @@ func TestAsyncModifyRedis(t *testing.T) {
 			},
 			expectedState: base.InstanceReady,
 		},
+		// The replication group goes available but the requested replica never
+		// appears, so verifyIncreasedReplicaCount exhausts every attempt. This must
+		// be reported as a failure: the tenant asked for a replica and did not get
+		// one, and marking the instance ready would hide that permanently.
+		"replica never appears before attempts are exhausted": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 30 * time.Second,
+					PollAwsMaxRetries:  2,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						// Consumed by the SDK waiter.
+						availableWithoutReplica(),
+						// Consumed by the verify loop: 1 initial attempt + 2 retries.
+						availableWithoutReplica(),
+						availableWithoutReplica(),
+						availableWithoutReplica(),
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				NewReplicaCount: 1,
+			},
+			expectedState: base.InstanceNotModified,
+		},
 	}
 
 	for name, test := range testCases {
@@ -301,6 +345,149 @@ func TestAsyncModifyRedis(t *testing.T) {
 
 			if test.expectedState != asyncJobMsg.JobState.State {
 				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+		})
+	}
+}
+
+// availableWithoutReplica describes a replication group that AWS reports as
+// available but which holds only its primary: the state the broker sees when a
+// requested replica has not been created.
+func availableWithoutReplica() *elasticache.DescribeReplicationGroupsOutput {
+	return &elasticache.DescribeReplicationGroupsOutput{
+		ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+			{
+				Status: aws.String("available"),
+				NodeGroups: []elasticacheTypes.NodeGroup{
+					{
+						Status: aws.String("available"),
+						NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+							{CurrentRole: aws.String("primary")},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestVerifyIncreasedReplicaCount(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	availableWithReplica := func() *elasticache.DescribeReplicationGroupsOutput {
+		return &elasticache.DescribeReplicationGroupsOutput{
+			ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+				{
+					NodeGroups: []elasticacheTypes.NodeGroup{
+						{
+							Status: aws.String("available"),
+							NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+								{CurrentRole: aws.String("primary")},
+								{CurrentRole: aws.String("replica")},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	testCases := map[string]struct {
+		results         []*elasticache.DescribeReplicationGroupsOutput
+		errs            []error
+		newReplicaCount int
+		maxRetries      int64
+		expectErr       bool
+		expectErrMsg    string
+	}{
+		"replica present on first attempt": {
+			results:         []*elasticache.DescribeReplicationGroupsOutput{availableWithReplica()},
+			newReplicaCount: 1,
+			maxRetries:      2,
+		},
+		"replica appears on a later attempt": {
+			results: []*elasticache.DescribeReplicationGroupsOutput{
+				availableWithoutReplica(),
+				availableWithReplica(),
+			},
+			newReplicaCount: 1,
+			maxRetries:      2,
+		},
+		"replica never appears": {
+			results: []*elasticache.DescribeReplicationGroupsOutput{
+				availableWithoutReplica(),
+				availableWithoutReplica(),
+				availableWithoutReplica(),
+			},
+			newReplicaCount: 1,
+			maxRetries:      2,
+			expectErr:       true,
+			expectErrMsg:    "did not report 1 replica nodes after 3 attempts",
+		},
+		"describe error is surfaced": {
+			errs:            []error{errors.New("boom")},
+			newReplicaCount: 1,
+			maxRetries:      2,
+			expectErr:       true,
+			expectErrMsg:    "boom",
+		},
+		"empty response is surfaced rather than panicking": {
+			results:         []*elasticache.DescribeReplicationGroupsOutput{{}},
+			newReplicaCount: 1,
+			maxRetries:      0,
+			expectErr:       true,
+			expectErrMsg:    "no replication groups",
+		},
+		"replication group with no node groups is surfaced": {
+			results: []*elasticache.DescribeReplicationGroupsOutput{
+				{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+			},
+			newReplicaCount: 1,
+			maxRetries:      0,
+			expectErr:       true,
+			expectErrMsg:    "no node groups",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			worker := NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: test.maxRetries,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: test.results,
+					describeReplicationGroupsErrs:    test.errs,
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			)
+
+			instance := &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{ServiceID: helpers.RandStr(10)},
+					Uuid:    helpers.RandStr(10),
+				},
+				ClusterID:       "cluster-1",
+				NewReplicaCount: test.newReplicaCount,
+			}
+
+			err := worker.verifyIncreasedReplicaCount(t.Context(), instance)
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected an error, got nil: the caller treats nil as a completed resize")
+				}
+				if !strings.Contains(err.Error(), test.expectErrMsg) {
+					t.Fatalf("expected error containing %q, got %q", test.expectErrMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
 			}
 		})
 	}
