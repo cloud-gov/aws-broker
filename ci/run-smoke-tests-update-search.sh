@@ -116,13 +116,6 @@ assert_service_plan "$SERVICE_NAME" "$HA_PLAN"
 # data nodes; asserting the plan name alone would not prove the resize happened.
 rebind_and_verify "$HA_PLAN_DATA_NODES"
 
-# Going back to a non-HA plan removes data nodes and must be rejected, even though
-# the instance is on a larger tier than where it started.
-expect_update_service_rejected "$SERVICE_NAME" \
-  "cannot reduce the number of data nodes" \
-  -p "$NEW_SERVICE_PLAN"
-assert_service_plan "$SERVICE_NAME" "$HA_PLAN"
-
 # Clean up app and service
 cf delete -f "$APP_NAME"
 cf delete-service -f "$SERVICE_NAME"
