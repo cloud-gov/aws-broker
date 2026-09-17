@@ -165,7 +165,7 @@ func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *Redis
 		observedStatus = status
 		observedReplicas = len(replicaNodes)
 
-		nodesReady = (status == "available" && len(replicaNodes) == i.NewReplicaCount)
+		nodesReady = (status == "available" && observedReplicas == i.NewReplicaCount)
 		if nodesReady {
 			break
 		}
