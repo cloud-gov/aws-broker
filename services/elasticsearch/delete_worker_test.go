@@ -289,8 +289,18 @@ func TestDeleteWorkerWork(t *testing.T) {
 								EngineVersion: aws.String("version"),
 							},
 						},
+						{
+							DomainStatus: &types.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": testApiUrl.Hostname(),
+								},
+								ARN:           aws.String("fake-arn"),
+								EngineVersion: aws.String("version"),
+							},
+						},
 					},
-					describeDomainErrs: []error{nil, &types.ResourceNotFoundException{}},
+					describeDomainErrs: []error{nil, nil, &types.ResourceNotFoundException{}},
 				},
 				&mockIamClient{
 					createRoleOutput: []*iam.CreateRoleOutput{

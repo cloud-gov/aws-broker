@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
@@ -119,8 +120,18 @@ func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *El
 // in which we make the ES API call to take a snapshot
 // then poll for snapshot completetion, may block for a considerable time
 func (w *DeleteWorker) takeLastSnapshot(ctx context.Context, i *ElasticsearchInstance) error {
+	_, err := w.opensearch.DescribeDomain(ctx, &opensearch.DescribeDomainInput{
+		DomainName: &i.Domain,
+	})
+	if err != nil {
+		// return early if domain was already deleted
+		if isOpensearchNotFoundErr(err) {
+			return nil
+		}
+		return err
+	}
+
 	var creds map[string]string
-	var err error
 
 	// check if instance was never bound and thus never set host...
 	if i.Host == "" {
@@ -214,7 +225,7 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	if _, err := w.iam.DetachUserPolicy(ctx, &iam.DetachUserPolicyInput{
 		PolicyArn: aws.String(i.IamPolicyARN),
 		UserName:  aws.String(i.Domain),
-	}); err != nil {
+	}); err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM policy failed", "err", err)
 		return err
 	}
@@ -222,7 +233,7 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	if _, err := w.iam.DeleteAccessKey(ctx, &iam.DeleteAccessKeyInput{
 		UserName:    aws.String(i.Domain),
 		AccessKeyId: aws.String(i.AccessKey),
-	}); err != nil {
+	}); err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DeleteAccessKey failed", "err", err)
 		return err
 	}
@@ -230,7 +241,7 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	if _, err := w.iam.DetachUserPolicy(ctx, &iam.DetachUserPolicyInput{
 		PolicyArn: aws.String(i.IamPassRolePolicyARN),
 		UserName:  aws.String(i.Domain),
-	}); err != nil {
+	}); err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DetachUserPolicy for IAM pass role policy failed", "err", err)
 		return err
 	}
@@ -238,26 +249,26 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	if _, err := w.iam.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
 		PolicyArn: aws.String(i.SnapshotPolicyARN),
 		RoleName:  aws.String(i.Domain + "-to-s3-SnapshotRole"),
-	}); err != nil {
+	}); err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DetachRolePolicy failed", "err", err)
 		return err
 	}
 
 	err := awsiam.DeletePolicy(ctx, w.iam, w.logger, i.SnapshotPolicyARN)
-	if err != nil {
+	if err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM snapshot policy failed", "err", err)
 		return err
 	}
 
 	if _, err := w.iam.DeleteRole(ctx, &iam.DeleteRoleInput{
 		RoleName: aws.String(i.Domain + "-to-s3-SnapshotRole"),
-	}); err != nil {
+	}); err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DeleteRole failed", "err", err)
 		return err
 	}
 
 	err = awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPassRolePolicyARN)
-	if err != nil {
+	if err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM pass role failed", "err", err)
 		return err
 	}
@@ -265,13 +276,13 @@ func (w *DeleteWorker) cleanupRolesAndPolicies(ctx context.Context, i *Elasticse
 	deleteUserInput := &iam.DeleteUserInput{
 		UserName: aws.String(i.Domain),
 	}
-	if _, err := w.iam.DeleteUser(ctx, deleteUserInput); err != nil {
+	if _, err := w.iam.DeleteUser(ctx, deleteUserInput); err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: user.Delete failed", "err", err)
 		return err
 	}
 
 	err = awsiam.DeletePolicy(ctx, w.iam, w.logger, i.IamPolicyARN)
-	if err != nil {
+	if err != nil && !isIamNoSuchEntityErr(err) {
 		w.logger.Error("cleanupRolesAndPolicies: DeletePolicy for IAM policy failed", "err", err)
 		return err
 	}
@@ -284,7 +295,7 @@ func (w *DeleteWorker) cleanupElasticSearchDomain(ctx context.Context, i *Elasti
 		DomainName: aws.String(i.Domain), // Required
 	}
 	_, err := w.opensearch.DeleteDomain(ctx, params)
-	if err != nil {
+	if err != nil && !isOpensearchNotFoundErr(err) {
 		return err
 	}
 
@@ -298,8 +309,7 @@ func (w *DeleteWorker) cleanupElasticSearchDomain(ctx context.Context, i *Elasti
 
 		_, err := w.opensearch.DescribeDomain(ctx, params)
 		if err != nil {
-			var notFoundException *opensearchTypes.ResourceNotFoundException
-			if errors.As(err, &notFoundException) {
+			if isOpensearchNotFoundErr(err) {
 				// Instance no longer exists, this is success
 				w.logger.Info(fmt.Sprintf("%s domain has been deleted", i.Domain))
 				return nil
@@ -350,4 +360,14 @@ func (w *DeleteWorker) writeManifestToS3(ctx context.Context, i *ElasticsearchIn
 	}
 
 	return nil
+}
+
+func isIamNoSuchEntityErr(err error) bool {
+	var noSuchEntityErr *iamTypes.NoSuchEntityException
+	return errors.As(err, &noSuchEntityErr)
+}
+
+func isOpensearchNotFoundErr(err error) bool {
+	var notFound *opensearchTypes.ResourceNotFoundException
+	return errors.As(err, &notFound)
 }
