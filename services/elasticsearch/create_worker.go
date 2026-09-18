@@ -159,15 +159,15 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		return fmt.Errorf("error waiting for domain creation: %w", err)
 	}
 
-	// Audit logging requires a one-time REST call once the domain is ready
-	if err := w.configureAuditLoggingIfNeeded(ctx, i, domainStatus); err != nil {
-		return fmt.Errorf("error configuring audit logging: %w", err)
-	}
-
 	i.setDomainProperties(domainStatus)
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+	}
+
+	// Audit logging requires a one-time REST call once the domain is ready
+	if err := w.configureAuditLoggingIfNeeded(ctx, i, domainStatus); err != nil {
+		return fmt.Errorf("error configuring audit logging: %w", err)
 	}
 
 	esARNs := make([]string, 0)
