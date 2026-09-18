@@ -432,9 +432,37 @@ jobs:
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: es-medium
-                NEW_SERVICE_PLAN: es-large-memory-optimized
-                HA_PLAN: es-large-memory-optimized-ha
-                SINGLE_NODE_PLAN: es-dev
+                NEW_SERVICE_PLAN: es-medium-memory-optimized
+                NEW_SERVICE_PLAN_DATA_NODES: 2
+                REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan-rejections
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: es-medium
+                REGION: ((development-aws-default-region))
+                TEST_REJECTIONS: true
+
+            - task: smoke-tests-elasticsearch-update-plan-ha
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: es-medium-memory-optimized
+                NEW_SERVICE_PLAN: es-medium-memory-optimized-ha
+                NEW_SERVICE_PLAN_DATA_NODES: 4
                 REGION: ((development-aws-default-region))
     on_failure:
       put: slack

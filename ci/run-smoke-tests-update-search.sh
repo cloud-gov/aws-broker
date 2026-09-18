@@ -11,7 +11,7 @@ VALID_VERSION=${VALID_VERSION:-OpenSearch_2.11}
 # Expected data-node counts for the plans under test. In the catalog every
 # multi-node non-HA plan runs 2 data nodes and every -ha plan runs 4.
 NEW_SERVICE_PLAN_DATA_NODES=${NEW_SERVICE_PLAN_DATA_NODES:-2}
-HA_PLAN_DATA_NODES=${HA_PLAN_DATA_NODES:-4}
+TEST_REJECTIONS=${TEST_REJECTIONS:-""}
 
 # Log in to CF
 login
@@ -62,53 +62,44 @@ cf run-task "$APP_NAME" --command "python run.py -s $SERVICE_NAME -r $REGION"
 app_guid=$(cf curl "/v3/apps?names=$APP_NAME" | jq -r ".resources[0].guid")
 get_task_state "$app_guid"
 
-#
-# Rejected changes. Each of these must fail synchronously: the broker returns an
-# HTTP 400 before calling AWS, so no asynchronous job is created.
-#
+if [ -n "$TEST_REJECTIONS" ]; then
+  #
+  # Rejected changes. Each of these must fail synchronously: the broker returns an
+  # HTTP 400 before calling AWS, so no asynchronous job is created.
+  #
 
-# Dropping to a single data node removes data nodes, which the broker refuses: a
-# one-node plan is provisioned on a single subnet with zone awareness off, and
-# shrinking the cluster would discard the shards those nodes hold.
-expect_update_service_rejected "$SERVICE_NAME" \
-  "cannot reduce the number of data nodes" \
-  -p "$SINGLE_NODE_PLAN"
-assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
+  # Dropping to a single data node removes data nodes, which the broker refuses: a
+  # one-node plan is provisioned on a single subnet with zone awareness off, and
+  # shrinking the cluster would discard the shards those nodes hold.
+  expect_update_service_rejected "$SERVICE_NAME" \
+    "cannot reduce the number of data nodes" \
+    -p "$SINGLE_NODE_PLAN"
+  assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
 
-# An engine version that AWS does not offer as an upgrade target from the domain's
-# current version. This one does reach AWS (GetCompatibleVersions).
-expect_update_service_rejected "$SERVICE_NAME" \
-  "is not a valid upgrade target" \
-  -c '{"elasticsearchVersion": "'"$INVALID_VERSION"'"}'
+  # An engine version that AWS does not offer as an upgrade target from the domain's
+  # current version. This one does reach AWS (GetCompatibleVersions).
+  expect_update_service_rejected "$SERVICE_NAME" \
+    "is not a valid upgrade target" \
+    -c '{"elasticsearchVersion": "'"$INVALID_VERSION"'"}'
 
-# A plan change and a version upgrade are separate AWS operations and cannot be
-# combined in a single update.
-expect_update_service_rejected "$SERVICE_NAME" \
-  "plan change cannot be combined with an engine version upgrade" \
-  -p "$NEW_SERVICE_PLAN" -c '{"elasticsearchVersion": "'"$VALID_VERSION"'"}'
-assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
+  # A plan change and a version upgrade are separate AWS operations and cannot be
+  # combined in a single update.
+  expect_update_service_rejected "$SERVICE_NAME" \
+    "plan change cannot be combined with an engine version upgrade" \
+    -p "$NEW_SERVICE_PLAN" -c '{"elasticsearchVersion": "'"$VALID_VERSION"'"}'
+  assert_service_plan "$SERVICE_NAME" "$SERVICE_PLAN"
+fi
 
-#
-# The permitted upgrade. This is an AWS blue/green deployment and is slow, so it
-# gets a bounded wait rather than the unbounded poll used elsewhere.
-#
-cf update-service "$SERVICE_NAME" -p "$NEW_SERVICE_PLAN"
-wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$UPGRADE_TIMEOUT_SECONDS"
-assert_service_plan "$SERVICE_NAME" "$NEW_SERVICE_PLAN"
-rebind_and_verify "$NEW_SERVICE_PLAN_DATA_NODES"
-
-#
-# Upgrading to the highly-available plan. This grows the data-node count (2 -> 4)
-# on the existing domain rather than creating a new one, so it is a second AWS
-# blue/green deployment.
-#
-cf update-service "$SERVICE_NAME" -p "$HA_PLAN"
-wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$UPGRADE_TIMEOUT_SECONDS"
-assert_service_plan "$SERVICE_NAME" "$HA_PLAN"
-
-# Confirm the cluster serves traffic on the HA plan AND that AWS actually added the
-# data nodes; asserting the plan name alone would not prove the resize happened.
-rebind_and_verify "$HA_PLAN_DATA_NODES"
+if [ -n "$NEW_SERVICE_PLAN" ]; then
+  #
+  # The permitted upgrade. This is an AWS blue/green deployment and is slow, so it
+  # gets a bounded wait rather than the unbounded poll used elsewhere.
+  #
+  cf update-service "$SERVICE_NAME" -p "$NEW_SERVICE_PLAN"
+  wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$UPGRADE_TIMEOUT_SECONDS"
+  assert_service_plan "$SERVICE_NAME" "$NEW_SERVICE_PLAN"
+  rebind_and_verify "$NEW_SERVICE_PLAN_DATA_NODES"
+fi
 
 # Clean up app and service
 cf delete -f "$APP_NAME"
