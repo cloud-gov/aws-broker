@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -59,10 +60,23 @@ func (c *Catalog) GetResources() Resources {
 	return c.resources
 }
 
+func parseCatalog(data []byte) (*Catalog, error) {
+	var catalog Catalog
+	if err := yaml.Unmarshal(data, &catalog); err != nil {
+		return nil, fmt.Errorf("parsing catalog: %w", err)
+	}
+
+	validate := validator.New(&validator.Config{TagName: "validate"})
+	if err := validate.Struct(catalog); err != nil {
+		return nil, fmt.Errorf("validating catalog: %w", err)
+	}
+
+	return &catalog, nil
+}
+
 // InitCatalog initializes a Catalog struct that contains services and plans
 // defined in the catalog.yaml configuration file and returns a pointer to that catalog
 func InitCatalog(path string) *Catalog {
-	var catalog Catalog
 	catalogFile := filepath.Join(path, "catalog.yml")
 	// #nosec G304 -- path is the broker's own working directory (os.Getwd at the
 	// call sites), not request input; the filename is the fixed literal
@@ -71,18 +85,10 @@ func InitCatalog(path string) *Catalog {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	err = yaml.Unmarshal(data, &catalog)
+
+	catalog, err := parseCatalog(data)
 	if err != nil {
 		log.Fatalf("error: %v", err)
-	}
-
-	config := &validator.Config{TagName: "validate"}
-
-	validate := validator.New(config)
-	validateErr := validate.Struct(catalog)
-	if validateErr != nil {
-		log.Println(validateErr)
-		return nil
 	}
 
 	err = catalog.loadServicesResources(path)
@@ -90,7 +96,7 @@ func InitCatalog(path string) *Catalog {
 		log.Fatalf("error: %v", err)
 	}
 
-	return &catalog
+	return catalog
 }
 
 func (c *Catalog) loadServicesResources(path string) error {

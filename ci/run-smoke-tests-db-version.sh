@@ -2,12 +2,13 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 # Log in to CF
 login
 
-TEST_ID="$RANDOM"
+TEST_ID=$(get_test_id)
 APP_NAME="smoke-tests-db-version-$SERVICE_PLAN-$TEST_ID"
 SERVICE_NAME="rds-smoke-tests-db-version-$SERVICE_PLAN-$TEST_ID"
 
@@ -26,7 +27,7 @@ cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 # Create service
 cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"version": "'"$DB_VERSION"'"}'
 
-wait_for_service_bindable $APP_NAME $SERVICE_NAME
+wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
 cf push "$APP_NAME" --var rds-service="$SERVICE_NAME"

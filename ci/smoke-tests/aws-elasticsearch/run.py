@@ -126,6 +126,31 @@ def check_version(service_name, expected_version):
     print(f"Version check passed: {actual_version}")
 
 
+def check_data_nodes(client, expected_data_nodes):
+    """
+    Verify the cluster reports the expected number of data nodes.
+
+    Used after a plan change that grows the cluster (for example a non-HA plan to
+    its -ha counterpart) to prove AWS actually added the nodes, rather than only
+    that the broker recorded the new plan.
+    """
+    try:
+        health = client.cluster.health()
+    except Exception as e:
+        print(f"Unable to read cluster health: {e}")
+        sys.exit(1)
+
+    actual_data_nodes = health.get("number_of_data_nodes")
+    if actual_data_nodes != expected_data_nodes:
+        print(
+            f"Data node count mismatch: expected {expected_data_nodes}, "
+            f"got {actual_data_nodes}"
+        )
+        print(f"Cluster health: {health}")
+        sys.exit(1)
+    print(f"Data node count check passed: {actual_data_nodes}")
+
+
 parser = argparse.ArgumentParser(
     description="Smoke tests for aws-elasticsearch service",
 )
@@ -141,7 +166,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-r", 
+    "-r",
     "--region_name",
     dest="region_name",
     type=str,
@@ -158,6 +183,15 @@ parser.add_argument(
     default=None,
 )
 
+parser.add_argument(
+    "--expected-data-nodes",
+    dest="expected_data_nodes",
+    type=int,
+    help="Expected number of data nodes reported by the cluster",
+    required=False,
+    default=None,
+)
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -169,6 +203,10 @@ if __name__ == "__main__":
         check_version(service_name, args.expected_version)
 
     tester = ESSmokeTester(service_name, region_name)
+
+    if args.expected_data_nodes is not None:
+        check_data_nodes(tester.client, args.expected_data_nodes)
+
     results = tester.run()
     isExpected = tester.test_expected(results)
 

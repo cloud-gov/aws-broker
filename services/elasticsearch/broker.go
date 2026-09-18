@@ -186,7 +186,7 @@ func (broker *elasticsearchBroker) CreateInstance(id string, details domain.Prov
 	}
 
 	// Create the elasticsearch instance.
-	status, err := broker.adapter.createElasticsearch(&newInstance, newInstance.ClearPassword)
+	status, err := broker.adapter.createElasticsearch(&newInstance)
 	if err != nil {
 		return apiresponses.NewFailureResponse(
 			err,
@@ -244,8 +244,29 @@ func (broker *elasticsearchBroker) ModifyInstance(id string, details domain.Upda
 	}
 
 	if esInstance.PlanID != details.PlanID {
-		//nolint:staticcheck // ST1005: user-facing API error returned in the HTTP failure response; intentionally sentence-case for readability.
-		return apiresponses.NewFailureResponse(errors.New("Updating Elasticsearch service instances is not supported at this time."), http.StatusBadRequest, "validate input parameters")
+		currentPlan, err := broker.catalog.ElasticsearchService.FetchPlan(esInstance.PlanID)
+		if err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching current plan")
+		}
+		newPlan, err := broker.catalog.ElasticsearchService.FetchPlan(details.PlanID)
+		if err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching requested plan")
+		}
+
+		if ok, err := currentPlan.CanUpgradeTo(newPlan); !ok {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate plan change")
+		}
+
+		// A plan change cannot be combined with a version upgrade in the same call.
+		if options.ElasticsearchVersion != "" {
+			return apiresponses.NewFailureResponse(
+				fmt.Errorf("plan change cannot be combined with an engine version upgrade; please make a separate update-service call"),
+				http.StatusBadRequest,
+				"validate plan change",
+			)
+		}
+
+		esInstance.applyPlan(newPlan)
 	}
 
 	if options.ElasticsearchVersion != "" {
@@ -329,13 +350,13 @@ func (broker *elasticsearchBroker) LastOperation(id string, details domain.PollD
 
 	var state base.InstanceState
 	var needAsyncJobState bool
-	var instanceOperation base.Operation
 	var statusMessage string
 
+	instanceOperation := base.ConvertOperationStringToConstant(details.OperationData)
+
 	switch details.OperationData {
-	case base.DeleteOp.String():
-		needAsyncJobState = broker.AsyncOperationRequired(base.DeleteOp)
-		instanceOperation = base.DeleteOp
+	case base.CreateOp.String(), base.DeleteOp.String():
+		needAsyncJobState = broker.AsyncOperationRequired(instanceOperation)
 	default: //all other ops use synchronous checking of aws api
 		needAsyncJobState = false
 	}
@@ -408,20 +429,12 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 		return binding, apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.decryptCredential(broker.settings.EncryptionKey)
-	if err != nil {
-		return binding, apiresponses.NewFailureResponse(
-			fmt.Errorf("unable to get instance password: %s", err),
-			http.StatusInternalServerError,
-			"get instance password",
-		)
-	}
-
 	// Get the correct database logic depending on the type of plan
 	var credentials map[string]string
 	// Bind the database instance to the application.
 	existingInstance.setBucket(options.Bucket) //nolint:errcheck // confirm setBucket failure semantics
-	if credentials, err = broker.adapter.bindElasticsearchToApp(&existingInstance, password); err != nil {
+	credentials, err := broker.adapter.bindElasticsearchToApp(&existingInstance)
+	if err != nil {
 		return binding, apiresponses.NewFailureResponse(
 			fmt.Errorf("there was an error binding the service to the application: %s", err),
 			http.StatusInternalServerError,
@@ -451,17 +464,8 @@ func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 		return apiresponses.ErrInstanceDoesNotExist
 	}
 
-	password, err := existingInstance.decryptCredential(broker.settings.EncryptionKey)
-	if err != nil {
-		return apiresponses.NewFailureResponse(
-			fmt.Errorf("unable to get instance password: %s", err),
-			http.StatusInternalServerError,
-			"get instance password",
-		)
-	}
-
 	// send async deletion request.
-	status, err := broker.adapter.deleteElasticsearch(&existingInstance, password)
+	status, err := broker.adapter.deleteElasticsearch(&existingInstance)
 	switch status {
 	case base.InstanceGone: // somehow the instance is gone already
 		broker.brokerDB.Unscoped().Delete(&existingInstance)

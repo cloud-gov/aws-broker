@@ -206,6 +206,12 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
+            aws-elasticsearch:es-medium-memory-optimized
+            aws-elasticsearch:es-medium-memory-optimized-ha
+            aws-elasticsearch:es-large-memory-optimized
+            aws-elasticsearch:es-large-memory-optimized-ha
+            aws-elasticsearch:es-xlarge-memory-optimized
+            aws-elasticsearch:es-xlarge-memory-optimized-ha
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -253,6 +259,7 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-redis-development
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -330,6 +337,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-development
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -399,6 +407,7 @@ jobs:
                 REGION: ((development-aws-default-region))
                 ES_START_VERSION: OpenSearch_1.3
                 ES_TARGET_VERSION: OpenSearch_2.3
+
             - task: smoke-tests-elasticsearch-logging
               file: aws-broker-app/ci/run-smoke-test-es-logging.yml
               image: general-task
@@ -412,6 +421,50 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-medium
                 REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: es-medium
+                NEW_SERVICE_PLAN: es-medium-memory-optimized
+                NEW_SERVICE_PLAN_DATA_NODES: 2
+                REGION: ((development-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan-rejections
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: es-medium
+                REGION: ((development-aws-default-region))
+                TEST_REJECTIONS: true
+
+            - task: smoke-tests-elasticsearch-update-plan-ha
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: es-medium-memory-optimized
+                NEW_SERVICE_PLAN: es-medium-memory-optimized-ha
+                NEW_SERVICE_PLAN_DATA_NODES: 4
+                REGION: ((development-aws-default-region))
     on_failure:
       put: slack
       params:
@@ -421,6 +474,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-db-development
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -757,8 +811,6 @@ jobs:
         trigger: true
       - set_pipeline: deploy-aws-broker
         file: aws-broker-app/ci/pipeline.yml
-        var_files:
-          - aws-broker-app/ci/config.yml
 
   - name: deploy-aws-broker-staging
     serial: true
@@ -1009,6 +1061,7 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-db-staging
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -1294,6 +1347,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-redis-staging
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -1370,6 +1424,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-staging
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -1748,6 +1803,7 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-prod
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app

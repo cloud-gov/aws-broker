@@ -1282,10 +1282,6 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.Password == "" {
-		t.Error("The instance should have a username and password")
-	}
-
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata", i.PlanID, "plan", i.OrganizationGUID, "org", i.SpaceGUID)
 	}
@@ -1323,10 +1319,6 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	brokerDB.Where("uuid = ?", advancedInstanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
-	}
-
-	if i.Password == "" {
-		t.Error("The instance should have a username and password")
 	}
 
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
@@ -1443,9 +1435,13 @@ func TestModifyElasticsearchInstancePlan(t *testing.T) {
 	// Is it a valid JSON?
 	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
 
-	// Does it contain "Updating Redis service instances is not supported at this time"?
-	if !strings.Contains(resp.Body.String(), "Updating Elasticsearch service instances is not supported at this time") {
-		t.Error(urlAcceptsIncomplete, "should return a message that Elasticsearch services cannot be modified at this time")
+	// The requested plan change (aws-standard -> aws-dev) reduces the data-node
+	// count from 2 to 1 and is also a size downgrade, so it must be rejected.
+	if !strings.Contains(resp.Body.String(), "reduce the number of data nodes") &&
+		!strings.Contains(resp.Body.String(), "single-node plan to a multi-node plan") &&
+		!strings.Contains(resp.Body.String(), "downgrading") &&
+		!strings.Contains(resp.Body.String(), "unable to determine plan sizes") {
+		t.Error(urlAcceptsIncomplete, "should return a message explaining why the plan change is not allowed")
 	}
 
 	// Reload the instance and check to see that the plan has not been modified.

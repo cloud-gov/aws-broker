@@ -1494,6 +1494,7 @@ elasticsearch:
   name: "aws-elasticsearch"
   description: "AWS Elasticsearch Broker"
   bindable: true
+  plan_updateable: true
   tags:
   - "elasticsearch"
   - "aws"
@@ -1524,6 +1525,7 @@ elasticsearch:
     - "Elasticsearch_7.4"
     dataCount: 1
     instanceType: t3.small.search
+    instanceSizeRank: 10
     volumeSize: 15
     volumeType: gp3
     encryptAtRest: true
@@ -1554,6 +1556,7 @@ elasticsearch:
     - "Elasticsearch_7.10"
     dataCount: 1
     instanceType: t3.small.search
+    instanceSizeRank: 10
     volumeSize: 15
     volumeType: gp3
     encryptAtRest: true
@@ -1584,6 +1587,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: c5.large.search
+    instanceSizeRank: 20
     masterInstanceType: c5.large.search
     volumeSize: 15
     volumeType: gp3
@@ -1617,6 +1621,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: c5.large.search
+    instanceSizeRank: 20
     masterInstanceType: c5.large.search
     volumeSize: 15
     volumeType: gp3
@@ -1650,6 +1655,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: c5.xlarge.search
+    instanceSizeRank: 30
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1683,6 +1689,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: c5.xlarge.search
+    instanceSizeRank: 30
     masterInstanceType: c5.xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1716,6 +1723,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: c5.2xlarge.search
+    instanceSizeRank: 40
     masterInstanceType: c5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1749,7 +1757,218 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: c5.2xlarge.search
+    instanceSizeRank: 40
     masterInstanceType: c5.2xlarge.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "55bb533d-d0a2-435c-ad42-77d6dcf9c62d"
+    name: "es-medium-memory-optimized"
+    description: "Medium memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "Medium"
+      - "Memory optimized"
+      - "2 data nodes"
+      displayName: "Medium memory-optimized, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r8g.medium.search
+    instanceSizeRank: 20
+    masterInstanceType: r8g.medium.search
+    volumeSize: 15
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "3aa57f43-3788-454b-891a-4673a1cadb9b"
+    name: "es-medium-memory-optimized-ha"
+    description: "Medium memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "Medium"
+      - "Memory optimized"
+      - "4 data nodes"
+      displayName: "Medium memory-optimized, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r8g.medium.search
+    instanceSizeRank: 20
+    masterInstanceType: r8g.medium.search
+    volumeSize: 15
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "114e9093-d19b-4089-8948-035231e21b95"
+    name: "es-large-memory-optimized"
+    description: "Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "Large"
+      - "Memory optimized"
+      - "2 data nodes"
+      displayName: "Large memory-optimized, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r8g.large.search
+    instanceSizeRank: 30
+    masterInstanceType: r8g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "b20d8f70-b5c6-49d8-90f0-035d13003c88"
+    name: "es-large-memory-optimized-ha"
+    description: "Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "Large"
+      - "Memory optimized"
+      - "4 data nodes"
+      displayName: "Large memory-optimized, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r8g.large.search
+    instanceSizeRank: 30
+    masterInstanceType: r8g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "dc5e9d65-28e0-40c0-b392-9ad741f563ca"
+    name: "es-xlarge-memory-optimized"
+    description: "X-Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "X-Large"
+      - "Memory optimized"
+      - "2 data nodes"
+      displayName: "X-Large memory-optimized, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r8g.xlarge.search
+    instanceSizeRank: 40
+    masterInstanceType: r8g.xlarge.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "69c3232f-c969-4772-8e94-87d71b9c7599"
+    name: "es-xlarge-memory-optimized-ha"
+    description: "X-Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "X-Large"
+      - "Memory optimized"
+      - "4 data nodes"
+      displayName: "X-Large memory-optimized, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r8g.xlarge.search
+    instanceSizeRank: 40
+    masterInstanceType: r8g.xlarge.search
     volumeSize: 30
     volumeType: gp3
     masterEnabled: true
@@ -1782,6 +2001,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: m5.2xlarge.search
+    instanceSizeRank: 50
     masterInstanceType: m5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1815,6 +2035,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: m5.2xlarge.search
+    instanceSizeRank: 50
     masterInstanceType: m5.2xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1848,6 +2069,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: m5.4xlarge.search
+    instanceSizeRank: 60
     masterInstanceType: m5.4xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1881,6 +2103,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: m5.4xlarge.search
+    instanceSizeRank: 60
     masterInstanceType: m5.4xlarge.search
     volumeSize: 30
     volumeType: gp3
@@ -1915,6 +2138,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 2
     instanceType: m5.12xlarge.search
+    instanceSizeRank: 70
     masterInstanceType: m5.12xlarge.search
     volumeSize: 50
     volumeType: gp3
@@ -1948,6 +2172,7 @@ elasticsearch:
     masterCount: 3
     dataCount: 4
     instanceType: m5.12xlarge.search
+    instanceSizeRank: 70
     masterInstanceType: m5.12xlarge.search
     volumeSize: 50
     volumeType: gp3
