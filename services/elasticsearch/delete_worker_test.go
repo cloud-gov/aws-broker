@@ -73,9 +73,11 @@ func TestDeleteWorkerWork(t *testing.T) {
 					Host: testApiUrl.Hostname(),
 					Port: testApiPort,
 				},
-				AccessKey: "fake-key",
-				SecretKey: "fake-secret",
-				Protocol:  testApiUrl.Scheme,
+				AccessKey:            "fake-key",
+				SecretKey:            "fake-secret",
+				Protocol:             testApiUrl.Scheme,
+				ARN:                  "fake-arn",
+				ElasticsearchVersion: "opensearch",
 			},
 			worker: NewDeleteWorker(
 				brokerDB,
@@ -139,7 +141,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 			),
 			expectedState: base.InstanceReady,
 		},
-		"instance has no host": {
+		"instance has no domain properties": {
 			ctx:      t.Context(),
 			password: helpers.RandStr(10),
 			instance: &ElasticsearchInstance{
