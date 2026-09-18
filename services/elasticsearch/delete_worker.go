@@ -73,7 +73,7 @@ func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) err
 	if err != nil {
 		w.logger.Error("error during domain deletion", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
-		return err
+		return river.JobCancel(err)
 	}
 	return nil
 }
