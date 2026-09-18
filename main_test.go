@@ -1282,10 +1282,6 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if i.Password == "" {
-		t.Error("The instance should have a username and password")
-	}
-
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {
 		t.Error("The instance should have metadata", i.PlanID, "plan", i.OrganizationGUID, "org", i.SpaceGUID)
 	}
@@ -1323,10 +1319,6 @@ func TestCreateElasticsearchInstance(t *testing.T) {
 	brokerDB.Where("uuid = ?", advancedInstanceUUID).First(&i)
 	if i.Uuid == "0" {
 		t.Error("The instance should be saved in the DB")
-	}
-
-	if i.Password == "" {
-		t.Error("The instance should have a username and password")
 	}
 
 	if i.PlanID == "" || i.OrganizationGUID == "" || i.SpaceGUID == "" {

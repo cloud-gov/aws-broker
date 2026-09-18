@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	awsRds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
@@ -108,6 +109,10 @@ func run(ctx context.Context, out io.Writer) error {
 	opensearch := opensearch.NewFromConfig(cfg)
 	iamSvc := iam.NewFromConfig(cfg)
 	cloudwatchLogsClient := cloudwatchlogs.NewFromConfig(cfg)
+	sts := sts.NewFromConfig(cfg)
+	river.AddWorker(workers, elasticsearch.NewCreateWorker(
+		db, &settings, opensearch, iamSvc, s3, cloudwatchLogsClient, sts, logger,
+	))
 	river.AddWorker(workers, elasticsearch.NewDeleteWorker(
 		db, &settings, opensearch, iamSvc, s3, cloudwatchLogsClient, logger,
 	))

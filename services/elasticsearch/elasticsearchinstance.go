@@ -1,13 +1,15 @@
 package elasticsearch
 
 import (
-	"crypto/aes"
-	"encoding/base64"
-	"errors"
+	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
+	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/cloud-gov/aws-broker/awsiam"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/helpers"
 
@@ -21,8 +23,6 @@ type ElasticsearchInstance struct {
 
 	Description string `sql:"size(255)"`
 
-	Password                       string `sql:"size(255)"`
-	Salt                           string `sql:"size(255)"`
 	AccessKey                      string `sql:"size(255)"`
 	SecretKey                      string `sql:"size(255)"`
 	IamPolicy                      string `sql:"size(255)"`
@@ -48,8 +48,6 @@ type ElasticsearchInstance struct {
 	IamPassRolePolicyARN           string `sql:"size(255)"`
 	IndicesFieldDataCacheSize      string `sql:"size(255)"`
 	IndicesQueryBoolMaxClauseCount string `sql:"size(255)"`
-
-	ClearPassword string `gorm:"-"`
 
 	Domain string `sql:"size(255)"`
 	ARN    string `sql:"size(255)"`
@@ -82,39 +80,6 @@ type ElasticsearchInstance struct {
 	IamUserARN string `sql:"size(2048)"`
 
 	Protocol string `gorm:"-"`
-}
-
-func (i *ElasticsearchInstance) setPassword(password, key string) error {
-	if i.Salt == "" {
-		return errors.New("salt has to be set before writing the password")
-	}
-
-	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
-
-	encrypted, err := helpers.Encrypt(password, key, iv)
-	if err != nil {
-		return err
-	}
-
-	i.Password = encrypted
-	i.ClearPassword = password
-
-	return nil
-}
-
-func (i *ElasticsearchInstance) decryptCredential(key string) (string, error) {
-	if i.Salt == "" || i.Password == "" {
-		return "", errors.New("salt and password has to be set before writing the password")
-	}
-
-	iv, _ := base64.StdEncoding.DecodeString(i.Salt)
-
-	decrypted, err := helpers.Decrypt(i.Password, key, iv)
-	if err != nil {
-		return "", err
-	}
-
-	return decrypted, nil
 }
 
 func (i *ElasticsearchInstance) getCredentials() (map[string]string, error) {
@@ -177,12 +142,6 @@ func (i *ElasticsearchInstance) init(
 
 	i.Domain = "cg-broker-" + s.DbShorthandPrefix + "-" + strings.ToLower(helpers.RandStr(9))
 
-	i.Salt = helpers.GenerateSalt(aes.BlockSize)
-	password := helpers.RandStr(25)
-	if err := i.setPassword(password, s.EncryptionKey); err != nil {
-		return err
-	}
-
 	i.MasterCount, _ = strconv.Atoi(plan.MasterCount)
 	i.DataCount, _ = strconv.Atoi(plan.DataCount)
 	i.InstanceType = plan.InstanceType
@@ -209,7 +168,7 @@ func (i *ElasticsearchInstance) init(
 		i.ElasticsearchVersion = plan.ElasticsearchVersion
 	}
 	i.applyLogOptions(options.LogPublishing)
-	i.setTags(plan, tags) //nolint:errcheck // decide fail-vs-best-effort on tagging failure
+	i.setTags(plan, tags)
 
 	return nil
 }
@@ -257,12 +216,78 @@ func (i *ElasticsearchInstance) applyPlan(plan catalog.ElasticsearchPlan) {
 func (i *ElasticsearchInstance) setTags(
 	plan catalog.ElasticsearchPlan,
 	tags map[string]string,
-) error {
+) {
 	i.Tags = plan.Tags
 
 	for k, v := range tags {
 		i.Tags[k] = v
 	}
+}
 
+func (i *ElasticsearchInstance) brokerSnapshotsAreEnabled() bool {
+	return i.BrokerSnapshotsEnabled
+}
+
+func (i *ElasticsearchInstance) enableBrokerSnapshots(
+	ctx context.Context,
+	iam awsiam.IAMClientInterface,
+	settings *config.Settings,
+	iamTags []iamTypes.Tag,
+	logger *slog.Logger,
+) error {
+	if i.SnapshotPath == "" {
+		i.SnapshotPath = "/" + i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
+	}
+
+	err := createUpdateBucketRolesAndPolicies(ctx, iam, logger, i, settings.SnapshotsBucketName, i.SnapshotPath, iamTags)
+	if err != nil {
+		return err
+	}
+
+	i.BrokerSnapshotsEnabled = true
 	return nil
+}
+
+func (i *ElasticsearchInstance) setUserIAMPolicyAttributes(policy string, policyARN string) {
+	i.IamPolicy = policy
+	i.IamPolicyARN = policyARN
+}
+
+func (i *ElasticsearchInstance) setAccessCredentials(accessKey string, secretKey string) {
+	i.AccessKey = accessKey
+	i.SecretKey = secretKey
+}
+
+func (i *ElasticsearchInstance) setDomainProperties(domainStatus *opensearchTypes.DomainStatus) {
+	i.Host = domainStatus.Endpoints["vpc"]
+	i.ARN = *(domainStatus.ARN)
+	i.ElasticsearchVersion = *(domainStatus.EngineVersion)
+}
+
+func (i *ElasticsearchInstance) hasDomainProperties() bool {
+	return i.Host != "" && i.ARN != "" && i.ElasticsearchVersion != ""
+}
+
+func (i *ElasticsearchInstance) getIamUsername() string {
+	return i.Domain
+}
+
+func (i *ElasticsearchInstance) getSnapshotRoleName() string {
+	return fmt.Sprintf("%s-to-s3-SnapshotRole", i.Domain)
+}
+
+func (i *ElasticsearchInstance) getSnapshotRolePolicyName() string {
+	return fmt.Sprintf("%s-to-S3-RolePolicy", i.Domain)
+}
+
+func (i *ElasticsearchInstance) getPassRolePolicyName() string {
+	return fmt.Sprintf("%s-to-S3-ESRolePolicy", i.Domain)
+}
+
+func (i *ElasticsearchInstance) setIamUserARN(userARN string) {
+	i.IamUserARN = userARN
+}
+
+func (i *ElasticsearchInstance) getIamUserARN() string {
+	return i.IamUserARN
 }
