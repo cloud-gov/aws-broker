@@ -2,12 +2,13 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 # Log in to CF
 login
 
-TEST_ID="$RANDOM"
+TEST_ID=$(get_test_id)
 SERVICE_NAME="redis-smoke-tests-update-$SERVICE_PLAN-$TEST_ID"
 
 OLD_ENGINE=${OLD_ENGINE:-""}
@@ -46,7 +47,6 @@ elif [ -n "$NEW_VERSION" ]; then
 fi
 
 cf update-service "${update_service_args[@]}"
-
 
 # Wait to make sure that the service instance has been successfully updated.
 wait_for_service_instance "$SERVICE_NAME"

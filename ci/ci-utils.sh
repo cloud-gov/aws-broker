@@ -185,3 +185,7 @@ delete_existing_service() {
     wait_for_deletion "$1"
   fi
 }
+
+get_test_id() {
+  date +'%s'
+}

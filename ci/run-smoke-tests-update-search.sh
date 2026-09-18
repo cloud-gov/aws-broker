@@ -16,7 +16,7 @@ TEST_REJECTIONS=${TEST_REJECTIONS:-""}
 # Log in to CF
 login
 
-TEST_ID="$RANDOM"
+TEST_ID=$(get_test_id)
 APP_NAME="search-smoke-tests-update-$SERVICE_PLAN-$TEST_ID-app"
 SERVICE_NAME="search-smoke-tests-update-$SERVICE_PLAN-$TEST_ID-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/aws-elasticsearch/"
