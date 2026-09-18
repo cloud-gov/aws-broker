@@ -259,6 +259,7 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-redis-development
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -336,6 +337,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-development
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -443,6 +445,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-db-development
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -1029,6 +1032,7 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-db-staging
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -1314,6 +1318,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-redis-staging
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -1390,6 +1395,7 @@ jobs:
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: acceptance-tests-search-staging
+    serial: true
     plan:
       - in_parallel:
           steps:
@@ -1768,6 +1774,7 @@ jobs:
             aws-rds:xlarge-gp-mysql-replica
 
   - name: acceptance-tests-prod
+    serial: true
     plan:
       - in_parallel:
           - get: aws-broker-app
