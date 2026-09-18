@@ -407,6 +407,7 @@ jobs:
                 REGION: ((development-aws-default-region))
                 ES_START_VERSION: OpenSearch_1.3
                 ES_TARGET_VERSION: OpenSearch_2.3
+
             - task: smoke-tests-elasticsearch-logging
               file: aws-broker-app/ci/run-smoke-test-es-logging.yml
               image: general-task
