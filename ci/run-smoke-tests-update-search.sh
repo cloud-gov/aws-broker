@@ -11,17 +11,10 @@ VALID_VERSION=${VALID_VERSION:-OpenSearch_2.11}
 # Expected data-node counts for the plans under test. In the catalog every
 # multi-node non-HA plan runs 2 data nodes and every -ha plan runs 4.
 NEW_SERVICE_PLAN_DATA_NODES=${NEW_SERVICE_PLAN_DATA_NODES:-2}
-
 NEW_SERVICE_PLAN=${NEW_SERVICE_PLAN:-""}
+SINGLE_NODE_PLAN=${SINGLE_NODE_PLAN:-"es-dev"}
 TEST_REJECTIONS=${TEST_REJECTIONS:-""}
-SINGLE_NODE_PLAN=${SINGLE_NODE_PLAN:-""}
 REJECTION_TARGET_PLAN=${REJECTION_TARGET_PLAN:-""}
-
-TEST_NAME=${TEST_NAME:-""}
-if [ -z "$TEST_NAME" ]; then
-  echo "FAIL: TEST_NAME must be set so parallel tasks do not share app and service names"
-  exit 1
-fi
 
 if [ -n "$TEST_REJECTIONS" ]; then
   if [ -z "$SINGLE_NODE_PLAN" ] || [ -z "$REJECTION_TARGET_PLAN" ]; then
@@ -34,8 +27,8 @@ fi
 login
 
 TEST_ID=$(get_test_id)
-APP_NAME="search-smoke-$TEST_NAME-$TEST_ID-app"
-SERVICE_NAME="search-smoke-$TEST_NAME-$TEST_ID-service"
+APP_NAME="search-smoke-tests-update-$SERVICE_PLAN-$TEST_ID-app"
+SERVICE_NAME="search-smoke-tests-update-$SERVICE_PLAN-$TEST_ID-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/aws-elasticsearch/"
 
 # Re-bind to pick up credentials for the resized domain, then confirm the cluster
