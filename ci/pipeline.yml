@@ -432,6 +432,7 @@ jobs:
                 CF_PASSWORD: ((development-cf-deploy-password))
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
+                TEST_NAME: update-plan
                 SERVICE_PLAN: es-medium
                 NEW_SERVICE_PLAN: es-medium-memory-optimized
                 NEW_SERVICE_PLAN_DATA_NODES: 2
@@ -447,9 +448,12 @@ jobs:
                 CF_PASSWORD: ((development-cf-deploy-password))
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
+                TEST_NAME: update-plan-rejections
                 SERVICE_PLAN: es-medium
                 REGION: ((development-aws-default-region))
                 TEST_REJECTIONS: true
+                SINGLE_NODE_PLAN: es-dev
+                REJECTION_TARGET_PLAN: es-medium-memory-optimized
 
             - task: smoke-tests-elasticsearch-update-plan-ha
               file: aws-broker-app/ci/run-smoke-tests-update-search.yml
@@ -461,6 +465,7 @@ jobs:
                 CF_PASSWORD: ((development-cf-deploy-password))
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
+                TEST_NAME: update-plan-ha
                 SERVICE_PLAN: es-medium-memory-optimized
                 NEW_SERVICE_PLAN: es-medium-memory-optimized-ha
                 NEW_SERVICE_PLAN_DATA_NODES: 4
