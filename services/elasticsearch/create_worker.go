@@ -28,7 +28,18 @@ const (
 )
 
 var (
-	ErrUpdatingInstance = errors.New("error saving updated instance")
+	ErrAttachingIamUserPolicy       = errors.New("error attaching IAM user policy")
+	ErrConfiguringAuditLogging      = errors.New("error configuring audit logging")
+	ErrCreatingAccessKeys           = errors.New("error creating access keys")
+	ErrCreatingDomain               = errors.New("error creating domain")
+	ErrCreatingIamPolicy            = errors.New("error creating IAM policy")
+	ErrCreatingUser                 = errors.New("error creating user")
+	ErrGettingAccountInfo           = errors.New("error getting account information")
+	ErrPreparingDomainCreationInput = errors.New("error preparing domain creation input")
+	ErrSettingUpDomainLogging       = errors.New("error setting up domain logging")
+	ErrSettingUpBrokerSnapshots     = errors.New("error setting up snapshot bucket roles and policies")
+	ErrUpdatingInstance             = errors.New("error saving updated instance")
+	ErrVerifyingDomainCreation      = errors.New("error verifying domain creation")
 )
 
 type CreateArgs struct {
@@ -74,13 +85,23 @@ func NewCreateWorker(
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
 	operation := base.CreateOp
 	i := job.Args.Instance
-	err := w.createDomain(ctx, i, operation)
-	if err != nil {
-		w.logger.Error("error during domain creation", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, err.Error())
-		return river.JobCancel(err)
+	errChan := make(chan error, 1)
+
+	go func(ctx context.Context, i *ElasticsearchInstance, operation base.Operation) {
+		errChan <- w.createDomain(ctx, i, operation)
+	}(ctx, i, operation)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			w.logger.Error("error during domain creation", "err", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, err.Error())
+			return river.JobCancel(err)
+		}
+		return nil
 	}
-	return nil
 }
 
 func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstance, operation base.Operation) error {
@@ -92,39 +113,39 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 		Tags:     iamTags,
 	})
 	if err != nil {
-		return fmt.Errorf("error creating user: %w", err)
+		return common.FmtErr(ErrCreatingUser, err)
 	}
 
 	i.setIamUserARN(*resp.User.Arn)
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+		return common.FmtErr(ErrUpdatingInstance, err)
 	}
 
 	createAccessKeyOutput, err := w.iam.CreateAccessKey(ctx, &iam.CreateAccessKeyInput{
 		UserName: aws.String(i.getIamUsername()),
 	})
 	if err != nil {
-		return fmt.Errorf("error creating access keys: %w", err)
+		return common.FmtErr(ErrCreatingAccessKeys, err)
 	}
 
 	i.setAccessCredentials(*createAccessKeyOutput.AccessKey.AccessKeyId, *createAccessKeyOutput.AccessKey.SecretAccessKey)
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+		return common.FmtErr(ErrUpdatingInstance, err)
 	}
 
 	stsInput := &sts.GetCallerIdentityInput{}
 	result, err := w.sts.GetCallerIdentity(ctx, stsInput)
 	if err != nil {
-		return fmt.Errorf("error getting account information: %w", err)
+		return common.FmtErr(ErrGettingAccountInfo, err)
 	}
 
 	accountID := result.Account
 
 	// Set up cloudwatch log groups
 	if err := setupLogging(ctx, i, w.logs, w.logger, w.settings, *accountID); err != nil {
-		return fmt.Errorf("error setting up domain logging: %w", err)
+		return common.FmtErr(ErrSettingUpDomainLogging, err)
 	}
 
 	time.Sleep(w.settings.PollAwsMinDelay)
@@ -132,7 +153,7 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	accessControlPolicy := "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"AWS\": \"" + i.getIamUserARN() + "\"},\"Action\": \"es:*\",\"Resource\": \"arn:aws-us-gov:es:" + w.settings.Region + ":" + *accountID + ":domain/" + i.Domain + "/*\"}]}"
 	params, err := prepareCreateDomainInput(i, accessControlPolicy)
 	if err != nil {
-		return fmt.Errorf("error preparing domain creation input: %w", err)
+		return common.FmtErr(ErrPreparingDomainCreationInput, err)
 	}
 
 	_, err = w.opensearch.CreateDomain(ctx, params)
@@ -149,25 +170,25 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	}
 
 	if err != nil {
-		return fmt.Errorf("error creating domain: %w", err)
+		return common.FmtErr(ErrCreatingDomain, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for domain to be ready")
 
 	domainStatus, err := w.waitForDomainReady(ctx, i)
 	if err != nil {
-		return fmt.Errorf("error waiting for domain creation: %w", err)
+		return common.FmtErr(ErrVerifyingDomainCreation, err)
 	}
 
 	i.setDomainProperties(domainStatus)
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+		return common.FmtErr(ErrUpdatingInstance, err)
 	}
 
 	// Audit logging requires a one-time REST call once the domain is ready
 	if err := w.configureAuditLoggingIfNeeded(ctx, i, domainStatus); err != nil {
-		return fmt.Errorf("error configuring audit logging: %w", err)
+		return common.FmtErr(ErrConfiguringAuditLogging, err)
 	}
 
 	esARNs := make([]string, 0)
@@ -175,32 +196,32 @@ func (w *CreateWorker) createDomain(ctx context.Context, i *ElasticsearchInstanc
 	policy := `{"Version": "2012-10-17","Statement": [{"Action": ["es:*"],"Effect": "Allow","Resource": {{resources "/*"}}}]}`
 	policyARN, err := awsiam.CreatePolicyFromTemplate(ctx, w.iam, w.logger, i.Domain, "/", policy, esARNs, iamTags)
 	if err != nil {
-		return fmt.Errorf("error creating IAM policy: %w", err)
+		return common.FmtErr(ErrCreatingIamPolicy, err)
 	}
 
 	if _, err = w.iam.AttachUserPolicy(ctx, &iam.AttachUserPolicyInput{
 		PolicyArn: aws.String(policyARN),
 		UserName:  aws.String(i.getIamUsername()),
 	}); err != nil {
-		return fmt.Errorf("error attaching IAM user policy: %w", err)
+		return common.FmtErr(ErrAttachingIamUserPolicy, err)
 	}
 
 	i.setUserIAMPolicyAttributes(policy, policyARN)
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+		return common.FmtErr(ErrUpdatingInstance, err)
 	}
 
 	//try setup of roles and policies on create
 	err = i.enableBrokerSnapshots(ctx, w.iam, w.settings, iamTags, w.logger)
 	if err != nil {
-		return fmt.Errorf("error setting up snapshot bucket roles and policies: %w", err)
+		return common.FmtErr(ErrSettingUpBrokerSnapshots, err)
 	}
 
 	i.State = base.InstanceReady
 	err = w.saveUpdatedInstance(i)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ErrUpdatingInstance, err)
+		return common.FmtErr(ErrUpdatingInstance, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished creating domain")
