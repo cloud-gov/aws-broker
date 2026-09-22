@@ -50,7 +50,7 @@ func createUpdateBucketRolesAndPolicies(
 		esHttpPutStatement := awsiam.PolicyStatementEntry{
 			Action:   []string{"es:ESHttpPut"},
 			Effect:   "Allow",
-			Resource: []string{fmt.Sprintf("%s/*", i.SnapshotARN)},
+			Resource: []string{fmt.Sprintf("%s/*", i.ARN)},
 		}
 		policyDoc := awsiam.PolicyDocument{
 			Version:   "2012-10-17",
