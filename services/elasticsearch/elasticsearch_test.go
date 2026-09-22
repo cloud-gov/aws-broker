@@ -22,21 +22,25 @@ func TestGetOpensearchInstanceTypeEnum(t *testing.T) {
 		expected     opensearchTypes.OpenSearchPartitionInstanceType
 		expectErr    bool
 	}{
-		"r8g medium": {
-			instanceType: "r8g.medium.search",
-			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+		"r7g medium": {
+			instanceType: "r7g.medium.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r7g.medium.search"),
 		},
-		"r8g large": {
-			instanceType: "r8g.large.search",
-			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+		"r7g large": {
+			instanceType: "r7g.large.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r7g.large.search"),
 		},
-		"r8g xlarge": {
-			instanceType: "r8g.xlarge.search",
-			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.xlarge.search"),
+		"r7g xlarge": {
+			instanceType: "r7g.xlarge.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r7g.xlarge.search"),
 		},
-		"r8g 2xlarge": {
-			instanceType: "r8g.2xlarge.search",
-			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r8g.2xlarge.search"),
+		"r7g 2xlarge": {
+			instanceType: "r7g.2xlarge.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("r7g.2xlarge.search"),
+		},
+		"m7g large": {
+			instanceType: "m7g.large.search",
+			expected:     opensearchTypes.OpenSearchPartitionInstanceType("m7g.large.search"),
 		},
 		"m5 2xlarge": {
 			instanceType: "m5.2xlarge.search",
@@ -211,17 +215,17 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 		"scaling up to a highly-available plan grows the data-node count": {
 			esInstance: &ElasticsearchInstance{
 				Domain:             "fake-domain",
-				InstanceType:       "r8g.medium.search",
+				InstanceType:       "r7g.medium.search",
 				DataCount:          4,
 				MasterEnabled:      true,
 				MasterCount:        3,
-				MasterInstanceType: "r8g.medium.search",
+				MasterInstanceType: "m7g.large.search",
 			},
 			expectedParams: &opensearch.UpdateDomainConfigInput{
 				DomainName:      aws.String("fake-domain"),
 				AdvancedOptions: map[string]string{},
 				ClusterConfig: &opensearchTypes.ClusterConfig{
-					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceType("r7g.medium.search"),
 					InstanceCount: aws.Int32(4),
 					// Zone awareness stays enabled with the same two-AZ count the
 					// domain was created with; only the node count changes, so no
@@ -232,7 +236,7 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 					},
 					DedicatedMasterEnabled: aws.Bool(true),
 					DedicatedMasterCount:   aws.Int32(3),
-					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceType("r8g.medium.search"),
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceType("m7g.large.search"),
 				},
 			},
 		},

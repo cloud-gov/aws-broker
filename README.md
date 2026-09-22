@@ -192,44 +192,54 @@ The rules are:
 
 Each plan carries its own `instanceSizeRank` in `catalog-template.yml`, so adding or
 re-tiering a plan is a catalog change and needs no code change. Plans are ranked by
-*plan tier*, not by any single hardware dimension, so the `r8g` memory-optimized
-types share a rank with the `c5` types used by the equivalently named plans
-(`c5.large` and `r8g.medium` are both the "medium" tier, and so on). `r8g` trades
-vCPUs for substantially more memory, so neither family is strictly larger than the
-other; giving them equal ranks makes switching families at the same tier a permitted
-lateral move in both directions, while moves to a larger or smaller tier are still
-ordered correctly. Ranks are spaced by 10 so a new tier can be slotted between two
-existing ones.
+*plan tier*, not by any single hardware dimension, so the `r7g` Graviton `search-*`
+types share a rank with the `c5`/`m5` types used by the equivalently named `es-*`
+plans (`c5.large` and `r7g.medium` are both the "medium" tier, and so on). `r7g`
+trades vCPUs for substantially more memory, so neither family is strictly larger than
+the other; giving them equal ranks makes switching families at the same tier a
+permitted lateral move in both directions, while moves to a larger or smaller tier are
+still ordered correctly. Ranks are spaced by 10 so a new tier can be slotted between
+two existing ones.
+
+**A same-tier lateral move can change capacity substantially.** `r7g` carries 8 GiB
+per vCPU against `c5`'s 2, so the tier-named `r7g` data node has *half* the cores and
+double the RAM and JVM heap of the `c5` plan at the same rank — `es-medium` ->
+`search-medium` moves a data node from `c5.large` (2 vCPU / 4 GiB) to `r7g.medium`
+(1 vCPU / 8 GiB). The rank ordering permits this in both directions because tier, not
+core count, defines the rank. Whether it is the right move depends on whether the
+workload is heap-bound or CPU-bound; see
+[`docs/es-plan-graviton-cost-comparison.md`](docs/es-plan-graviton-cost-comparison.md).
 
 The resulting order for the 2-data-node plans, smallest to largest (the 4-data-node
 `-ha` plans follow the same order among themselves):
 
 ```text
-es-dev                                        (rank 10)
-es-medium  /  es-medium-memory-optimized      (rank 20)
-es-large   /  es-large-memory-optimized       (rank 30)
-es-xlarge  /  es-xlarge-memory-optimized      (rank 40)
-es-2xlarge-gp                                 (rank 50)
-es-4xlarge-gp                                 (rank 60)
-es-12xlarge-gp                                (rank 70)
+es-dev                                (rank 10)
+es-medium      / search-medium        (rank 20)
+es-large       / search-large         (rank 30)
+es-xlarge      / search-xlarge        (rank 40)
+es-2xlarge-gp  / search-2xlarge-gp    (rank 50)
+es-4xlarge-gp                         (rank 60)
+es-12xlarge-gp                        (rank 70)
 ```
 
 Examples:
 
 | From | To | Allowed? | Why |
 |------|----|----------|-----|
-| `es-medium-memory-optimized` | `es-large-memory-optimized` | Yes | larger tier, both 2 data nodes |
-| `es-medium-memory-optimized-ha` | `es-large-memory-optimized-ha` | Yes | larger tier, both 4 data nodes |
-| `es-medium` | `es-medium-memory-optimized` | Yes | same tier, lateral family switch |
-| `es-medium-memory-optimized` | `es-medium` | Yes | same tier, lateral family switch |
-| `es-medium` | `es-large-memory-optimized` | Yes | cross-family upgrade to a larger tier |
-| `es-large-memory-optimized` | `es-medium-memory-optimized` | No | downgrade |
-| `es-large` | `es-medium-memory-optimized` | No | downgrade (larger tier -> smaller tier) |
-| `es-medium-memory-optimized` | `es-medium-memory-optimized-ha` | Yes | same tier, 2 -> 4 data nodes |
-| `es-medium-memory-optimized` | `es-large-memory-optimized-ha` | Yes | larger tier, 2 -> 4 data nodes |
-| `es-large-memory-optimized-ha` | `es-large-memory-optimized` | No | 4 -> 2 data nodes |
-| `es-medium-memory-optimized-ha` | `es-large-memory-optimized` | No | 4 -> 2 data nodes, even though the tier is larger |
-| `es-dev` | `es-medium-memory-optimized` | No | 1 data node on one subnet -> multi-node |
+| `search-medium` | `search-large` | Yes | larger tier, both 2 data nodes |
+| `search-medium-ha` | `search-large-ha` | Yes | larger tier, both 4 data nodes |
+| `es-medium` | `search-medium` | Yes | same tier, lateral family switch (halves data-node vCPU, doubles heap) |
+| `search-medium` | `es-medium` | Yes | same tier, lateral family switch |
+| `es-medium` | `search-large` | Yes | cross-family upgrade to a larger tier |
+| `search-large` | `search-medium` | No | downgrade |
+| `es-large` | `search-medium` | No | downgrade (larger tier -> smaller tier) |
+| `search-large` | `es-medium` | No | downgrade (larger tier -> smaller tier) |
+| `search-medium` | `search-medium-ha` | Yes | same tier, 2 -> 4 data nodes |
+| `search-medium` | `search-large-ha` | Yes | larger tier, 2 -> 4 data nodes |
+| `search-large-ha` | `search-large` | No | 4 -> 2 data nodes |
+| `search-medium-ha` | `search-large` | No | 4 -> 2 data nodes, even though the tier is larger |
+| `es-dev` | `search-medium` | No | 1 data node on one subnet -> multi-node |
 
 Note that a lateral family switch still triggers an AWS blue/green deployment: the
 instance type genuinely changes, so it is not a no-op. Moving from a non-HA plan to

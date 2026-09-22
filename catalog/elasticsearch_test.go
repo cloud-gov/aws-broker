@@ -75,12 +75,12 @@ func TestElasticsearchServiceToBrokerAPIService(t *testing.T) {
 
 func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 
-	mediumNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized"}, InstanceType: "r8g.medium.search", InstanceSizeRank: 20, DataCount: "2"}
-	largeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized"}, InstanceType: "r8g.large.search", InstanceSizeRank: 30, DataCount: "2"}
-	xlargeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-xlarge-memory-optimized"}, InstanceType: "r8g.xlarge.search", InstanceSizeRank: 40, DataCount: "2"}
-	singleNode := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "r8g.large.search", InstanceSizeRank: 30, DataCount: "1"}
-	mediumHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-memory-optimized-ha"}, InstanceType: "r8g.medium.search", InstanceSizeRank: 20, DataCount: "4"}
-	largeHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large-memory-optimized-ha"}, InstanceType: "r8g.large.search", InstanceSizeRank: 30, DataCount: "4"}
+	mediumNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "search-medium"}, InstanceType: "r7g.medium.search", InstanceSizeRank: 20, DataCount: "2"}
+	largeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "search-large"}, InstanceType: "r7g.large.search", InstanceSizeRank: 30, DataCount: "2"}
+	xlargeNonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "search-xlarge"}, InstanceType: "r7g.xlarge.search", InstanceSizeRank: 40, DataCount: "2"}
+	singleNode := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "r7g.large.search", InstanceSizeRank: 30, DataCount: "1"}
+	mediumHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "search-medium-ha"}, InstanceType: "r7g.medium.search", InstanceSizeRank: 20, DataCount: "4"}
+	largeHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "search-large-ha"}, InstanceType: "r7g.large.search", InstanceSizeRank: 30, DataCount: "4"}
 	unranked := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-mystery"}, InstanceType: "z9z.mystery.search", DataCount: "2"}
 	esDev := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "t3.small.search", InstanceSizeRank: 10, DataCount: "1"}
 	esDevMigration := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev-6.8-migration"}, InstanceType: "t3.small.search", InstanceSizeRank: 10, DataCount: "1"}
@@ -199,12 +199,12 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			expectOK:  false,
 			expectMsg: "reduce the number of data nodes",
 		},
-		"same tier c5 to memory-optimized allowed": {
+		"same tier c5 to graviton search allowed": {
 			from:     mediumC5NonHA,
 			to:       mediumNonHA,
 			expectOK: true,
 		},
-		"same tier memory-optimized to c5 allowed": {
+		"same tier graviton search to c5 allowed": {
 			from:     mediumNonHA,
 			to:       mediumC5NonHA,
 			expectOK: true,
@@ -234,6 +234,12 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			from:     mediumC5HA,
 			to:       mediumHA,
 			expectOK: true,
+		},
+		"graviton search to smaller-tier c5 blocked": {
+			from:      largeNonHA,
+			to:        mediumC5NonHA,
+			expectOK:  false,
+			expectMsg: "downgrading",
 		},
 	}
 

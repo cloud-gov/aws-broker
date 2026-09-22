@@ -1774,216 +1774,6 @@ elasticsearch:
       environment: (( grab meta.environment ))
       client: "the client"
       broker: "AWS broker"
-  - id: "55bb533d-d0a2-435c-ad42-77d6dcf9c62d"
-    name: "es-medium-memory-optimized"
-    description: "Medium memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
-    metadata:
-      bullets:
-      - "Medium"
-      - "Memory optimized"
-      - "2 data nodes"
-      displayName: "Medium memory-optimized, 3 master nodes, 2 data nodes"
-    free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
-    masterCount: 3
-    dataCount: 2
-    instanceType: r8g.medium.search
-    instanceSizeRank: 20
-    masterInstanceType: r8g.medium.search
-    volumeSize: 15
-    volumeType: gp3
-    masterEnabled: true
-    nodeToNodeEncryption: true
-    encryptAtRest: true
-    automatedSnapshotStartHour: 6
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
-  - id: "3aa57f43-3788-454b-891a-4673a1cadb9b"
-    name: "es-medium-memory-optimized-ha"
-    description: "Medium memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
-    metadata:
-      bullets:
-      - "Medium"
-      - "Memory optimized"
-      - "4 data nodes"
-      displayName: "Medium memory-optimized, 3 master nodes, 4 data nodes"
-    free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
-    masterCount: 3
-    dataCount: 4
-    instanceType: r8g.medium.search
-    instanceSizeRank: 20
-    masterInstanceType: r8g.medium.search
-    volumeSize: 15
-    volumeType: gp3
-    masterEnabled: true
-    nodeToNodeEncryption: true
-    encryptAtRest: true
-    automatedSnapshotStartHour: 6
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
-  - id: "114e9093-d19b-4089-8948-035231e21b95"
-    name: "es-large-memory-optimized"
-    description: "Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
-    metadata:
-      bullets:
-      - "Large"
-      - "Memory optimized"
-      - "2 data nodes"
-      displayName: "Large memory-optimized, 3 master nodes, 2 data nodes"
-    free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
-    masterCount: 3
-    dataCount: 2
-    instanceType: r8g.large.search
-    instanceSizeRank: 30
-    masterInstanceType: r8g.large.search
-    volumeSize: 30
-    volumeType: gp3
-    masterEnabled: true
-    nodeToNodeEncryption: true
-    encryptAtRest: true
-    automatedSnapshotStartHour: 6
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
-  - id: "b20d8f70-b5c6-49d8-90f0-035d13003c88"
-    name: "es-large-memory-optimized-ha"
-    description: "Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
-    metadata:
-      bullets:
-      - "Large"
-      - "Memory optimized"
-      - "4 data nodes"
-      displayName: "Large memory-optimized, 3 master nodes, 4 data nodes"
-    free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
-    masterCount: 3
-    dataCount: 4
-    instanceType: r8g.large.search
-    instanceSizeRank: 30
-    masterInstanceType: r8g.large.search
-    volumeSize: 30
-    volumeType: gp3
-    masterEnabled: true
-    nodeToNodeEncryption: true
-    encryptAtRest: true
-    automatedSnapshotStartHour: 6
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
-  - id: "dc5e9d65-28e0-40c0-b392-9ad741f563ca"
-    name: "es-xlarge-memory-optimized"
-    description: "X-Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
-    metadata:
-      bullets:
-      - "X-Large"
-      - "Memory optimized"
-      - "2 data nodes"
-      displayName: "X-Large memory-optimized, 3 master nodes, 2 data nodes"
-    free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
-    masterCount: 3
-    dataCount: 2
-    instanceType: r8g.xlarge.search
-    instanceSizeRank: 40
-    masterInstanceType: r8g.xlarge.search
-    volumeSize: 30
-    volumeType: gp3
-    masterEnabled: true
-    nodeToNodeEncryption: true
-    encryptAtRest: true
-    automatedSnapshotStartHour: 6
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
-  - id: "69c3232f-c969-4772-8e94-87d71b9c7599"
-    name: "es-xlarge-memory-optimized-ha"
-    description: "X-Large memory-optimized Elasticsearch/OpenSearch - 3 master nodes with 4 data nodes"
-    metadata:
-      bullets:
-      - "X-Large"
-      - "Memory optimized"
-      - "4 data nodes"
-      displayName: "X-Large memory-optimized, 3 master nodes, 4 data nodes"
-    free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
-    masterCount: 3
-    dataCount: 4
-    instanceType: r8g.xlarge.search
-    instanceSizeRank: 40
-    masterInstanceType: r8g.xlarge.search
-    volumeSize: 30
-    volumeType: gp3
-    masterEnabled: true
-    nodeToNodeEncryption: true
-    encryptAtRest: true
-    automatedSnapshotStartHour: 6
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
   - id: "4a286fc7-e6f5-4c73-9d4f-65d899354abd"
     name: "es-2xlarge-gp"
     description: "2X-Large General-Purpose Elasticsearch/OpenSearch - 3 master nodes with 2 data nodes"
@@ -2175,6 +1965,286 @@ elasticsearch:
     instanceSizeRank: 70
     masterInstanceType: m5.12xlarge.search
     volumeSize: 50
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "8a7a67c9-c3ff-4e42-89cb-67b166dd1529"
+    name: "search-medium"
+    description: "Medium Graviton OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "Medium"
+      - "Graviton"
+      - "2 data nodes"
+      displayName: "Medium Graviton, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r7g.medium.search
+    instanceSizeRank: 20
+    masterInstanceType: m7g.large.search
+    volumeSize: 15
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "c1639d76-d00e-4303-9da2-57c0c465abe9"
+    name: "search-medium-ha"
+    description: "Medium Graviton OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "Medium"
+      - "Graviton"
+      - "4 data nodes"
+      displayName: "Medium Graviton, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r7g.medium.search
+    instanceSizeRank: 20
+    masterInstanceType: m7g.large.search
+    volumeSize: 15
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "8831abc1-0381-41ae-a40d-35b28d7a7a69"
+    name: "search-large"
+    description: "Large Graviton OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "Large"
+      - "Graviton"
+      - "2 data nodes"
+      displayName: "Large Graviton, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r7g.large.search
+    instanceSizeRank: 30
+    masterInstanceType: m7g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "e2f0a894-f379-40f2-85b0-37eb99bfc0ee"
+    name: "search-large-ha"
+    description: "Large Graviton OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "Large"
+      - "Graviton"
+      - "4 data nodes"
+      displayName: "Large Graviton, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r7g.large.search
+    instanceSizeRank: 30
+    masterInstanceType: m7g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "7ecc8a86-d41e-4dee-84d1-fe1b8ffa6dcc"
+    name: "search-xlarge"
+    description: "X-Large Graviton OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "X-Large"
+      - "Graviton"
+      - "2 data nodes"
+      displayName: "X-Large Graviton, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r7g.xlarge.search
+    instanceSizeRank: 40
+    masterInstanceType: m7g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "4eab0d79-4741-4646-8d7e-8e0f81b6f50c"
+    name: "search-xlarge-ha"
+    description: "X-Large Graviton OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "X-Large"
+      - "Graviton"
+      - "4 data nodes"
+      displayName: "X-Large Graviton, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r7g.xlarge.search
+    instanceSizeRank: 40
+    masterInstanceType: m7g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "40c4b4bb-b901-405a-ba88-77a8edf2ac91"
+    name: "search-2xlarge-gp"
+    description: "2X-Large Graviton OpenSearch - 3 master nodes with 2 data nodes"
+    metadata:
+      bullets:
+      - "2X-Large"
+      - "Graviton"
+      - "2 data nodes"
+      displayName: "2X-Large Graviton, 3 master nodes, 2 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 2
+    instanceType: r7g.2xlarge.search
+    instanceSizeRank: 50
+    masterInstanceType: m7g.large.search
+    volumeSize: 30
+    volumeType: gp3
+    masterEnabled: true
+    nodeToNodeEncryption: true
+    encryptAtRest: true
+    automatedSnapshotStartHour: 6
+    securityGroup: (( grab meta.elasticsearch.security_group ))
+    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
+    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
+    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
+    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
+    tags:
+      environment: (( grab meta.environment ))
+      client: "the client"
+      broker: "AWS broker"
+  - id: "c7235f30-7048-4313-831a-ff9dbcbffeae"
+    name: "search-2xlarge-gp-ha"
+    description: "2X-Large Graviton OpenSearch - 3 master nodes with 4 data nodes"
+    metadata:
+      bullets:
+      - "2X-Large"
+      - "Graviton"
+      - "4 data nodes"
+      displayName: "2X-Large Graviton, 3 master nodes, 4 data nodes"
+    free: false
+    elasticsearchVersion: Elasticsearch_7.10
+    approvedMajorVersions:
+    - "OpenSearch_2.11"
+    - "OpenSearch_1.3"
+    - "Elasticsearch_7.10"
+    masterCount: 3
+    dataCount: 4
+    instanceType: r7g.2xlarge.search
+    instanceSizeRank: 50
+    masterInstanceType: m7g.large.search
+    volumeSize: 30
     volumeType: gp3
     masterEnabled: true
     nodeToNodeEncryption: true

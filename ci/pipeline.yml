@@ -206,12 +206,14 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
-            aws-elasticsearch:es-medium-memory-optimized
-            aws-elasticsearch:es-medium-memory-optimized-ha
-            aws-elasticsearch:es-large-memory-optimized
-            aws-elasticsearch:es-large-memory-optimized-ha
-            aws-elasticsearch:es-xlarge-memory-optimized
-            aws-elasticsearch:es-xlarge-memory-optimized-ha
+            aws-elasticsearch:search-medium
+            aws-elasticsearch:search-medium-ha
+            aws-elasticsearch:search-large
+            aws-elasticsearch:search-large-ha
+            aws-elasticsearch:search-xlarge
+            aws-elasticsearch:search-xlarge-ha
+            aws-elasticsearch:search-2xlarge-gp
+            aws-elasticsearch:search-2xlarge-gp-ha
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -434,7 +436,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 TEST_NAME: update-plan
                 SERVICE_PLAN: es-medium
-                NEW_SERVICE_PLAN: es-medium-memory-optimized
+                NEW_SERVICE_PLAN: search-medium
                 NEW_SERVICE_PLAN_DATA_NODES: 2
                 REGION: ((development-aws-default-region))
 
@@ -453,7 +455,7 @@ jobs:
                 REGION: ((development-aws-default-region))
                 TEST_REJECTIONS: true
                 SINGLE_NODE_PLAN: es-dev
-                REJECTION_TARGET_PLAN: es-medium-memory-optimized
+                REJECTION_TARGET_PLAN: search-medium
 
             - task: smoke-tests-elasticsearch-update-plan-ha
               file: aws-broker-app/ci/run-smoke-tests-update-search.yml
@@ -466,8 +468,8 @@ jobs:
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
                 TEST_NAME: update-plan-ha
-                SERVICE_PLAN: es-medium-memory-optimized
-                NEW_SERVICE_PLAN: es-medium-memory-optimized-ha
+                SERVICE_PLAN: search-medium
+                NEW_SERVICE_PLAN: search-medium-ha
                 NEW_SERVICE_PLAN_DATA_NODES: 4
                 REGION: ((development-aws-default-region))
     on_failure:

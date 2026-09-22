@@ -896,7 +896,7 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				},
 			},
 		},
-		"r8g single node": {
+		"r7g single node": {
 			esInstance: &ElasticsearchInstance{
 				Domain:                     "test-domain",
 				DataCount:                  1,
@@ -905,7 +905,7 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				EncryptAtRest:              true,
 				VolumeSize:                 10,
 				VolumeType:                 "gp3",
-				InstanceType:               "r8g.large.search",
+				InstanceType:               "r7g.large.search",
 				NodeToNodeEncryption:       true,
 				AutomatedSnapshotStartHour: 0,
 			},
@@ -926,7 +926,7 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 					VolumeType: opensearchTypes.VolumeTypeGp3,
 				},
 				ClusterConfig: &opensearchTypes.ClusterConfig{
-					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+					InstanceType:  opensearchTypes.OpenSearchPartitionInstanceType("r7g.large.search"),
 					InstanceCount: aws.Int32(int32(1)),
 				},
 				SnapshotOptions: &opensearchTypes.SnapshotOptions{
@@ -940,7 +940,7 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				},
 			},
 		},
-		"r8g HA with dedicated master": {
+		"r7g HA with dedicated master": {
 			esInstance: &ElasticsearchInstance{
 				Domain:                     "test-domain",
 				DataCount:                  2,
@@ -950,10 +950,10 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 				EncryptAtRest:              true,
 				VolumeSize:                 10,
 				VolumeType:                 "gp3",
-				InstanceType:               "r8g.xlarge.search",
+				InstanceType:               "r7g.xlarge.search",
 				MasterEnabled:              true,
 				MasterCount:                3,
-				MasterInstanceType:         "r8g.large.search",
+				MasterInstanceType:         "m7g.large.search",
 				NodeToNodeEncryption:       true,
 				AutomatedSnapshotStartHour: 0,
 			},
@@ -974,11 +974,11 @@ func TestPrepareCreateDomainInput(t *testing.T) {
 					VolumeType: opensearchTypes.VolumeTypeGp3,
 				},
 				ClusterConfig: &opensearchTypes.ClusterConfig{
-					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceType("r8g.xlarge.search"),
+					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceType("r7g.xlarge.search"),
 					InstanceCount:          aws.Int32(int32(2)),
 					DedicatedMasterEnabled: aws.Bool(true),
 					DedicatedMasterCount:   aws.Int32(int32(3)),
-					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceType("r8g.large.search"),
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceType("m7g.large.search"),
 					ZoneAwarenessEnabled:   aws.Bool(true),
 					ZoneAwarenessConfig: &opensearchTypes.ZoneAwarenessConfig{
 						AvailabilityZoneCount: aws.Int32(int32(2)),

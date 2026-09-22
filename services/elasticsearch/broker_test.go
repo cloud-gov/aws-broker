@@ -202,13 +202,13 @@ func TestModifyInstance(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				ElasticsearchVersion: "OpenSearch_1.3",
-				InstanceType:         "r8g.medium.search",
+				InstanceType:         "r7g.medium.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium",
-						Name: "es-medium-memory-optimized",
+						Name: "search-medium",
 					},
 					InstanceSizeRank: 20,
 					DataCount:        "2",
@@ -216,9 +216,9 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-large",
-						Name: "es-large-memory-optimized",
+						Name: "search-large",
 					},
-					InstanceType:     "r8g.large.search",
+					InstanceType:     "r7g.large.search",
 					InstanceSizeRank: 30,
 					DataCount:        "2",
 				},
@@ -236,13 +236,13 @@ func TestModifyInstance(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				ElasticsearchVersion: "OpenSearch_1.3",
-				InstanceType:         "r8g.large.search",
+				InstanceType:         "r7g.large.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium",
-						Name: "es-medium-memory-optimized",
+						Name: "search-medium",
 					},
 					InstanceSizeRank: 20,
 					DataCount:        "2",
@@ -250,9 +250,9 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-large",
-						Name: "es-large-memory-optimized",
+						Name: "search-large",
 					},
-					InstanceType:     "r8g.large.search",
+					InstanceType:     "r7g.large.search",
 					InstanceSizeRank: 30,
 					DataCount:        "2",
 				},
@@ -271,13 +271,13 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				InstanceType: "r8g.medium.search",
+				InstanceType: "r7g.medium.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium",
-						Name: "es-medium-memory-optimized",
+						Name: "search-medium",
 					},
 					InstanceSizeRank: 20,
 					DataCount:        "2",
@@ -285,9 +285,9 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium-ha",
-						Name: "es-large-memory-optimized-ha",
+						Name: "search-medium-ha",
 					},
-					InstanceType:     "r8g.large.search",
+					InstanceType:     "r7g.medium.search",
 					InstanceSizeRank: 20,
 					DataCount:        "4",
 				},
@@ -309,18 +309,18 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-large",
-						Name: "es-large-memory-optimized",
+						Name: "search-large",
 					},
 					InstanceSizeRank: 30,
 					DataCount:        "2",
-					InstanceType:     "r8g.large.search",
+					InstanceType:     "r7g.large.search",
 				},
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-large-ha",
-						Name: "es-large-memory-optimized-ha",
+						Name: "search-large-ha",
 					},
-					InstanceType:     "r8g.large.search",
+					InstanceType:     "r7g.large.search",
 					InstanceSizeRank: 30,
 					DataCount:        "4",
 				},
@@ -344,18 +344,18 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium-ha",
-						Name: "es-medium-memory-optimized-ha",
+						Name: "search-medium-ha",
 					},
 					InstanceSizeRank: 20,
 					DataCount:        "4",
-					InstanceType:     "r8g.medium.search",
+					InstanceType:     "r7g.medium.search",
 				},
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-large-ha",
-						Name: "es-large-memory-optimized-ha",
+						Name: "search-large-ha",
 					},
-					InstanceType:     "r8g.large.search",
+					InstanceType:     "r7g.large.search",
 					InstanceSizeRank: 30,
 					DataCount:        "4",
 				},
@@ -377,18 +377,18 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium",
-						Name: "es-medium-memory-optimized",
+						Name: "search-medium",
 					},
 					InstanceSizeRank: 20,
 					DataCount:        "2",
-					InstanceType:     "r8g.medium.search",
+					InstanceType:     "r7g.medium.search",
 				},
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-unranked",
-						Name: "es-large-memory-optimized-ha",
+						Name: "search-large",
 					},
-					InstanceType: "r8g.large.search",
+					InstanceType: "r7g.large.search",
 					DataCount:    "2",
 				},
 			},
@@ -419,10 +419,10 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium",
-						Name: "es-medium-memory-optimized",
+						Name: "search-medium",
 					},
 					InstanceSizeRank: 20,
-					InstanceType:     "r8g.medium.search",
+					InstanceType:     "r7g.medium.search",
 					DataCount:        "2",
 				},
 			},
@@ -453,10 +453,10 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-medium",
-						Name: "es-medium-memory-optimized",
+						Name: "search-medium",
 					},
 					InstanceSizeRank: 20,
-					InstanceType:     "r8g.medium.search",
+					InstanceType:     "r7g.medium.search",
 					DataCount:        "2",
 				},
 			},
@@ -488,7 +488,7 @@ func TestModifyInstance(t *testing.T) {
 				{
 					ServicePlan: domain.ServicePlan{
 						ID:   "plan-large",
-						Name: "es-large-memory-optimized",
+						Name: "search-large",
 					},
 					InstanceSizeRank: 30,
 					DataCount:        "2",
