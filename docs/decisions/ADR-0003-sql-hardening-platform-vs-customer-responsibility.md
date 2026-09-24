@@ -5,7 +5,7 @@
 - **Related:** [ADR-0001](ADR-0001-oracle-19c-stig-hardened-in-aws-broker.md) (STIG-hardened Oracle 19c in aws-broker; the broker provisions, the overlay validates), [#557](https://github.com/cloud-gov/aws-broker/issues/557) (the design decision this ADR resolves), [#558](https://github.com/cloud-gov/aws-broker/issues/558) (live GovCloud RDS proof), [#541](https://github.com/cloud-gov/aws-broker/issues/541) (TCPS 2484 / deny 1521)
 - **Deciders:** Peter Burkholder, William Zujkowski, Mark Boyd, Sean
 
-## Context (Agent written)
+## Context
 
 - The Oracle 19c STIG hardening splits into two mechanically different layers:
   1. Parameter/option/network hardening (audit config, sqlnet/TLS, listener, TDE) — applied via RDS PARAMETER GROUPS and OPTION GROUPS at the control plane. This is the broker's own “born-hardened” baseline (`services/rds/oracle_tls.go`, `option_group.go`, and the Oracle parameter-group baseline); the overlay notes these are “platform/option-group managed on RDS — NOT SQL-checkable.”
@@ -23,7 +23,10 @@
     - Option 2 (customer owns it): the instance ships with layer-1 hardening only; the layer-2 SQL state is, by design, the tenant's to apply — an accepted, documented posture (see Compliance / boundary), not a finding.
   - Cloud.gov's self-service RDS model (ADR-0001 alignment) — how much does the platform do FOR the tenant vs. document FOR the tenant?
 
-## Decision Drivers (Peter)
+## Decision Drivers
+
+These drivers summarize Peter's stated rationale from synchronous and other
+out-of-band discussions with the deciders.
 
 - The hardening we do at the AWS API layer cannot be modified by the customer, so
   there's no drift unless an operator intervenes. We continue to “own” that layer
@@ -41,7 +44,10 @@ The decision therefore is: **maintain the SQL hardening code that works and
 provide customers with instructions on how to run it.** Whether a customer runs
 it is a customer responsibility.
 
-## Considered Options (agent written)
+## Considered Options
+
+The following option framing was drafted with AI assistance and reviewed against
+the deciders' stated responsibility-boundary rationale.
 
 1. **Platform responsibility — broker runs the SQL hardening post-provision.**
    The broker connects to the new instance after it is AWS-`available` but before
@@ -149,18 +155,16 @@ broker-provisioned Oracle instance (tracked as new CI issues; see
 - **Must be recorded in the customer-responsibility matrix / SSP.** Each affected
   STIG control ID MUST be documented as customer- (or shared-) responsibility in
   the CRM and reflected in the SSP control-origination fields, so the transfer is
-  auditable and the tenant is on notice. _<!-- TODO: enumerate the specific STIG
-  rule IDs from the hardening/sql/ scripts and map each to its 800-53 control. -->_
+  auditable and the tenant is on notice. The durable follow-up is tracked in
+  [#587](https://github.com/cloud-gov/aws-broker/issues/587).
 
-## Open questions
+## Validation transport implementation
 
-- **Validation transport (implementation detail, not this decision).** The chosen
-  path is to run a single hardened runner app — carrying both CINC-Auditor and
-  SQLcl (overlay [#95](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/95)) — *on* a bound Cloud.gov app driven via `cf ssh` (TCPS 2484,
-  `verify-ca`), replacing the failed `cinc-auditor -t ssh://…` approach. Proving
-  it out end to end in `aws-broker` CI is tracked by the new CI STIG-validation
-  issues (anchored to [#558](https://github.com/cloud-gov/aws-broker/issues/558));
-  it is dependency-blocked on a pullable overlay runner image in the boundary
-  (overlay [#84](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/84)/[#89](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/89)/[#93](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/93)/[#85](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/85)/[#95](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/95)).
-- **STIG rule ID → 800-53 mapping** for the CRM/SSP entries above.
-  _<!-- TODO. -->_
+The chosen path is to run a single hardened runner app — carrying both
+CINC-Auditor and SQLcl (overlay [#95](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/95)) — *on* a bound Cloud.gov app driven via
+`cf ssh` (TCPS 2484, `verify-ca`), replacing the failed
+`cinc-auditor -t ssh://…` approach. Proving it out end to end in `aws-broker` CI
+is tracked by the new CI STIG-validation issues (anchored to
+[#558](https://github.com/cloud-gov/aws-broker/issues/558)); it is
+dependency-blocked on a pullable overlay runner image in the boundary (overlay
+[#84](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/84)/[#89](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/89)/[#93](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/93)/[#85](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/85)/[#95](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/95)).
