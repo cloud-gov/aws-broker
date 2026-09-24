@@ -8,42 +8,38 @@
 ## Context (Agent written)
 
 - The Oracle 19c STIG hardening splits into two mechanically different layers:
-  1. Parameter/option/network hardening (audit config, sqlnet/TLS, listener, TDE) — applied via RDS PARAMETER GROUPS and OPTION GROUPS at the control plane. This is the broker's own “born-hardened” baseline (`services/rds/oracle_tls.go`, `option_group.go`, and the Oracle parameter-group baseline). The overlay itself notes these settings are “platform/option-group managed on RDS — NOT SQL-checkable.”
+  1. Parameter/option/network hardening (audit config, sqlnet/TLS, listener, TDE) — applied via RDS PARAMETER GROUPS and OPTION GROUPS at the control plane. This is the broker's own “born-hardened” baseline (`services/rds/oracle_tls.go`, `option_group.go`, and the Oracle parameter-group baseline); the overlay notes these are “platform/option-group managed on RDS — NOT SQL-checkable.”
   2. SQL-statement hardening — the parts that require issuing SQL as the master user (DEFAULT profile limits, locking default accounts, unified audit policies, etc.). Scripts live in the sibling repo `cg-oracle-database-19c-stig-overlay/hardening/sql/`.
 
-- THIS ADR is only about layer 2 (the SQL-statement hardening). Layer 1 is already decided (born-hardened via param/option groups; see ADR-0001).
+- This ADR covers only layer 2. Layer 1 is already decided (see ADR-0001).
 
-- The design question: is issuing that hardening SQL a PLATFORM responsibility the broker performs automatically (post-provision, before reporting the instance ready), or a CUSTOMER responsibility documented and left to the tenant to run against their master user?
+- The design question: is issuing the hardening SQL a PLATFORM responsibility the broker performs automatically (post-provision, before reporting the instance ready), or a CUSTOMER responsibility the tenant runs against their master user?
 
 - Constraints that bear on it:
-  - The broker today opens NO client SQL connection to tenant DBs; it only calls the AWS RDS control plane. Broker-run SQL hardening is net-new capability (needs an Oracle driver, TLS/TCPS path, endpoint fetch, master-cred decrypt).
-  - RDS grants a master user, not SYS/SYSDBA — bounds what hardening is even possible via SQL.
-  - Compliance posture: the state in which a newly provisioned instance reaches the tenant differs by option.
-    - If the broker owns the SQL hardening (Option 1), it would have to apply it and pass before marking the instance ready — and fail closed if it could not, rather than hand over a partially hardened DB.
-    - If the customer owns it (Option 2), the instance is delivered with layer-1 hardening only and the layer-2 SQL state is, by design, the tenant's to apply — an accepted, documented posture (see Compliance / boundary), not a finding.
+  - The broker today opens NO client SQL connection to tenant DBs; it only calls the AWS RDS control plane. Broker-run SQL hardening is net-new capability (Oracle driver, TLS/TCPS path, endpoint fetch, master-cred decrypt).
+  - RDS grants a master user, not SYS/SYSDBA — bounding what SQL hardening is even possible.
+  - Compliance posture on delivery differs by option:
+    - Option 1 (broker owns it): the broker must apply the SQL and pass before marking the instance ready — failing closed rather than handing over a partially hardened DB.
+    - Option 2 (customer owns it): the instance ships with layer-1 hardening only; the layer-2 SQL state is, by design, the tenant's to apply — an accepted, documented posture (see Compliance / boundary), not a finding.
   - Cloud.gov's self-service RDS model (ADR-0001 alignment) — how much does the platform do FOR the tenant vs. document FOR the tenant?
 
 ## Decision Drivers (Peter)
 
 - The hardening we do at the AWS API layer cannot be modified by the customer, so
-  there's no opportunity for drift unless an operator intervenes.
-- Any hardening we apply via SQL could be undone by a customer with their own SQL,
-  so letting all SQL hardening (and any subsequent drift) remain in the customer's
-  hands makes for clear boundaries.
-- We still “own” the hardening at the AWS API layer (security groups, option
-  groups, parameters, updates, etc.).
-- The work required to support broker-managed SQL connections would vastly expand
-  the scope of this project, with all the accompanying downsides — including new
-  complexities like managing connection credentials and rotating them after the
-  hardening is done.
-- Oracle users represent a small fraction of the Cloud.gov user base, so the
-  engineering investment in supporting them should be bounded accordingly. _(This
-  is a build-effort sizing factor only; the compliance bar is identical
-  regardless of user count.)_
+  there's no drift unless an operator intervenes. We continue to “own” that layer
+  (security groups, option groups, parameters, updates).
+- Any hardening applied via SQL could be undone by a customer with their own SQL,
+  so leaving all SQL hardening (and any later drift) in the customer's hands makes
+  for clear boundaries.
+- Broker-managed SQL connections would vastly expand this project's scope — new
+  complexities like managing and rotating connection credentials after hardening.
+- Oracle is a small fraction of the Cloud.gov user base, so the engineering
+  investment should be bounded accordingly. _(Build-effort sizing factor only; the
+  compliance bar is identical regardless of user count.)_
 
 The decision therefore is: **maintain the SQL hardening code that works and
-provide customers with instructions on how to run it.** Whether a customer chooses
-to run it is a customer responsibility.
+provide customers with instructions on how to run it.** Whether a customer runs
+it is a customer responsibility.
 
 ## Considered Options (agent written)
 
@@ -74,10 +70,10 @@ instances.
 
 The platform must prove the maintained SQL hardening actually works against a
 real brokered instance (per ADR-0001, this is the pipeline proof, not the tenant
-compliance guarantee). This validation is being added to `aws-broker` CI as a
-STIG-validation step that runs the `cg-oracle-database-19c-stig-overlay` CINC
-runner against a broker-provisioned Oracle instance (tracked as new CI issues;
-see [#558](https://github.com/cloud-gov/aws-broker/issues/558)). Flow:
+compliance guarantee). This is being added to `aws-broker` CI as a STIG-validation
+step running the `cg-oracle-database-19c-stig-overlay` CINC runner against a
+broker-provisioned Oracle instance (tracked as new CI issues; see
+[#558](https://github.com/cloud-gov/aws-broker/issues/558)). Flow:
 
 1. Instantiate a smoke-test instance (`cf create-service aws-rds medium-oracle-se2 ...`).
 2. Create a Cloud.gov app and bind the instance to it.
@@ -114,37 +110,28 @@ see [#558](https://github.com/cloud-gov/aws-broker/issues/558)). Flow:
 ### Positive
 
 - **Clear, tamper-resistant ownership boundary.** The platform owns the
-  AWS-API-layer hardening it *can* durably enforce (security groups, option
-  groups, parameters, updates) — which “cannot be modified by the customer, so
-  there’s no opportunity for drift unless an operator intervenes.” The in-DB SQL
-  layer, which “could be undone by a customer with their own SQL,” stays entirely
-  in the customer's hands. Responsibility follows enforceability.
-- **Avoids a large, security-sensitive scope expansion.** Broker-managed SQL
-  connections “would vastly expand the scope of this project,” including net-new
-  capability (Oracle driver, TLS/TCPS path, endpoint fetch) and “new complexities
-  like how to manage connection credentials, and then rotate them after the
-  hardening is done.” Customer-responsibility avoids all of it.
+  AWS-API-layer hardening it *can* durably enforce (security groups, option/
+  parameter groups, updates); the in-DB SQL layer, which a customer can undo with
+  their own SQL, stays in the customer's hands. Responsibility follows
+  enforceability.
+- **Avoids a large, security-sensitive scope expansion.** No broker-managed SQL
+  connections, and no credential-management/rotation machinery to build.
 - **No new broker attack surface.** The broker continues to touch only the AWS
   control plane and never opens a data-plane connection to a tenant DB, so the
   authorization boundary is unchanged.
-- **Investment stays proportionate to build effort.** Oracle is a small slice of
-  the user base; keeping the SQL layer as maintained-scripts-plus-instructions
-  bounds the engineering investment. _(Sizing factor only — the compliance bar is
-  identical regardless of user count; see Compliance / boundary.)_
-- **Platform still ships and validates working SQL.** We maintain the hardening
-  SQL and prove it works against smoke-test instances (see Validation), so
-  customers are handed a known-good, tested procedure rather than being left to
-  author hardening themselves.
+- **Investment stays proportionate.** Keeping the SQL layer as maintained scripts
+  plus instructions bounds the engineering effort for a small user segment.
+- **Platform still ships and validates working SQL** (see Validation), so
+  customers get a known-good, tested procedure rather than authoring hardening
+  themselves.
 
 ### Negative
 
 - **Post-delivery SQL-layer drift is a customer-owned risk.** The broker neither
-  detects nor remediates changes a tenant makes to the SQL-layer hardening after
-  delivery. Because the customer owns applying this hardening (see Compliance /
-  boundary), they also own **keeping it applied** — including monitoring for and
-  correcting any drift. The platform provides no drift detection for these
-  controls; an instance may silently fall out of the hardened state, and that
-  residual risk rests with the customer.
+  detects nor remediates changes a tenant makes to the SQL-layer hardening. The
+  customer owns applying it *and keeping it applied*; the platform provides no
+  drift detection for these controls, so an instance may silently fall out of the
+  hardened state.
 
 ### Compliance / boundary
 
@@ -154,19 +141,16 @@ see [#558](https://github.com/cloud-gov/aws-broker/issues/558)). Flow:
   applied by the broker. They are the tenant's responsibility to apply (and keep
   applied) against their master user, using the platform-maintained SQL and
   instructions.
-- **Requires ISSO acceptance.** This shared-responsibility split MUST be reviewed
-  and accepted by the ISSO before it is relied upon for the ATO. Delivery of a
-  SQL-un-hardened instance is a known posture, accepted here on the basis that
-  (a) the platform cannot durably enforce in-DB settings the customer can reverse
-  with their own SQL, and (b) the AWS-API-layer hardening the broker *does* own
-  (security groups, option/parameter groups, updates) is tamper-resistant by the
-  customer.
+- **Requires ISSO acceptance.** This split MUST be reviewed and accepted by the
+  ISSO before the ATO relies on it. Delivery of a SQL-un-hardened instance is a
+  known posture, accepted on the basis that (a) the platform cannot durably
+  enforce in-DB settings the customer can reverse, and (b) the AWS-API-layer
+  hardening the broker *does* own is tamper-resistant by the customer.
 - **Must be recorded in the customer-responsibility matrix / SSP.** Each affected
   STIG control ID MUST be documented as customer- (or shared-) responsibility in
-  the system's Customer Responsibility Matrix (CRM) and reflected in the SSP
-  control-origination fields, so the responsibility transfer is auditable and the
-  tenant is on notice. _<!-- TODO: enumerate the specific STIG rule IDs from the
-  hardening/sql/ scripts and map each to its 800-53 control in the CRM. -->_
+  the CRM and reflected in the SSP control-origination fields, so the transfer is
+  auditable and the tenant is on notice. _<!-- TODO: enumerate the specific STIG
+  rule IDs from the hardening/sql/ scripts and map each to its 800-53 control. -->_
 
 ## Open questions
 
