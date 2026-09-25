@@ -355,6 +355,44 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			expectedVersionUpgradeInProgress: false,
 			expectedESVersion:                "OpenSearch_1.3",
 		},
+		"upgrade done and manager instance type matches target": {
+			instance: &ElasticsearchInstance{
+				Instance:           base.Instance{State: base.InstanceInProgress},
+				Domain:             "test-domain",
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch),
+			},
+			describeDomainResults: []*opensearch.DescribeDomainOutput{
+				{
+					DomainStatus: &opensearchTypes.DomainStatus{
+						Created: aws.Bool(true),
+						ClusterConfig: &opensearchTypes.ClusterConfig{
+							DedicatedMasterType: opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch,
+						},
+					},
+				},
+			},
+			expectedState:                    base.InstanceReady,
+			expectedVersionUpgradeInProgress: false,
+		},
+		"upgrade done and manager instance type does not match target": {
+			instance: &ElasticsearchInstance{
+				Instance:           base.Instance{State: base.InstanceInProgress},
+				Domain:             "test-domain",
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch),
+			},
+			describeDomainResults: []*opensearch.DescribeDomainOutput{
+				{
+					DomainStatus: &opensearchTypes.DomainStatus{
+						Created: aws.Bool(true),
+						ClusterConfig: &opensearchTypes.ClusterConfig{
+							DedicatedMasterType: opensearchTypes.OpenSearchPartitionInstanceTypeC48xlargeSearch,
+						},
+					},
+				},
+			},
+			expectedState:                    base.InstanceNotModified,
+			expectedVersionUpgradeInProgress: false,
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {

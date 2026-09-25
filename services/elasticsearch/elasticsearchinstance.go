@@ -297,7 +297,18 @@ func (i *ElasticsearchInstance) upgradesAreSuccessful(domainStatus *opensearchTy
 	versionUpdateInProgress := i.versionUpgradeInProgress()
 	versionUpdateSuccess := (!versionUpdateInProgress || (versionUpdateInProgress && aws.ToString(domainStatus.EngineVersion) == i.TargetElasticsearchVersion))
 	managerInstanceTypeSuccess := (i.MasterInstanceType == "" || (i.MasterInstanceType != "" && i.MasterInstanceType == string(domainStatus.ClusterConfig.DedicatedMasterType)))
-	return versionUpdateSuccess && managerInstanceTypeSuccess
+	volumeSizeUpdated := (i.VolumeSize == 0 || (i.VolumeSize > 0 && i.VolumeSize == int(*domainStatus.EBSOptions.VolumeSize)))
+	managerEnabled := i.MasterEnabled == *domainStatus.ClusterConfig.DedicatedMasterEnabled
+	managerCountUpdated := (i.MasterCount == 0 || (i.MasterCount > 0 && i.MasterCount == int(*domainStatus.ClusterConfig.DedicatedMasterCount)))
+	instanceTypeUpdated := (i.InstanceType == "" || (i.InstanceType != "" && i.InstanceType == string(domainStatus.ClusterConfig.InstanceType)))
+	dataNodeCountUpdated := (i.DataCount == 0 || (i.DataCount > 0 && i.DataCount == int(*domainStatus.ClusterConfig.InstanceCount)))
+	return versionUpdateSuccess &&
+		managerInstanceTypeSuccess &&
+		volumeSizeUpdated &&
+		managerEnabled &&
+		managerCountUpdated &&
+		instanceTypeUpdated &&
+		dataNodeCountUpdated
 }
 
 func (i *ElasticsearchInstance) updateElasticsearchVersionFromTarget() {

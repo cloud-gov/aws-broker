@@ -281,25 +281,7 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 				}
 				return base.InstanceReady, nil
 			}
-			// if i.versionUpgradeInProgress() {
-			// 	if aws.ToString(resp.DomainStatus.EngineVersion) == i.TargetElasticsearchVersion {
-			// 		i.ElasticsearchVersion = i.TargetElasticsearchVersion
-			// 		i.TargetElasticsearchVersion = ""
-			// 		return base.InstanceReady, nil
-			// 	}
-			// 	d.logger.Error(
-			// 		"checkElasticsearchStatus: version upgrade did not complete",
-			// 		"domain", i.Domain,
-			// 		"engineVersion", aws.ToString(resp.DomainStatus.EngineVersion),
-			// 		"targetVersion", i.TargetElasticsearchVersion,
-			// 	)
-			// 	i.TargetElasticsearchVersion = ""
-			// 	return base.InstanceNotModified, nil
-			// }
 
-			// if i.MasterInstanceType != "" && i.MasterInstanceType == string(resp.DomainStatus.ClusterConfig.DedicatedMasterType) {
-			// 	// master instance type matches
-			// }
 			i.TargetElasticsearchVersion = ""
 			return base.InstanceNotModified, nil
 		} else {
