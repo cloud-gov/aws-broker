@@ -208,6 +208,7 @@ func (i *ElasticsearchInstance) applyPlan(plan catalog.ElasticsearchPlan) {
 	i.InstanceType = plan.InstanceType
 	i.MasterInstanceType = plan.MasterInstanceType
 	i.MasterEnabled = plan.MasterEnabled
+	i.VolumeType = plan.VolumeType
 	if newVolumeSize, err := strconv.Atoi(plan.VolumeSize); err == nil && newVolumeSize > i.VolumeSize {
 		// Volume size can only grow on an existing domain.
 		i.VolumeSize = newVolumeSize
