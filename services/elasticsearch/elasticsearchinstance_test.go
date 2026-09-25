@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
@@ -108,6 +110,65 @@ func TestUpdateInstance(t *testing.T) {
 			}
 			if diff := deep.Equal(test.existingInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestUpgradesAreSuccessful(t *testing.T) {
+	testCases := map[string]struct {
+		i            *ElasticsearchInstance
+		domainStatus *opensearchTypes.DomainStatus
+		expectOk     bool
+	}{
+		"no upgrades": {
+			i:        &ElasticsearchInstance{},
+			expectOk: true,
+		},
+		"version did upgrade": {
+			i: &ElasticsearchInstance{
+				TargetElasticsearchVersion: "version2",
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EngineVersion: aws.String("version2"),
+			},
+			expectOk: true,
+		},
+		"version did not upgrade": {
+			i: &ElasticsearchInstance{
+				TargetElasticsearchVersion: "version2",
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EngineVersion: aws.String("version1"),
+			},
+		},
+		"manager instance type did upgrade": {
+			i: &ElasticsearchInstance{
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch),
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterType: opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch,
+				},
+			},
+			expectOk: true,
+		},
+		"manager instance type did not upgrade": {
+			i: &ElasticsearchInstance{
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch),
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterType: opensearchTypes.OpenSearchPartitionInstanceTypeT3NanoSearch,
+				},
+			},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			ok := test.i.upgradesAreSuccessful(test.domainStatus)
+			if ok != test.expectOk {
+				t.Fatalf("expected: %t, got: %t", test.expectOk, ok)
 			}
 		})
 	}

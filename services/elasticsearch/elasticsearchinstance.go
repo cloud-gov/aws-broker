@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/cloud-gov/aws-broker/awsiam"
@@ -290,4 +291,16 @@ func (i *ElasticsearchInstance) setIamUserARN(userARN string) {
 
 func (i *ElasticsearchInstance) getIamUserARN() string {
 	return i.IamUserARN
+}
+
+func (i *ElasticsearchInstance) upgradesAreSuccessful(domainStatus *opensearchTypes.DomainStatus) bool {
+	versionUpdateInProgress := i.versionUpgradeInProgress()
+	versionUpdateSuccess := (!versionUpdateInProgress || (versionUpdateInProgress && aws.ToString(domainStatus.EngineVersion) == i.TargetElasticsearchVersion))
+	managerInstanceTypeSuccess := (i.MasterInstanceType == "" || (i.MasterInstanceType != "" && i.MasterInstanceType == string(domainStatus.ClusterConfig.DedicatedMasterType)))
+	return versionUpdateSuccess && managerInstanceTypeSuccess
+}
+
+func (i *ElasticsearchInstance) updateElasticsearchVersionFromTarget() {
+	i.ElasticsearchVersion = i.TargetElasticsearchVersion
+	i.TargetElasticsearchVersion = ""
 }

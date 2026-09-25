@@ -366,7 +366,6 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 				opensearch: mock,
 				logger:     slog.New(&testutil.MockLogHandler{}),
 			}
-
 			state, err := adapter.checkElasticsearchStatus(test.instance)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
