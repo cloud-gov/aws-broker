@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/cloud-gov/aws-broker/helpers"
@@ -52,7 +54,7 @@ func TestUpdateInstance(t *testing.T) {
 	}{
 		"gp3 upgrade succeeds": {
 			options: ElasticsearchOptions{
-				VolumeType: "gp3",
+				VolumeType: aws.String("gp3"),
 			},
 			existingInstance: &ElasticsearchInstance{
 				VolumeType: "gp2",
@@ -95,6 +97,15 @@ func TestUpdateInstance(t *testing.T) {
 				ElasticsearchVersion: "OpenSearch_1.3",
 			},
 		},
+		"empty volume type is a no-op": {
+			options: ElasticsearchOptions{},
+			existingInstance: &ElasticsearchInstance{
+				VolumeType: "type1",
+			},
+			expectedInstance: &ElasticsearchInstance{
+				VolumeType: "type1",
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -108,6 +119,225 @@ func TestUpdateInstance(t *testing.T) {
 			}
 			if diff := deep.Equal(test.existingInstance, test.expectedInstance); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestUpgradesAreSuccessful(t *testing.T) {
+	testCases := map[string]struct {
+		i            *ElasticsearchInstance
+		domainStatus *opensearchTypes.DomainStatus
+		expectOk     bool
+	}{
+		"no upgrades": {
+			i:        &ElasticsearchInstance{},
+			expectOk: true,
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+		},
+		"version did upgrade": {
+			i: &ElasticsearchInstance{
+				TargetElasticsearchVersion: "version2",
+				MasterEnabled:              false,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EngineVersion: aws.String("version2"),
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+			expectOk: true,
+		},
+		"version did not upgrade": {
+			i: &ElasticsearchInstance{
+				TargetElasticsearchVersion: "version2",
+				MasterEnabled:              false,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EngineVersion: aws.String("version1"),
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+		},
+		"manager instance type did upgrade": {
+			i: &ElasticsearchInstance{
+				MasterEnabled:      true,
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch),
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch,
+					DedicatedMasterEnabled: aws.Bool(true),
+				},
+			},
+			expectOk: true,
+		},
+		"manager instance type did not upgrade": {
+			i: &ElasticsearchInstance{
+				MasterEnabled:      true,
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeT3SmallSearch),
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeT3NanoSearch,
+					DedicatedMasterEnabled: aws.Bool(true),
+				},
+			},
+		},
+		"volume size did update": {
+			i: &ElasticsearchInstance{
+				VolumeSize: 30,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EBSOptions: &opensearchTypes.EBSOptions{
+					VolumeSize: aws.Int32(30),
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+			expectOk: true,
+		},
+		"volume size did not update": {
+			i: &ElasticsearchInstance{
+				VolumeSize: 30,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EBSOptions: &opensearchTypes.EBSOptions{
+					VolumeSize: aws.Int32(20),
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+		},
+		"manager node count did update": {
+			i: &ElasticsearchInstance{
+				MasterCount:   2,
+				MasterEnabled: true,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterCount:   aws.Int32(2),
+					DedicatedMasterEnabled: aws.Bool(true),
+				},
+			},
+			expectOk: true,
+		},
+		"manager node count did not update": {
+			i: &ElasticsearchInstance{
+				MasterCount:   3,
+				MasterEnabled: true,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					DedicatedMasterCount:   aws.Int32(2),
+					DedicatedMasterEnabled: aws.Bool(true),
+				},
+			},
+		},
+		"data node count did update": {
+			i: &ElasticsearchInstance{
+				DataCount: 2,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceCount:          aws.Int32(2),
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+			expectOk: true,
+		},
+		"data node count did not update": {
+			i: &ElasticsearchInstance{
+				DataCount: 3,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceCount:          aws.Int32(2),
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+		},
+		"data instance type did update": {
+			i: &ElasticsearchInstance{
+				InstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch),
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch,
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+			expectOk: true,
+		},
+		"data instance type did not update": {
+			i: &ElasticsearchInstance{
+				InstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch),
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceTypeM5LargeSearch,
+					DedicatedMasterEnabled: aws.Bool(false),
+				},
+			},
+		},
+		"some updates succeeded but others did not": {
+			i: &ElasticsearchInstance{
+				TargetElasticsearchVersion: "version2",
+				InstanceType:               string(opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch),
+				MasterEnabled:              true,
+				MasterInstanceType:         string(opensearchTypes.OpenSearchPartitionInstanceTypeC5LargeSearch),
+				VolumeSize:                 30,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EngineVersion: aws.String("version2"),
+				EBSOptions: &opensearchTypes.EBSOptions{
+					VolumeSize: aws.Int32(20),
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch,
+					DedicatedMasterEnabled: aws.Bool(true),
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeC5LargeSearch,
+				},
+			},
+		},
+		"all updates succeeded": {
+			i: &ElasticsearchInstance{
+				TargetElasticsearchVersion: "version2",
+				InstanceType:               string(opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch),
+				MasterEnabled:              true,
+				MasterInstanceType:         string(opensearchTypes.OpenSearchPartitionInstanceTypeC5LargeSearch),
+				MasterCount:                2,
+				VolumeSize:                 30,
+				DataCount:                  3,
+			},
+			domainStatus: &opensearchTypes.DomainStatus{
+				EngineVersion: aws.String("version2"),
+				EBSOptions: &opensearchTypes.EBSOptions{
+					VolumeSize: aws.Int32(30),
+				},
+				ClusterConfig: &opensearchTypes.ClusterConfig{
+					InstanceType:           opensearchTypes.OpenSearchPartitionInstanceTypeT3LargeSearch,
+					InstanceCount:          aws.Int32(3),
+					DedicatedMasterEnabled: aws.Bool(true),
+					DedicatedMasterCount:   aws.Int32(2),
+					DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeC5LargeSearch,
+				},
+			},
+			expectOk: true,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			ok := test.i.upgradesAreSuccessful(test.domainStatus)
+			if ok != test.expectOk {
+				t.Fatalf("expected: %t, got: %t", test.expectOk, ok)
 			}
 		})
 	}

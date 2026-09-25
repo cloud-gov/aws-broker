@@ -1,6 +1,10 @@
 package elasticsearch
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+)
 
 func TestValidateVolumeType(t *testing.T) {
 	testCases := map[string]struct {
@@ -27,7 +31,7 @@ func TestValidateVolumeType(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := validateVolumeType(test.storageType)
+			err := validateVolumeType(aws.String(test.storageType))
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}

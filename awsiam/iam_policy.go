@@ -263,7 +263,7 @@ func CreatePolicyAttachRole(
 	iamTags []types.Tag,
 ) (policyarn string, err error) {
 	rolePolicyInput := &iam.CreatePolicyInput{
-		PolicyName:     aws.String(policyname), //(i.Domain + "-to-S3-RolePolicy"),
+		PolicyName:     aws.String(policyname),
 		PolicyDocument: aws.String(policy),
 		Tags:           iamTags,
 	}
