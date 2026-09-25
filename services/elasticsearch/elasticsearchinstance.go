@@ -181,7 +181,7 @@ func (i *ElasticsearchInstance) update(
 		i.TargetElasticsearchVersion = options.ElasticsearchVersion
 	}
 
-	if options.VolumeType != i.VolumeType {
+	if options.VolumeType != "" && options.VolumeType != i.VolumeType {
 		i.VolumeType = options.VolumeType
 	}
 

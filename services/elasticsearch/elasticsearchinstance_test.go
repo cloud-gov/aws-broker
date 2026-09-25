@@ -97,6 +97,15 @@ func TestUpdateInstance(t *testing.T) {
 				ElasticsearchVersion: "OpenSearch_1.3",
 			},
 		},
+		"empty volume type is a no-op": {
+			options: ElasticsearchOptions{},
+			existingInstance: &ElasticsearchInstance{
+				VolumeType: "type1",
+			},
+			expectedInstance: &ElasticsearchInstance{
+				VolumeType: "type1",
+			},
+		},
 	}
 
 	for name, test := range testCases {
