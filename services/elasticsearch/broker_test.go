@@ -29,14 +29,14 @@ func TestValidate(t *testing.T) {
 	}{
 		"accepted volume type": {
 			options: ElasticsearchOptions{
-				VolumeType: "gp3",
+				VolumeType: aws.String("gp3"),
 			},
 			settings:    &config.Settings{},
 			expectedErr: false,
 		},
 		"invalid volume type": {
 			options: ElasticsearchOptions{
-				VolumeType: "io1",
+				VolumeType: aws.String("io1"),
 			},
 			settings:    &config.Settings{},
 			expectedErr: true,
@@ -151,7 +151,7 @@ func TestModifyInstance(t *testing.T) {
 		"version with other options rejected": {
 			options: ElasticsearchOptions{
 				ElasticsearchVersion: "OpenSearch_2.3",
-				VolumeType:           "gp3",
+				VolumeType:           aws.String("gp3"),
 			},
 			existingInstance: &ElasticsearchInstance{
 				Instance: base.Instance{

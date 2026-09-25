@@ -257,8 +257,10 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 func domainStatus(processing bool, upgradeProcessing bool, engineVersion string) *opensearch.DescribeDomainOutput {
 	return &opensearch.DescribeDomainOutput{
 		DomainStatus: &opensearchTypes.DomainStatus{
-			ARN:               aws.String("test-arn"),
-			ClusterConfig:     &opensearchTypes.ClusterConfig{},
+			ARN: aws.String("test-arn"),
+			ClusterConfig: &opensearchTypes.ClusterConfig{
+				DedicatedMasterEnabled: aws.Bool(false),
+			},
 			DomainId:          aws.String("test-id"),
 			DomainName:        aws.String(("test-domain")),
 			Created:           aws.Bool(true),
@@ -349,6 +351,9 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			describeDomainResults: []*opensearch.DescribeDomainOutput{{
 				DomainStatus: &opensearchTypes.DomainStatus{
 					Created: aws.Bool(true),
+					ClusterConfig: &opensearchTypes.ClusterConfig{
+						DedicatedMasterEnabled: aws.Bool(false),
+					},
 				},
 			}},
 			expectedState:                    base.InstanceReady,
@@ -359,6 +364,7 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			instance: &ElasticsearchInstance{
 				Instance:           base.Instance{State: base.InstanceInProgress},
 				Domain:             "test-domain",
+				MasterEnabled:      true,
 				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch),
 			},
 			describeDomainResults: []*opensearch.DescribeDomainOutput{
@@ -366,7 +372,8 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 					DomainStatus: &opensearchTypes.DomainStatus{
 						Created: aws.Bool(true),
 						ClusterConfig: &opensearchTypes.ClusterConfig{
-							DedicatedMasterType: opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch,
+							DedicatedMasterEnabled: aws.Bool(true),
+							DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch,
 						},
 					},
 				},
@@ -378,6 +385,7 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			instance: &ElasticsearchInstance{
 				Instance:           base.Instance{State: base.InstanceInProgress},
 				Domain:             "test-domain",
+				MasterEnabled:      true,
 				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch),
 			},
 			describeDomainResults: []*opensearch.DescribeDomainOutput{
@@ -385,7 +393,8 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 					DomainStatus: &opensearchTypes.DomainStatus{
 						Created: aws.Bool(true),
 						ClusterConfig: &opensearchTypes.ClusterConfig{
-							DedicatedMasterType: opensearchTypes.OpenSearchPartitionInstanceTypeC48xlargeSearch,
+							DedicatedMasterEnabled: aws.Bool(true),
+							DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeC48xlargeSearch,
 						},
 					},
 				},

@@ -40,7 +40,7 @@ type ElasticsearchOptions struct {
 	ElasticsearchVersion string                       `json:"elasticsearchVersion"`
 	Bucket               string                       `json:"bucket"`
 	AdvancedOptions      ElasticsearchAdvancedOptions `json:"advanced_options,omitempty"`
-	VolumeType           string                       `json:"volume_type"`
+	VolumeType           *string                      `json:"volume_type"`
 	LogPublishing        ElasticsearchLogOptions      `json:"log_publishing,omitempty"`
 }
 

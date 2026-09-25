@@ -181,8 +181,8 @@ func (i *ElasticsearchInstance) update(
 		i.TargetElasticsearchVersion = options.ElasticsearchVersion
 	}
 
-	if options.VolumeType != "" && options.VolumeType != i.VolumeType {
-		i.VolumeType = options.VolumeType
+	if options.VolumeType != nil && *options.VolumeType != i.VolumeType {
+		i.VolumeType = *options.VolumeType
 	}
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize

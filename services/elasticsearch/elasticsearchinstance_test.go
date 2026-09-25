@@ -54,7 +54,7 @@ func TestUpdateInstance(t *testing.T) {
 	}{
 		"gp3 upgrade succeeds": {
 			options: ElasticsearchOptions{
-				VolumeType: "gp3",
+				VolumeType: aws.String("gp3"),
 			},
 			existingInstance: &ElasticsearchInstance{
 				VolumeType: "gp2",
