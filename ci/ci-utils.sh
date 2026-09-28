@@ -187,5 +187,6 @@ delete_existing_service() {
 }
 
 get_test_id() {
-  date +'%s'
+  TIMESTAMP=$(date +'%s')
+  echo "$TIMESTAMP-$RANDOM"
 }
