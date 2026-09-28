@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	opensearchTypes "github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/cloud-gov/aws-broker/awsiam"
@@ -180,8 +181,8 @@ func (i *ElasticsearchInstance) update(
 		i.TargetElasticsearchVersion = options.ElasticsearchVersion
 	}
 
-	if options.VolumeType != i.VolumeType {
-		i.VolumeType = options.VolumeType
+	if options.VolumeType != nil && *options.VolumeType != i.VolumeType {
+		i.VolumeType = *options.VolumeType
 	}
 
 	i.IndicesFieldDataCacheSize = options.AdvancedOptions.IndicesFieldDataCacheSize
@@ -207,6 +208,7 @@ func (i *ElasticsearchInstance) applyPlan(plan catalog.ElasticsearchPlan) {
 	i.InstanceType = plan.InstanceType
 	i.MasterInstanceType = plan.MasterInstanceType
 	i.MasterEnabled = plan.MasterEnabled
+	i.VolumeType = plan.VolumeType
 	if newVolumeSize, err := strconv.Atoi(plan.VolumeSize); err == nil && newVolumeSize > i.VolumeSize {
 		// Volume size can only grow on an existing domain.
 		i.VolumeSize = newVolumeSize
@@ -290,4 +292,27 @@ func (i *ElasticsearchInstance) setIamUserARN(userARN string) {
 
 func (i *ElasticsearchInstance) getIamUserARN() string {
 	return i.IamUserARN
+}
+
+func (i *ElasticsearchInstance) upgradesAreSuccessful(domainStatus *opensearchTypes.DomainStatus) bool {
+	versionUpdateInProgress := i.versionUpgradeInProgress()
+	versionUpdateSuccess := (!versionUpdateInProgress || (versionUpdateInProgress && aws.ToString(domainStatus.EngineVersion) == i.TargetElasticsearchVersion))
+	managerInstanceTypeSuccess := (i.MasterInstanceType == "" || (i.MasterInstanceType != "" && i.MasterInstanceType == string(domainStatus.ClusterConfig.DedicatedMasterType)))
+	volumeSizeUpdated := (i.VolumeSize == 0 || (i.VolumeSize > 0 && i.VolumeSize == int(*domainStatus.EBSOptions.VolumeSize)))
+	managerEnabled := i.MasterEnabled == *domainStatus.ClusterConfig.DedicatedMasterEnabled
+	managerCountUpdated := (i.MasterCount == 0 || (i.MasterCount > 0 && i.MasterCount == int(*domainStatus.ClusterConfig.DedicatedMasterCount)))
+	instanceTypeUpdated := (i.InstanceType == "" || (i.InstanceType != "" && i.InstanceType == string(domainStatus.ClusterConfig.InstanceType)))
+	dataNodeCountUpdated := (i.DataCount == 0 || (i.DataCount > 0 && i.DataCount == int(*domainStatus.ClusterConfig.InstanceCount)))
+	return versionUpdateSuccess &&
+		managerInstanceTypeSuccess &&
+		volumeSizeUpdated &&
+		managerEnabled &&
+		managerCountUpdated &&
+		instanceTypeUpdated &&
+		dataNodeCountUpdated
+}
+
+func (i *ElasticsearchInstance) updateElasticsearchVersionFromTarget() {
+	i.ElasticsearchVersion = i.TargetElasticsearchVersion
+	i.TargetElasticsearchVersion = ""
 }

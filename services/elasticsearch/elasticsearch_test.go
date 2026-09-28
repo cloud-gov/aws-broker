@@ -257,8 +257,10 @@ func TestPrepareUpdateDomainConfigInput(t *testing.T) {
 func domainStatus(processing bool, upgradeProcessing bool, engineVersion string) *opensearch.DescribeDomainOutput {
 	return &opensearch.DescribeDomainOutput{
 		DomainStatus: &opensearchTypes.DomainStatus{
-			ARN:               aws.String("test-arn"),
-			ClusterConfig:     &opensearchTypes.ClusterConfig{},
+			ARN: aws.String("test-arn"),
+			ClusterConfig: &opensearchTypes.ClusterConfig{
+				DedicatedMasterEnabled: aws.Bool(false),
+			},
 			DomainId:          aws.String("test-id"),
 			DomainName:        aws.String(("test-domain")),
 			Created:           aws.Bool(true),
@@ -349,11 +351,56 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			describeDomainResults: []*opensearch.DescribeDomainOutput{{
 				DomainStatus: &opensearchTypes.DomainStatus{
 					Created: aws.Bool(true),
+					ClusterConfig: &opensearchTypes.ClusterConfig{
+						DedicatedMasterEnabled: aws.Bool(false),
+					},
 				},
 			}},
 			expectedState:                    base.InstanceReady,
 			expectedVersionUpgradeInProgress: false,
 			expectedESVersion:                "OpenSearch_1.3",
+		},
+		"upgrade done and manager instance type matches target": {
+			instance: &ElasticsearchInstance{
+				Instance:           base.Instance{State: base.InstanceInProgress},
+				Domain:             "test-domain",
+				MasterEnabled:      true,
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch),
+			},
+			describeDomainResults: []*opensearch.DescribeDomainOutput{
+				{
+					DomainStatus: &opensearchTypes.DomainStatus{
+						Created: aws.Bool(true),
+						ClusterConfig: &opensearchTypes.ClusterConfig{
+							DedicatedMasterEnabled: aws.Bool(true),
+							DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch,
+						},
+					},
+				},
+			},
+			expectedState:                    base.InstanceReady,
+			expectedVersionUpgradeInProgress: false,
+		},
+		"upgrade done and manager instance type does not match target": {
+			instance: &ElasticsearchInstance{
+				Instance:           base.Instance{State: base.InstanceInProgress},
+				Domain:             "test-domain",
+				MasterEnabled:      true,
+				MasterInstanceType: string(opensearchTypes.OpenSearchPartitionInstanceTypeC42xlargeSearch),
+			},
+			describeDomainResults: []*opensearch.DescribeDomainOutput{
+				{
+					DomainStatus: &opensearchTypes.DomainStatus{
+						Created: aws.Bool(true),
+						ClusterConfig: &opensearchTypes.ClusterConfig{
+							DedicatedMasterEnabled: aws.Bool(true),
+							DedicatedMasterType:    opensearchTypes.OpenSearchPartitionInstanceTypeC48xlargeSearch,
+						},
+					},
+				},
+			},
+			expectedState:                    base.InstanceNotModified,
+			expectedVersionUpgradeInProgress: false,
 		},
 	}
 	for name, test := range testCases {
@@ -366,7 +413,6 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 				opensearch: mock,
 				logger:     slog.New(&testutil.MockLogHandler{}),
 			}
-
 			state, err := adapter.checkElasticsearchStatus(test.instance)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)

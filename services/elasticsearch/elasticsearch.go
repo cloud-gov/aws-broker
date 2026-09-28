@@ -270,31 +270,20 @@ func (d *dedicatedElasticsearchAdapter) checkElasticsearchStatus(i *Elasticsearc
 
 		d.logger.Debug(fmt.Sprintf("domain status: %+v\n", resp.DomainStatus))
 
+		if aws.ToBool(resp.DomainStatus.UpgradeProcessing) || aws.ToBool(resp.DomainStatus.Processing) {
+			return base.InstanceInProgress, nil
+		}
+
 		if resp.DomainStatus.Created != nil && *(resp.DomainStatus.Created) {
-			if i.versionUpgradeInProgress() {
-				if aws.ToBool(resp.DomainStatus.UpgradeProcessing) {
-					return base.InstanceInProgress, nil
+			if i.upgradesAreSuccessful(resp.DomainStatus) {
+				if i.versionUpgradeInProgress() {
+					i.updateElasticsearchVersionFromTarget()
 				}
-				if aws.ToString(resp.DomainStatus.EngineVersion) == i.TargetElasticsearchVersion {
-					i.ElasticsearchVersion = i.TargetElasticsearchVersion
-					i.TargetElasticsearchVersion = ""
-					return base.InstanceReady, nil
-				}
-				d.logger.Error(
-					"checkElasticsearchStatus: version upgrade did not complete",
-					"domain", i.Domain,
-					"engineVersion", aws.ToString(resp.DomainStatus.EngineVersion),
-					"targetVersion", i.TargetElasticsearchVersion,
-				)
-				i.TargetElasticsearchVersion = ""
-				return base.InstanceNotModified, nil
+				return base.InstanceReady, nil
 			}
 
-			if aws.ToBool(resp.DomainStatus.Processing) {
-				return base.InstanceInProgress, nil
-			}
-
-			return base.InstanceReady, nil
+			i.TargetElasticsearchVersion = ""
+			return base.InstanceNotModified, nil
 		} else {
 			// Instance not up yet.
 			return base.InstanceNotCreated, errors.New("instance not available yet. Please wait and try again")
