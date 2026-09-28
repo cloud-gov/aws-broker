@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-24 (accepted 2026-09-23)
 - **Related:** [ADR-0001](ADR-0001-oracle-19c-stig-hardened-in-aws-broker.md) (STIG-hardened Oracle 19c in aws-broker; the broker provisions, the overlay validates), [#557](https://github.com/cloud-gov/aws-broker/issues/557) (the design decision this ADR resolves), [#558](https://github.com/cloud-gov/aws-broker/issues/558) (live GovCloud RDS proof), [#541](https://github.com/cloud-gov/aws-broker/issues/541) (TCPS 2484 / deny 1521)
-- **Deciders:** Peter Burkholder, William Zujkowski, Mark Boyd, Sean
+- **Deciders:** Peter Burkholder, William Zujkowski, Mark Boyd (via Slack and in-person conversations).
 
 ## Context
 
