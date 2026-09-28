@@ -161,6 +161,99 @@ The broker application calls the AWS API with the AWS Access Key and Secret Key,
 
 When the provisioning is complete, the broker takes the following actions:
 
+### Updating an Elasticsearch instance's plan
+
+Elasticsearch/OpenSearch instances can be moved to a different plan in place with
+`cf update-service SERVICE_NAME -p NEW_PLAN`. The broker only allows plan changes
+that are an in-place upgrade; it validates the request before calling AWS and
+returns an HTTP 400 with an explanatory message when the change is not allowed.
+
+The rules are:
+
+- **The data-node count may grow but never shrink.** Highly-available (`-ha`) plans
+  run 4 data nodes and their non-HA counterparts run 2, so a non-HA plan may move to
+  an `-ha` plan. The reverse is rejected: removing data nodes would discard the
+  shards they hold.
+- **Single-data-node plans stay single-data-node.** A plan with one data node
+  (`es-dev`, `es-dev-6.8-migration`) is provisioned on a single subnet with zone
+  awareness off, so it may only move to another single-data-node plan. Moving it to
+  any multi-node plan is rejected: adding data nodes there would enable zone
+  awareness on a domain that still has only one subnet, which AWS rejects with
+  `You must specify exactly two subnets because you've set zone count to two.`
+- **Same size or larger only.** The target plan must be the same size or larger
+  than the current plan. Size is determined by the plan's `instanceSizeRank` in the
+  catalog plus its data-node count. Downgrading to a smaller plan is rejected, and a
+  plan with no `instanceSizeRank` cannot be compared at all, so every plan change
+  into or out of it is refused. Because the data-node count feeds the rank, moving
+  from an `-ha` plan to a *larger-tier* non-HA plan is rejected by the data-node rule
+  rather than this one.
+- **One change at a time.** A plan change cannot be combined with an engine
+  version upgrade in the same `update-service` call; make them as separate calls.
+
+Each plan carries its own `instanceSizeRank` in `catalog-template.yml`, so adding or
+re-tiering a plan is a catalog change and needs no code change. Plans are ranked by
+*plan tier*, not by any single hardware dimension, so the `r7g` Graviton `search-*`
+types share a rank with the `c5`/`m5` types used by the equivalently named `es-*`
+plans (`c5.large` and `r7g.medium` are both the "medium" tier, and so on). `r7g`
+trades vCPUs for substantially more memory, so neither family is strictly larger than
+the other; giving them equal ranks makes switching families at the same tier a
+permitted lateral move in both directions, while moves to a larger or smaller tier are
+still ordered correctly. Ranks are spaced by 10 so a new tier can be slotted between
+two existing ones.
+
+**A same-tier lateral move can change capacity substantially.** `r7g` carries 8 GiB
+per vCPU against `c5`'s 2, so the tier-named `r7g` data node has *half* the cores and
+double the RAM and JVM heap of the `c5` plan at the same rank — `es-medium` ->
+`search-medium` moves a data node from `c5.large` (2 vCPU / 4 GiB) to `r7g.medium`
+(1 vCPU / 8 GiB). The rank ordering permits this in both directions because tier, not
+core count, defines the rank. Whether it is the right move depends on whether the
+workload is heap-bound or CPU-bound; see
+[`docs/es-plan-graviton-cost-comparison.md`](docs/es-plan-graviton-cost-comparison.md).
+
+The resulting order for the 2-data-node plans, smallest to largest (the 4-data-node
+`-ha` plans follow the same order among themselves):
+
+```text
+es-dev                                (rank 10)
+es-medium      / search-medium        (rank 20)
+es-large       / search-large         (rank 30)
+es-xlarge      / search-xlarge        (rank 40)
+es-2xlarge-gp  / search-2xlarge-gp    (rank 50)
+es-4xlarge-gp                         (rank 60)
+es-12xlarge-gp                        (rank 70)
+```
+
+Examples:
+
+| From | To | Allowed? | Why |
+|------|----|----------|-----|
+| `search-medium` | `search-large` | Yes | larger tier, both 2 data nodes |
+| `search-medium-ha` | `search-large-ha` | Yes | larger tier, both 4 data nodes |
+| `es-medium` | `search-medium` | Yes | same tier, lateral family switch (halves data-node vCPU, doubles heap) |
+| `search-medium` | `es-medium` | Yes | same tier, lateral family switch |
+| `es-medium` | `search-large` | Yes | cross-family upgrade to a larger tier |
+| `search-large` | `search-medium` | No | downgrade |
+| `es-large` | `search-medium` | No | downgrade (larger tier -> smaller tier) |
+| `search-large` | `es-medium` | No | downgrade (larger tier -> smaller tier) |
+| `search-medium` | `search-medium-ha` | Yes | same tier, 2 -> 4 data nodes |
+| `search-medium` | `search-large-ha` | Yes | larger tier, 2 -> 4 data nodes |
+| `search-large-ha` | `search-large` | No | 4 -> 2 data nodes |
+| `search-medium-ha` | `search-large` | No | 4 -> 2 data nodes, even though the tier is larger |
+| `es-dev` | `search-medium` | No | 1 data node on one subnet -> multi-node |
+
+Note that a lateral family switch still triggers an AWS blue/green deployment: the
+instance type genuinely changes, so it is not a no-op. Moving from a non-HA plan to
+its `-ha` counterpart adds two data nodes to the existing domain and likewise
+triggers a blue/green deployment.
+
+To reduce the data-node count (`-ha` back to non-HA), to move from a single-node plan
+to a multi-node plan, or to move to a smaller plan, create a new instance on the
+desired plan and migrate data rather than updating in place.
+
+When a plan upgrade is accepted, the broker applies the new plan's instance type,
+data-node count, dedicated-master configuration, and (if larger) volume size, and
+issues an asynchronous AWS `UpdateDomainConfig` to resize the domain.
+
 - For RDS and Redis, it creates a username/password in the AWS service, and stores the credentials in the broker database
 - For AWS Elasticsearch, it creates an IAM user with privileges to the new instance, then stores the credentials in the broker database
 

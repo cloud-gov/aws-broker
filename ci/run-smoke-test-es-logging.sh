@@ -2,6 +2,7 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 # Environment variables usered for reference
@@ -15,8 +16,9 @@ set -euxo pipefail
 # $REGION -- which region service is running in (for ES)
 
 # Computed vars
-TEST_APP="smoke-test-logging-$SERVICE_PLAN-app"
-TEST_SERVICE="smoke-test-logging-$SERVICE_PLAN-service"
+TEST_ID=$(get_test_id)
+TEST_APP="smoke-test-logging-$SERVICE_PLAN-$TEST_ID-app"
+TEST_SERVICE="smoke-test-logging-$SERVICE_PLAN-$TEST_ID-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/$SERVICE_NAME/"
 
 # Log into CF
@@ -31,7 +33,7 @@ pushd "$TASK_DIRECTORY"
 cf push "$TEST_APP" -f manifest.yml
 
 cf create-service "$SERVICE_NAME" "$SERVICE_PLAN" "$TEST_SERVICE" -b "$BROKER_NAME" \
-    -c '{"log_publishing": {"audit_logs": true, "error_logs": true}}'
+  -c '{"log_publishing": {"audit_logs": true, "error_logs": true}}'
 
 # Wait for service to be created
 wait_for_service_instance_success "$TEST_SERVICE"
@@ -40,7 +42,7 @@ wait_for_service_instance_success "$TEST_SERVICE"
 wait_for_service_bindable "$TEST_APP" "$TEST_SERVICE"
 
 # Start app
-cf restage "$TEST_APP" 
+cf restage "$TEST_APP"
 
 # Run task and verify starting version
 cf run-task "$TEST_APP" --command "python run.py -s $TEST_SERVICE -r $REGION"

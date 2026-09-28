@@ -2,6 +2,7 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 # Environment variables usered for reference
@@ -15,8 +16,9 @@ set -euxo pipefail
 # $REGION -- which region service is running in (for ES)
 
 # Computed vars
-TEST_APP="smoke-test-adv-$SERVICE_PLAN-app"
-TEST_SERVICE="smoke-test-adv-$SERVICE_PLAN-service"
+TEST_ID=$(get_test_id)
+TEST_APP="smoke-test-adv-$SERVICE_PLAN-$TEST_ID-app"
+TEST_SERVICE="smoke-test-adv-$SERVICE_PLAN-$TEST_ID-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/$SERVICE_NAME/"
 
 # Log into CF

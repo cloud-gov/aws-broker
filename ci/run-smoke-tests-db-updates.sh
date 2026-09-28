@@ -8,7 +8,7 @@ set -euxo pipefail
 # Log in to CF
 login
 
-TEST_ID="$RANDOM"
+TEST_ID=$(get_test_id)
 APP_NAME="smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
 SERVICE_NAME="rds-smoke-tests-db-update-$SERVICE_PLAN-$TEST_ID"
 OLD_VERSION=${OLD_VERSION:-""}

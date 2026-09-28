@@ -2,6 +2,7 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 # Environment variables usered for reference
@@ -17,8 +18,9 @@ set -euxo pipefail
 # $ES_TARGET_VERSION
 
 # Computed vars
-TEST_APP="smoke-test-esver-$SERVICE_PLAN-app"
-TEST_SERVICE="smoke-test-esver-$SERVICE_PLAN-service"
+TEST_ID=$(get_test_id)
+TEST_APP="smoke-test-esver-$SERVICE_PLAN-$TEST_ID-app"
+TEST_SERVICE="smoke-test-esver-$SERVICE_PLAN-$TEST_ID-service"
 TASK_DIRECTORY="aws-broker-app/ci/smoke-tests/$SERVICE_NAME/"
 
 # Log into CF
@@ -42,7 +44,7 @@ wait_for_service_instance_success "$TEST_SERVICE"
 wait_for_service_bindable "$TEST_APP" "$TEST_SERVICE"
 
 # Start app
-cf restage "$TEST_APP" 
+cf restage "$TEST_APP"
 
 # Run task and verify starting version
 cf run-task "$TEST_APP" --command "python run.py -s $TEST_SERVICE -r $REGION --expected-version $ES_START_VERSION"

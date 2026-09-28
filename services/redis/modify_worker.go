@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -126,8 +127,14 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	return nil
 }
 
+// verifyIncreasedReplicaCount polls until the replication group reports the
+// requested number of replica nodes. Exhausting every attempt without seeing them
+// is a failure, not a success: the caller marks the instance ready on a nil error,
+// so returning nil here would tell the tenant the resize completed when it did not.
 func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *RedisInstance) error {
 	var nodesReady bool
+	observedReplicas := 0
+	observedStatus := "unknown"
 
 	attempts := 1
 	maxAttempts := 1 + int(w.settings.PollAwsMaxRetries)
@@ -142,17 +149,23 @@ func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *Redis
 			return err
 		}
 
-		nodeGroup := output.ReplicationGroups[0].NodeGroups[0]
-		status := *nodeGroup.Status
+		nodeGroup, err := singleNodeGroup(output)
+		if err != nil {
+			return err
+		}
+		status := aws.ToString(nodeGroup.Status)
 
 		var replicaNodes []elasticacheTypes.NodeGroupMember
 		for _, nodeMember := range nodeGroup.NodeGroupMembers {
-			if *nodeMember.CurrentRole == "replica" {
+			if aws.ToString(nodeMember.CurrentRole) == "replica" {
 				replicaNodes = append(replicaNodes, nodeMember)
 			}
 		}
 
-		nodesReady = (status == "available" && len(replicaNodes) == i.NewReplicaCount)
+		observedStatus = status
+		observedReplicas = len(replicaNodes)
+
+		nodesReady = (status == "available" && observedReplicas == i.NewReplicaCount)
 		if nodesReady {
 			break
 		}
@@ -162,7 +175,28 @@ func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *Redis
 		continue
 	}
 
+	if !nodesReady {
+		return fmt.Errorf(
+			"replication group %s did not report %d replica nodes after %d attempts; last seen status %q with %d replica nodes",
+			i.ClusterID, i.NewReplicaCount, maxAttempts, observedStatus, observedReplicas,
+		)
+	}
+
 	return nil
+}
+
+// singleNodeGroup returns the sole node group the broker provisions, converting a
+// short or empty response into an error. Indexing it directly would panic inside
+// the worker instead of failing the job with a diagnosable message.
+func singleNodeGroup(output *elasticache.DescribeReplicationGroupsOutput) (elasticacheTypes.NodeGroup, error) {
+	if output == nil || len(output.ReplicationGroups) == 0 {
+		return elasticacheTypes.NodeGroup{}, errors.New("DescribeReplicationGroups returned no replication groups")
+	}
+	nodeGroups := output.ReplicationGroups[0].NodeGroups
+	if len(nodeGroups) == 0 {
+		return elasticacheTypes.NodeGroup{}, errors.New("DescribeReplicationGroups returned a replication group with no node groups")
+	}
+	return nodeGroups[0], nil
 }
 
 func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyReplicationGroupInput, error) {
