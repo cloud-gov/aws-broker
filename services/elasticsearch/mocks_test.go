@@ -29,6 +29,8 @@ type mockOpensearchClient struct {
 	createDomainErr    error
 	createDomainOutput *opensearch.CreateDomainOutput
 
+	deleteDomainErr error
+
 	describeDomainCallNum int
 	describeDomainErrs    []error
 	describeDomainResults []*opensearch.DescribeDomainOutput
@@ -47,7 +49,7 @@ func (o *mockOpensearchClient) CreateDomain(ctx context.Context, params *opensea
 }
 
 func (o *mockOpensearchClient) DeleteDomain(ctx context.Context, params *opensearch.DeleteDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DeleteDomainOutput, error) {
-	return nil, nil
+	return nil, o.deleteDomainErr
 }
 
 func (o *mockOpensearchClient) DescribeDomain(ctx context.Context, params *opensearch.DescribeDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeDomainOutput, error) {

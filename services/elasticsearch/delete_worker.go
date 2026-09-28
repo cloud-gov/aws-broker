@@ -69,13 +69,23 @@ func NewDeleteWorker(
 func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) error {
 	i := job.Args.Instance
 	operation := base.DeleteOp
-	err := w.asyncDeleteElasticSearchDomain(ctx, i, operation)
-	if err != nil {
-		w.logger.Error("error during domain deletion", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
-		return river.JobCancel(err)
+	errChan := make(chan error, 1)
+
+	go func(ctx context.Context, i *ElasticsearchInstance, operation base.Operation) {
+		errChan <- w.asyncDeleteElasticSearchDomain(ctx, i, operation)
+	}(ctx, i, operation)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			w.logger.Error("error during domain creation", "err", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
+			return river.JobCancel(err)
+		}
+		return nil
 	}
-	return nil
 }
 
 func (w *DeleteWorker) asyncDeleteElasticSearchDomain(ctx context.Context, i *ElasticsearchInstance, operation base.Operation) error {
