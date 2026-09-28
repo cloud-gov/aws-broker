@@ -7,7 +7,7 @@ set -euxo pipefail
 
 UPGRADE_TIMEOUT_SECONDS=${UPGRADE_TIMEOUT_SECONDS:-5400}
 INVALID_VERSION=${INVALID_VERSION:-Elasticsearch_6.8}
-VALID_VERSION=${VALID_VERSION:-OpenSearch_2.11}
+VALID_VERSION=${VALID_VERSION:-OpenSearch_3.7}
 # Expected data-node counts for the plans under test. In the catalog every
 # multi-node non-HA plan runs 2 data nodes and every -ha plan runs 4.
 NEW_SERVICE_PLAN_DATA_NODES=${NEW_SERVICE_PLAN_DATA_NODES:-2}
