@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -19,6 +20,15 @@ import (
 
 const (
 	ModifyKind = "rds-modify"
+)
+
+var (
+	ErrDeletingDBOptionGroup    = errors.New("deleting database option group")
+	ErrDeletingDBParameterGroup = errors.New("deleting database parameter group")
+	ErrDeletingDBReplica        = errors.New("deleting database replica")
+	ErrModifyingDBReplica       = errors.New("modifying database replica")
+	ErrModifyingDB              = errors.New("modifying database")
+	ErrSavingInstance           = errors.New("saving updated instance")
 )
 
 type ModifyArgs struct {
@@ -60,7 +70,26 @@ func NewModifyWorker(
 }
 
 func (w *ModifyWorker) Work(ctx context.Context, job *river.Job[ModifyArgs]) error {
-	return w.asyncModifyDb(ctx, job.Args.Instance, job.Args.Plan)
+	operation := base.ModifyOp
+	i := job.Args.Instance
+	plan := job.Args.Plan
+	errChan := make(chan error, 1)
+
+	go func(ctx context.Context, i *RDSInstance, operation base.Operation, plan *catalog.RDSPlan) {
+		errChan <- w.asyncModifyDb(ctx, operation, i, plan)
+	}(ctx, i, operation, plan)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			w.logger.Error("error modifying database", "err", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, err.Error())
+			return river.JobCancel(err)
+		}
+		return nil
+	}
 }
 
 func (w *ModifyWorker) prepareModifyDbInstanceInput(
@@ -180,8 +209,7 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 	return nil
 }
 
-func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
-	operation := base.ModifyOp
+func (w *ModifyWorker) asyncModifyDb(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan) error {
 	serviceID := i.ServiceID
 	uuid := i.Uuid
 
@@ -193,17 +221,13 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 		// Add new read replica
 		err := waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error creating database replica: %s", err))
-			w.logger.Error("asyncModifyDb: waitAndCreateDBReadReplica error", "err", err)
-			return river.JobCancel(fmt.Errorf("asyncModifyDb: error creating database replica %w ", err))
+			return common.FmtErr(ErrCreatingDBReplica, err)
 		}
 	} else if !i.DeleteReadReplica && !i.AddReadReplica && i.ReplicaDatabase != "" {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database replica")
 		err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.ReplicaDatabase, true)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database replica: %s", err))
-			w.logger.Error("asyncModifyDb: asyncModifyDbInstance read replica error", "err", err)
-			return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database replica %w ", err))
+			return common.FmtErr(ErrModifyingDBReplica, err)
 		}
 	}
 
@@ -211,26 +235,21 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 		err := deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting database replica: %s", err))
-			w.logger.Error("asyncModifyDb: deleteDatabaseReadReplica error", "err", err)
-			return river.JobCancel(fmt.Errorf("asyncModifyDb: error deleting database replica %w ", err))
+			return common.FmtErr(ErrDeletingDBReplica, err)
 		}
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Modifying database instance")
 	err := w.asyncModifyDbInstance(ctx, operation, i, plan, i.Database, false)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
-		w.logger.Error("asyncModifyDb: asyncModifyDbInstance error", "err", err)
-		return river.JobCancel(fmt.Errorf("asyncModifyDb: error modifying database instance %w ", err))
+		return common.FmtErr(ErrModifyingDB, err)
 	}
 
 	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old parameter group")
 		err = w.parameterGroupClient.DeleteParameterGroup(existingParameterGroupName)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error deleting parameter group: %s", err))
-			return fmt.Errorf("asyncModifyDbInstance, error deleting parameter group: %w", err)
+			return common.FmtErr(ErrDeletingDBParameterGroup, err)
 		}
 	}
 
@@ -239,16 +258,13 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, i *RDSInstance, plan *
 		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
 		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup")
-			w.logger.Warn("asyncModifyDbInstance: deletion of old option group failed; leaving for later cleanup", "optionGroup", existingOptionGroupName, "err", err)
+			return common.FmtErr(ErrDeletingDBOptionGroup, err)
 		}
 	}
 
 	err = w.db.Save(i).Error
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error saving record: %s", err))
-		w.logger.Error("asyncModifyDb: error saving record", "err", err)
-		return river.JobCancel(fmt.Errorf("asyncModifyDb: error saving database record %w ", err))
+		return common.FmtErr(ErrSavingInstance, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, serviceID, uuid, operation, base.InstanceReady, "Finished modifying database resources")
