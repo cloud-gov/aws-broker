@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"runtime"
 	"time"
 
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -127,7 +126,7 @@ func NewClient(ctx context.Context, db *gorm.DB, dbConfig *db.DBConfig, logger *
 		JobTimeout: 4 * time.Hour,
 		Logger:     logger,
 		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {MaxWorkers: runtime.GOMAXPROCS(0)}, // Run as many workers as we have CPU cores available.
+			river.QueueDefault: {MaxWorkers: 100},
 		},
 		Workers: workers,
 	}

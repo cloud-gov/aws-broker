@@ -66,7 +66,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 				&mockOptionGroupClient{},
 				&mockCredentialUtils{},
 			),
-			expectedState: base.InstanceReady,
+			expectedState: base.InstanceGone,
 		},
 	}
 
@@ -80,6 +80,15 @@ func TestDeleteWorkerWork(t *testing.T) {
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")
+			}
+
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if asyncJobMsg.JobState.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 		})
 	}
@@ -98,7 +107,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 		ctx                 context.Context
 		dbInstance          *RDSInstance
 		worker              *DeleteWorker
-		expectedState       base.InstanceState
 		expectedRecordCount int64
 		expectErr           bool
 	}{
@@ -127,7 +135,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceGone,
 		},
 		"success with replica": {
 			ctx: t.Context(),
@@ -155,7 +162,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceGone,
 		},
 		"error checking database status": {
 			ctx:       t.Context(),
@@ -183,7 +189,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"error checking replica database status": {
@@ -213,7 +218,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"error deleting database": {
@@ -242,7 +246,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"error deleting replica database": {
@@ -272,7 +275,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 		"database already deleted": {
@@ -300,7 +302,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceGone,
 		},
 		"replica and database already deleted": {
 			ctx: t.Context(),
@@ -328,7 +329,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				ReplicaDatabase: helpers.RandStr(10),
 			},
-			expectedState: base.InstanceGone,
 		},
 		"error deleting parameter group": {
 			ctx:       t.Context(),
@@ -358,7 +358,6 @@ func TestAsyncDeleteDB(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			expectedState:       base.InstanceNotGone,
 			expectedRecordCount: 1,
 		},
 	}
@@ -376,21 +375,12 @@ func TestAsyncDeleteDB(t *testing.T) {
 				t.Fatal("The instance should be in the DB")
 			}
 
-			err = test.worker.asyncDeleteDB(test.ctx, test.dbInstance)
+			err = test.worker.asyncDeleteDB(test.ctx, test.dbInstance, base.DeleteOp)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error but received none")
-			}
-
-			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.DeleteOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if asyncJobMsg.JobState.State != test.expectedState {
-				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 
 			brokerDB.Where("uuid = ?", test.dbInstance.Uuid).First(test.dbInstance).Count(&count)

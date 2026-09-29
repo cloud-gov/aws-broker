@@ -273,6 +273,15 @@ func TestCreateWorkerWork(t *testing.T) {
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")
 			}
+
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
 		})
 	}
 }
@@ -463,13 +472,12 @@ func TestAsyncCreateDb(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		ctx           context.Context
-		worker        *CreateWorker
-		dbInstance    *RDSInstance
-		expectedState base.InstanceState
-		password      string
-		plan          *catalog.RDSPlan
-		expectErr     bool
+		ctx        context.Context
+		worker     *CreateWorker
+		dbInstance *RDSInstance
+		password   string
+		plan       *catalog.RDSPlan
+		expectErr  bool
 	}{
 		"error provisioning custom parameter group": {
 			ctx: t.Context(),
@@ -502,10 +510,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			password:  helpers.RandStr(10),
+			expectErr: true,
 		},
 		"create DB error": {
 			ctx: t.Context(),
@@ -536,10 +543,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			password:  helpers.RandStr(10),
+			expectErr: true,
 		},
 		"error waiting for database creation": {
 			ctx: t.Context(),
@@ -570,10 +576,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			password:  helpers.RandStr(10),
+			expectErr: true,
 		},
 		"success without replica": {
 			ctx: t.Context(),
@@ -622,8 +627,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceReady,
+			plan: &catalog.RDSPlan{},
 		},
 		"success with replica": {
 			ctx: t.Context(),
@@ -682,7 +686,6 @@ func TestAsyncCreateDb(t *testing.T) {
 				AddReadReplica:  true,
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			expectedState: base.InstanceReady,
 		},
 		"error creating replica": {
 			ctx: t.Context(),
@@ -735,8 +738,7 @@ func TestAsyncCreateDb(t *testing.T) {
 				AddReadReplica:  true,
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			expectErr: true,
 		},
 		"error getting password": {
 			ctx: t.Context(),
@@ -765,10 +767,9 @@ func TestAsyncCreateDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			}),
-			plan:          &catalog.RDSPlan{},
-			password:      helpers.RandStr(10),
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			password:  helpers.RandStr(10),
+			expectErr: true,
 		},
 	}
 
@@ -781,15 +782,6 @@ func TestAsyncCreateDb(t *testing.T) {
 
 			if test.expectErr && err == nil {
 				t.Fatal("expected error")
-			}
-
-			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if test.expectedState != asyncJobMsg.JobState.State {
-				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 		})
 	}

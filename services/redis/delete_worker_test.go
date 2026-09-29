@@ -13,10 +13,126 @@ import (
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/testutil"
+	"github.com/riverqueue/river"
 )
+
+func TestDeleteWorkerWork(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx           context.Context
+		instance      *RedisInstance
+		expectedState base.InstanceState
+		password      string
+		expectErr     bool
+		worker        *DeleteWorker
+	}{
+		"success": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRedisClient{
+					describeReplicationGroupsErrs: []error{&elasticacheTypes.ReplicationGroupNotFoundFault{
+						Message: aws.String("not found"),
+					}},
+					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
+						{
+							Snapshots: []elasticacheTypes.Snapshot{
+								{
+									SnapshotStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							Snapshots: []elasticacheTypes.Snapshot{
+								{
+									SnapshotStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectedState: base.InstanceGone,
+		},
+		"failure": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRedisClient{
+					deleteReplicationGroupErr: errors.New("failure"),
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectErr:     true,
+			expectedState: base.InstanceNotGone,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err = test.worker.Work(test.ctx, &river.Job[DeleteArgs]{Args: DeleteArgs{
+				Instance: test.instance,
+			}})
+			if err != nil && !test.expectErr {
+				t.Fatal(err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+		})
+	}
+}
 
 func TestAsyncDeleteRedis(t *testing.T) {
 	brokerDB, err := testDBInit()
@@ -391,21 +507,12 @@ func TestAsyncDeleteRedis(t *testing.T) {
 				t.Fatal("The instance should be in the DB")
 			}
 
-			err = test.worker.asyncDeleteRedis(test.ctx, test.instance)
+			err = test.worker.asyncDeleteRedis(test.ctx, test.instance, base.DeleteOp)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error but received none")
-			}
-
-			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.DeleteOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if asyncJobMsg.JobState.State != test.expectedState {
-				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 
 			brokerDB.Where("uuid = ?", test.instance.Uuid).First(test.instance).Count(&count)

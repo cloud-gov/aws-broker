@@ -228,6 +228,87 @@ func TestDeleteWorkerWork(t *testing.T) {
 			),
 			expectedState: base.InstanceReady,
 		},
+		"error deleting domain": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			instance: &ElasticsearchInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+					Host: testApiUrl.Hostname(),
+					Port: testApiPort,
+				},
+				AccessKey:            "fake-key",
+				SecretKey:            "fake-secret",
+				Protocol:             testApiUrl.Scheme,
+				ARN:                  "fake-arn",
+				ElasticsearchVersion: "opensearch",
+			},
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+					Region:            "fake-region",
+					SnapshotsRepoName: snapshotRepo,
+				},
+				&mockOpensearchClient{
+					describeDomainResults: []*opensearch.DescribeDomainOutput{
+						{
+							DomainStatus: &types.DomainStatus{
+								Created: aws.Bool(true),
+								Endpoints: map[string]string{
+									"vpc": testApiUrl.Hostname(),
+								},
+								ARN:           aws.String("fake-arn"),
+								EngineVersion: aws.String("version"),
+							},
+						},
+					},
+					deleteDomainErr: errors.New("error deleting domain"),
+				},
+				&mockIamClient{
+					createRoleOutput: []*iam.CreateRoleOutput{
+						{
+							Role: &iamTypes.Role{
+								Arn: aws.String("role1"),
+							},
+						},
+						{
+							Role: &iamTypes.Role{
+								Arn: aws.String("role2"),
+							},
+						},
+					},
+					createPolicyOutput: []*iam.CreatePolicyOutput{
+						{
+							Policy: &iamTypes.Policy{
+								Arn: aws.String("policy-1"),
+							},
+						},
+						{
+							Policy: &iamTypes.Policy{
+								Arn: aws.String("policy-1"),
+							},
+						},
+					},
+					listPolicyVersionsOutput: &iam.ListPolicyVersionsOutput{
+						Versions: []iamTypes.PolicyVersion{},
+					},
+				},
+				&mockS3Client{},
+				&mockCloudwatchLogsClient{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectedState: base.InstanceNotGone,
+			expectErr:     true,
+		},
 	}
 
 	for name, test := range testCases {

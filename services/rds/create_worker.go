@@ -23,6 +23,14 @@ const (
 	CreateKind = "rds-create"
 )
 
+var (
+	ErrGettingPassword          = errors.New("getting password")
+	ErrPreparingDBCreationInput = errors.New("preparing creation input")
+	ErrCreatingDatabase         = errors.New("creating database")
+	ErrWaitingForDBIsReady      = errors.New("waiting for database to be ready")
+	ErrCreatingDBReplica        = errors.New("creating database replica")
+)
+
 type CreateArgs struct {
 	Instance *RDSInstance     `json:"instance"`
 	Plan     *catalog.RDSPlan `json:"plan"`
@@ -62,8 +70,26 @@ func NewCreateWorker(
 }
 
 func (w *CreateWorker) Work(ctx context.Context, job *river.Job[CreateArgs]) error {
-	err := w.asyncCreateDB(ctx, job.Args.Instance, job.Args.Plan)
-	return err
+	operation := base.CreateOp
+	i := job.Args.Instance
+	plan := job.Args.Plan
+	errChan := make(chan error, 1)
+
+	go func(ctx context.Context, i *RDSInstance, operation base.Operation, plan *catalog.RDSPlan) {
+		errChan <- w.asyncCreateDB(ctx, i, plan)
+	}(ctx, i, operation, plan)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			w.logger.Error("error during database creation", "err", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, err.Error())
+			return river.JobCancel(err)
+		}
+		return nil
+	}
 }
 
 func (w *CreateWorker) prepareCreateDbInput(
@@ -225,37 +251,32 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 
 	password, err := w.credentialUtils.decryptCredential(i.Salt, i.Password, w.settings.EncryptionKey)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error getting password: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: error getting password %w ", err))
+		return common.FmtErr(ErrGettingPassword, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Preparing database creation input")
 	createDbInputParams, err := w.prepareCreateDbInput(i, plan, password)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error generating database creation params: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: prepareCreateDbInput error: %w ", err))
+		return common.FmtErr(ErrPreparingDBCreationInput, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database instance")
 	_, err = w.rds.CreateDBInstance(ctx, createDbInputParams)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: CreateDBInstance error: %w ", err))
+		return common.FmtErr(ErrCreatingDatabase, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for database to be ready")
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, i.Database)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncCreateDB: waitForDbReady error: %w ", err))
+		return common.FmtErr(ErrWaitingForDBIsReady, err)
 	}
 
 	if i.AddReadReplica {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database replica")
 		err := w.waitAndCreateDBReadReplica(ctx, operation, i, plan)
 		if err != nil {
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error creating database replica: %s", err))
-			return river.JobCancel(fmt.Errorf("asyncCreateDB: waitAndCreateDBReadReplica error: %w ", err))
+			return common.FmtErr(ErrCreatingDBReplica, err)
 		}
 	}
 

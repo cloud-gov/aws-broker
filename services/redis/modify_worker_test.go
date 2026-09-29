@@ -31,7 +31,7 @@ func TestModifyWorkerWork(t *testing.T) {
 
 	testCases := map[string]struct {
 		ctx           context.Context
-		dbInstance    *RedisInstance
+		instance      *RedisInstance
 		expectedState base.InstanceState
 		password      string
 		expectErr     bool
@@ -40,7 +40,7 @@ func TestModifyWorkerWork(t *testing.T) {
 		"success": {
 			ctx:      t.Context(),
 			password: helpers.RandStr(10),
-			dbInstance: &RedisInstance{
+			instance: &RedisInstance{
 				Instance: base.Instance{
 					Request: request.Request{
 						ServiceID: helpers.RandStr(10),
@@ -62,18 +62,54 @@ func TestModifyWorkerWork(t *testing.T) {
 			),
 			expectedState: base.InstanceReady,
 		},
+		"failure": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRedisClient{
+					modifyReplicationGroupErr: errors.New("failure"),
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectErr:     true,
+			expectedState: base.InstanceNotModified,
+		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			err = test.worker.Work(test.ctx, &river.Job[ModifyArgs]{Args: ModifyArgs{
-				Instance: test.dbInstance,
+				Instance: test.instance,
 			}})
 			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")
+			}
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.ModifyOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 		})
 	}
@@ -89,9 +125,9 @@ func TestAsyncModifyRedis(t *testing.T) {
 		ctx              context.Context
 		instance         *RedisInstance
 		worker           *ModifyWorker
-		expectedState    base.InstanceState
 		expectedInstance *RedisInstance
 		plan             *catalog.RDSPlan
+		expectErr        bool
 	}{
 		"success": {
 			ctx: t.Context(),
@@ -110,7 +146,6 @@ func TestAsyncModifyRedis(t *testing.T) {
 					Uuid: "uuid-1",
 				},
 			},
-			expectedState: base.InstanceReady,
 		},
 		"error modifying redis isntance": {
 			ctx: t.Context(),
@@ -130,7 +165,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 			},
-			expectedState: base.InstanceNotModified,
+			expectErr: true,
 		},
 		"error increasing replica count": {
 			ctx: t.Context(),
@@ -151,7 +186,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 				},
 				NewReplicaCount: 1,
 			},
-			expectedState: base.InstanceNotModified,
+			expectErr: true,
 		},
 		"success with increased replica count": {
 			ctx: t.Context(),
@@ -199,7 +234,6 @@ func TestAsyncModifyRedis(t *testing.T) {
 				},
 				NewReplicaCount: 1,
 			},
-			expectedState: base.InstanceReady,
 		},
 		"failure waiting for increased replica count": {
 			ctx: t.Context(),
@@ -225,7 +259,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 				},
 				NewReplicaCount: 1,
 			},
-			expectedState: base.InstanceNotModified,
+			expectErr: true,
 		},
 		"success waiting for increase replica count on retry": {
 			ctx: t.Context(),
@@ -287,7 +321,6 @@ func TestAsyncModifyRedis(t *testing.T) {
 				},
 				NewReplicaCount: 1,
 			},
-			expectedState: base.InstanceReady,
 		},
 		"replica never appears before attempts are exhausted": {
 			ctx: t.Context(),
@@ -319,21 +352,18 @@ func TestAsyncModifyRedis(t *testing.T) {
 				},
 				NewReplicaCount: 1,
 			},
-			expectedState: base.InstanceNotModified,
+			expectErr: true,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			test.worker.asyncModifyRedis(test.ctx, test.instance) //nolint:errcheck // test drives the worker; the assertion below checks the outcome
-
-			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.instance.ServiceID, test.instance.Uuid, base.ModifyOp)
-			if err != nil {
+			err := test.worker.asyncModifyRedis(test.ctx, test.instance, base.ModifyOp)
+			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}
-
-			if test.expectedState != asyncJobMsg.JobState.State {
-				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
 			}
 		})
 	}

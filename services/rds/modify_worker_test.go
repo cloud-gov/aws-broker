@@ -101,6 +101,14 @@ func TestModifyWorkerWork(t *testing.T) {
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")
 			}
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.expectedState != asyncJobMsg.JobState.State {
+				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
 		})
 	}
 }
@@ -118,7 +126,6 @@ func TestAsyncModifyDb(t *testing.T) {
 
 	testCases := map[string]struct {
 		dbInstance         *RDSInstance
-		expectedState      base.InstanceState
 		expectedDbInstance *RDSInstance
 		plan               *catalog.RDSPlan
 		worker             *ModifyWorker
@@ -147,10 +154,9 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
 		},
 		"modify primary DB error": {
 			worker: NewModifyWorker(
@@ -174,10 +180,9 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
 		},
 		"error waiting for database to be ready": {
 			worker: NewModifyWorker(
@@ -201,10 +206,9 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        helpers.RandStr(10),
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
 		},
 		"success without read replica": {
 			worker: NewModifyWorker(
@@ -247,7 +251,6 @@ func TestAsyncModifyDb(t *testing.T) {
 				Database:        "db-1",
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -316,7 +319,6 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -380,10 +382,9 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
 		},
 		"error creating read replica": {
 			worker: NewModifyWorker(
@@ -435,10 +436,9 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
 		},
 		"success with deleting read replica": {
 			worker: NewModifyWorker(
@@ -484,7 +484,6 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase:   "db-replica",
 				credentialUtils:   &RDSCredentialUtils{},
 			},
-			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -540,10 +539,9 @@ func TestAsyncModifyDb(t *testing.T) {
 				ReplicaDatabase: "db-replica",
 				credentialUtils: &RDSCredentialUtils{},
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotModified,
-			ctx:           t.Context(),
-			expectErr:     true,
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
 		},
 		"success without read replica and updating version": {
 			worker: NewModifyWorker(
@@ -587,7 +585,6 @@ func TestAsyncModifyDb(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 				DbVersion:       "9.0",
 			},
-			expectedState: base.InstanceReady,
 			expectedDbInstance: &RDSInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -657,8 +654,7 @@ func TestAsyncModifyDb(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 				DbVersion:       "9.0",
 			},
-			expectedState: base.InstanceReady,
-			ctx:           t.Context(),
+			ctx: t.Context(),
 		},
 		"error deleting old parameter group": {
 			worker: NewModifyWorker(
@@ -705,29 +701,19 @@ func TestAsyncModifyDb(t *testing.T) {
 				DbVersion:          "9.0",
 				ParameterGroupName: "existing-group",
 			},
-			expectedState: base.InstanceNotModified,
-			expectErr:     true,
-			ctx:           t.Context(),
+			expectErr: true,
+			ctx:       t.Context(),
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.worker.asyncModifyDb(test.ctx, test.dbInstance, test.plan)
+			err := test.worker.asyncModifyDb(test.ctx, base.ModifyOp, test.dbInstance, test.plan)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error but received none")
-			}
-
-			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.ModifyOp)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if test.expectedState != asyncJobMsg.JobState.State {
-				t.Fatalf("expected async job state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 
 			if test.expectedDbInstance != nil {
