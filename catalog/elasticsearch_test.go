@@ -83,7 +83,6 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 	largeHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "search-large-ha"}, InstanceType: "r7g.large.search", InstanceSizeRank: 30, DataCount: "4"}
 	unranked := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-mystery"}, InstanceType: "z9z.mystery.search", DataCount: "2"}
 	esDev := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev"}, InstanceType: "t3.small.search", InstanceSizeRank: 10, DataCount: "1"}
-	esDevMigration := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-dev-6.8-migration"}, InstanceType: "t3.small.search", InstanceSizeRank: 10, DataCount: "1"}
 	mediumC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium"}, InstanceType: "c5.large.search", InstanceSizeRank: 20, DataCount: "2"}
 	largeC5NonHA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-large"}, InstanceType: "c5.xlarge.search", InstanceSizeRank: 30, DataCount: "2"}
 	mediumC5HA := ElasticsearchPlan{ServicePlan: domain.ServicePlan{Name: "es-medium-ha"}, InstanceType: "c5.large.search", InstanceSizeRank: 20, DataCount: "4"}
@@ -188,11 +187,6 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			to:       esDev,
 			expectOK: true,
 		},
-		"single node to other single node plan allowed": {
-			from:     esDevMigration,
-			to:       esDev,
-			expectOK: true,
-		},
 		"multi-node to single node blocked": {
 			from:      mediumNonHA,
 			to:        esDev,
@@ -260,6 +254,72 @@ func TestElasticsearchPlanCanUpgradeTo(t *testing.T) {
 			}
 			if tc.expectMsg != "" && !strings.Contains(err.Error(), tc.expectMsg) {
 				t.Fatalf("expected message containing %q, got %q", tc.expectMsg, err.Error())
+			}
+		})
+	}
+}
+
+func TestElasticsearchPlanCheckVersion(t *testing.T) {
+	// CheckVersion is an exact, case-sensitive string match, unlike the RDS
+	// prefix match. These cases pin that, because the catalog carries full
+	// AWS engine strings ("OpenSearch_3.7") rather than bare major versions.
+	plan := ElasticsearchPlan{
+		ApprovedMajorVersions: []string{"OpenSearch_3.7", "OpenSearch_2.19"},
+	}
+	for _, approved := range []string{"OpenSearch_3.7", "OpenSearch_2.19"} {
+		if !plan.CheckVersion(approved) {
+			t.Errorf("CheckVersion(%q) = false; version is in the approved list", approved)
+		}
+	}
+	for _, rejected := range []string{
+		"OpenSearch_2.11", // retired from the approved list
+		"OpenSearch_3.9",  // never offered
+		"opensearch_3.7",  // wrong case: the match is case-sensitive
+		"Opensearch_3.7",  // wrong case
+		"3.7",             // bare version, no engine prefix
+		"",
+	} {
+		if plan.CheckVersion(rejected) {
+			t.Errorf("CheckVersion(%q) = true; version is not in the approved list", rejected)
+		}
+	}
+
+	// An empty list fails open by design: the plan defers validation to AWS.
+	if !(ElasticsearchPlan{}).CheckVersion("anything") {
+		t.Error("a plan with no approvedMajorVersions must fail open and accept any version")
+	}
+}
+
+// TestElasticsearchCatalogPlanVersions pins the engine versions every
+// provisionable plan offers.
+func TestElasticsearchCatalogPlanVersions(t *testing.T) {
+	const wantDefault = "OpenSearch_3.7"
+	wantApproved := []string{
+		"OpenSearch_3.7",
+		"OpenSearch_2.19",
+		"OpenSearch_1.3",
+		"Elasticsearch_7.10",
+	}
+
+	plans := parseCatalogTemplate(t).ElasticsearchService.ElasticsearchPlans
+	if len(plans) == 0 {
+		t.Fatal("parsed no Elasticsearch plans from catalog-template.yml")
+	}
+
+	for _, plan := range plans {
+		t.Run(plan.Name, func(t *testing.T) {
+			if plan.ElasticsearchVersion != wantDefault {
+				t.Errorf("default elasticsearchVersion = %q, want %q; a new instance on this plan would provision the wrong engine",
+					plan.ElasticsearchVersion, wantDefault)
+			}
+			if diff := deep.Equal(plan.ApprovedMajorVersions, wantApproved); diff != nil {
+				t.Errorf("approvedMajorVersions mismatch: %v", diff)
+			}
+			// The default must itself be selectable, or a user who passes the
+			// plan's own default explicitly would be rejected at create.
+			if !plan.CheckVersion(plan.ElasticsearchVersion) {
+				t.Errorf("plan default %q is not in its own approvedMajorVersions %v",
+					plan.ElasticsearchVersion, plan.ApprovedMajorVersions)
 			}
 		})
 	}

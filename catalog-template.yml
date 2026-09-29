@@ -1507,38 +1507,6 @@ elasticsearch:
     supportUrl:
     shareable: true
   plans:
-  - id: "20567994-6028-4629-9761-92ebd3fc330f"
-    name: "es-dev-6.8-migration"
-    description: "AWS Elasticsearch 6.8 MIGRATION - Single node non-prod use only"
-    metadata:
-      bullets:
-      - "elasticsearch"
-      - "es 6.8"
-      - "single node"
-      - "non-prod"
-      displayName: "non-prod single node elasticsearch 6.8"
-    free: false
-    elasticsearchVersion: Elasticsearch_6.8
-    approvedMajorVersions:
-    - "Opensearch_2.3"
-    - "Opensearch_1.3"
-    - "Elasticsearch_7.4"
-    dataCount: 1
-    instanceType: t3.small.search
-    instanceSizeRank: 10
-    volumeSize: 15
-    volumeType: gp3
-    encryptAtRest: true
-    automatedSnapshotStartHour: 7
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
   - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
     name: "es-dev"
     description: "Single small Elasticsearch/OpenSearch node, non-prod use only"
