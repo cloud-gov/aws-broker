@@ -117,7 +117,6 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	})
 	if err != nil {
 		w.logger.Error("error increasing replica count", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
 		return err
 	}
 

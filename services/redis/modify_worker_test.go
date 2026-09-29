@@ -62,6 +62,34 @@ func TestModifyWorkerWork(t *testing.T) {
 			),
 			expectedState: base.InstanceReady,
 		},
+		"failure": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRedisClient{
+					modifyReplicationGroupErr: errors.New("failure"),
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			expectErr:     true,
+			expectedState: base.InstanceNotModified,
+		},
 	}
 
 	for name, test := range testCases {
