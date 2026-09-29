@@ -358,7 +358,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.worker.asyncModifyRedis(test.ctx, test.instance, base.ModifyOp) //nolint:errcheck // test drives the worker; the assertion below checks the outcome
+			err := test.worker.asyncModifyRedis(test.ctx, test.instance, base.ModifyOp)
 			if err != nil && !test.expectErr {
 				t.Fatal(err)
 			}
