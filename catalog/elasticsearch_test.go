@@ -272,11 +272,12 @@ func TestElasticsearchPlanCheckVersion(t *testing.T) {
 		}
 	}
 	for _, rejected := range []string{
-		"OpenSearch_2.11", // retired from the approved list
-		"OpenSearch_3.9",  // never offered
-		"opensearch_3.7",  // wrong case: the match is case-sensitive
-		"Opensearch_3.7",  // wrong case
-		"3.7",             // bare version, no engine prefix
+		"OpenSearch_2.11",    // retired from the approved list
+		"OpenSearch_3.9",     // never offered
+		"Elasticsearch_7.10", // Elasticsearch engines are no longer offered by any plan
+		"opensearch_3.7",     // wrong case: the match is case-sensitive
+		"Opensearch_3.7",     // wrong case
+		"3.7",                // bare version, no engine prefix
 		"",
 	} {
 		if plan.CheckVersion(rejected) {
@@ -298,7 +299,6 @@ func TestElasticsearchCatalogPlanVersions(t *testing.T) {
 		"OpenSearch_3.7",
 		"OpenSearch_2.19",
 		"OpenSearch_1.3",
-		"Elasticsearch_7.10",
 	}
 
 	plans := parseCatalogTemplate(t).ElasticsearchService.ElasticsearchPlans
