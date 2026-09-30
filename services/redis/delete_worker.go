@@ -16,9 +16,16 @@ import (
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	brokerAws "github.com/cloud-gov/aws-broker/aws"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
+)
+
+var (
+	ErrDeletingRecord           = errors.New("deleting record")
+	ErrDeletingReplicationGroup = errors.New("deleting replication group")
+	ErrExportingSnapshot        = errors.New("exporting snapshot")
 )
 
 const (
@@ -57,34 +64,45 @@ func NewDeleteWorker(
 }
 
 func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) error {
-	return w.asyncDeleteRedis(ctx, job.Args.Instance)
+	operation := base.DeleteOp
+	i := job.Args.Instance
+	errChan := make(chan error, 1)
+
+	go func(ctx context.Context, i *RedisInstance, operation base.Operation) {
+		errChan <- w.asyncDeleteRedis(ctx, i, operation)
+	}(ctx, i, operation)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			w.logger.Error("error deleting cluster", "err", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
+			return river.JobCancel(err)
+		}
+		return nil
+	}
 }
 
-func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance) error {
-	operation := base.DeleteOp
-
-	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group") //nolint:errcheck // decide fail-vs-log on async job-message write (job-state drift risk)
+func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance, operation base.Operation) error {
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
 
 	err := w.deleteReplicationGroup(ctx, i, operation)
 	if err != nil {
-		w.logger.Error("asyncDeleteRedis: DdleteReplicationGroup failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: deleteReplicationGroup failed: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error deleting replication group %w ", err))
+		return common.FmtErr(ErrDeletingReplicationGroup, err)
 	}
 
-	asyncmessage.WriteAsyncJobMessage(w.db, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot") //nolint:errcheck // decide fail-vs-log on async job-message write (job-state drift risk)
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
 
 	err = w.exportRedisSnapshot(ctx, i)
 	if err != nil {
-		w.logger.Error("asyncDeleteRedis: exportRedisSnapshot failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, fmt.Sprintf("asyncDeleteRedis: exportRedisSnapshot failed: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error exporting snapshot %w ", err))
+		return common.FmtErr(ErrExportingSnapshot, err)
 	}
 
 	err = w.db.Unscoped().Delete(i).Error
 	if err != nil {
-		w.logger.Error("asyncDeleteRedis: error deleting record", "err", err)
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: deleting record %w ", err))
+		return common.FmtErr(ErrDeletingRecord, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Finished deleting replication group")

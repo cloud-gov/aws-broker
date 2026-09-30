@@ -18,6 +18,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrPreparingModifyInput      = errors.New("preparing modify input")
+	ErrIncreasingReplicaCount    = errors.New("increasing replica count")
+	ErrModifyingReplicationGroup = errors.New("modifying replication group")
+)
+
 const (
 	ModifyKind = "elasticache-modify"
 )
@@ -51,25 +57,37 @@ func NewModifyWorker(
 }
 
 func (w *ModifyWorker) Work(ctx context.Context, job *river.Job[ModifyArgs]) error {
-	return w.asyncModifyRedis(ctx, job.Args.Instance)
+	operation := base.ModifyOp
+	i := job.Args.Instance
+	errChan := make(chan error, 1)
+
+	go func(ctx context.Context, i *RedisInstance, operation base.Operation) {
+		errChan <- w.asyncModifyRedis(ctx, i, operation)
+	}(ctx, i, operation)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errChan:
+		if err != nil {
+			w.logger.Error("error modifying cluster", "err", err)
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, err.Error())
+			return river.JobCancel(err)
+		}
+		return nil
+	}
 }
 
-func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance) error {
-	operation := base.ModifyOp
-
+func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance, operation base.Operation) error {
 	params, err := prepareModifyReplicationGroupInput(i)
 	if err != nil {
-		w.logger.Error("error preparing modify replication group input", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error preparing modify input: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error preparing modify input %w ", err))
+		return common.FmtErr(ErrPreparingModifyInput, err)
 	}
 
 	if i.NewReplicaCount > 0 {
 		err = w.increaseReplicaCount(ctx, i, operation)
 		if err != nil {
-			w.logger.Error("error increasing replica count", "err", err)
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("error increasing replica count: %s", err))
-			return river.JobCancel(fmt.Errorf("asyncModifyRedis: error increasing replica count %w ", err))
+			return common.FmtErr(ErrIncreasingReplicaCount, err)
 		}
 	}
 
@@ -77,9 +95,7 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance) e
 
 	_, err = w.elasticache.ModifyReplicationGroup(ctx, params)
 	if err != nil {
-		w.logger.Error("error modifying replication group", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying cluster: %s", err))
-		return river.JobCancel(fmt.Errorf("asyncModifyRedis: error modifying replication group %w ", err))
+		return common.FmtErr(ErrModifyingReplicationGroup, err)
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
@@ -101,7 +117,6 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	})
 	if err != nil {
 		w.logger.Error("error increasing replica count", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error increasing replica count: %s", err))
 		return err
 	}
 

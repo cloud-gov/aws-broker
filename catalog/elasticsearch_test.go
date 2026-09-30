@@ -324,7 +324,6 @@ func TestElasticsearchCatalogPlanVersions(t *testing.T) {
 		})
 	}
 }
-
 func TestElasticsearchCatalogPlanSizeRanks(t *testing.T) {
 	catalog := parseCatalogTemplate(t)
 	plans := catalog.ElasticsearchService.ElasticsearchPlans
