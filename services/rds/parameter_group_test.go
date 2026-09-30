@@ -726,9 +726,7 @@ func TestGetNewParameters(t *testing.T) {
 				"oracle-se2": {
 					"audit_trail":               paramDetails{value: "DB,EXTENDED", applyMethod: "pending-reboot"},
 					"audit_sys_operations":      paramDetails{value: "TRUE", applyMethod: "pending-reboot"},
-					"sec_case_sensitive_logon":  paramDetails{value: "TRUE", applyMethod: "immediate"},
 					"remote_login_passwordfile": paramDetails{value: "NONE", applyMethod: "pending-reboot"},
-					"resource_limit":            paramDetails{value: "TRUE", applyMethod: "immediate"},
 					"sql92_security":            paramDetails{value: "TRUE", applyMethod: "pending-reboot"},
 					"max_idle_time":             paramDetails{value: "15", applyMethod: "immediate"},
 				},
@@ -2632,9 +2630,7 @@ func TestOracleBornHardenedParamsReachAWS(t *testing.T) {
 	}{
 		"audit_trail":               {"DB,EXTENDED", rdsTypes.ApplyMethodPendingReboot},
 		"audit_sys_operations":      {"TRUE", rdsTypes.ApplyMethodPendingReboot},
-		"sec_case_sensitive_logon":  {"TRUE", rdsTypes.ApplyMethodImmediate},
 		"remote_login_passwordfile": {"NONE", rdsTypes.ApplyMethodPendingReboot},
-		"resource_limit":            {"TRUE", rdsTypes.ApplyMethodImmediate},
 		"sql92_security":            {"TRUE", rdsTypes.ApplyMethodPendingReboot},
 		"max_idle_time":             {"15", rdsTypes.ApplyMethodImmediate},
 	}

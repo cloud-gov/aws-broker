@@ -37,24 +37,17 @@ parameters:
     apply_method: pending-reboot
     stig_intent: "Audit privileged SYS operations."
 
-  # Enforce case-sensitive password authentication.
-  - name: sec_case_sensitive_logon
-    value: "TRUE"
-    apply_method: immediate
-    stig_intent: "Case-sensitive passwords (authenticator strength)."
-
   # Restrict OS/remote password-file authentication.
   - name: remote_login_passwordfile
     value: "NONE"
     apply_method: pending-reboot
     stig_intent: "Disable remote OS password-file authentication (SRG-APP-000516)."
 
-  # Enforce user resource limits defined via profiles (needed for failed-login /
-  # password-lifetime STIG controls to take effect).
-  - name: resource_limit
-    value: "TRUE"
-    apply_method: immediate
-    stig_intent: "Enforce profile resource limits (account lockout / lifetime)."
+  # NOTE: sec_case_sensitive_logon and resource_limit are intentionally NOT set —
+  # both are already the secure Oracle 19c default, and setting them adds no
+  # hardening while coupling us to settings the STIG does not require. See
+  # docs/oracle19c/hardening-baseline.md ("Parameters intentionally not set") for
+  # the full rationale. This keeps the baseline minimalist and future-proof.
 
   # ANSI SQL92 security: require SELECT privilege for UPDATE/DELETE with predicates.
   - name: sql92_security

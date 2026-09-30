@@ -50,9 +50,7 @@ func TestOracleParameterBaselineContent(t *testing.T) {
 	wantHardened := map[string]string{
 		"audit_trail":               "DB,EXTENDED",
 		"audit_sys_operations":      "TRUE",
-		"sec_case_sensitive_logon":  "TRUE",
 		"remote_login_passwordfile": "NONE",
-		"resource_limit":            "TRUE",
 		"sql92_security":            "TRUE",
 		"max_idle_time":             "15",
 	}

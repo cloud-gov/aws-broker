@@ -12,15 +12,31 @@ page documents the durable deltas and the controls they map to.
 |-----------|-------|-------|-------------|
 | `audit_trail` | `DB,EXTENDED` | pending-reboot | enable DB auditing |
 | `audit_sys_operations` | `TRUE` | pending-reboot | audit privileged SYS ops |
-| `sec_case_sensitive_logon` | `TRUE` | immediate | case-sensitive passwords |
 | `remote_login_passwordfile` | `NONE` | pending-reboot | disable remote OS password-file auth |
-| `resource_limit` | `TRUE` | immediate | enforce profile resource limits |
 | `sql92_security` | `TRUE` | pending-reboot | SQL92 DML-predicate least privilege |
 | `max_idle_time` | `15` | immediate | terminate idle sessions after 15 min (SV-270497 / AC-12) |
 
 `pending-reboot` parameters take effect after a reboot; the broker surfaces
-pending-reboot state via the existing async/modify path. All seven are base Oracle
+pending-reboot state via the existing async/modify path. All five are base Oracle
 init parameters available in SE2 (none are EE-only), so the baseline fully applies.
+
+### Parameters intentionally not set
+
+We take a **minimalist, future-proof** approach: the broker sets only the
+parameters that the STIG actually requires *and* that diverge from the secure
+Oracle 19c default. Two parameters that earlier iterations set are deliberately
+omitted — the broker neither applies nor tests for them:
+
+- **`sec_case_sensitive_logon`** — not required by the STIG. The parameter is
+  already deprecated in Oracle 19c and removed entirely in later releases.
+  Case-sensitive passwords have been the Oracle default for a long time, so
+  forcing `TRUE` adds no hardening while coupling the baseline to an obsolete,
+  soon-to-be-removed knob.
+- **`resource_limit`** — already the Oracle 19c default (`TRUE`), so setting it is
+  a no-op. The STIG only requires it in service of profile-based resource limits
+  for temporary users. The broker does not support or test for temporary users;
+  configuring such profiles is a **Customer Responsibility** and out of scope for
+  this work.
 
 ## Log exports (`baselines/oracle19c/log_exports.yml`)
 
