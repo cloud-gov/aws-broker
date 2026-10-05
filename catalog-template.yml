@@ -1507,38 +1507,6 @@ elasticsearch:
     supportUrl:
     shareable: true
   plans:
-  - id: "20567994-6028-4629-9761-92ebd3fc330f"
-    name: "es-dev-6.8-migration"
-    description: "AWS Elasticsearch 6.8 MIGRATION - Single node non-prod use only"
-    metadata:
-      bullets:
-      - "elasticsearch"
-      - "es 6.8"
-      - "single node"
-      - "non-prod"
-      displayName: "non-prod single node elasticsearch 6.8"
-    free: false
-    elasticsearchVersion: Elasticsearch_6.8
-    approvedMajorVersions:
-    - "Opensearch_2.3"
-    - "Opensearch_1.3"
-    - "Elasticsearch_7.4"
-    dataCount: 1
-    instanceType: t3.small.search
-    instanceSizeRank: 10
-    volumeSize: 15
-    volumeType: gp3
-    encryptAtRest: true
-    automatedSnapshotStartHour: 7
-    securityGroup: (( grab meta.elasticsearch.security_group ))
-    subnetID1az1: (( grab meta.elasticsearch.subnet_id1_az1 ))
-    subnetID2az2: (( grab meta.elasticsearch.subnet_id2_az2 ))
-    subnetID3az1: (( grab meta.elasticsearch.subnet_id3_az1 ))
-    subnetID4az2: (( grab meta.elasticsearch.subnet_id4_az2 ))
-    tags:
-      environment: (( grab meta.environment ))
-      client: "the client"
-      broker: "AWS broker"
   - id: "162ffae8-9cf8-4806-80e5-a7f92d514198"
     name: "es-dev"
     description: "Single small Elasticsearch/OpenSearch node, non-prod use only"
@@ -1549,11 +1517,11 @@ elasticsearch:
       - "Non-prod"
       displayName: "Small, single node, non-prod"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
+    elasticsearchVersion: &default-opensearch-version OpenSearch_3.7
+    approvedMajorVersions: &approved-opensearch-versions
+    - "OpenSearch_3.7"
+    - "OpenSearch_2.19"
     - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
     dataCount: 1
     instanceType: t3.small.search
     instanceSizeRank: 10
@@ -1579,11 +1547,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "Medium, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: c5.large.search
@@ -1613,11 +1578,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "Medium, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: c5.large.search
@@ -1647,11 +1609,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "Large, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: c5.xlarge.search
@@ -1681,11 +1640,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "Large, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: c5.xlarge.search
@@ -1715,11 +1671,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "X-Large, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: c5.2xlarge.search
@@ -1749,11 +1702,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "X-Large, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: c5.2xlarge.search
@@ -1783,11 +1733,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "2X-Large, General-Purpose, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: m5.2xlarge.search
@@ -1817,11 +1764,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "2X-Large, General-Purpose, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: m5.2xlarge.search
@@ -1851,11 +1795,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "4X-Large, General-Purpose, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: m5.4xlarge.search
@@ -1885,11 +1826,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "4X-Large, General-Purpose, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: m5.4xlarge.search
@@ -1920,11 +1858,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "12X-Large, General-Purpose, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: m5.12xlarge.search
@@ -1954,11 +1889,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "12X-Large, General-Purpose, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: m5.12xlarge.search
@@ -1989,11 +1921,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "Medium Graviton, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: r7g.medium.search
@@ -2024,11 +1953,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "Medium Graviton, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: r7g.medium.search
@@ -2059,11 +1985,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "Large Graviton, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: r7g.large.search
@@ -2094,11 +2017,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "Large Graviton, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: r7g.large.search
@@ -2129,11 +2049,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "X-Large Graviton, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: r7g.xlarge.search
@@ -2164,11 +2081,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "X-Large Graviton, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: r7g.xlarge.search
@@ -2199,11 +2113,8 @@ elasticsearch:
       - "2 data nodes"
       displayName: "2X-Large Graviton, 3 master nodes, 2 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 2
     instanceType: r7g.2xlarge.search
@@ -2234,11 +2145,8 @@ elasticsearch:
       - "4 data nodes"
       displayName: "2X-Large Graviton, 3 master nodes, 4 data nodes"
     free: false
-    elasticsearchVersion: Elasticsearch_7.10
-    approvedMajorVersions:
-    - "OpenSearch_2.11"
-    - "OpenSearch_1.3"
-    - "Elasticsearch_7.10"
+    elasticsearchVersion: *default-opensearch-version
+    approvedMajorVersions: *approved-opensearch-versions
     masterCount: 3
     dataCount: 4
     instanceType: r7g.2xlarge.search

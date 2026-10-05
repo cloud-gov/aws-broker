@@ -175,7 +175,7 @@ The rules are:
   an `-ha` plan. The reverse is rejected: removing data nodes would discard the
   shards they hold.
 - **Single-data-node plans stay single-data-node.** A plan with one data node
-  (`es-dev`, `es-dev-6.8-migration`) is provisioned on a single subnet with zone
+  (`es-dev`) is provisioned on a single subnet with zone
   awareness off, so it may only move to another single-data-node plan. Moving it to
   any multi-node plan is rejected: adding data nodes there would enable zone
   awareness on a domain that still has only one subnet, which AWS rejects with
