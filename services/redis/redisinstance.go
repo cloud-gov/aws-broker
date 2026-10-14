@@ -152,16 +152,20 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 
 	i.Description = plan.Description
 
+	// Without
+	// this, an existing Redis instance would be silently migrated to the
+	// plan's Valkey engine by an unrelated plan change, and would be left on
+	// a version its new engine does not offer.
 	if options.Engine != "" {
 		i.Engine = options.Engine
-	} else {
+	} else if i.Engine == "" {
 		i.Engine = plan.Engine
 	}
 
 	// Set the DB Version
 	if options.EngineVersion != "" {
 		i.EngineVersion = options.EngineVersion
-	} else {
+	} else if i.EngineVersion == "" {
 		// Default to the version provided by the plan chosen in catalog.
 		i.EngineVersion = plan.EngineVersion
 	}

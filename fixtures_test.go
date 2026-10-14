@@ -165,6 +165,17 @@ var createRedisInstanceReq = []byte(
 	"space_guid":"a-space"
 }`, redisServiceId, originalRedisPlanID))
 
+var createRedisInstanceWithRedisEngineReq = []byte(
+	fmt.Sprintf(`{
+	"service_id":"%s",
+	"plan_id":"%s",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
+		"engine": "redis"
+	}
+}`, redisServiceId, originalRedisPlanID))
+
 var modifyRedisInstanceReq = []byte(
 	fmt.Sprintf(`{
 	"service_id":"%s",
@@ -183,19 +194,19 @@ var modifyRedisEngineVersion = []byte(
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
-		"engine_version": "7.1"
+		"engine_version": "9.1"
 	}
 }`, redisServiceId, originalRedisPlanID))
 
-var modifyRedisEngineAndVersion = []byte(
+var modifyRedisToRedisEngine = []byte(
 	fmt.Sprintf(`{
 	"service_id":"%s",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
-		"engine": "valkey",
-		"engine_version": "8.2"
+		"engine": "redis",
+		"engine_version": "7.1"
 	}
 }`, redisServiceId, originalRedisPlanID))
 

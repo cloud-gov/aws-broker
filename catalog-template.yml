@@ -1365,13 +1365,16 @@ redis:
         displayName: "non-prod single Elasticache redis, persistent storage, 512Mb memory limit"
       free: false
       securityGroup: (( grab meta.redis.security_group ))
-      engine: &default-elasticache-engine redis
-      engineVersion: &default-elasticache-version 7.1
+      engine: &default-elasticache-engine valkey
+      engineVersion: &default-elasticache-version "8.2"
+      # Redis is no longer offered for new instances: every plan provisions
+      # Valkey.
       approvedEngineVersions: &approved-elasticache-versions
         redis:
           - "7.1"
           - "7.0"
         valkey:
+          - "9.1"
           - "8.2"
       numberCluster: 1
       nodeType: cache.t3.micro
