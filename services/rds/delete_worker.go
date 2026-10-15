@@ -2,7 +2,9 @@ package rds
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -25,20 +27,30 @@ const (
 )
 
 type DeleteArgs struct {
-	Instance *RDSInstance `json:"instance"`
+	InstanceID string       `json:"instance_id"`
+	Instance   *RDSInstance `json:"instance,omitempty"`
+}
+
+// MarshalJSON prevents newly queued jobs from carrying the legacy instance
+// payload. Unmarshal remains compatible with jobs queued by older releases.
+func (a DeleteArgs) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		InstanceID string `json:"instance_id"`
+	}{InstanceID: a.InstanceID})
 }
 
 func (DeleteArgs) Kind() string { return DeleteKind }
 
 type DeleteWorker struct {
 	river.WorkerDefaults[DeleteArgs]
-	db                   *gorm.DB
-	settings             *config.Settings
-	rds                  RDSClientInterface
-	logger               *slog.Logger
-	parameterGroupClient parameterGroupClient
-	optionGroupClient    optionGroupClient
-	credentialUtils      CredentialUtils
+	db                    *gorm.DB
+	settings              *config.Settings
+	rds                   RDSClientInterface
+	logger                *slog.Logger
+	parameterGroupClient  parameterGroupClient
+	optionGroupClient     optionGroupClient
+	credentialUtils       CredentialUtils
+	postgresBindingClient postgresBindingClient
 }
 
 func NewDeleteWorker(
@@ -51,39 +63,68 @@ func NewDeleteWorker(
 	credentialUtils CredentialUtils,
 ) *DeleteWorker {
 	return &DeleteWorker{
-		db:                   db,
-		settings:             settings,
-		rds:                  rds,
-		logger:               logger,
-		parameterGroupClient: parameterGroupClient,
-		optionGroupClient:    optionGroupClient,
-		credentialUtils:      credentialUtils,
+		db:                    db,
+		settings:              settings,
+		rds:                   rds,
+		logger:                logger,
+		parameterGroupClient:  parameterGroupClient,
+		optionGroupClient:     optionGroupClient,
+		credentialUtils:       credentialUtils,
+		postgresBindingClient: pqPostgresBindingClient{sslRootCert: settings.PostgresSSLRootCert},
 	}
 }
 
 func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) error {
 	operation := base.DeleteOp
-	i := job.Args.Instance
-	errChan := make(chan error, 1)
-
-	go func(ctx context.Context, i *RDSInstance, operation base.Operation) {
-		errChan <- w.asyncDeleteDB(ctx, i, operation)
-	}(ctx, i, operation)
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case err := <-errChan:
-		if err != nil {
-			w.logger.Error("error deleting database", "err", err)
-			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
-			return river.JobCancel(err)
+	instanceID := job.Args.InstanceID
+	if instanceID == "" && job.Args.Instance != nil {
+		instanceID = job.Args.Instance.Uuid
+	}
+	if instanceID == "" {
+		return errors.New("delete job is missing an RDS instance ID")
+	}
+	i := NewRDSInstance()
+	if err := w.db.Where("uuid = ?", instanceID).First(i).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Jobs queued before the ID-only payload change carry the complete
+			// instance. Keep them executable until the queue drains.
+			if job.Args.Instance != nil {
+				i = job.Args.Instance
+			} else {
+				return nil
+			}
+		} else {
+			return fmt.Errorf("load RDS instance for deletion: %w", err)
 		}
-		return nil
+	}
+	err := w.asyncDeleteDB(ctx, i, operation)
+	if err != nil {
+		w.logger.Error("error deleting database", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotGone, err.Error())
+		w.clearPostgresDeleteRequested(i)
+		return river.JobCancel(err)
+	}
+	return nil
+}
+
+func (w *DeleteWorker) clearPostgresDeleteRequested(i *RDSInstance) {
+	if i.DbType != "postgres" {
+		return
+	}
+	if err := w.db.Model(&RDSInstance{}).Where("uuid = ?", i.Uuid).Update("delete_requested", false).Error; err != nil {
+		w.logger.Error("error clearing PostgreSQL deletion fence", "err", err)
 	}
 }
 
 func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance, operation base.Operation) error {
+	if i.DbType == "postgres" {
+		if err := withPostgresBindingLock(ctx, w.db, i.Uuid, func(tx *gorm.DB) error {
+			return cleanupPostgresBindings(ctx, tx, i, w.settings, w.credentialUtils, w.postgresBindingClient)
+		}); err != nil {
+			return err
+		}
+	}
+
 	if i.ReplicaDatabase != "" {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting database replica")
 		err := deleteDatabaseReadReplica(ctx, w.db, w.settings, w.rds, w.logger, i, operation)
@@ -128,5 +169,28 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance, operat
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceGone, "Successfully deleted database resources")
+	return nil
+}
+
+func cleanupPostgresBindings(ctx context.Context, db *gorm.DB, i *RDSInstance, settings *config.Settings, credentialUtils CredentialUtils, client postgresBindingClient) error {
+	bindings := []RDSBinding{}
+	if err := db.Where("instance_id = ?", i.Uuid).Find(&bindings).Error; err != nil {
+		return fmt.Errorf("load PostgreSQL binding credentials: %w", err)
+	}
+	if len(bindings) == 0 {
+		return nil
+	}
+	masterPassword, err := credentialUtils.decryptCredential(i.Salt, i.Password, settings.EncryptionKey)
+	if err != nil {
+		return fmt.Errorf("decrypt PostgreSQL master credential: %w", err)
+	}
+	for _, binding := range bindings {
+		if err := client.dropRole(ctx, i, masterPassword, binding.Username); err != nil {
+			return fmt.Errorf("remove PostgreSQL binding principal: %w", err)
+		}
+		if err := db.Delete(&binding).Error; err != nil {
+			return fmt.Errorf("remove PostgreSQL binding credential: %w", err)
+		}
+	}
 	return nil
 }

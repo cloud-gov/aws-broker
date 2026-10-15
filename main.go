@@ -63,7 +63,7 @@ func run(ctx context.Context, out io.Writer) error {
 
 	logger.Debug("run: Migrating GORM models")
 	// Automigrate!
-	err = db.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) // Add all your models here to help setup the database tables
+	err = db.AutoMigrate(&rds.RDSInstance{}, &rds.RDSBinding{}, &rds.RDSBindingLock{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) // Add all your models here to help setup the database tables
 	if err != nil {
 		return fmt.Errorf("error migrating GORM models: %s", err)
 	}

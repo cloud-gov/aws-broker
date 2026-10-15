@@ -651,7 +651,7 @@ func TestDeleteDb(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if job.Args.Instance.Uuid != test.dbInstance.Uuid {
+			if job.Args.InstanceID != test.dbInstance.Uuid {
 				t.Fatal("Did not receive expected RDS instance as delete worker argument")
 			}
 

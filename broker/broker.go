@@ -83,22 +83,33 @@ func (b *AWSBroker) Deprovision(
 }
 
 func (b *AWSBroker) Bind(
-	context context.Context,
+	ctx context.Context,
 	instanceID string,
 	bindingID string,
 	details domain.BindDetails,
 	asyncAllowed bool,
 ) (domain.Binding, error) {
-	return b.bindInstance(instanceID, details, asyncAllowed)
+	return b.bindInstance(ctx, instanceID, bindingID, details, asyncAllowed)
 }
 
 func (b *AWSBroker) Unbind(
-	context context.Context,
+	ctx context.Context,
 	instanceID,
 	bindingID string,
 	details domain.UnbindDetails,
 	asyncAllowed bool,
 ) (domain.UnbindSpec, error) {
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return domain.UnbindSpec{}, err
+	}
+	if bindingBroker, ok := broker.(interface {
+		UnbindInstance(context.Context, string, string) error
+	}); ok {
+		if err := bindingBroker.UnbindInstance(ctx, instanceID, bindingID); err != nil {
+			return domain.UnbindSpec{}, err
+		}
+	}
 	return domain.UnbindSpec{}, nil
 }
 
@@ -280,7 +291,7 @@ func (b *AWSBroker) deleteInstance(id string, details domain.DeprovisionDetails,
 	return spec, nil
 }
 
-func (b *AWSBroker) bindInstance(id string, details domain.BindDetails, asyncAllowed bool) (domain.Binding, error) {
+func (b *AWSBroker) bindInstance(ctx context.Context, id, bindingID string, details domain.BindDetails, asyncAllowed bool) (domain.Binding, error) {
 	binding := domain.Binding{
 		OperationData: base.BindOp.String(),
 	}
@@ -295,6 +306,11 @@ func (b *AWSBroker) bindInstance(id string, details domain.BindDetails, asyncAll
 		return binding, apiresponses.ErrAsyncRequired
 	}
 
+	if bindingBroker, ok := broker.(interface {
+		BindInstanceWithID(context.Context, string, string, domain.BindDetails) (domain.Binding, error)
+	}); ok {
+		return bindingBroker.BindInstanceWithID(ctx, id, bindingID, details)
+	}
 	return broker.BindInstance(id, details)
 }
 

@@ -93,13 +93,14 @@ func (o Options) Validate(settings *config.Settings) error {
 }
 
 type rdsBroker struct {
-	ctx         context.Context
-	brokerDB    *gorm.DB
-	catalog     *catalog.Catalog
-	settings    *config.Settings
-	tagManager  brokertags.TagManager
-	dbAdapter   dbAdapter
-	riverClient *river.Client[*sql.Tx]
+	ctx                   context.Context
+	brokerDB              *gorm.DB
+	catalog               *catalog.Catalog
+	settings              *config.Settings
+	tagManager            brokertags.TagManager
+	dbAdapter             dbAdapter
+	riverClient           *river.Client[*sql.Tx]
+	postgresBindingClient postgresBindingClient
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
@@ -116,6 +117,10 @@ func InitRDSBroker(
 	if err != nil {
 		return nil, err
 	}
+	postgresClient := postgresBindingClient(pqPostgresBindingClient{sslRootCert: settings.PostgresSSLRootCert})
+	if settings.Environment == "test" {
+		postgresClient = noopPostgresBindingClient{}
+	}
 	return &rdsBroker{
 		ctx,
 		brokerDB,
@@ -124,6 +129,7 @@ func InitRDSBroker(
 		tagManager,
 		dbAdapter,
 		riverClient,
+		postgresClient,
 	}, nil
 }
 
@@ -449,8 +455,48 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 }
 
 func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
+	return broker.BindInstanceWithID(broker.ctx, id, "", details)
+}
+
+func (broker *rdsBroker) BindInstanceWithID(ctx context.Context, id, bindingID string, details domain.BindDetails) (domain.Binding, error) {
 	binding := domain.Binding{
 		OperationData: base.BindOp.String(),
+	}
+	instance := NewRDSInstance()
+	if err := broker.brokerDB.Where("uuid = ?", id).First(instance).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return binding, apiresponses.ErrInstanceDoesNotExist
+		}
+		return binding, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "load RDS instance")
+	}
+	if instance.DbType == "postgres" {
+		if bindingID == "" {
+			return binding, apiresponses.NewFailureResponse(errors.New("binding ID is required for PostgreSQL"), http.StatusBadRequest, "bind PostgreSQL instance")
+		}
+		var credentials map[string]string
+		err := withPostgresBindingLock(ctx, broker.brokerDB, id, func(tx *gorm.DB) error {
+			currentInstance := NewRDSInstance()
+			if err := tx.Where("uuid = ?", id).First(currentInstance).Error; err != nil {
+				return err
+			}
+			if currentInstance.DeleteRequested {
+				return errors.New("PostgreSQL instance deletion is in progress")
+			}
+			masterPassword, err := currentInstance.credentialUtils.decryptCredential(currentInstance.Salt, currentInstance.Password, broker.settings.EncryptionKey)
+			if err != nil {
+				return err
+			}
+			if _, err := broker.dbAdapter.bindDBToApp(currentInstance, masterPassword); err != nil {
+				return err
+			}
+			credentials, err = broker.bindPostgresInstanceLocked(ctx, tx, currentInstance, bindingID, masterPassword)
+			return err
+		})
+		if err != nil {
+			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
+		}
+		binding.Credentials = credentials
+		return binding, nil
 	}
 	existingInstance := NewRDSInstance()
 
@@ -500,6 +546,97 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 	return binding, nil
 }
 
+func (broker *rdsBroker) bindPostgresInstance(ctx context.Context, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	var credentials map[string]string
+	err := withPostgresBindingLock(ctx, broker.brokerDB, i.Uuid, func(tx *gorm.DB) error {
+		currentInstance := NewRDSInstance()
+		if err := tx.Where("uuid = ?", i.Uuid).First(currentInstance).Error; err != nil {
+			return err
+		}
+		if currentInstance.DeleteRequested {
+			return errors.New("PostgreSQL instance deletion is in progress")
+		}
+		var err error
+		credentials, err = broker.bindPostgresInstanceLocked(ctx, tx, currentInstance, bindingID, masterPassword)
+		return err
+	})
+	return credentials, err
+}
+
+func (broker *rdsBroker) bindPostgresInstanceLocked(ctx context.Context, db *gorm.DB, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	storedBinding := RDSBinding{}
+	result := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&storedBinding)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		salt, encryptedPassword, err := i.credentialUtils.generateCredentials(broker.settings)
+		if err != nil {
+			return nil, err
+		}
+		storedBinding = RDSBinding{InstanceID: i.Uuid, BindingID: bindingID, Username: buildBindingUsername(), Password: encryptedPassword, Salt: salt}
+		if err := db.Create(&storedBinding).Error; err != nil {
+			return nil, err
+		}
+	} else if result.Error != nil {
+		return nil, result.Error
+	}
+	return broker.provisionPostgresBinding(ctx, db, i, &storedBinding, masterPassword)
+}
+
+func (broker *rdsBroker) provisionPostgresBinding(ctx context.Context, db *gorm.DB, i *RDSInstance, binding *RDSBinding, masterPassword string) (map[string]string, error) {
+	if !binding.Provisioned {
+		bindingPassword, err := i.credentialUtils.decryptCredential(binding.Salt, binding.Password, broker.settings.EncryptionKey)
+		if err != nil {
+			return nil, err
+		}
+		if err := broker.postgresBindingClient.createRole(ctx, i, masterPassword, binding.Username, bindingPassword); err != nil {
+			return nil, err
+		}
+		if err := db.Model(binding).Update("provisioned", true).Error; err != nil {
+			return nil, err
+		}
+	}
+	return bindingCredentials(i, binding, broker.settings)
+}
+
+func (broker *rdsBroker) UnbindInstance(ctx context.Context, instanceID, bindingID string) error {
+	return withPostgresBindingLock(ctx, broker.brokerDB, instanceID, func(tx *gorm.DB) error {
+		i := NewRDSInstance()
+		if err := tx.Where("uuid = ?", instanceID).First(i).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		if i.DbType != "postgres" {
+			return nil
+		}
+		binding := RDSBinding{}
+		if err := tx.Where("instance_id = ? AND binding_id = ?", instanceID, bindingID).First(&binding).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		masterPassword, err := i.credentialUtils.decryptCredential(i.Salt, i.Password, broker.settings.EncryptionKey)
+		if err != nil {
+			return err
+		}
+		if err := broker.postgresBindingClient.dropRole(ctx, i, masterPassword, binding.Username); err != nil {
+			return err
+		}
+		return tx.Delete(&binding).Error
+	})
+}
+
+func bindingCredentials(i *RDSInstance, binding *RDSBinding, settings *config.Settings) (map[string]string, error) {
+	password, err := i.credentialUtils.decryptCredential(binding.Salt, binding.Password, settings.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	boundInstance := *i
+	boundInstance.Username = binding.Username
+	return boundInstance.getCredentials(password)
+}
+
 func (broker *rdsBroker) DeleteInstance(id string) error {
 	existingInstance := NewRDSInstance()
 	var count int64
@@ -507,19 +644,50 @@ func (broker *rdsBroker) DeleteInstance(id string) error {
 	if count == 0 {
 		return apiresponses.ErrInstanceDoesNotExist
 	}
+	if existingInstance.DbType == "postgres" {
+		alreadyDeleting := false
+		if err := withPostgresBindingLock(broker.ctx, broker.brokerDB, id, func(tx *gorm.DB) error {
+			currentInstance := NewRDSInstance()
+			if err := tx.Where("uuid = ?", id).First(currentInstance).Error; err != nil {
+				return err
+			}
+			alreadyDeleting = currentInstance.DeleteRequested
+			if alreadyDeleting {
+				return nil
+			}
+			return tx.Model(&RDSInstance{}).Where("uuid = ?", id).Update("delete_requested", true).Error
+		}); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "mark PostgreSQL instance deletion")
+		}
+		if alreadyDeleting {
+			return nil
+		}
+		existingInstance.DeleteRequested = true
+	}
 
 	// Delete the database instance.
 	status, err := broker.dbAdapter.deleteDB(existingInstance)
 	if err != nil {
+		broker.clearPostgresDeleteRequested(id)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "delete RDS instance")
 	}
 
 	switch status {
 	case base.InstanceNotGone:
+		broker.clearPostgresDeleteRequested(id)
 		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete RDS instance")
 	case base.InstanceInProgress:
 		return nil
 	default:
+		broker.clearPostgresDeleteRequested(id)
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete RDS instance")
+	}
+}
+
+func (broker *rdsBroker) clearPostgresDeleteRequested(instanceID string) {
+	if err := broker.brokerDB.Model(&RDSInstance{}).Where("uuid = ?", instanceID).Update("delete_requested", false).Error; err != nil {
+		// The original deletion failure remains more useful to the OSB client.
+		// A later operator retry can repair this conservative fail-closed state.
+		return
 	}
 }
