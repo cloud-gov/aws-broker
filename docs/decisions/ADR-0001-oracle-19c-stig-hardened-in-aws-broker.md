@@ -123,8 +123,9 @@ the reversal is discoverable and is not re-litigated by accident.
 
 The broker provisions every new Oracle SE2 instance with a broker-managed custom
 parameter group. The imperative Go baseline follows ADR-0002 and currently sets
-`audit_trail=os,extended`, `audit_sys_operations`,
-`remote_login_passwordfile`, `sql92_security`, and `max_idle_time`. Static
-parameters use `pending-reboot`; `max_idle_time` is applied immediately. Existing
-Oracle instances receive the baseline on their next service update; this change
-does not initiate a fleet-wide update or reboot.
+`audit_trail=os,extended`, `audit_sys_operations`, `sql92_security`, and
+`max_idle_time`. Static parameters use `pending-reboot`; `max_idle_time` is applied
+immediately. RDS exposes `remote_login_passwordfile` as non-modifiable for the
+Oracle SE2 19c parameter-group family, so that setting remains AWS-managed rather
+than broker-enforced. Existing Oracle instances receive the baseline on their next
+service update; this change does not initiate a fleet-wide update or reboot.

@@ -470,10 +470,6 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 				value:       "TRUE",
 				applyMethod: "pending-reboot",
 			},
-			"remote_login_passwordfile": {
-				value:       "NONE",
-				applyMethod: "pending-reboot",
-			},
 			"sql92_security": {
 				value:       "TRUE",
 				applyMethod: "pending-reboot",

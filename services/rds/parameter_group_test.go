@@ -708,11 +708,10 @@ func TestGetNewParameters(t *testing.T) {
 			},
 			expectedParams: map[string]map[string]paramDetails{
 				oracleSE2Engine: {
-					"audit_trail":               {value: "os,extended", applyMethod: "pending-reboot"},
-					"audit_sys_operations":      {value: "TRUE", applyMethod: "pending-reboot"},
-					"remote_login_passwordfile": {value: "NONE", applyMethod: "pending-reboot"},
-					"sql92_security":            {value: "TRUE", applyMethod: "pending-reboot"},
-					"max_idle_time":             {value: "15", applyMethod: "immediate"},
+					"audit_trail":          {value: "os,extended", applyMethod: "pending-reboot"},
+					"audit_sys_operations": {value: "TRUE", applyMethod: "pending-reboot"},
+					"sql92_security":       {value: "TRUE", applyMethod: "pending-reboot"},
+					"max_idle_time":        {value: "15", applyMethod: "immediate"},
 				},
 			},
 			parameterGroupAdapter: &awsParameterGroupClient{
@@ -2636,14 +2635,16 @@ func TestProvisionNewOracleParameterGroup(t *testing.T) {
 		value       string
 		applyMethod rdsTypes.ApplyMethod
 	}{
-		"audit_trail":               {value: "os,extended", applyMethod: rdsTypes.ApplyMethodPendingReboot},
-		"audit_sys_operations":      {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
-		"remote_login_passwordfile": {value: "NONE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
-		"sql92_security":            {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
-		"max_idle_time":             {value: "15", applyMethod: rdsTypes.ApplyMethodImmediate},
+		"audit_trail":          {value: "os,extended", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"audit_sys_operations": {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"sql92_security":       {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"max_idle_time":        {value: "15", applyMethod: rdsTypes.ApplyMethodImmediate},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("sent %d Oracle parameters, want %d: %v", len(got), len(want), got)
+	}
+	if _, found := got["remote_login_passwordfile"]; found {
+		t.Error("remote_login_passwordfile is not modifiable in RDS Oracle SE2 parameter groups")
 	}
 	for name, expected := range want {
 		parameter, found := got[name]
