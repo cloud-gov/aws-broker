@@ -169,6 +169,7 @@ type mockRDSClient struct {
 	describeEngVersionsErr              error
 	describeDbParamsErrs                []error
 	createDbParamGroupErr               error
+	createDbParamGroupInputs            []*rds.CreateDBParameterGroupInput
 	deleteDBInstancesCallNum            int
 	deleteDbInstancesErrs               []error
 	describeEngineDefaultParamsResults  []*rds.DescribeEngineDefaultParametersOutput
@@ -184,6 +185,7 @@ type mockRDSClient struct {
 	modifyDbErrs                        []error
 	modifyDbCallNum                     int
 	modifyDbParamGroupErr               error
+	modifyDbParamGroupInputs            []*rds.ModifyDBParameterGroupInput
 	addTagsToResourceErr                error
 	describeDBParameterGroupsOutput     []*rds.DescribeDBParameterGroupsOutput
 	describeDBParameterGroupsCallNum    int
@@ -266,6 +268,7 @@ func (m *mockRDSClient) CreateDBInstanceReadReplica(ctx context.Context, params 
 }
 
 func (m *mockRDSClient) CreateDBParameterGroup(ctx context.Context, params *rds.CreateDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.CreateDBParameterGroupOutput, error) {
+	m.createDbParamGroupInputs = append(m.createDbParamGroupInputs, params)
 	if m.createDbParamGroupErr != nil {
 		return nil, m.createDbParamGroupErr
 	}
@@ -340,6 +343,7 @@ func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.De
 }
 
 func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {
+	m.modifyDbParamGroupInputs = append(m.modifyDbParamGroupInputs, params)
 	if m.modifyDbParamGroupErr != nil {
 		return nil, m.modifyDbParamGroupErr
 	}

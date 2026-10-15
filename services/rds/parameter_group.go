@@ -22,6 +22,7 @@ import (
 
 const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
+const oracleSE2Engine = "oracle-se2"
 
 type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
@@ -315,6 +316,9 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 }
 
 func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
+	if i.DbType == oracleSE2Engine {
+		return true
+	}
 	if i.EnableFunctions &&
 		p.settings.EnableFunctionsFeature &&
 		(i.DbType == "mysql") {
@@ -452,6 +456,32 @@ func (p *awsParameterGroupClient) getExistingParameters(i *RDSInstance) (map[str
 
 func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
 	customRDSParameters := make(map[string]map[string]paramDetails)
+
+	if i.DbType == oracleSE2Engine {
+		// These controls are enforced on every brokered Oracle SE2 instance.
+		customRDSParameters[oracleSE2Engine] = map[string]paramDetails{
+			"audit_trail": {
+				value:       "os,extended",
+				applyMethod: "pending-reboot",
+			},
+			"audit_sys_operations": {
+				value:       "TRUE",
+				applyMethod: "pending-reboot",
+			},
+			"remote_login_passwordfile": {
+				value:       "NONE",
+				applyMethod: "pending-reboot",
+			},
+			"sql92_security": {
+				value:       "TRUE",
+				applyMethod: "pending-reboot",
+			},
+			"max_idle_time": {
+				value:       "15",
+				applyMethod: "immediate",
+			},
+		}
+	}
 
 	if i.DbType == "mysql" {
 		// enable functions
@@ -606,7 +636,13 @@ func boolToParamvalue(b bool) string {
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
 	// formatDBName() should always return the same value for the same database name,
 	// so the parameter group name should remain consistent
-	return p.parameterGroupPrefix + formatDBName(i.Database, i.DbType) + "-version-" + formatDBVersion(i.DbVersion)
+	databaseName := formatDBName(i.Database, i.DbType)
+	if i.DbType == oracleSE2Engine {
+		// Oracle's logical DB name is the fixed SID ORCL. Parameter groups are
+		// instance-owned resources and therefore need the unique RDS identifier.
+		databaseName = i.Database
+	}
+	return p.parameterGroupPrefix + databaseName + "-version-" + formatDBVersion(i.DbVersion)
 }
 
 func formatDBVersion(version string) string {

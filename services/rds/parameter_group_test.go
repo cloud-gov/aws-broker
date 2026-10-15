@@ -56,6 +56,21 @@ func TestGetParameterGroupName(t *testing.T) {
 	}
 }
 
+func TestGetOracleParameterGroupNameUsesInstanceIdentifier(t *testing.T) {
+	p := &awsParameterGroupClient{parameterGroupPrefix: "prefix-"}
+	first := &RDSInstance{Database: "dbfirst123", DbType: oracleSE2Engine, DbVersion: "19.0.0.0"}
+	second := &RDSInstance{Database: "dbsecond456", DbType: oracleSE2Engine, DbVersion: "19.0.0.0"}
+
+	firstName := getParameterGroupName(first, p)
+	secondName := getParameterGroupName(second, p)
+	if firstName != "prefix-dbfirst123-version-19-0-0-0" {
+		t.Fatalf("unexpected first Oracle parameter group name: %s", firstName)
+	}
+	if firstName == secondName {
+		t.Fatalf("Oracle instances must not share parameter group name %q", firstName)
+	}
+}
+
 func TestSetParameterGroupName(t *testing.T) {
 	testCases := map[string]struct {
 		dbInstance                 *RDSInstance
@@ -108,6 +123,15 @@ func TestNeedCustomParameters(t *testing.T) {
 				credentialUtils: &RDSCredentialUtils{},
 			},
 			expectedOk: false,
+			parameterGroupAdapter: &awsParameterGroupClient{
+				settings: &config.Settings{},
+			},
+		},
+		"oracle SE2": {
+			dbInstance: &RDSInstance{
+				DbType: oracleSE2Engine,
+			},
+			expectedOk: true,
 			parameterGroupAdapter: &awsParameterGroupClient{
 				settings: &config.Settings{},
 			},
@@ -678,6 +702,24 @@ func TestGetNewParameters(t *testing.T) {
 		expectedErr           error
 		parameterGroupAdapter *awsParameterGroupClient
 	}{
+		"Oracle SE2 baseline": {
+			dbInstance: &RDSInstance{
+				DbType: oracleSE2Engine,
+			},
+			expectedParams: map[string]map[string]paramDetails{
+				oracleSE2Engine: {
+					"audit_trail":               {value: "os,extended", applyMethod: "pending-reboot"},
+					"audit_sys_operations":      {value: "TRUE", applyMethod: "pending-reboot"},
+					"remote_login_passwordfile": {value: "NONE", applyMethod: "pending-reboot"},
+					"sql92_security":            {value: "TRUE", applyMethod: "pending-reboot"},
+					"max_idle_time":             {value: "15", applyMethod: "immediate"},
+				},
+			},
+			parameterGroupAdapter: &awsParameterGroupClient{
+				rds:      &mockRDSClient{},
+				settings: &config.Settings{},
+			},
+		},
 		"enabled functions": {
 			dbInstance: &RDSInstance{
 				EnableFunctions: true,
@@ -2541,4 +2583,114 @@ func TestReconcileRDSInstanceParameters(t *testing.T) {
 			t.Error(diff)
 		}
 	})
+}
+
+func TestProvisionNewOracleParameterGroup(t *testing.T) {
+	mock := &mockRDSClient{
+		dbEngineVersions: []rdsTypes.DBEngineVersion{
+			{DBParameterGroupFamily: aws.String("oracle-se2-19")},
+		},
+	}
+	client := NewAwsParameterGroupClient(
+		t.Context(),
+		mock,
+		&config.Settings{},
+		slog.New(&testutil.MockLogHandler{}),
+	)
+	instance := &RDSInstance{
+		Database:  "dboracle123",
+		DbType:    oracleSE2Engine,
+		DbVersion: "19.0.0.0.ru-2026-07.rur-2026-07.r1",
+	}
+
+	if err := client.ProvisionNewCustomParameterGroup(instance, nil); err != nil {
+		t.Fatalf("ProvisionNewCustomParameterGroup returned error: %v", err)
+	}
+
+	wantGroupName := "cg-aws-broker-dboracle123-version-19-0-0-0-ru-2026-07-rur-2026-07-r1"
+	if instance.ParameterGroupName != wantGroupName {
+		t.Fatalf("parameter group name = %q, want %q", instance.ParameterGroupName, wantGroupName)
+	}
+	if len(mock.createDbParamGroupInputs) != 1 {
+		t.Fatalf("CreateDBParameterGroup calls = %d, want 1", len(mock.createDbParamGroupInputs))
+	}
+	createInput := mock.createDbParamGroupInputs[0]
+	if aws.ToString(createInput.DBParameterGroupFamily) != "oracle-se2-19" {
+		t.Errorf("parameter group family = %q, want oracle-se2-19", aws.ToString(createInput.DBParameterGroupFamily))
+	}
+	if aws.ToString(createInput.DBParameterGroupName) != wantGroupName {
+		t.Errorf("created parameter group = %q, want %q", aws.ToString(createInput.DBParameterGroupName), wantGroupName)
+	}
+
+	if len(mock.modifyDbParamGroupInputs) != 1 {
+		t.Fatalf("ModifyDBParameterGroup calls = %d, want 1", len(mock.modifyDbParamGroupInputs))
+	}
+	got := make(map[string]rdsTypes.Parameter)
+	for _, parameter := range mock.modifyDbParamGroupInputs[0].Parameters {
+		got[aws.ToString(parameter.ParameterName)] = parameter
+	}
+	want := map[string]struct {
+		value       string
+		applyMethod rdsTypes.ApplyMethod
+	}{
+		"audit_trail":               {value: "os,extended", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"audit_sys_operations":      {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"remote_login_passwordfile": {value: "NONE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"sql92_security":            {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"max_idle_time":             {value: "15", applyMethod: rdsTypes.ApplyMethodImmediate},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("sent %d Oracle parameters, want %d: %v", len(got), len(want), got)
+	}
+	for name, expected := range want {
+		parameter, found := got[name]
+		if !found {
+			t.Errorf("parameter %q was not sent to AWS", name)
+			continue
+		}
+		if aws.ToString(parameter.ParameterValue) != expected.value {
+			t.Errorf("parameter %q value = %q, want %q", name, aws.ToString(parameter.ParameterValue), expected.value)
+		}
+		if parameter.ApplyMethod != expected.applyMethod {
+			t.Errorf("parameter %q apply method = %q, want %q", name, parameter.ApplyMethod, expected.applyMethod)
+		}
+	}
+}
+
+func TestProvisionOracleParameterGroupOnUpdate(t *testing.T) {
+	mock := &mockRDSClient{
+		describeDbParamsErrs: []error{&rdsTypes.DBParameterGroupNotFoundFault{}},
+		dbEngineVersions: []rdsTypes.DBEngineVersion{
+			{DBParameterGroupFamily: aws.String("oracle-se2-19")},
+		},
+	}
+	client := NewAwsParameterGroupClient(
+		t.Context(),
+		mock,
+		&config.Settings{},
+		slog.New(&testutil.MockLogHandler{}),
+	)
+	instance := &RDSInstance{
+		Database:  "dbexisting123",
+		DbType:    oracleSE2Engine,
+		DbVersion: "19.0.0.0",
+	}
+
+	created, err := client.ProvisionOrModifyCustomParameterGroup(instance, nil)
+	if err != nil {
+		t.Fatalf("ProvisionOrModifyCustomParameterGroup returned error: %v", err)
+	}
+	if !created {
+		t.Fatal("expected an existing Oracle instance without a custom group to get one")
+	}
+	if instance.ParameterGroupName != "cg-aws-broker-dbexisting123-version-19-0-0-0" {
+		t.Fatalf("unexpected parameter group name: %s", instance.ParameterGroupName)
+	}
+	if len(mock.createDbParamGroupInputs) != 1 || len(mock.modifyDbParamGroupInputs) != 1 {
+		t.Fatalf(
+			"parameter group create/modify calls = %d/%d, want 1/1",
+			len(mock.createDbParamGroupInputs),
+			len(mock.modifyDbParamGroupInputs),
+		)
+	}
 }
