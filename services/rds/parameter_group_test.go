@@ -2621,6 +2621,9 @@ func TestProvisionNewOracleParameterGroup(t *testing.T) {
 	if aws.ToString(createInput.DBParameterGroupName) != wantGroupName {
 		t.Errorf("created parameter group = %q, want %q", aws.ToString(createInput.DBParameterGroupName), wantGroupName)
 	}
+	if aws.ToString(createInput.Description) != "aws broker parameter group for dboracle123" {
+		t.Errorf("parameter group description = %q, want instance identifier", aws.ToString(createInput.Description))
+	}
 
 	if len(mock.modifyDbParamGroupInputs) != 1 {
 		t.Fatalf("ModifyDBParameterGroup calls = %d, want 1", len(mock.modifyDbParamGroupInputs))

@@ -276,7 +276,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(i.ParameterGroupName),
-			Description:            aws.String("aws broker parameter group for " + formatDBName(i.Database, i.DbType)),
+			Description:            aws.String("aws broker parameter group for " + parameterGroupDatabaseName(i)),
 			Tags:                   rdsTags,
 		}
 
@@ -316,6 +316,8 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 }
 
 func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
+	// The catalog offers Oracle SE2 only. Do not broaden this to oracle-se1
+	// without confirming that engine has an approved and tested baseline.
 	if i.DbType == oracleSE2Engine {
 		return true
 	}
@@ -634,15 +636,16 @@ func boolToParamvalue(b bool) string {
 
 // getParameterGroupName gets a parameter group name for the instance
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
-	// formatDBName() should always return the same value for the same database name,
-	// so the parameter group name should remain consistent
-	databaseName := formatDBName(i.Database, i.DbType)
+	return p.parameterGroupPrefix + parameterGroupDatabaseName(i) + "-version-" + formatDBVersion(i.DbVersion)
+}
+
+func parameterGroupDatabaseName(i *RDSInstance) string {
 	if i.DbType == oracleSE2Engine {
 		// Oracle's logical DB name is the fixed SID ORCL. Parameter groups are
 		// instance-owned resources and therefore need the unique RDS identifier.
-		databaseName = i.Database
+		return i.Database
 	}
-	return p.parameterGroupPrefix + databaseName + "-version-" + formatDBVersion(i.DbVersion)
+	return formatDBName(i.Database, i.DbType)
 }
 
 func formatDBVersion(version string) string {
