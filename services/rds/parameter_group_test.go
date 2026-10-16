@@ -708,7 +708,7 @@ func TestGetNewParameters(t *testing.T) {
 			},
 			expectedParams: map[string]map[string]paramDetails{
 				oracleSE2Engine: {
-					"audit_trail":          {value: "os,extended", applyMethod: "pending-reboot"},
+					"audit_trail":          {value: "xml,extended", applyMethod: "pending-reboot"},
 					"audit_sys_operations": {value: "TRUE", applyMethod: "pending-reboot"},
 					"sql92_security":       {value: "TRUE", applyMethod: "pending-reboot"},
 					"max_idle_time":        {value: "15", applyMethod: "immediate"},
@@ -2635,7 +2635,7 @@ func TestProvisionNewOracleParameterGroup(t *testing.T) {
 		value       string
 		applyMethod rdsTypes.ApplyMethod
 	}{
-		"audit_trail":          {value: "os,extended", applyMethod: rdsTypes.ApplyMethodPendingReboot},
+		"audit_trail":          {value: "xml,extended", applyMethod: rdsTypes.ApplyMethodPendingReboot},
 		"audit_sys_operations": {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
 		"sql92_security":       {value: "TRUE", applyMethod: rdsTypes.ApplyMethodPendingReboot},
 		"max_idle_time":        {value: "15", applyMethod: rdsTypes.ApplyMethodImmediate},

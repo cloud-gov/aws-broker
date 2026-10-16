@@ -463,7 +463,7 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 		// These controls are enforced on every brokered Oracle SE2 instance.
 		customRDSParameters[oracleSE2Engine] = map[string]paramDetails{
 			"audit_trail": {
-				value:       "os,extended",
+				value:       "xml,extended", // AWS valid values: NONE | OS | DB | DB,EXTENDED | XML | XML,EXTENDED
 				applyMethod: "pending-reboot",
 			},
 			"audit_sys_operations": {

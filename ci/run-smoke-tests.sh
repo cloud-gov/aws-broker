@@ -6,6 +6,7 @@ set -euxo pipefail
 
 APP_NAME="smoke-tests-$SERVICE_PLAN"
 SERVICE_NAME="rds-smoke-tests-$SERVICE_PLAN"
+WAIT_TIMEOUT=3600
 
 # Log in to CF
 login
@@ -31,6 +32,7 @@ else
   cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME"
 fi
 
+wait_for_service_instance_success_with_timeout "$SERVICE_NAME" $WAIT_TIMEOUT
 wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.

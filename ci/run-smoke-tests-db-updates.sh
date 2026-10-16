@@ -52,7 +52,7 @@ fi
 cf create-service "${create_service_args[@]}"
 
 # Wait to make sure that the service instance has been successfully created.
-wait_for_service_instance_success "$SERVICE_NAME"
+wait_for_service_instance_success_with_timeout "$SERVICE_NAME" 3600
 
 # Wait to make sure that the service instance is bound to the application.
 wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
@@ -94,7 +94,7 @@ fi
 cf update-service "${update_service_args[@]}"
 
 # Wait to make sure that the service instance has been successfully updated.
-wait_for_service_instance_success "$SERVICE_NAME"
+wait_for_service_instance_success_with_timeout "$SERVICE_NAME" 3600
 
 # Clean up app and service
 cf delete -f "$APP_NAME"
