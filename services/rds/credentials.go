@@ -165,3 +165,7 @@ func generateDatabaseName(
 func buildUsername() string {
 	return "u" + helpers.RandStrNoCaps(15)
 }
+
+func buildBindingUsername() string {
+	return "b" + helpers.RandStrNoCaps(15)
+}

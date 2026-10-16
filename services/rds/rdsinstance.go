@@ -61,6 +61,59 @@ type RDSInstance struct {
 
 	RotateCredentials        bool `gorm:"-"`
 	AllowMajorVersionUpgrade bool `gorm:"-"`
+	DeleteRequested          bool
+}
+
+// RDSBinding stores the generated PostgreSQL credential for one OSB binding.
+// Password and salt are deliberately excluded from JSON to keep credentials out
+// of logs and River job payloads.
+type RDSBinding struct {
+	ID             uint        `gorm:"primaryKey" json:"-"`
+	InstanceID     string      `gorm:"not null;uniqueIndex:idx_rds_binding_instance_binding;index" json:"-"`
+	BindingID      string      `gorm:"not null;uniqueIndex:idx_rds_binding_instance_binding" json:"-"`
+	Username       string      `gorm:"not null;uniqueIndex" json:"-"`
+	Password       string      `gorm:"not null" json:"-"`
+	Salt           string      `gorm:"not null" json:"-"`
+	Profile        string      `gorm:"not null;default:compatibility" json:"-"`
+	SchemaName     string      `gorm:"not null;default:''" json:"-"`
+	ProfileVersion int         `gorm:"not null;default:0" json:"-"`
+	AdoptExternal  bool        `gorm:"not null;default:false" json:"-"`
+	Provisioned    bool        `gorm:"not null;default:false" json:"-"`
+	Instance       RDSInstance `gorm:"foreignKey:InstanceID;references:Uuid;constraint:OnDelete:CASCADE" json:"-"`
+}
+
+// RDSSchemaResource records the exclusive owner for a PostgreSQL schema.
+type RDSSchemaResource struct {
+	ID              uint   `gorm:"primaryKey" json:"-"`
+	InstanceID      string `gorm:"not null;uniqueIndex:idx_rds_schema_resource_instance_schema;index" json:"-"`
+	SchemaName      string `gorm:"not null;uniqueIndex:idx_rds_schema_resource_instance_schema" json:"-"`
+	OwnerBindingID  string `gorm:"not null" json:"-"`
+	OwnerUsername   string `gorm:"not null" json:"-"`
+	ProfileVersion  int    `gorm:"not null" json:"-"`
+	Provenance      string `gorm:"not null" json:"-"`
+	BaselineVersion int    `gorm:"not null" json:"-"`
+	OwnerUnbindPolicy string `gorm:"not null" json:"-"`
+	State           string `gorm:"not null" json:"-"`
+}
+
+// RDSSchemaAttachment records a migration or application principal attached to
+// an owner resource.
+type RDSSchemaAttachment struct {
+	ID               uint              `gorm:"primaryKey" json:"-"`
+	SchemaResourceID uint              `gorm:"not null;uniqueIndex:idx_rds_schema_attachment_resource_binding;index" json:"-"`
+	BindingID        string            `gorm:"not null;uniqueIndex:idx_rds_schema_attachment_resource_binding" json:"-"`
+	Username         string            `gorm:"not null" json:"-"`
+	Profile          string            `gorm:"not null" json:"-"`
+	ProfileVersion   int               `gorm:"not null" json:"-"`
+	State            string            `gorm:"not null" json:"-"`
+	SchemaResource   RDSSchemaResource `gorm:"foreignKey:SchemaResourceID;constraint:OnDelete:CASCADE" json:"-"`
+}
+
+// RDSBindingLock serializes PostgreSQL binding lifecycle operations across
+// broker replicas. The row remains after a binding is removed because it is a
+// synchronization primitive, not binding state.
+type RDSBindingLock struct {
+	InstanceID string `gorm:"primaryKey" json:"-"`
 }
 
 func NewRDSInstance() *RDSInstance {

@@ -69,8 +69,22 @@ func (e *CustomErrorHandler) markJobAsFailed(job *rivertype.JobRow) {
 		if err != nil {
 			break
 		}
-		instanceID = args.Instance.Uuid
-		err = asyncmessage.WriteAsyncJobMessage(e.db, args.Instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
+		instanceID = args.InstanceID
+		instance := rds.RDSInstance{}
+		if instanceID != "" {
+			err = e.db.Where("uuid = ?", instanceID).First(&instance).Error
+		} else if args.Instance != nil {
+			instance = *args.Instance
+			instanceID = instance.Uuid
+		} else {
+			err = errors.New("delete job is missing an RDS instance ID")
+		}
+		if err == nil {
+			err = asyncmessage.WriteAsyncJobMessage(e.db, instance.ServiceID, instanceID, base.DeleteOp, base.InstanceNotGone, "job panicked")
+			if err == nil && instance.DbType == "postgres" {
+				err = e.db.Model(&rds.RDSInstance{}).Where("uuid = ?", instanceID).Update("delete_requested", false).Error
+			}
+		}
 	case redis.ModifyKind:
 		args := redis.ModifyArgs{}
 		err = json.Unmarshal(job.EncodedArgs, &args)

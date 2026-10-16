@@ -20,7 +20,7 @@ func testDBInit() (*gorm.DB, error) {
 		return nil, err
 	}
 	// Automigrate!
-	err = db.AutoMigrate(&RDSInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
+	err = db.AutoMigrate(&RDSInstance{}, &RDSBinding{}, &RDSSchemaResource{}, &RDSSchemaAttachment{}, &RDSBindingLock{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{})
 	return db, err
 }
 

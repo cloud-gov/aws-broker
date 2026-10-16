@@ -19,3 +19,4 @@ than its authors, not by self-assertion.
 | [ADR-0001](ADR-0001-oracle-19c-stig-hardened-in-aws-broker.md) | Implement STIG-hardened Oracle 19c in aws-broker: SE2 + License Included, validation performed externally by the CINC/InSpec overlay | Accepted |
 | [ADR-0002](ADR-0002-oracle-baseline-csb-portability.md) | Design the Oracle baseline behind an `RDSBaseline` engine abstraction for future CSB portability | **Rejected** |
 | [ADR-0003](ADR-0003-sql-hardening-platform-vs-customer-responsibility.md) | In-database SQL-statement STIG hardening (`hardening/sql/`) is a customer responsibility; the broker ships and validates the SQL but never runs it against tenant DBs. CI validation planned | Accepted |
+| [ADR-0004](ADR-0004-postgresql-per-binding-credentials.md) | Use unique PostgreSQL credentials with opt-in migration-owned schema resources and attached application profiles while preserving compatibility by default | **Proposed** |

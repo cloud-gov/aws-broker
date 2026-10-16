@@ -93,13 +93,14 @@ func (o Options) Validate(settings *config.Settings) error {
 }
 
 type rdsBroker struct {
-	ctx         context.Context
-	brokerDB    *gorm.DB
-	catalog     *catalog.Catalog
-	settings    *config.Settings
-	tagManager  brokertags.TagManager
-	dbAdapter   dbAdapter
-	riverClient *river.Client[*sql.Tx]
+	ctx                   context.Context
+	brokerDB              *gorm.DB
+	catalog               *catalog.Catalog
+	settings              *config.Settings
+	tagManager            brokertags.TagManager
+	dbAdapter             dbAdapter
+	riverClient           *river.Client[*sql.Tx]
+	postgresBindingClient postgresBindingClient
 }
 
 // InitRDSBroker is the constructor for the rdsBroker.
@@ -116,6 +117,10 @@ func InitRDSBroker(
 	if err != nil {
 		return nil, err
 	}
+	postgresClient := postgresBindingClient(pqPostgresBindingClient{sslRootCert: settings.PostgresSSLRootCert})
+	if settings.Environment == "test" {
+		postgresClient = noopPostgresBindingClient{}
+	}
 	return &rdsBroker{
 		ctx,
 		brokerDB,
@@ -124,6 +129,7 @@ func InitRDSBroker(
 		tagManager,
 		dbAdapter,
 		riverClient,
+		postgresClient,
 	}, nil
 }
 
@@ -449,8 +455,61 @@ func (broker *rdsBroker) LastOperation(id string, details domain.PollDetails) (d
 }
 
 func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (domain.Binding, error) {
+	return broker.BindInstanceWithID(broker.ctx, id, "", details)
+}
+
+func (broker *rdsBroker) BindInstanceWithID(ctx context.Context, id, bindingID string, details domain.BindDetails) (domain.Binding, error) {
 	binding := domain.Binding{
 		OperationData: base.BindOp.String(),
+	}
+	instance := NewRDSInstance()
+	if err := broker.brokerDB.Where("uuid = ?", id).First(instance).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return binding, apiresponses.ErrInstanceDoesNotExist
+		}
+		return binding, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "load RDS instance")
+	}
+	if instance.DbType == "postgres" {
+		if bindingID == "" {
+			return binding, apiresponses.NewFailureResponse(errors.New("binding ID is required for PostgreSQL"), http.StatusBadRequest, "bind PostgreSQL instance")
+		}
+		parameters, err := parsePostgresBindParameters(details.RawParameters)
+		if err != nil {
+			return binding, apiresponses.NewFailureResponse(errors.New("invalid PostgreSQL binding parameters"), http.StatusBadRequest, "validate PostgreSQL binding parameters")
+		}
+		if err := broker.ensurePostgresBinding(ctx, id, bindingID, parameters); err != nil {
+			if errors.Is(err, errPostgresBindingConflict) {
+				return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding scope conflicts with existing state"), http.StatusConflict, "bind PostgreSQL instance")
+			}
+			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
+		}
+		var credentials map[string]string
+		err = withPostgresBindingLock(ctx, broker.brokerDB, id, func(tx *gorm.DB) error {
+			currentInstance := NewRDSInstance()
+			if err := tx.Where("uuid = ?", id).First(currentInstance).Error; err != nil {
+				return err
+			}
+			if currentInstance.DeleteRequested {
+				return errors.New("PostgreSQL instance deletion is in progress")
+			}
+			masterPassword, err := currentInstance.credentialUtils.decryptCredential(currentInstance.Salt, currentInstance.Password, broker.settings.EncryptionKey)
+			if err != nil {
+				return err
+			}
+			if _, err := broker.dbAdapter.bindDBToApp(currentInstance, masterPassword); err != nil {
+				return err
+			}
+			credentials, err = broker.provisionExistingPostgresBinding(ctx, tx, currentInstance, bindingID, masterPassword)
+			return err
+		})
+		if err != nil {
+			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
+		}
+		if credentials == nil {
+			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
+		}
+		binding.Credentials = credentials
+		return binding, nil
 	}
 	existingInstance := NewRDSInstance()
 
@@ -500,6 +559,380 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 	return binding, nil
 }
 
+func (broker *rdsBroker) bindPostgresInstance(ctx context.Context, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	if err := broker.ensurePostgresBinding(ctx, i.Uuid, bindingID, postgresBindParameters{Profile: postgresBindingProfileCompatibility}); err != nil {
+		return nil, err
+	}
+	var credentials map[string]string
+	err := withPostgresBindingLock(ctx, broker.brokerDB, i.Uuid, func(tx *gorm.DB) error {
+		currentInstance := NewRDSInstance()
+		if err := tx.Where("uuid = ?", i.Uuid).First(currentInstance).Error; err != nil {
+			return err
+		}
+		if currentInstance.DeleteRequested {
+			return errors.New("PostgreSQL instance deletion is in progress")
+		}
+		var err error
+		credentials, err = broker.provisionExistingPostgresBinding(ctx, tx, currentInstance, bindingID, masterPassword)
+		return err
+	})
+	return credentials, err
+}
+
+func (broker *rdsBroker) bindPostgresProfile(ctx context.Context, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	var credentials map[string]string
+	err := withPostgresBindingLock(ctx, broker.brokerDB, i.Uuid, func(tx *gorm.DB) error {
+		currentInstance := NewRDSInstance()
+		if err := tx.Where("uuid = ?", i.Uuid).First(currentInstance).Error; err != nil {
+			return err
+		}
+		var err error
+		credentials, err = broker.provisionExistingPostgresBinding(ctx, tx, currentInstance, bindingID, masterPassword)
+		return err
+	})
+	return credentials, err
+}
+
+var errPostgresBindingConflict = errors.New("PostgreSQL binding scope conflict")
+
+func (broker *rdsBroker) ensurePostgresBinding(ctx context.Context, instanceID, bindingID string, parameters postgresBindParameters) error {
+	if parameters.Profile == postgresBindingProfileOwner && parameters.OnOwnerUnbind == "" {
+		parameters.OnOwnerUnbind = postgresOwnerUnbindDrop
+	}
+	return withPostgresBindingLock(ctx, broker.brokerDB, instanceID, func(tx *gorm.DB) error {
+		i := NewRDSInstance()
+		if err := tx.Where("uuid = ?", instanceID).First(i).Error; err != nil {
+			return err
+		}
+		if i.DeleteRequested {
+			return errors.New("PostgreSQL instance deletion is in progress")
+		}
+		storedBinding := RDSBinding{}
+		result := tx.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&storedBinding)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			if parameters.Profile == postgresBindingProfileCompatibility {
+				salt, encryptedPassword, err := i.credentialUtils.generateCredentials(broker.settings)
+				if err != nil {
+					return err
+				}
+				storedBinding = RDSBinding{InstanceID: i.Uuid, BindingID: bindingID, Username: buildBindingUsername(), Password: encryptedPassword, Salt: salt, Profile: parameters.Profile}
+				return tx.Create(&storedBinding).Error
+			}
+			resource := RDSSchemaResource{}
+			resourceErr := tx.Where("instance_id = ? AND schema_name = ?", i.Uuid, parameters.Schema).First(&resource).Error
+			if parameters.Profile == postgresBindingProfileOwner {
+				if resourceErr == nil {
+					return errPostgresBindingConflict
+				}
+				if !errors.Is(resourceErr, gorm.ErrRecordNotFound) {
+					return resourceErr
+				}
+			} else if resourceErr != nil || resource.State != postgresSchemaStateReady || resource.ProfileVersion != postgresBindingProfileVersion {
+				return errPostgresBindingConflict
+			}
+			salt, encryptedPassword, err := i.credentialUtils.generateCredentials(broker.settings)
+			if err != nil {
+				return err
+			}
+			storedBinding = RDSBinding{InstanceID: i.Uuid, BindingID: bindingID, Username: buildBindingUsername(), Password: encryptedPassword, Salt: salt, Profile: parameters.Profile, SchemaName: parameters.Schema, ProfileVersion: parameters.Version, AdoptExternal: parameters.AdoptExternal}
+			if err := tx.Create(&storedBinding).Error; err != nil {
+				return err
+			}
+		} else if result.Error != nil {
+			return result.Error
+		} else if normalizedStoredBindingProfile(storedBinding) != parameters.Profile || storedBinding.SchemaName != parameters.Schema || storedBinding.AdoptExternal != parameters.AdoptExternal {
+			return errPostgresBindingConflict
+		}
+		if parameters.Profile == postgresBindingProfileCompatibility {
+			return nil
+		}
+		resource := RDSSchemaResource{}
+		resourceResult := tx.Where("instance_id = ? AND schema_name = ?", i.Uuid, parameters.Schema).First(&resource)
+		if parameters.Profile == postgresBindingProfileOwner {
+			if errors.Is(resourceResult.Error, gorm.ErrRecordNotFound) {
+				resource = RDSSchemaResource{InstanceID: i.Uuid, SchemaName: parameters.Schema, OwnerBindingID: bindingID, OwnerUsername: storedBinding.Username, ProfileVersion: postgresBindingProfileVersion, BaselineVersion: postgresSchemaBaselineVersion, OwnerUnbindPolicy: parameters.OnOwnerUnbind, State: postgresSchemaStateProvisioning}
+				return tx.Create(&resource).Error
+			}
+			if resourceResult.Error != nil {
+				return resourceResult.Error
+			}
+			if resource.OwnerBindingID != bindingID || resource.OwnerUsername != storedBinding.Username || resource.ProfileVersion != postgresBindingProfileVersion || resource.OwnerUnbindPolicy != parameters.OnOwnerUnbind {
+				return errPostgresBindingConflict
+			}
+			return nil
+		}
+		if resourceResult.Error != nil || resource.State != postgresSchemaStateReady || resource.ProfileVersion != postgresBindingProfileVersion {
+			return errPostgresBindingConflict
+		}
+		owner := RDSBinding{}
+		if err := tx.Where("instance_id = ? AND binding_id = ?", i.Uuid, resource.OwnerBindingID).First(&owner).Error; err != nil || owner.Profile != postgresBindingProfileOwner || owner.SchemaName != parameters.Schema || !owner.Provisioned {
+			return errPostgresBindingConflict
+		}
+		if parameters.Profile == postgresBindingProfileMigration {
+			var migrations int64
+			if err := tx.Model(&RDSSchemaAttachment{}).Where("schema_resource_id = ? AND profile = ?", resource.ID, postgresBindingProfileMigration).Count(&migrations).Error; err != nil || migrations > 0 {
+				return errPostgresBindingConflict
+			}
+		}
+		attachment := RDSSchemaAttachment{}
+		attachmentResult := tx.Where("schema_resource_id = ? AND binding_id = ?", resource.ID, bindingID).First(&attachment)
+		if errors.Is(attachmentResult.Error, gorm.ErrRecordNotFound) {
+			attachment = RDSSchemaAttachment{SchemaResourceID: resource.ID, BindingID: bindingID, Username: storedBinding.Username, Profile: parameters.Profile, ProfileVersion: postgresBindingProfileVersion, State: postgresSchemaStateProvisioning}
+			return tx.Create(&attachment).Error
+		}
+		if attachmentResult.Error != nil || attachment.Username != storedBinding.Username || attachment.Profile != parameters.Profile || attachment.ProfileVersion != postgresBindingProfileVersion {
+			return errPostgresBindingConflict
+		}
+		return nil
+	})
+}
+
+func normalizedStoredBindingProfile(binding RDSBinding) string {
+	if binding.Profile == "" {
+		return postgresBindingProfileCompatibility
+	}
+	return binding.Profile
+}
+
+func (broker *rdsBroker) provisionExistingPostgresBinding(ctx context.Context, db *gorm.DB, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	binding := RDSBinding{}
+	if err := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&binding).Error; err != nil {
+		return nil, err
+	}
+	return broker.provisionPostgresBinding(ctx, db, i, &binding, masterPassword)
+}
+
+func (broker *rdsBroker) provisionPostgresBinding(ctx context.Context, db *gorm.DB, i *RDSInstance, binding *RDSBinding, masterPassword string) (map[string]string, error) {
+	binding.Profile = normalizedStoredBindingProfile(*binding)
+	if !binding.Provisioned {
+		bindingPassword, err := i.credentialUtils.decryptCredential(binding.Salt, binding.Password, broker.settings.EncryptionKey)
+		if err != nil {
+			return nil, err
+		}
+		if err := broker.postgresBindingClient.createRole(ctx, i, masterPassword, binding.Username, bindingPassword, binding.Profile); err != nil {
+			return nil, err
+		}
+		if binding.Profile != postgresBindingProfileCompatibility {
+			resource := RDSSchemaResource{}
+			if err := db.Where("instance_id = ? AND schema_name = ?", i.Uuid, binding.SchemaName).First(&resource).Error; err != nil {
+				return nil, err
+			}
+			var attachment *RDSSchemaAttachment
+			if binding.Profile == postgresBindingProfileMigration || binding.Profile == postgresBindingProfileApplication {
+				value := RDSSchemaAttachment{}
+				if err := db.Where("schema_resource_id = ? AND binding_id = ?", resource.ID, binding.BindingID).First(&value).Error; err != nil {
+					return nil, err
+				}
+				attachment = &value
+			}
+			provenance, err := broker.postgresBindingClient.provisionSchema(ctx, i, masterPassword, binding, &resource, attachment)
+			if err != nil {
+				return nil, err
+			}
+			if binding.Profile == postgresBindingProfileOwner {
+				updates := map[string]any{"state": postgresSchemaStateReady, "provenance": provenance}
+				if err := db.Model(&resource).Updates(updates).Error; err != nil {
+					return nil, err
+				}
+			} else if err := db.Model(attachment).Update("state", postgresSchemaStateReady).Error; err != nil {
+				return nil, err
+			}
+			if binding.Profile == postgresBindingProfileApplication {
+				ownerBinding := RDSBinding{}
+				if err := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, resource.OwnerBindingID).First(&ownerBinding).Error; err != nil {
+					return nil, err
+				}
+				ownerPassword, err := i.credentialUtils.decryptCredential(ownerBinding.Salt, ownerBinding.Password, broker.settings.EncryptionKey)
+				if err != nil {
+					return nil, err
+				}
+				if err := broker.postgresBindingClient.setRoleDefaultPrivileges(ctx, i, ownerBinding.Username, ownerPassword, &resource, attachment); err != nil {
+					return nil, err
+				}
+				migration := RDSSchemaAttachment{}
+				if err := db.Where("schema_resource_id = ? AND profile = ? AND state = ?", resource.ID, postgresBindingProfileMigration, postgresSchemaStateReady).First(&migration).Error; err == nil {
+					migrationBinding := RDSBinding{}
+					if err := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, migration.BindingID).First(&migrationBinding).Error; err != nil {
+						return nil, err
+					}
+					migrationPassword, err := i.credentialUtils.decryptCredential(migrationBinding.Salt, migrationBinding.Password, broker.settings.EncryptionKey)
+					if err != nil {
+						return nil, err
+					}
+					if err := broker.postgresBindingClient.setRoleDefaultPrivileges(ctx, i, migration.Username, migrationPassword, &resource, attachment); err != nil {
+						return nil, err
+					}
+				} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, err
+				}
+			}
+			if binding.Profile == postgresBindingProfileMigration {
+				applications := []RDSSchemaAttachment{}
+				if err := db.Where("schema_resource_id = ? AND profile = ? AND state = ?", resource.ID, postgresBindingProfileApplication, postgresSchemaStateReady).Find(&applications).Error; err != nil {
+					return nil, err
+				}
+				migrationPassword, err := i.credentialUtils.decryptCredential(binding.Salt, binding.Password, broker.settings.EncryptionKey)
+				if err != nil {
+					return nil, err
+				}
+				for index := range applications {
+					if err := broker.postgresBindingClient.setRoleDefaultPrivileges(ctx, i, binding.Username, migrationPassword, &resource, &applications[index]); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		if err := db.Model(binding).Update("provisioned", true).Error; err != nil {
+			return nil, err
+		}
+	}
+	return bindingCredentials(i, binding, broker.settings)
+}
+
+func (broker *rdsBroker) UnbindInstance(ctx context.Context, instanceID, bindingID string) error {
+	return withPostgresBindingLock(ctx, broker.brokerDB, instanceID, func(tx *gorm.DB) error {
+		i := NewRDSInstance()
+		if err := tx.Where("uuid = ?", instanceID).First(i).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		if i.DbType != "postgres" {
+			return nil
+		}
+		binding := RDSBinding{}
+		if err := tx.Where("instance_id = ? AND binding_id = ?", instanceID, bindingID).First(&binding).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		masterPassword, err := i.credentialUtils.decryptCredential(i.Salt, i.Password, broker.settings.EncryptionKey)
+		if err != nil {
+			return err
+		}
+		binding.Profile = normalizedStoredBindingProfile(binding)
+		if binding.Profile == postgresBindingProfileMigration {
+			resource := RDSSchemaResource{}
+			if err := tx.Where("instance_id = ? AND schema_name = ?", i.Uuid, binding.SchemaName).First(&resource).Error; err != nil {
+				return err
+			}
+			var applications int64
+			if err := tx.Model(&RDSSchemaAttachment{}).Where("schema_resource_id = ? AND profile = ?", resource.ID, postgresBindingProfileApplication).Count(&applications).Error; err != nil {
+				return err
+			}
+			if applications > 0 {
+				return errPostgresBindingConflict
+			}
+		}
+		if binding.Profile == postgresBindingProfileOwner {
+			resource := RDSSchemaResource{}
+			if err := tx.Where("instance_id = ? AND schema_name = ?", i.Uuid, binding.SchemaName).First(&resource).Error; err != nil {
+				return err
+			}
+			var attachments int64
+			if err := tx.Model(&RDSSchemaAttachment{}).Where("schema_resource_id = ?", resource.ID).Count(&attachments).Error; err != nil {
+				return err
+			}
+			if attachments > 0 {
+				return errPostgresBindingConflict
+			}
+		}
+		if binding.Profile == postgresBindingProfileApplication || binding.Profile == postgresBindingProfileMigration {
+			attachment := RDSSchemaAttachment{}
+			if err := tx.Where("binding_id = ?", bindingID).First(&attachment).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			} else if err == nil {
+				resource := RDSSchemaResource{}
+				if err := tx.Where("id = ?", attachment.SchemaResourceID).First(&resource).Error; err != nil {
+					return err
+				}
+				if err := broker.postgresBindingClient.revokeSchemaAttachment(ctx, i, masterPassword, &resource, &attachment); err != nil {
+					return err
+				}
+				if attachment.Profile == postgresBindingProfileApplication {
+					if err := broker.revokePostgresApplicationDefaultPrivileges(ctx, tx, i, &resource, &attachment); err != nil {
+						return err
+					}
+				}
+				if err := tx.Delete(&attachment).Error; err != nil {
+					return err
+				}
+			}
+		}
+		if binding.Profile == postgresBindingProfileOwner {
+			resource := RDSSchemaResource{}
+			if err := tx.Where("instance_id = ? AND schema_name = ?", i.Uuid, binding.SchemaName).First(&resource).Error; err != nil {
+				return err
+			}
+			if resource.Provenance == postgresSchemaProvenanceBrokerCreated && resource.OwnerUnbindPolicy == postgresOwnerUnbindDrop {
+				if resource.State != postgresSchemaStateReady {
+					return errors.New("PostgreSQL broker-created schema resource is not ready")
+				}
+				if err := tx.Model(&resource).Update("state", postgresSchemaStateDeleting).Error; err != nil {
+					return err
+				}
+				resource.State = postgresSchemaStateDeleting
+				if err := broker.postgresBindingClient.dropSchema(ctx, i, masterPassword, &resource); err != nil {
+					return err
+				}
+			} else if resource.Provenance != postgresSchemaProvenanceAdoptedExternal && !(resource.Provenance == postgresSchemaProvenanceBrokerCreated && resource.OwnerUnbindPolicy == postgresOwnerUnbindKeep) {
+				return errors.New("PostgreSQL schema resource has unknown provenance")
+			}
+			if resource.OwnerUnbindPolicy == postgresOwnerUnbindKeep || resource.Provenance == postgresSchemaProvenanceAdoptedExternal {
+				if err := broker.postgresBindingClient.disableRole(ctx, i, masterPassword, binding.Username); err != nil {
+					return err
+				}
+				// Keep the durable owner principal claim so only its exact retry can
+				// reactivate the schema owner; a new owner must not take it over.
+				return tx.Model(&binding).Update("provisioned", false).Error
+			}
+			if err := tx.Delete(&resource).Error; err != nil {
+				return err
+			}
+		}
+		if err := broker.postgresBindingClient.dropRole(ctx, i, masterPassword, binding.Username); err != nil {
+			return err
+		}
+		return tx.Delete(&binding).Error
+	})
+}
+
+func (broker *rdsBroker) revokePostgresApplicationDefaultPrivileges(ctx context.Context, db *gorm.DB, i *RDSInstance, resource *RDSSchemaResource, application *RDSSchemaAttachment) error {
+	creatorIDs := []string{resource.OwnerBindingID}
+	migration := RDSSchemaAttachment{}
+	if err := db.Where("schema_resource_id = ? AND profile = ? AND state = ?", resource.ID, postgresBindingProfileMigration, postgresSchemaStateReady).First(&migration).Error; err == nil {
+		creatorIDs = append(creatorIDs, migration.BindingID)
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	for _, bindingID := range creatorIDs {
+		creator := RDSBinding{}
+		if err := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&creator).Error; err != nil {
+			return err
+		}
+		password, err := i.credentialUtils.decryptCredential(creator.Salt, creator.Password, broker.settings.EncryptionKey)
+		if err != nil {
+			return err
+		}
+		if err := broker.postgresBindingClient.revokeRoleDefaultPrivileges(ctx, i, creator.Username, password, resource, application); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func bindingCredentials(i *RDSInstance, binding *RDSBinding, settings *config.Settings) (map[string]string, error) {
+	password, err := i.credentialUtils.decryptCredential(binding.Salt, binding.Password, settings.EncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	boundInstance := *i
+	boundInstance.Username = binding.Username
+	return boundInstance.getCredentials(password)
+}
+
 func (broker *rdsBroker) DeleteInstance(id string) error {
 	existingInstance := NewRDSInstance()
 	var count int64
@@ -507,19 +940,50 @@ func (broker *rdsBroker) DeleteInstance(id string) error {
 	if count == 0 {
 		return apiresponses.ErrInstanceDoesNotExist
 	}
+	if existingInstance.DbType == "postgres" {
+		alreadyDeleting := false
+		if err := withPostgresBindingLock(broker.ctx, broker.brokerDB, id, func(tx *gorm.DB) error {
+			currentInstance := NewRDSInstance()
+			if err := tx.Where("uuid = ?", id).First(currentInstance).Error; err != nil {
+				return err
+			}
+			alreadyDeleting = currentInstance.DeleteRequested
+			if alreadyDeleting {
+				return nil
+			}
+			return tx.Model(&RDSInstance{}).Where("uuid = ?", id).Update("delete_requested", true).Error
+		}); err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "mark PostgreSQL instance deletion")
+		}
+		if alreadyDeleting {
+			return nil
+		}
+		existingInstance.DeleteRequested = true
+	}
 
 	// Delete the database instance.
 	status, err := broker.dbAdapter.deleteDB(existingInstance)
 	if err != nil {
+		broker.clearPostgresDeleteRequested(id)
 		return apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "delete RDS instance")
 	}
 
 	switch status {
 	case base.InstanceNotGone:
+		broker.clearPostgresDeleteRequested(id)
 		return apiresponses.NewFailureResponse(fmt.Errorf("error deleting the instance: %s", err), http.StatusInternalServerError, "delete RDS instance")
 	case base.InstanceInProgress:
 		return nil
 	default:
+		broker.clearPostgresDeleteRequested(id)
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete RDS instance")
+	}
+}
+
+func (broker *rdsBroker) clearPostgresDeleteRequested(instanceID string) {
+	if err := broker.brokerDB.Model(&RDSInstance{}).Where("uuid = ?", instanceID).Update("delete_requested", false).Error; err != nil {
+		// The original deletion failure remains more useful to the OSB client.
+		// A later operator retry can repair this conservative fail-closed state.
+		return
 	}
 }

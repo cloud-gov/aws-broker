@@ -58,7 +58,7 @@ func setup() http.Handler {
 	if err != nil {
 		log.Fatal(err)
 	}
-	brokerDB.AutoMigrate(&rds.RDSInstance{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) //nolint:errcheck // test setup; AutoMigrate failure surfaces as a later test failure
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &rds.RDSBinding{}, &rds.RDSSchemaResource{}, &rds.RDSSchemaAttachment{}, &rds.RDSBindingLock{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) //nolint:errcheck // test setup; AutoMigrate failure surfaces as a later test failure
 
 	path, _ := os.Getwd()
 	c := catalog.InitCatalog(path)
@@ -879,6 +879,18 @@ func TestRDSBindInstance(t *testing.T) {
 	// Does it return an unencrypted password?
 	if instance.Password == r.Credentials.Password || r.Credentials.Password == "" {
 		t.Error(url, "should return an unencrypted password and it returned", r.Credentials.Password)
+	}
+
+	secondBindingURL := fmt.Sprintf("/v2/service_instances/%s/service_bindings/another_binding", instanceUUID)
+	secondBinding := requestHandler.doRequest(secondBindingURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+	if secondBinding.Code != http.StatusCreated {
+		t.Logf("Unable to bind second instance. Body is: %s", secondBinding.Body.String())
+		t.Error(secondBindingURL, "with auth should return 201 and it returned", secondBinding.Code)
+	}
+	var second response
+	json.Unmarshal(secondBinding.Body.Bytes(), &second) //nolint:errcheck // test assertion; a bad unmarshal fails the surrounding checks
+	if r.Credentials.Username == second.Credentials.Username || r.Credentials.Password == second.Credentials.Password {
+		t.Error(url, "separate PostgreSQL bindings should return unique credentials")
 	}
 }
 
