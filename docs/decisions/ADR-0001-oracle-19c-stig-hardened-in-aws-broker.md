@@ -53,21 +53,17 @@ risk/deviation, **not** unmet controls:
 | Missing EE feature | Compensating control | Status |
 | --- | --- | --- |
 | Oracle-native Transparent Data Encryption (TDE) | **RDS storage-level encryption** (AES-256/KMS, `encrypted: true`) — edition-independent, and already the basis for the Postgres/MySQL plans | In effect on `main` |
-| Fine-Grained Auditing (FGA) | **Unified auditing** (RDS runs mixed mode), enabled by the `audit_trail` parameter | **Intended, not yet on `main`** — the Oracle parameter-group baseline is pending (#568) |
+| Fine-Grained Auditing (FGA) | **Standard/unified auditing** with `audit_trail=os,extended`, producing OS audit files that RDS can export to CloudWatch | Implemented by the Oracle parameter-group baseline |
 
 Oracle Database Vault is unsupported on RDS **even on EE**, so it was never part of
 the posture regardless of edition.
 
-> **Open question — do not read the auditing row as settled.** On RDS, CloudWatch
-> log export ships only the OS `.aud`/`.xml` files; records written with
-> `audit_trail=DB`/`DB,EXTENDED` stay in-database and are **not** exportable, and
-> the unified trail (`AUDSYS.AUD$UNIFIED`) is not an OS file either. Getting the
-> *unified* trail off-box requires Database Activity Streams, which is out of scope.
-> The off-box mechanism and the correct `audit_trail` value are therefore still
-> being decided — see
+> **Audit export boundary.** On RDS, CloudWatch log export ships Oracle OS audit
+> files, while `DB`/`DB,EXTENDED` records remain in-database and the unified trail
+> is not directly exportable without Database Activity Streams. The parameter
+> baseline therefore uses `audit_trail=os,extended` so eligible audit records are
+> written to files that RDS can export. See
 > [overlay#48](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/48).
-> This ADR records that auditing is the FGA compensating control; it does **not**
-> assert that audit records currently reach a central log facility.
 
 Consequence to plan for: roughly 33 overlay controls are OS/listener-level and
 **cannot** be validated on managed RDS. They must be dispositioned
@@ -122,3 +118,14 @@ the reversal is discoverable and is not re-litigated by accident.
   Remaining Oracle hardening is tracked in
   [#568](https://github.com/cloud-gov/aws-broker/issues/568); the live GovCloud
   validation run in [#558](https://github.com/cloud-gov/aws-broker/issues/558).
+
+## Parameter-group implementation
+
+The broker provisions every new Oracle SE2 instance with a broker-managed custom
+parameter group. The imperative Go baseline follows ADR-0002 and currently sets
+`audit_trail=os,extended`, `audit_sys_operations`, `sql92_security`, and
+`max_idle_time`. Static parameters use `pending-reboot`; `max_idle_time` is applied
+immediately. RDS exposes `remote_login_passwordfile` as non-modifiable for the
+Oracle SE2 19c parameter-group family, so that setting remains AWS-managed rather
+than broker-enforced. Existing Oracle instances receive the baseline on their next
+service update; this change does not initiate a fleet-wide update or reboot.

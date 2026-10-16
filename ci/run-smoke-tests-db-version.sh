@@ -27,6 +27,7 @@ cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 # Create service
 cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"version": "'"$DB_VERSION"'"}'
 
+wait_for_service_instance_success_with_timeout "$SERVICE_NAME" 3600
 wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
