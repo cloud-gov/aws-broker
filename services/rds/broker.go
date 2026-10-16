@@ -103,6 +103,14 @@ type rdsBroker struct {
 	postgresBindingClient postgresBindingClient
 }
 
+type postgresBindingProvisionError struct {
+	err error
+}
+
+func (e *postgresBindingProvisionError) Error() string {
+	return e.err.Error()
+}
+
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(
 	ctx context.Context,
@@ -490,9 +498,18 @@ func (broker *rdsBroker) BindInstanceWithID(ctx context.Context, id, bindingID s
 				return err
 			}
 			credentials, err = broker.bindPostgresInstanceLocked(ctx, tx, currentInstance, bindingID, masterPassword)
+			var provisionErr *postgresBindingProvisionError
+			if errors.As(err, &provisionErr) {
+				// Commit the unprovisioned binding record so an OSB retry reuses
+				// the same username and encrypted password.
+				return nil
+			}
 			return err
 		})
 		if err != nil {
+			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
+		}
+		if credentials == nil {
 			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
 		}
 		binding.Credentials = credentials
@@ -558,8 +575,15 @@ func (broker *rdsBroker) bindPostgresInstance(ctx context.Context, i *RDSInstanc
 		}
 		var err error
 		credentials, err = broker.bindPostgresInstanceLocked(ctx, tx, currentInstance, bindingID, masterPassword)
+		var provisionErr *postgresBindingProvisionError
+		if errors.As(err, &provisionErr) {
+			return nil
+		}
 		return err
 	})
+	if err == nil && credentials == nil {
+		return nil, errors.New("PostgreSQL binding credential lifecycle failed")
+	}
 	return credentials, err
 }
 
@@ -588,7 +612,7 @@ func (broker *rdsBroker) provisionPostgresBinding(ctx context.Context, db *gorm.
 			return nil, err
 		}
 		if err := broker.postgresBindingClient.createRole(ctx, i, masterPassword, binding.Username, bindingPassword); err != nil {
-			return nil, err
+			return nil, &postgresBindingProvisionError{err: err}
 		}
 		if err := db.Model(binding).Update("provisioned", true).Error; err != nil {
 			return nil, err
