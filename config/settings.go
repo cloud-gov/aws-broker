@@ -15,6 +15,7 @@ import (
 // Settings stores settings used to run the application
 type Settings struct {
 	EncryptionKey              string
+	PostgresSSLRootCert        string
 	DbNamePrefix               string
 	DbShorthandPrefix          string
 	MaxAllocatedStorage        int64
@@ -82,6 +83,8 @@ func (s *Settings) LoadFromEnv() error {
 	} else {
 		return errors.New("an encryption key is required. Must specify ENC_KEY environment variable")
 	}
+
+	s.PostgresSSLRootCert = os.Getenv("POSTGRES_SSLROOTCERT")
 
 	s.DbNamePrefix = os.Getenv("DB_PREFIX")
 	if s.DbNamePrefix == "" {

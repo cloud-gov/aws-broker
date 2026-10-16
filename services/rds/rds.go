@@ -304,7 +304,9 @@ func (d *dedicatedDBAdapter) bindDBToApp(i *RDSInstance, password string) (map[s
 		i.ReplicaDatabaseHost = dbEndpointDetails.Host
 	}
 
-	err := d.db.Save(i).Error
+	// Only endpoint discovery belongs to binding. Saving the full instance here
+	// could overwrite concurrent lifecycle state such as DeleteRequested.
+	err := d.db.Model(i).Select("host", "port", "state", "replica_database_host").Updates(i).Error
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +330,7 @@ func (d *dedicatedDBAdapter) deleteDB(i *RDSInstance) (base.InstanceState, error
 	sqlTx := tx.Statement.ConnPool.(*sql.Tx)
 
 	_, err = d.riverClient.InsertTx(d.ctx, sqlTx, &DeleteArgs{
-		Instance: i,
+		InstanceID: i.Uuid,
 	}, nil)
 	if err != nil {
 		return base.InstanceNotGone, err

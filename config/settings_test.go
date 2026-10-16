@@ -14,6 +14,7 @@ func TestSettings(t *testing.T) {
 	t.Setenv("CF_API_URL", "fake-api")
 	t.Setenv("CF_API_CLIENT_ID", "fake-client-id")
 	t.Setenv("CF_API_CLIENT_SECRET", "fake-client-secret")
+	t.Setenv("POSTGRES_SSLROOTCERT", "/etc/rds-ca.pem")
 	// ensure that these are set to empty to override any test environment variables in .env
 	t.Setenv("DB_SSLMODE", "")
 	t.Setenv("DB_TYPE", "")
@@ -31,6 +32,7 @@ func TestSettings(t *testing.T) {
 		},
 		Region:                     "region-1",
 		EncryptionKey:              "fake-key",
+		PostgresSSLRootCert:        "/etc/rds-ca.pem",
 		DbNamePrefix:               "db",
 		DbShorthandPrefix:          "db",
 		MaxAllocatedStorage:        1024,
@@ -60,6 +62,7 @@ func TestSettingsPort(t *testing.T) {
 	t.Setenv("CF_API_URL", "fake-api")
 	t.Setenv("CF_API_CLIENT_ID", "fake-client-id")
 	t.Setenv("CF_API_CLIENT_SECRET", "fake-client-secret")
+	t.Setenv("POSTGRES_SSLROOTCERT", "/etc/rds-ca.pem")
 	// ensure that these are set to empty to override any test environment variables in .env
 	t.Setenv("DB_SSLMODE", "")
 	t.Setenv("DB_TYPE", "")
@@ -78,6 +81,7 @@ func TestSettingsPort(t *testing.T) {
 		},
 		Region:                     "region-1",
 		EncryptionKey:              "fake-key",
+		PostgresSSLRootCert:        "/etc/rds-ca.pem",
 		DbNamePrefix:               "db",
 		DbShorthandPrefix:          "db",
 		MaxAllocatedStorage:        1024,
