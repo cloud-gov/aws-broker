@@ -18,6 +18,8 @@ import (
 
 var postgresRoleName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
+const postgresBindingQueryTimeout = 30 * time.Second
+
 type postgresBindingClient interface {
 	createRole(context.Context, *RDSInstance, string, string, string) error
 	dropRole(context.Context, *RDSInstance, string, string) error
@@ -55,30 +57,32 @@ func (c pqPostgresBindingClient) createRole(ctx context.Context, i *RDSInstance,
 		return err
 	}
 	defer func() { _ = db.Close() }()
+	queryCtx, cancel := context.WithTimeout(ctx, postgresBindingQueryTimeout)
+	defer cancel()
 
 	quotedUsername := pq.QuoteIdentifier(username)
 	quotedMasterUsername := pq.QuoteIdentifier(i.Username)
-	masterAttributes, err := postgresRoleAttributesFor(ctx, db, i.Username)
+	masterAttributes, err := postgresRoleAttributesFor(queryCtx, db, i.Username)
 	if err != nil {
 		return err
 	}
 	roleAttributes := masterAttributes.sql()
 	var exists bool
-	if err := db.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", username).Scan(&exists); err != nil {
+	if err := db.QueryRowContext(queryCtx, "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", username).Scan(&exists); err != nil {
 		return fmt.Errorf("check binding role: %w", err)
 	}
 	if !exists {
-		if _, err := db.ExecContext(ctx, fmt.Sprintf("CREATE ROLE %s LOGIN INHERIT %s PASSWORD %s", quotedUsername, roleAttributes, pq.QuoteLiteral(password))); err != nil {
+		if _, err := db.ExecContext(queryCtx, fmt.Sprintf("CREATE ROLE %s LOGIN INHERIT %s PASSWORD %s", quotedUsername, roleAttributes, pq.QuoteLiteral(password))); err != nil {
 			return fmt.Errorf("create binding role: %w", err)
 		}
-	} else if _, err := db.ExecContext(ctx, fmt.Sprintf("ALTER ROLE %s LOGIN INHERIT %s PASSWORD %s", quotedUsername, roleAttributes, pq.QuoteLiteral(password))); err != nil {
+	} else if _, err := db.ExecContext(queryCtx, fmt.Sprintf("ALTER ROLE %s LOGIN INHERIT %s PASSWORD %s", quotedUsername, roleAttributes, pq.QuoteLiteral(password))); err != nil {
 		return fmt.Errorf("reconcile binding role password: %w", err)
 	}
 
 	// Membership preserves the current master-credential capability set without
 	// inventing a new default grant policy. PostgreSQL/RDS support is verified
 	// before rollout; failure must block rather than narrow the default profile.
-	if _, err := db.ExecContext(ctx, fmt.Sprintf("GRANT %s TO %s", quotedMasterUsername, quotedUsername)); err != nil {
+	if _, err := db.ExecContext(queryCtx, fmt.Sprintf("GRANT %s TO %s", quotedMasterUsername, quotedUsername)); err != nil {
 		return fmt.Errorf("grant master role membership to binding role: %w", err)
 	}
 	return nil
@@ -123,23 +127,25 @@ func (c pqPostgresBindingClient) dropRole(ctx context.Context, i *RDSInstance, m
 		return err
 	}
 	defer func() { _ = db.Close() }()
+	queryCtx, cancel := context.WithTimeout(ctx, postgresBindingQueryTimeout)
+	defer cancel()
 
 	quotedUsername := pq.QuoteIdentifier(username)
 	quotedMasterUsername := pq.QuoteIdentifier(i.Username)
 	var exists bool
-	if err := db.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", username).Scan(&exists); err != nil {
+	if err := db.QueryRowContext(queryCtx, "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", username).Scan(&exists); err != nil {
 		return fmt.Errorf("check binding role: %w", err)
 	}
 	if !exists {
 		return nil
 	}
-	if _, err := db.ExecContext(ctx, fmt.Sprintf("REASSIGN OWNED BY %s TO %s", quotedUsername, quotedMasterUsername)); err != nil {
+	if _, err := db.ExecContext(queryCtx, fmt.Sprintf("REASSIGN OWNED BY %s TO %s", quotedUsername, quotedMasterUsername)); err != nil {
 		return fmt.Errorf("reassign binding role objects: %w", err)
 	}
-	if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP OWNED BY %s", quotedUsername)); err != nil {
+	if _, err := db.ExecContext(queryCtx, fmt.Sprintf("DROP OWNED BY %s", quotedUsername)); err != nil {
 		return fmt.Errorf("drop binding role privileges: %w", err)
 	}
-	if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP ROLE %s", quotedUsername)); err != nil {
+	if _, err := db.ExecContext(queryCtx, fmt.Sprintf("DROP ROLE %s", quotedUsername)); err != nil {
 		return fmt.Errorf("drop binding role: %w", err)
 	}
 	return nil

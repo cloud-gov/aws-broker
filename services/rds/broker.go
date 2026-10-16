@@ -103,14 +103,6 @@ type rdsBroker struct {
 	postgresBindingClient postgresBindingClient
 }
 
-type postgresBindingProvisionError struct {
-	err error
-}
-
-func (e *postgresBindingProvisionError) Error() string {
-	return e.err.Error()
-}
-
 // InitRDSBroker is the constructor for the rdsBroker.
 func InitRDSBroker(
 	ctx context.Context,
@@ -481,6 +473,9 @@ func (broker *rdsBroker) BindInstanceWithID(ctx context.Context, id, bindingID s
 		if bindingID == "" {
 			return binding, apiresponses.NewFailureResponse(errors.New("binding ID is required for PostgreSQL"), http.StatusBadRequest, "bind PostgreSQL instance")
 		}
+		if err := broker.ensurePostgresBinding(ctx, id, bindingID); err != nil {
+			return binding, apiresponses.NewFailureResponse(errors.New("PostgreSQL binding credential lifecycle failed"), http.StatusInternalServerError, "bind PostgreSQL instance")
+		}
 		var credentials map[string]string
 		err := withPostgresBindingLock(ctx, broker.brokerDB, id, func(tx *gorm.DB) error {
 			currentInstance := NewRDSInstance()
@@ -497,13 +492,7 @@ func (broker *rdsBroker) BindInstanceWithID(ctx context.Context, id, bindingID s
 			if _, err := broker.dbAdapter.bindDBToApp(currentInstance, masterPassword); err != nil {
 				return err
 			}
-			credentials, err = broker.bindPostgresInstanceLocked(ctx, tx, currentInstance, bindingID, masterPassword)
-			var provisionErr *postgresBindingProvisionError
-			if errors.As(err, &provisionErr) {
-				// Commit the unprovisioned binding record so an OSB retry reuses
-				// the same username and encrypted password.
-				return nil
-			}
+			credentials, err = broker.provisionExistingPostgresBinding(ctx, tx, currentInstance, bindingID, masterPassword)
 			return err
 		})
 		if err != nil {
@@ -564,6 +553,9 @@ func (broker *rdsBroker) BindInstanceWithID(ctx context.Context, id, bindingID s
 }
 
 func (broker *rdsBroker) bindPostgresInstance(ctx context.Context, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	if err := broker.ensurePostgresBinding(ctx, i.Uuid, bindingID); err != nil {
+		return nil, err
+	}
 	var credentials map[string]string
 	err := withPostgresBindingLock(ctx, broker.brokerDB, i.Uuid, func(tx *gorm.DB) error {
 		currentInstance := NewRDSInstance()
@@ -574,35 +566,45 @@ func (broker *rdsBroker) bindPostgresInstance(ctx context.Context, i *RDSInstanc
 			return errors.New("PostgreSQL instance deletion is in progress")
 		}
 		var err error
-		credentials, err = broker.bindPostgresInstanceLocked(ctx, tx, currentInstance, bindingID, masterPassword)
-		var provisionErr *postgresBindingProvisionError
-		if errors.As(err, &provisionErr) {
-			return nil
-		}
+		credentials, err = broker.provisionExistingPostgresBinding(ctx, tx, currentInstance, bindingID, masterPassword)
 		return err
 	})
-	if err == nil && credentials == nil {
-		return nil, errors.New("PostgreSQL binding credential lifecycle failed")
-	}
 	return credentials, err
 }
 
-func (broker *rdsBroker) bindPostgresInstanceLocked(ctx context.Context, db *gorm.DB, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
-	storedBinding := RDSBinding{}
-	result := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&storedBinding)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		salt, encryptedPassword, err := i.credentialUtils.generateCredentials(broker.settings)
-		if err != nil {
-			return nil, err
+func (broker *rdsBroker) ensurePostgresBinding(ctx context.Context, instanceID, bindingID string) error {
+	return withPostgresBindingLock(ctx, broker.brokerDB, instanceID, func(tx *gorm.DB) error {
+		i := NewRDSInstance()
+		if err := tx.Where("uuid = ?", instanceID).First(i).Error; err != nil {
+			return err
 		}
-		storedBinding = RDSBinding{InstanceID: i.Uuid, BindingID: bindingID, Username: buildBindingUsername(), Password: encryptedPassword, Salt: salt}
-		if err := db.Create(&storedBinding).Error; err != nil {
-			return nil, err
+		if i.DeleteRequested {
+			return errors.New("PostgreSQL instance deletion is in progress")
 		}
-	} else if result.Error != nil {
-		return nil, result.Error
+		storedBinding := RDSBinding{}
+		result := tx.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&storedBinding)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			salt, encryptedPassword, err := i.credentialUtils.generateCredentials(broker.settings)
+			if err != nil {
+				return err
+			}
+			storedBinding = RDSBinding{InstanceID: i.Uuid, BindingID: bindingID, Username: buildBindingUsername(), Password: encryptedPassword, Salt: salt}
+			if err := tx.Create(&storedBinding).Error; err != nil {
+				return err
+			}
+		} else if result.Error != nil {
+			return result.Error
+		}
+		return nil
+	})
+}
+
+func (broker *rdsBroker) provisionExistingPostgresBinding(ctx context.Context, db *gorm.DB, i *RDSInstance, bindingID, masterPassword string) (map[string]string, error) {
+	binding := RDSBinding{}
+	if err := db.Where("instance_id = ? AND binding_id = ?", i.Uuid, bindingID).First(&binding).Error; err != nil {
+		return nil, err
 	}
-	return broker.provisionPostgresBinding(ctx, db, i, &storedBinding, masterPassword)
+	return broker.provisionPostgresBinding(ctx, db, i, &binding, masterPassword)
 }
 
 func (broker *rdsBroker) provisionPostgresBinding(ctx context.Context, db *gorm.DB, i *RDSInstance, binding *RDSBinding, masterPassword string) (map[string]string, error) {
@@ -612,7 +614,7 @@ func (broker *rdsBroker) provisionPostgresBinding(ctx context.Context, db *gorm.
 			return nil, err
 		}
 		if err := broker.postgresBindingClient.createRole(ctx, i, masterPassword, binding.Username, bindingPassword); err != nil {
-			return nil, &postgresBindingProvisionError{err: err}
+			return nil, err
 		}
 		if err := db.Model(binding).Update("provisioned", true).Error; err != nil {
 			return nil, err
