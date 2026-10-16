@@ -54,7 +54,7 @@ func (c pqPostgresBindingClient) createRole(ctx context.Context, i *RDSInstance,
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	quotedUsername := pq.QuoteIdentifier(username)
 	quotedMasterUsername := pq.QuoteIdentifier(i.Username)
@@ -122,7 +122,7 @@ func (c pqPostgresBindingClient) dropRole(ctx context.Context, i *RDSInstance, m
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	quotedUsername := pq.QuoteIdentifier(username)
 	quotedMasterUsername := pq.QuoteIdentifier(i.Username)
@@ -175,7 +175,7 @@ func openPostgresAdminConnection(ctx context.Context, i *RDSInstance, password, 
 	pctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if err := db.PingContext(pctx); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("connect PostgreSQL admin connection: %w", err)
 	}
 	return db, nil
