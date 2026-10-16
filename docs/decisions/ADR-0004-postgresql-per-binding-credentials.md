@@ -97,39 +97,45 @@ verification, and bounded connection/query timeouts. A missing or unreadable CA
 bundle, unavailable endpoint, or TLS failure fails the lifecycle operation
 closed. Credentials and DSNs must not be logged or included in job arguments.
 
-## Follow-up: restricted profiles
+## Restricted bind profiles
 
-Issue #12 also tracks opt-in constrained credentials. That work is explicitly
-out of scope for this decision's implementation PR and will be delivered in a
-separate follow-up PR. It will add strict bind parameters and persisted scope
-comparison for:
+Restricted profiles are versioned `owner`, `migration`, and `application` bind
+requests with a caller-supplied lowercase schema name. Omitted parameters remain
+the compatibility profile and create no schema. The strict parser rejects
+malformed/duplicate/unknown fields, unsafe or system schemas, unsupported
+profiles, and any caller-controlled SQL, grants, roles, privileges, or rotation.
 
-- an `application` profile limited to a caller-requested PostgreSQL schema;
-  it cannot grant permissions to other users; and
-- a `migration` profile with reviewed, declarative-schema-management
-  capabilities within a caller-requested PostgreSQL schema, including creating,
-  altering, and dropping its objects and establishing bounded ownership/default
-  privileges, but no unrestricted database-administrator capability.
+Each `(instance, schema)` has one durable owner resource. The owner credential
+is returned as an OSB credential and owns the schema, but has no database-wide
+administrative role attributes. A second owner conflicts. Migration and
+application requests deterministically attach to the ready owner resource by
+schema name; they never become schema owner. One migration attachment is
+allowed, preventing split object ownership; application attachments use the
+fixed DML/sequence/function/type grant manifest.
 
-The follow-up parameter contract will be versioned and accept a caller-supplied
-schema name only for these opt-in profiles. It will allowlist PostgreSQL
-identifiers, reject reserved and system schema names, reject unsafe quoting
-cases, and reject arbitrary roles, grants, SQL, or privilege fields. The
-normalized schema and profile are persisted with the binding. An exact retry
-returns the existing credential; a scope mismatch is a conflict and never
-changes or widens access.
+An owner creates an absent schema or explicitly adopts an existing schema only
+with `adopt_external: true`. Adoption requires the schema to be RDS-master-owned,
+empty, and limited to PostgreSQL's default schema ACL before explicit ownership
+transfer. Resources record
+`broker_created` or `adopted_external` provenance. The broker never silently
+adopts a schema. It may drop only a reconciled broker-created resource after all
+attachments are removed; adopted external schemas are never dropped.
 
-The broker will create the requested schema if absent, then reconcile ownership
-and grants only when the schema is already owned and claimed by that same
-binding. It will reject a schema claimed by another binding, or an existing
-schema with incompatible owner or privileges; it must never silently take over
-or broaden an existing schema. Schema sharing across bindings is unsupported
-until a separate safe ownership model is designed and approved.
+Migration receives only schema `USAGE, CREATE`; PostgreSQL makes it owner of
+objects it creates, so it can alter/drop and control ACLs only for those objects,
+not objects owned by the owner or external users. PostgreSQL default privileges
+are creator-specific. The broker opens a separate TLS-verified, bounded
+connection as the generated owner and migration roles to configure their own
+future-object application grants. It does not use master-role membership or
+admin-issued `ALTER DEFAULT PRIVILEGES FOR ROLE migration`; failure is closed
+and retained for exact retry.
 
-Those profiles must reject malformed, unknown, or privilege-expanding fields
-and must never change the compatibility profile when parameters are omitted.
-Omitted parameters retain this decision's compatibility profile and do not
-implicitly create a schema.
+| Resource state | Permitted transition | Forbidden transition |
+| --- | --- | --- |
+| Absent | Owner create/adopt | Migration/application attachment |
+| Provisioning | Exact owner retry | Another owner or attachment |
+| Ready | One migration and applications | Second owner/migration |
+| Deleting | Exact cleanup retry | New binding/attachment |
 
 ## Consequences
 
@@ -174,7 +180,5 @@ cleanup-capable broker release. Operators must retain a cleanup-capable release
 until those bindings are drained; dropping the binding state table or rolling
 back cleanup capability risks orphaned database roles.
 
-The restricted-profile follow-up must document Terraform/service-binding
-examples with parameter values only, operator prerequisites, schema-conflict
-behavior, and equivalent rollback constraints. It must not include credentials
-in examples or logs.
+Restricted profile operations are documented in
+[the PostgreSQL binding profile runbook](../postgresql-binding-profiles.md).

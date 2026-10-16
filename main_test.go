@@ -58,7 +58,7 @@ func setup() http.Handler {
 	if err != nil {
 		log.Fatal(err)
 	}
-	brokerDB.AutoMigrate(&rds.RDSInstance{}, &rds.RDSBinding{}, &rds.RDSBindingLock{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) //nolint:errcheck // test setup; AutoMigrate failure surfaces as a later test failure
+	brokerDB.AutoMigrate(&rds.RDSInstance{}, &rds.RDSBinding{}, &rds.RDSSchemaResource{}, &rds.RDSSchemaAttachment{}, &rds.RDSBindingLock{}, &redis.RedisInstance{}, &elasticsearch.ElasticsearchInstance{}, &base.Instance{}, &asyncmessage.AsyncJobMsg{}) //nolint:errcheck // test setup; AutoMigrate failure surfaces as a later test failure
 
 	path, _ := os.Getwd()
 	c := catalog.InitCatalog(path)

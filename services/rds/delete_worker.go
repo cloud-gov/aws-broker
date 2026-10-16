@@ -185,6 +185,52 @@ func cleanupPostgresBindings(ctx context.Context, db *gorm.DB, i *RDSInstance, s
 		return fmt.Errorf("decrypt PostgreSQL master credential: %w", err)
 	}
 	for _, binding := range bindings {
+		binding.Profile = normalizedStoredBindingProfile(binding)
+		if binding.Profile == postgresBindingProfileOwner {
+			continue
+		}
+		if err := client.dropRole(ctx, i, masterPassword, binding.Username); err != nil {
+			return fmt.Errorf("remove PostgreSQL binding principal: %w", err)
+		}
+		if err := db.Delete(&binding).Error; err != nil {
+			return fmt.Errorf("remove PostgreSQL binding credential: %w", err)
+		}
+	}
+	for _, binding := range bindings {
+		binding.Profile = normalizedStoredBindingProfile(binding)
+		if binding.Profile != postgresBindingProfileOwner {
+			continue
+		}
+		resource := RDSSchemaResource{}
+		if err := db.Where("instance_id = ? AND schema_name = ?", i.Uuid, binding.SchemaName).First(&resource).Error; err != nil {
+			return fmt.Errorf("load PostgreSQL schema resource: %w", err)
+		}
+		if resource.Provenance == postgresSchemaProvenanceBrokerCreated && resource.OwnerUnbindPolicy == postgresOwnerUnbindDrop {
+			if resource.State != postgresSchemaStateReady {
+				return errors.New("PostgreSQL broker-created schema resource is not ready")
+			}
+			if err := db.Model(&resource).Update("state", postgresSchemaStateDeleting).Error; err != nil {
+				return fmt.Errorf("mark PostgreSQL schema resource deleting: %w", err)
+			}
+			resource.State = postgresSchemaStateDeleting
+			if err := client.dropSchema(ctx, i, masterPassword, &resource); err != nil {
+				return fmt.Errorf("remove PostgreSQL schema resource: %w", err)
+			}
+		} else if resource.Provenance != postgresSchemaProvenanceAdoptedExternal && !(resource.Provenance == postgresSchemaProvenanceBrokerCreated && resource.OwnerUnbindPolicy == postgresOwnerUnbindKeep) {
+			return errors.New("PostgreSQL schema resource has unknown provenance")
+		} else if err := client.disableRole(ctx, i, masterPassword, binding.Username); err != nil {
+			return fmt.Errorf("disable retained PostgreSQL owner principal: %w", err)
+		} else {
+			// The retained schema remains owned by this role. Preserve both until
+			// AWS deletes the whole RDS instance.
+			continue
+		}
+		if err := db.Where("schema_resource_id = ?", resource.ID).Delete(&RDSSchemaAttachment{}).Error; err != nil {
+			return fmt.Errorf("remove PostgreSQL schema attachments: %w", err)
+		}
+		if err := db.Delete(&resource).Error; err != nil {
+			return fmt.Errorf("remove PostgreSQL schema claim: %w", err)
+		}
 		if err := client.dropRole(ctx, i, masterPassword, binding.Username); err != nil {
 			return fmt.Errorf("remove PostgreSQL binding principal: %w", err)
 		}

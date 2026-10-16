@@ -12,20 +12,32 @@ import (
 	"gorm.io/gorm"
 )
 
+const postgresBindingTestEncryptionKey = "test-key-1234" + "567"
+
 type mockPostgresBindingClient struct {
-	createCalls int
-	dropCalls   int
-	createErr   error
-	dropErr     error
-	username    string
-	password    string
+	createCalls  int
+	disableCalls int
+	dropCalls    int
+	createErr    error
+	dropErr      error
+	username     string
+	password     string
+	schemaDrops  int
+	defaultsFor  []string
+	revokedFor   []string
 }
 
-func (m *mockPostgresBindingClient) createRole(_ context.Context, _ *RDSInstance, _ string, username, password string) error {
+func (m *mockPostgresBindingClient) createRole(_ context.Context, _ *RDSInstance, _ string, username, password, _ string) error {
 	m.createCalls++
 	m.username = username
 	m.password = password
 	return m.createErr
+}
+
+func (m *mockPostgresBindingClient) disableRole(_ context.Context, _ *RDSInstance, _ string, username string) error {
+	m.disableCalls++
+	m.username = username
+	return nil
 }
 
 func (m *mockPostgresBindingClient) dropRole(_ context.Context, _ *RDSInstance, _ string, username string) error {
@@ -34,12 +46,38 @@ func (m *mockPostgresBindingClient) dropRole(_ context.Context, _ *RDSInstance, 
 	return m.dropErr
 }
 
+func (m *mockPostgresBindingClient) provisionSchema(_ context.Context, _ *RDSInstance, _ string, binding *RDSBinding, _ *RDSSchemaResource, _ *RDSSchemaAttachment) (string, error) {
+	if binding.Profile == postgresBindingProfileOwner {
+		return postgresSchemaProvenanceBrokerCreated, nil
+	}
+	return "", nil
+}
+
+func (m *mockPostgresBindingClient) revokeSchemaAttachment(_ context.Context, _ *RDSInstance, _ string, _ *RDSSchemaResource, _ *RDSSchemaAttachment) error {
+	return nil
+}
+
+func (m *mockPostgresBindingClient) dropSchema(_ context.Context, _ *RDSInstance, _ string, _ *RDSSchemaResource) error {
+	m.schemaDrops++
+	return nil
+}
+
+func (m *mockPostgresBindingClient) setRoleDefaultPrivileges(_ context.Context, _ *RDSInstance, username, _ string, _ *RDSSchemaResource, _ *RDSSchemaAttachment) error {
+	m.defaultsFor = append(m.defaultsFor, username)
+	return nil
+}
+
+func (m *mockPostgresBindingClient) revokeRoleDefaultPrivileges(_ context.Context, _ *RDSInstance, username, _ string, _ *RDSSchemaResource, _ *RDSSchemaAttachment) error {
+	m.revokedFor = append(m.revokedFor, username)
+	return nil
+}
+
 func TestPostgresBindingPersistsUniqueCredentialsAndRetries(t *testing.T) {
 	db, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := &config.Settings{EncryptionKey: "0123456789abcdef"}
+	settings := &config.Settings{EncryptionKey: postgresBindingTestEncryptionKey}
 	instance := postgresBindingTestInstance(t, db, settings, "binding-instance-id")
 	client := &mockPostgresBindingClient{}
 	broker := &rdsBroker{brokerDB: db, settings: settings, postgresBindingClient: client}
@@ -82,7 +120,7 @@ func TestPostgresBindingRetriesFailedRoleCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := &config.Settings{EncryptionKey: "0123456789abcdef"}
+	settings := &config.Settings{EncryptionKey: postgresBindingTestEncryptionKey}
 	instance := postgresBindingTestInstance(t, db, settings, "failed-binding-instance")
 	client := &mockPostgresBindingClient{createErr: errors.New("database unavailable")}
 	broker := &rdsBroker{brokerDB: db, settings: settings, postgresBindingClient: client}
@@ -114,7 +152,7 @@ func TestPostgresBindingUnbindIsRevocableAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := &config.Settings{EncryptionKey: "0123456789abcdef"}
+	settings := &config.Settings{EncryptionKey: postgresBindingTestEncryptionKey}
 	instance := postgresBindingTestInstance(t, db, settings, "unbind-instance-id")
 	client := &mockPostgresBindingClient{}
 	broker := &rdsBroker{brokerDB: db, settings: settings, postgresBindingClient: client}
@@ -169,12 +207,151 @@ func TestPostgresRoleAttributesPreserveDelegableCapabilities(t *testing.T) {
 	}
 }
 
+func TestParsePostgresBindParameters(t *testing.T) {
+	testCases := map[string]struct {
+		raw     string
+		profile string
+		schema  string
+		wantErr bool
+	}{
+		"compatibility omitted": {profile: postgresBindingProfileCompatibility},
+		"migration":             {raw: `{"version":1,"profile":"migration","schema":"orders"}`, profile: postgresBindingProfileMigration, schema: "orders"},
+		"owner":                 {raw: `{"version":1,"profile":"owner","schema":"orders"}`, profile: postgresBindingProfileOwner, schema: "orders"},
+		"application":           {raw: `{"version":1,"profile":"application","schema":"orders"}`, profile: postgresBindingProfileApplication, schema: "orders"},
+		"owner keep":            {raw: `{"version":1,"profile":"owner","schema":"orders","on_owner_unbind":"keep"}`, profile: postgresBindingProfileOwner, schema: "orders"},
+		"owner adopts":          {raw: `{"version":1,"profile":"owner","schema":"orders","adopt_external":true,"on_owner_unbind":"keep"}`, profile: postgresBindingProfileOwner, schema: "orders"},
+		"unknown field":         {raw: `{"version":1,"profile":"migration","schema":"orders","grant":"all"}`, wantErr: true},
+		"migration adoption":    {raw: `{"version":1,"profile":"migration","schema":"orders","adopt_external":true}`, wantErr: true},
+		"application policy":    {raw: `{"version":1,"profile":"application","schema":"orders","on_owner_unbind":"keep"}`, wantErr: true},
+		"adoption drop":         {raw: `{"version":1,"profile":"owner","schema":"orders","adopt_external":true,"on_owner_unbind":"drop"}`, wantErr: true},
+		"invalid JSON":          {raw: `{"version":`, wantErr: true},
+		"duplicate field":       {raw: `{"version":1,"version":1,"profile":"migration","schema":"orders"}`, wantErr: true},
+		"reserved schema":       {raw: `{"version":1,"profile":"migration","schema":"public"}`, wantErr: true},
+		"unsafe schema":         {raw: `{"version":1,"profile":"migration","schema":"Orders"}`, wantErr: true},
+		"unsupported profile":   {raw: `{"version":1,"profile":"admin","schema":"orders"}`, wantErr: true},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			parameters, err := parsePostgresBindParameters([]byte(test.raw))
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if parameters.Profile != test.profile || parameters.Schema != test.schema {
+				t.Fatalf("parameters = %#v", parameters)
+			}
+		})
+	}
+}
+
+func TestPostgresOwnerKeepNeverDropsSchema(t *testing.T) {
+	db, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := &config.Settings{EncryptionKey: postgresBindingTestEncryptionKey}
+	instance := postgresBindingTestInstance(t, db, settings, "owner-keep-instance")
+	client := &mockPostgresBindingClient{}
+	broker := &rdsBroker{brokerDB: db, settings: settings, postgresBindingClient: client}
+	owner := postgresBindParameters{Version: 1, Profile: postgresBindingProfileOwner, Schema: "orders", OnOwnerUnbind: postgresOwnerUnbindKeep}
+
+	if err := broker.ensurePostgresBinding(t.Context(), instance.Uuid, "owner", owner); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := broker.bindPostgresProfile(t.Context(), instance, "owner", decryptInstancePassword(t, instance, settings)); err != nil {
+		t.Fatal(err)
+	}
+	if err := broker.UnbindInstance(t.Context(), instance.Uuid, "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if client.schemaDrops != 0 {
+		t.Fatalf("schema drops = %d, want 0", client.schemaDrops)
+	}
+	if client.disableCalls != 1 {
+		t.Fatalf("owner disable calls = %d, want 1", client.disableCalls)
+	}
+	var resource RDSSchemaResource
+	if err := db.Where("instance_id = ? AND schema_name = ?", instance.Uuid, "orders").First(&resource).Error; err != nil {
+		t.Fatalf("kept schema resource was deleted: %v", err)
+	}
+	var stored RDSBinding
+	if err := db.Where("instance_id = ? AND binding_id = ?", instance.Uuid, "owner").First(&stored).Error; err != nil || stored.Provisioned {
+		t.Fatalf("disabled owner binding = %#v, err = %v", stored, err)
+	}
+}
+
+func TestPostgresOwnerMigrationApplicationLifecycle(t *testing.T) {
+	db, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := &config.Settings{EncryptionKey: postgresBindingTestEncryptionKey}
+	instance := postgresBindingTestInstance(t, db, settings, "profile-instance")
+	client := &mockPostgresBindingClient{}
+	broker := &rdsBroker{brokerDB: db, settings: settings, postgresBindingClient: client}
+	owner := postgresBindParameters{Version: 1, Profile: postgresBindingProfileOwner, Schema: "orders"}
+	migration := postgresBindParameters{Version: 1, Profile: postgresBindingProfileMigration, Schema: "orders"}
+	application := postgresBindParameters{Version: 1, Profile: postgresBindingProfileApplication, Schema: "orders"}
+
+	if err := broker.ensurePostgresBinding(t.Context(), instance.Uuid, "owner", owner); err != nil {
+		t.Fatal(err)
+	}
+	password := decryptInstancePassword(t, instance, settings)
+	if _, err := broker.bindPostgresProfile(t.Context(), instance, "owner", password); err != nil {
+		t.Fatal(err)
+	}
+	if err := broker.ensurePostgresBinding(t.Context(), instance.Uuid, "second-owner", owner); !errors.Is(err, errPostgresBindingConflict) {
+		t.Fatalf("second owner error = %v", err)
+	}
+	if err := broker.ensurePostgresBinding(t.Context(), instance.Uuid, "migration", migration); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := broker.bindPostgresProfile(t.Context(), instance, "migration", password); err != nil {
+		t.Fatal(err)
+	}
+	if err := broker.ensurePostgresBinding(t.Context(), instance.Uuid, "second-migration", migration); !errors.Is(err, errPostgresBindingConflict) {
+		t.Fatalf("second migration error = %v", err)
+	}
+	if err := broker.ensurePostgresBinding(t.Context(), instance.Uuid, "application", application); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := broker.bindPostgresProfile(t.Context(), instance, "application", password); err != nil {
+		t.Fatal(err)
+	}
+	if len(client.defaultsFor) == 0 {
+		t.Fatal("application attachment did not establish creator default privileges")
+	}
+	if err := broker.UnbindInstance(t.Context(), instance.Uuid, "owner"); !errors.Is(err, errPostgresBindingConflict) {
+		t.Fatalf("owner unbind error = %v", err)
+	}
+	if err := broker.UnbindInstance(t.Context(), instance.Uuid, "application"); err != nil {
+		t.Fatal(err)
+	}
+	if len(client.revokedFor) != 2 {
+		t.Fatalf("default privilege revocations = %v, want owner and migration", client.revokedFor)
+	}
+	if err := broker.UnbindInstance(t.Context(), instance.Uuid, "migration"); err != nil {
+		t.Fatal(err)
+	}
+	if err := broker.UnbindInstance(t.Context(), instance.Uuid, "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if client.schemaDrops != 1 {
+		t.Fatalf("schema drops = %d, want 1", client.schemaDrops)
+	}
+}
+
 func TestCleanupPostgresBindings(t *testing.T) {
 	db, err := testDBInit()
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := &config.Settings{EncryptionKey: "0123456789abcdef"}
+	settings := &config.Settings{EncryptionKey: postgresBindingTestEncryptionKey}
 	instance := postgresBindingTestInstance(t, db, settings, "delete-instance-id")
 	if err := db.Create(&RDSBinding{InstanceID: instance.Uuid, BindingID: "binding-id", Username: "bbindingrole", Password: "encrypted", Salt: "salt", Provisioned: true}).Error; err != nil {
 		t.Fatal(err)
