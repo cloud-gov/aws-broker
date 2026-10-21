@@ -53,7 +53,7 @@ risk/deviation, **not** unmet controls:
 | Missing EE feature | Compensating control | Status |
 | --- | --- | --- |
 | Oracle-native Transparent Data Encryption (TDE) | **RDS storage-level encryption** (AES-256/KMS, `encrypted: true`) — edition-independent, and already the basis for the Postgres/MySQL plans | In effect on `main` |
-| Fine-Grained Auditing (FGA) | **Standard/unified auditing** with `audit_trail=os,extended`, producing OS audit files that RDS can export to CloudWatch | Implemented by the Oracle parameter-group baseline |
+| Fine-Grained Auditing (FGA) | **Standard/unified auditing** with `audit_trail=xml,extended`, producing OS audit files that RDS can export to CloudWatch | Implemented by the Oracle parameter-group baseline |
 
 Oracle Database Vault is unsupported on RDS **even on EE**, so it was never part of
 the posture regardless of edition.
@@ -61,7 +61,7 @@ the posture regardless of edition.
 > **Audit export boundary.** On RDS, CloudWatch log export ships Oracle OS audit
 > files, while `DB`/`DB,EXTENDED` records remain in-database and the unified trail
 > is not directly exportable without Database Activity Streams. The parameter
-> baseline therefore uses `audit_trail=os,extended` so eligible audit records are
+> baseline therefore uses `audit_trail=xml,extended` so eligible audit records are
 > written to files that RDS can export. See
 > [overlay#48](https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/48).
 
@@ -123,7 +123,7 @@ the reversal is discoverable and is not re-litigated by accident.
 
 The broker provisions every new Oracle SE2 instance with a broker-managed custom
 parameter group. The imperative Go baseline follows ADR-0002 and currently sets
-`audit_trail=os,extended`, `audit_sys_operations`, `sql92_security`, and
+`audit_trail=xml,extended`, `audit_sys_operations`, `sql92_security`, and
 `max_idle_time`. Static parameters use `pending-reboot`; `max_idle_time` is applied
 immediately. RDS exposes `remote_login_passwordfile` as non-modifiable for the
 Oracle SE2 19c parameter-group family, so that setting remains AWS-managed rather

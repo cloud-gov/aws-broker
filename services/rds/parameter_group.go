@@ -461,6 +461,8 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 
 	if i.DbType == oracleSE2Engine {
 		// These controls are enforced on every brokered Oracle SE2 instance.
+		// They should be effective at database creation; smoke tests verify that
+		// the provisioned instance has the expected values.
 		customRDSParameters[oracleSE2Engine] = map[string]paramDetails{
 			"audit_trail": {
 				value:       "xml,extended", // AWS valid values: NONE | OS | DB | DB,EXTENDED | XML | XML,EXTENDED
