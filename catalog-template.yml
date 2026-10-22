@@ -1293,6 +1293,7 @@ rds:
       licenseModel: license-included
       redundant: false
       encrypted: true
+      plan_updateable: true
       storage_type: gp3
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.oracle_security_group ))
@@ -1327,6 +1328,7 @@ rds:
       redundant: true
       encrypted: true
       storage_type: gp3
+      plan_updateable: true
       backup_retention_period: 14
       securityGroup: (( grab meta.aws_broker.oracle_security_group ))
       subnetGroup: (( grab meta.aws_broker.subnet_group ))
