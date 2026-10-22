@@ -11,6 +11,7 @@ login
 TEST_ID=$(get_test_id)
 APP_NAME="smoke-tests-db-version-$SERVICE_PLAN-$TEST_ID"
 SERVICE_NAME="rds-smoke-tests-db-version-$SERVICE_PLAN-$TEST_ID"
+WAIT_TIMEOUT=${WAIT_TIMEOUT:-3600}
 
 # Clean up existing app and service if present
 cf delete -f "smoke-tests-db-version-$SERVICE_PLAN"
@@ -27,6 +28,7 @@ cf set-env "$APP_NAME" SERVICE_NAME "$SERVICE_NAME"
 # Create service
 cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"version": "'"$DB_VERSION"'"}'
 
+wait_for_service_instance_success_with_timeout "$SERVICE_NAME" "$WAIT_TIMEOUT"
 wait_for_service_bindable "$APP_NAME" "$SERVICE_NAME"
 
 # wait for the app to start. if the app starts, it's passed the smoke test.
