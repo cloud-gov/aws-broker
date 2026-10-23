@@ -804,6 +804,7 @@ jobs:
                 NEW_VERSION: 18.6
                 ENABLE_PG_CRON_ON_CREATE: 'true'
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-oracle
               file: aws-broker-app/ci/run-smoke-tests.yml
