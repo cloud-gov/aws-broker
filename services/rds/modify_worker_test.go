@@ -48,9 +48,10 @@ func TestModifyWorkerWork(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				Database:        helpers.RandStr(10),
-				credentialUtils: &RDSCredentialUtils{},
-				DbType:          "postgres",
+				Database:              helpers.RandStr(10),
+				credentialUtils:       &RDSCredentialUtils{},
+				BackupRetentionPeriod: 14,
+				DbType:                "postgres",
 			},
 			plan: &catalog.RDSPlan{},
 			worker: NewModifyWorker(
@@ -64,6 +65,71 @@ func TestModifyWorkerWork(t *testing.T) {
 				},
 				&mockRDSClient{
 					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
+				&mockCredentialUtils{},
+			),
+			expectedState: base.InstanceReady,
+		},
+		"success with replica": {
+			ctx:      t.Context(),
+			password: helpers.RandStr(10),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:              helpers.RandStr(10),
+				credentialUtils:       &RDSCredentialUtils{},
+				BackupRetentionPeriod: 14,
+				DbType:                "postgres",
+				ReplicaDatabase:       helpers.RandStr(10),
+			},
+			plan: &catalog.RDSPlan{},
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMinDelay:    1 * time.Millisecond,
+					DbConfig: &db.DBConfig{
+						DbType: "sqlite3",
+					},
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 						{
 							DBInstances: []rdsTypes.DBInstance{
 								{
