@@ -115,13 +115,15 @@ func applyBackupRetentionPeriod(
 	ctx context.Context,
 	rdsClient RDSClientInterface,
 	i *RDSInstance,
+	database string,
 ) error {
 	backupRetentionPeriod, err := common.ConvertInt64ToInt32Safely(i.BackupRetentionPeriod)
 	if err != nil {
 		return err
 	}
 	params := &rds.ModifyDBInstanceInput{
-		DBInstanceIdentifier:  &i.ReplicaDatabase,
+		ApplyImmediately:      aws.Bool(true),
+		DBInstanceIdentifier:  &database,
 		BackupRetentionPeriod: backupRetentionPeriod,
 	}
 	_, err = rdsClient.ModifyDBInstance(ctx, params)
@@ -164,7 +166,7 @@ func waitAndCreateDBReadReplica(
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Enabling automated backup on database read replica")
 
-	err = applyBackupRetentionPeriod(ctx, rdsClient, i)
+	err = applyBackupRetentionPeriod(ctx, rdsClient, i, i.ReplicaDatabase)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: applyBackupRetentionPeriod failed", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error applying backup retention settings to replica: %s", err))
