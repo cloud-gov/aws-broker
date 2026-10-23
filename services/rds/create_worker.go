@@ -209,6 +209,22 @@ func (w *CreateWorker) createDBReadReplica(ctx context.Context, i *RDSInstance, 
 	return createDbInstanceReadReplicaOutput, err
 }
 
+func (w *CreateWorker) applyBackupRetentionPeriod(
+	ctx context.Context,
+	i *RDSInstance,
+) error {
+	backupRetentionPeriod, err := common.ConvertInt64ToInt32Safely(i.BackupRetentionPeriod)
+	if err != nil {
+		return err
+	}
+	params := &rds.ModifyDBInstanceInput{
+		DBInstanceIdentifier:  &i.ReplicaDatabase,
+		BackupRetentionPeriod: backupRetentionPeriod,
+	}
+	_, err = w.rds.ModifyDBInstance(ctx, params)
+	return err
+}
+
 func (w *CreateWorker) waitAndCreateDBReadReplica(
 	ctx context.Context,
 	operation base.Operation,
@@ -227,6 +243,20 @@ func (w *CreateWorker) waitAndCreateDBReadReplica(
 	if err != nil {
 		w.logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
+	}
+
+	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, i.ReplicaDatabase)
+	if err != nil {
+		w.logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
+	}
+
+	err = w.applyBackupRetentionPeriod(ctx, i)
+	if err != nil {
+		w.logger.Error("waitAndCreateDBReadReplica: applyBackupRetentionPeriod failed", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error applying backup retention settings to replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
