@@ -12,7 +12,9 @@ import (
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
+	"github.com/cloud-gov/aws-broker/db"
 	"github.com/cloud-gov/aws-broker/helpers"
 	"github.com/cloud-gov/aws-broker/helpers/request"
 	"github.com/cloud-gov/aws-broker/testutil"
@@ -373,6 +375,211 @@ func TestWaitForDbDeleted(t *testing.T) {
 				if asyncJobMsg.JobState.State != test.expectedState {
 					t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 				}
+			}
+		})
+	}
+}
+
+func TestWaitAndCreateDBReadReplica(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx           context.Context
+		settings      *config.Settings
+		rds           *mockRDSClient
+		logger        *slog.Logger
+		dbInstance    *RDSInstance
+		expectedState base.InstanceState
+		expectErr     bool
+		plan          *catalog.RDSPlan
+	}{
+		"success": {
+			ctx: t.Context(),
+			settings: &config.Settings{
+				PollAwsMinDelay:    1 * time.Millisecond,
+				PollAwsMaxDuration: 1 * time.Millisecond,
+				DbConfig: &db.DBConfig{
+					DbType: "sqlite3",
+				},
+			},
+			rds: &mockRDSClient{
+				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			logger: slog.New(&testutil.MockLogHandler{}),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			plan:          &catalog.RDSPlan{},
+			expectedState: base.InstanceInProgress,
+		},
+		"error checking database creation status": {
+			ctx: t.Context(),
+
+			settings: &config.Settings{
+				PollAwsMinDelay:    1 * time.Millisecond,
+				PollAwsMaxDuration: 1 * time.Millisecond,
+				DbConfig: &db.DBConfig{
+					DbType: "sqlite3",
+				},
+			},
+			rds: &mockRDSClient{
+				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+				describeDbInstancesErrs: []error{nil, errors.New("error describing database instances")},
+			},
+			logger: slog.New(&testutil.MockLogHandler{}),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			plan:          &catalog.RDSPlan{},
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
+		},
+		"error creating database replica": {
+			ctx: t.Context(),
+			settings: &config.Settings{
+				PollAwsMinDelay:    1 * time.Millisecond,
+				PollAwsMaxDuration: 1 * time.Millisecond,
+				DbConfig: &db.DBConfig{
+					DbType: "sqlite3",
+				},
+			},
+			rds: &mockRDSClient{
+				createDBInstanceReadReplicaErrs: []error{errors.New("error creating database instance read replica")},
+				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			logger: slog.New(&testutil.MockLogHandler{}),
+
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
+		},
+		"error adding tags": {
+			ctx: t.Context(),
+			settings: &config.Settings{
+				PollAwsMinDelay:    1 * time.Millisecond,
+				PollAwsMaxDuration: 3 * time.Millisecond,
+				DbConfig: &db.DBConfig{
+					DbType: "sqlite3",
+				},
+			},
+			rds: &mockRDSClient{
+				addTagsToResourceErr: errors.New("error adding tags to read replica"),
+				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+			},
+			logger: slog.New(&testutil.MockLogHandler{}),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			plan:          &catalog.RDSPlan{},
+			expectedState: base.InstanceNotCreated,
+			expectErr:     true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := waitAndCreateDBReadReplica(test.ctx, brokerDB, test.settings, test.rds, test.logger, base.CreateOp, test.dbInstance, test.plan)
+			if !test.expectErr && err != nil {
+				t.Fatal(err)
+			}
+
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if asyncJobMsg.JobState.State != test.expectedState {
+				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
 			}
 		})
 	}

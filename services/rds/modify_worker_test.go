@@ -366,6 +366,13 @@ func TestAsyncModifyDb(t *testing.T) {
 								},
 							},
 						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
 					},
 				},
 				slog.New(&testutil.MockLogHandler{}),
