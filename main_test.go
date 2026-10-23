@@ -801,6 +801,39 @@ func TestModifyRDSDbVersion(t *testing.T) {
 	}
 }
 
+func TestModifyRDSRotateCredentials(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	// We need to create an instance first before we can try to modify it.
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	// Check to make sure the request was successful.
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	// Check to make sure the instance was saved.
+	i := rds.RDSInstance{}
+	var count int64
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i).Count(&count)
+	if count == 0 {
+		t.Error("The instance was not saved to the DB.")
+	}
+
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	resp := requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceRotateCredentials))
+
+	if resp.Code != http.StatusAccepted {
+		t.Logf("Unable to modify instance. Body is: %s", resp.Body.String())
+		t.Fatal(urlAcceptsIncomplete, "with auth should return 202 and it returned", resp.Code)
+	}
+
+	validJSON(resp.Body.Bytes(), urlAcceptsIncomplete, t)
+
+	isAsyncOperationResponse(t, resp, base.ModifyOp)
+}
+
 func TestRDSLastOperation(t *testing.T) {
 	instanceUUID := uuid.NewString()
 	url := fmt.Sprintf("/v2/service_instances/%s/last_operation?service_id=%s&plan_id=%s", instanceUUID, rdsServiceId, originalRDSPlanID)

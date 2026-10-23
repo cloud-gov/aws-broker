@@ -209,43 +209,6 @@ func (w *CreateWorker) createDBReadReplica(ctx context.Context, i *RDSInstance, 
 	return createDbInstanceReadReplicaOutput, err
 }
 
-func (w *CreateWorker) waitAndCreateDBReadReplica(
-	ctx context.Context,
-	operation base.Operation,
-	i *RDSInstance,
-	plan *catalog.RDSPlan,
-) error {
-	err := waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, i.Database)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
-		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
-	}
-
-	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database read replica")
-
-	createReplicaOutput, err := w.createDBReadReplica(ctx, i, plan)
-	if err != nil {
-		w.logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
-		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
-	}
-
-	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, i.ReplicaDatabase)
-	if err != nil {
-		w.logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
-		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
-	}
-
-	err = updateDBTags(ctx, w.rds, i, *createReplicaOutput.DBInstance.DBInstanceArn)
-	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
-		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
-	}
-
-	return nil
-}
-
 func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *catalog.RDSPlan) error {
 	operation := base.CreateOp
 
@@ -266,15 +229,14 @@ func (w *CreateWorker) asyncCreateDB(ctx context.Context, i *RDSInstance, plan *
 		return common.FmtErr(ErrCreatingDatabase, err)
 	}
 
-	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for database to be ready")
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for primary database to be ready")
 	err = waitForDbReady(ctx, w.db, w.settings, w.rds, w.logger, operation, i, i.Database)
 	if err != nil {
 		return common.FmtErr(ErrWaitingForDBIsReady, err)
 	}
 
 	if i.AddReadReplica {
-		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Creating database replica")
-		err := w.waitAndCreateDBReadReplica(ctx, operation, i, plan)
+		err := waitAndCreateDBReadReplica(ctx, w.db, w.settings, w.rds, w.logger, operation, i, plan)
 		if err != nil {
 			return common.FmtErr(ErrCreatingDBReplica, err)
 		}

@@ -13,6 +13,7 @@ import (
 	"github.com/cloud-gov/aws-broker/asyncmessage"
 	"github.com/cloud-gov/aws-broker/base"
 	"github.com/cloud-gov/aws-broker/catalog"
+	"github.com/cloud-gov/aws-broker/common"
 	"github.com/cloud-gov/aws-broker/config"
 	"gorm.io/gorm"
 )
@@ -110,6 +111,25 @@ func createDBReadReplica(
 	return createDbInstanceReadReplicaOutput, err
 }
 
+func applyBackupRetentionPeriod(
+	ctx context.Context,
+	rdsClient RDSClientInterface,
+	i *RDSInstance,
+	database string,
+) error {
+	backupRetentionPeriod, err := common.ConvertInt64ToInt32Safely(i.BackupRetentionPeriod)
+	if err != nil {
+		return err
+	}
+	params := &rds.ModifyDBInstanceInput{
+		ApplyImmediately:      aws.Bool(true),
+		DBInstanceIdentifier:  &database,
+		BackupRetentionPeriod: backupRetentionPeriod,
+	}
+	_, err = rdsClient.ModifyDBInstance(ctx, params)
+	return err
+}
+
 func waitAndCreateDBReadReplica(
 	ctx context.Context,
 	db *gorm.DB,
@@ -135,12 +155,34 @@ func waitAndCreateDBReadReplica(
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for database read replica to be ready")
+
 	err = waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
 		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Enabling automated backup on database read replica")
+
+	err = applyBackupRetentionPeriod(ctx, rdsClient, i, i.ReplicaDatabase)
+	if err != nil {
+		logger.Error("waitAndCreateDBReadReplica: applyBackupRetentionPeriod failed", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error applying backup retention settings to replica: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting on automated backups to be enabled on database read replica")
+
+	err = waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.ReplicaDatabase)
+	if err != nil {
+		logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Updating tags database read replica")
 
 	err = updateDBTags(ctx, rdsClient, i, *createReplicaOutput.DBInstance.DBInstanceArn)
 	if err != nil {
