@@ -198,6 +198,8 @@ type mockRDSClient struct {
 	createOptionGroupErr                error
 	modifyOptionGroupInput              *rds.ModifyOptionGroupInput
 	modifyOptionGroupErr                error
+	modifyOptionGroupErrs               []error
+	modifyOptionGroupCallNum            int
 	deleteOptionGroupErrs               []error
 	deleteOptionGroupCallNum            int
 }
@@ -212,6 +214,17 @@ func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.Creat
 
 func (m *mockRDSClient) ModifyOptionGroup(ctx context.Context, params *rds.ModifyOptionGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyOptionGroupOutput, error) {
 	m.modifyOptionGroupInput = params
+	if len(m.modifyOptionGroupErrs) > 0 {
+		var err error
+		if m.modifyOptionGroupCallNum < len(m.modifyOptionGroupErrs) {
+			err = m.modifyOptionGroupErrs[m.modifyOptionGroupCallNum]
+		}
+		m.modifyOptionGroupCallNum++
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
 	if m.modifyOptionGroupErr != nil {
 		return nil, m.modifyOptionGroupErr
 	}

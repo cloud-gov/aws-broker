@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -55,7 +56,7 @@ func (o *awsOptionsGroupClient) IsBrokerOptionGroup(optionGroupName string) bool
 }
 
 func (o *awsOptionsGroupClient) getOptionGroupName(i *RDSInstance, majorEngineVersion string) string {
-	return o.optionGroupPrefix + formatDBName(i.Database, i.DbType) + "-option-" + formatDBVersion(majorEngineVersion)
+	return o.optionGroupPrefix + parameterGroupDatabaseName(i) + "-option-" + formatDBVersion(majorEngineVersion)
 }
 
 func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, error) {
@@ -187,15 +188,37 @@ func (o *awsOptionsGroupClient) ensureOptionGroupWithOptions(
 		created = true
 	}
 	if len(opts) > 0 {
-		if _, err := o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
-			OptionGroupName:  aws.String(groupName),
-			OptionsToInclude: opts,
-			ApplyImmediately: aws.Bool(true),
-		}); err != nil {
+		if err := o.modifyOptionGroupWithRetry(groupName, opts); err != nil {
 			return created, fmt.Errorf("add options to option group: %w", err)
 		}
 	}
 	return created, nil
+}
+
+func (o *awsOptionsGroupClient) modifyOptionGroupWithRetry(groupName string, opts []rdsTypes.OptionConfiguration) error {
+	attempts := 1
+	maxRetries := int(o.settings.PollAwsMaxRetries)
+	maxAttempts := 1 + maxRetries
+
+	var err error
+	for attempts <= maxAttempts {
+		_, err = o.rds.ModifyOptionGroup(o.ctx, &rds.ModifyOptionGroupInput{
+			OptionGroupName:  aws.String(groupName),
+			OptionsToInclude: opts,
+			ApplyImmediately: aws.Bool(true),
+		})
+		if err == nil {
+			return nil
+		}
+		var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
+		if !errors.As(err, &invalidStateErr) {
+			return err
+		}
+		o.logger.Debug(fmt.Sprintf("option group %s not yet modifiable (attempt %d/%d): %s", groupName, attempts, maxAttempts, err))
+		attempts++
+		time.Sleep(o.settings.PollAwsMinDelay)
+	}
+	return err
 }
 
 // ProvisionBaselineOptionGroup creates + attaches a broker-managed option group at
@@ -221,7 +244,7 @@ func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rds
 	}
 	groupName := o.getOptionGroupName(i, majorVersion)
 
-	if _, err := o.ensureOptionGroupWithOptions(groupName, i.DbType, majorVersion, formatDBName(i.Database, i.DbType), opts, rdsTags); err != nil {
+	if _, err := o.ensureOptionGroupWithOptions(groupName, i.DbType, majorVersion, parameterGroupDatabaseName(i), opts, rdsTags); err != nil {
 		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
 	}
 
@@ -272,7 +295,7 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 	// Recreate the group for the new major version, carrying the same options.
 	existingOptions := optionsFromGroup(existingOptionGroup)
 	createdOptionGroup, err := o.ensureOptionGroupWithOptions(
-		targetOptionGroupName, i.DbType, targetMajorVersion, formatDBName(i.Database, i.DbType), existingOptions, rdsTags)
+		targetOptionGroupName, i.DbType, targetMajorVersion, parameterGroupDatabaseName(i), existingOptions, rdsTags)
 	if err != nil {
 		// created=false on any error, even if the group was created before the
 		// modify failed (preserves the original contract).
