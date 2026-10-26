@@ -1,9 +1,11 @@
 package rds
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 )
 
@@ -311,5 +313,63 @@ func TestValidateCloudwatchLogGroupExports(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 		})
+	}
+}
+
+func TestOracleCloudwatchLogExportsSupportedSetIsPinned(t *testing.T) {
+	wantSupported := []string{"alert", "audit", "listener", "trace"}
+
+	gotSupported := validCloudwatchLogTypesByDbType["oracle-se2"]
+	if !slices.Equal(gotSupported, wantSupported) {
+		t.Errorf(
+			"validCloudwatchLogTypesByDbType[\"oracle-se2\"] = %v, want %v (a change here must be deliberate, not an accidental drift)",
+			gotSupported, wantSupported,
+		)
+	}
+	if err := validateCloudwatchLogGroupExports("oracle-se2", wantSupported); err != nil {
+		t.Errorf("supported oracle-se2 log exports %v rejected by validateCloudwatchLogGroupExports: %v", wantSupported, err)
+	}
+}
+
+func TestOracleCloudwatchLogExportsFlowUnchangedThroughCreatePath(t *testing.T) {
+	supported := validCloudwatchLogTypesByDbType["oracle-se2"]
+
+	worker := &CreateWorker{
+		settings:          &config.Settings{},
+		rds:               &mockRDSClient{},
+		optionGroupClient: &mockOptionGroupClient{},
+		parameterGroupClient: &mockParameterGroupClient{
+			rds: &mockRDSClient{},
+		},
+	}
+
+	i := &RDSInstance{
+		Database:                         "db1",
+		DbType:                           "oracle-se2",
+		credentialUtils:                  &RDSCredentialUtils{},
+		Username:                         "fake-user",
+		EnabledCloudwatchLogGroupExports: supported,
+	}
+
+	params, err := worker.prepareCreateDbInput(i, &catalog.RDSPlan{}, "fake-password")
+	if err != nil {
+		t.Fatalf("prepareCreateDbInput: unexpected error: %s", err)
+	}
+
+	for _, logType := range supported {
+		if !slices.Contains(params.EnableCloudwatchLogsExports, logType) {
+			t.Errorf(
+				"supported oracle-se2 log export %q did not flow through to CreateDBInstanceInput.EnableCloudwatchLogsExports, got %v",
+				logType, params.EnableCloudwatchLogsExports,
+			)
+		}
+	}
+	for _, logType := range params.EnableCloudwatchLogsExports {
+		if !slices.Contains(supported, logType) {
+			t.Errorf(
+				"CreateDBInstanceInput.EnableCloudwatchLogsExports contains %q, which is not a member of the oracle-se2 supported set %v",
+				logType, supported,
+			)
+		}
 	}
 }

@@ -100,7 +100,7 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance, operat
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting parameter group")
 	err = w.parameterGroupClient.DeleteParameterGroup(i.ParameterGroupName)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrParameterGroupStillInUse) {
 		return common.FmtErr(ErrDeletingDBParameterGroup, err)
 	}
 
@@ -112,7 +112,7 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance, operat
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting option group")
 	err = w.optionGroupClient.DeleteOptionGroup(i.OptionGroupName)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrOptionGroupStillInUse) {
 		return common.FmtErr(ErrDeletingDBOptionGroup, err)
 	}
 

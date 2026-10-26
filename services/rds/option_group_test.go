@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"testing"
@@ -258,6 +259,108 @@ func TestDeleteOptionGroup(t *testing.T) {
 				t.Errorf("expected DeleteOptionGroup to be called %d times(s), got %d", tc.expectedDeleteCalls, mockRDS.deleteDBInstancesCallNum)
 			}
 		})
+	}
+}
+
+func TestDeleteOptionGroup_RetriesOnInvalidState(t *testing.T) {
+	invalidState := &rdsTypes.InvalidOptionGroupStateFault{
+		Message: aws.String("The option group 'cg-aws-broker-db1-option-19' cannot be deleted because it is in use."),
+	}
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{invalidState, invalidState, nil},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 5
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	if err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19"); err != nil {
+		t.Fatalf("expected the retry to eventually succeed, got error: %s", err)
+	}
+	if mockRDS.deleteOptionGroupCallNum != 3 {
+		t.Errorf("expected DeleteOptionGroup to be called 3 times (2 failures + 1 success), got %d", mockRDS.deleteOptionGroupCallNum)
+	}
+}
+
+func TestDeleteOptionGroup_GivesUpAfterMaxRetries(t *testing.T) {
+	invalidState := &rdsTypes.InvalidOptionGroupStateFault{
+		Message: aws.String("The option group 'cg-aws-broker-db1-option-19' cannot be deleted because it is in use."),
+	}
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{invalidState, invalidState, invalidState},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 2
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19")
+	if err == nil {
+		t.Fatal("expected an error after exhausting retries")
+	}
+	if mockRDS.deleteOptionGroupCallNum != 2 {
+		t.Errorf("expected DeleteOptionGroup to be called 2 times (bounded by PollAwsMaxRetries), got %d", mockRDS.deleteOptionGroupCallNum)
+	}
+}
+
+func TestDeleteOptionGroup_NotFoundIsSuccess(t *testing.T) {
+	notFound := &rdsTypes.OptionGroupNotFoundFault{}
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{notFound},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 5
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	if err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19"); err != nil {
+		t.Fatalf("expected OptionGroupNotFoundFault to be treated as success, got error: %s", err)
+	}
+	if mockRDS.deleteOptionGroupCallNum != 1 {
+		t.Errorf("expected DeleteOptionGroup to be called exactly once (no retry on not-found), got %d", mockRDS.deleteOptionGroupCallNum)
+	}
+}
+
+func TestDeleteOptionGroup_NonRetryableErrorFailsImmediately(t *testing.T) {
+	otherErr := errors.New("boom")
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{otherErr},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 5
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19")
+	if err == nil {
+		t.Fatal("expected a non-retryable error to be returned")
+	}
+	if mockRDS.deleteOptionGroupCallNum != 1 {
+		t.Errorf("expected DeleteOptionGroup to be called exactly once (no retry), got %d", mockRDS.deleteOptionGroupCallNum)
 	}
 }
 

@@ -360,6 +360,97 @@ func TestAsyncDeleteDB(t *testing.T) {
 			},
 			expectedRecordCount: 1,
 		},
+
+		"parameter group still in use is best-effort, not fatal": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					deleteParameterGroupErr: ErrParameterGroupStillInUse,
+				},
+				&mockOptionGroupClient{},
+				&mockCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedRecordCount: 0,
+		},
+
+		"option group still in use is best-effort, not fatal": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{
+					deleteOptionGroupErr: ErrOptionGroupStillInUse,
+				},
+				&mockCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedRecordCount: 0,
+		},
+
+		"error deleting option group": {
+			ctx:       t.Context(),
+			expectErr: true,
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesErrs: []error{dbInstanceNotFoundErr},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{
+					deleteOptionGroupErr: errors.New("error deleting option group"),
+				},
+				&mockCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			expectedRecordCount: 1,
+		},
 	}
 
 	for name, test := range testCases {

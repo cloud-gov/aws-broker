@@ -248,7 +248,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, operation base.Operati
 	if existingParameterGroupName != "" && i.ParameterGroupName != existingParameterGroupName {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old parameter group")
 		err = w.parameterGroupClient.DeleteParameterGroup(existingParameterGroupName)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrParameterGroupStillInUse) {
 			return common.FmtErr(ErrDeletingDBParameterGroup, err)
 		}
 	}
@@ -257,7 +257,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, operation base.Operati
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old option group")
 		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
 		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrOptionGroupStillInUse) {
 			return common.FmtErr(ErrDeletingDBOptionGroup, err)
 		}
 	}

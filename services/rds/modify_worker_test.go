@@ -704,6 +704,103 @@ func TestAsyncModifyDb(t *testing.T) {
 			expectErr: true,
 			ctx:       t.Context(),
 		},
+
+		"old parameter group still in use is best-effort, not fatal": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{
+					deleteParameterGroupErr: ErrParameterGroupStillInUse,
+				},
+				&mockOptionGroupClient{},
+				&RDSCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:           "db-1",
+				credentialUtils:    &RDSCredentialUtils{},
+				DbVersion:          "9.0",
+				ParameterGroupName: "existing-group",
+			},
+			ctx: t.Context(),
+		},
+		// Regression test: same as above, for option groups.
+		"old option group still in use is best-effort, not fatal": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{
+					optionGroupName:      "new-option-group",
+					deleteOptionGroupErr: ErrOptionGroupStillInUse,
+				},
+				&RDSCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+				OptionGroupName: "existing-option-group",
+			},
+			ctx: t.Context(),
+		},
 	}
 
 	for name, test := range testCases {

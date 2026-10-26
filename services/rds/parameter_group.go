@@ -24,6 +24,8 @@ const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 const oracleSE2Engine = "oracle-se2"
 
+var ErrParameterGroupStillInUse = errors.New("parameter group still in use; deferring to later cleanup")
+
 type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
@@ -689,7 +691,11 @@ func (p *awsParameterGroupClient) DeleteParameterGroup(parameterGroupName string
 		return err
 	}
 
-	return errors.New("could not verify deletion of parameter group")
+	p.logger.Info(fmt.Sprintf(
+		"parameter group %s still in use after %d attempts (likely attached to a retained backup/snapshot); deferring to later cleanup",
+		parameterGroupName, maxRetries,
+	))
+	return ErrParameterGroupStillInUse
 }
 
 // setParameterGroupName sets the parameter group name on the instance struct
