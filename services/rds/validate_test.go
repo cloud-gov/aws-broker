@@ -232,3 +232,84 @@ func TestValidateRetentionPeriod(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateCloudwatchLogGroupExports(t *testing.T) {
+	testCases := map[string]struct {
+		dbType      string
+		logTypes    []string
+		expectedErr bool
+	}{
+		"nil logTypes": {
+			dbType:      "postgres",
+			logTypes:    nil,
+			expectedErr: false,
+		},
+		"empty logTypes": {
+			dbType:      "postgres",
+			logTypes:    []string{},
+			expectedErr: false,
+		},
+		"postgres valid single": {
+			dbType:      "postgres",
+			logTypes:    []string{"postgresql"},
+			expectedErr: false,
+		},
+		"postgres valid both": {
+			dbType:      "postgres",
+			logTypes:    []string{"postgresql", "upgrade"},
+			expectedErr: false,
+		},
+		"postgres invalid": {
+			dbType:      "postgres",
+			logTypes:    []string{"foo"},
+			expectedErr: true,
+		},
+		"postgres mysql log type rejected": {
+			dbType:      "postgres",
+			logTypes:    []string{"general"},
+			expectedErr: true,
+		},
+		"postgres one valid one invalid": {
+			dbType:      "postgres",
+			logTypes:    []string{"postgresql", "foo"},
+			expectedErr: true,
+		},
+		"mysql valid all": {
+			dbType:      "mysql",
+			logTypes:    []string{"audit", "error", "general", "slowquery"},
+			expectedErr: false,
+		},
+		"mysql invalid": {
+			dbType:      "mysql",
+			logTypes:    []string{"postgresql"},
+			expectedErr: true,
+		},
+		"oracle-se2 valid": {
+			dbType:      "oracle-se2",
+			logTypes:    []string{"alert", "audit", "listener", "trace"},
+			expectedErr: false,
+		},
+		"oracle-se2 invalid": {
+			dbType:      "oracle-se2",
+			logTypes:    []string{"general"},
+			expectedErr: true,
+		},
+		"unknown dbType is not validated": {
+			dbType:      "not-a-real-engine",
+			logTypes:    []string{"anything"},
+			expectedErr: false,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateCloudwatchLogGroupExports(test.dbType, test.logTypes)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}

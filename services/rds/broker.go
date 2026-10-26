@@ -181,6 +181,10 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 		}
 	}
 
+	if err := validateCloudwatchLogGroupExports(plan.DbType, options.EnableCloudWatchLogGroupExports); err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "checking RDS plan")
+	}
+
 	tags, err := broker.tagManager.GenerateTags(
 		brokertags.Create,
 		broker.catalog.RdsService.Name,
@@ -308,6 +312,10 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 			http.StatusBadRequest,
 			"modify RDS instance",
 		)
+	}
+
+	if err := validateCloudwatchLogGroupExports(newPlan.DbType, options.EnableCloudWatchLogGroupExports); err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "modify RDS instance")
 	}
 
 	tags, err := broker.tagManager.GenerateTags(
