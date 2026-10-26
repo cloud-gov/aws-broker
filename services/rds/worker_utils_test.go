@@ -684,3 +684,24 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyBackupRetentionPeriod(t *testing.T) {
+	database := helpers.RandStr(20)
+	err := applyBackupRetentionPeriod(
+		t.Context(),
+		&mockRDSClient{
+			expectedModifyDbInstanceParams: &rds.ModifyDBInstanceInput{
+				ApplyImmediately:      aws.Bool(true),
+				DBInstanceIdentifier:  &database,
+				BackupRetentionPeriod: aws.Int32(14),
+			},
+		},
+		&RDSInstance{
+			BackupRetentionPeriod: 14,
+		},
+		database,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
