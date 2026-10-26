@@ -461,8 +461,15 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 
 	if i.DbType == oracleSE2Engine {
 		// These controls are enforced on every brokered Oracle SE2 instance.
-		// They should be effective at database creation; smoke tests verify that
-		// the provisioned instance has the expected values.
+		// All should be effective at database creation; smoke tests will verify that
+		// the instance has the expected values even for 'pending-reboot' parameters.
+		//
+		// We've omitted AWS defaults such as sec_case_sensitive_logon or resource_limit because they
+		// - are subject to obsolence,
+		// - are unlikely to drift insecurely (unless AWS is explicit about the change),
+		// - are going to be detected by STIG validation regardless (e.g. resource_limit
+		//   TRUE is a precondition for the profile-limit controls (SV-270495/549/550/551/563).)
+
 		customRDSParameters[oracleSE2Engine] = map[string]paramDetails{
 			"audit_trail": {
 				value:       "xml,extended", // AWS valid values: NONE | OS | DB | DB,EXTENDED | XML | XML,EXTENDED
