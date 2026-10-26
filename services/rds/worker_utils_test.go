@@ -387,14 +387,16 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		ctx           context.Context
-		settings      *config.Settings
-		rds           *mockRDSClient
-		logger        *slog.Logger
-		dbInstance    *RDSInstance
-		expectedState base.InstanceState
-		expectErr     bool
-		plan          *catalog.RDSPlan
+		ctx                     context.Context
+		settings                *config.Settings
+		rds                     *mockRDSClient
+		logger                  *slog.Logger
+		dbInstance              *RDSInstance
+		expectedState           base.InstanceState
+		expectErr               bool
+		plan                    *catalog.RDSPlan
+		operation               base.Operation
+		expectedModifyDbCallNum int
 	}{
 		"success": {
 			ctx: t.Context(),
@@ -440,8 +442,10 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceInProgress,
+			plan:                    &catalog.RDSPlan{},
+			operation:               base.CreateOp,
+			expectedState:           base.InstanceInProgress,
+			expectedModifyDbCallNum: 1,
 		},
 		"error checking database creation status": {
 			ctx: t.Context(),
@@ -476,6 +480,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				Database: helpers.RandStr(10),
 			},
 			plan:          &catalog.RDSPlan{},
+			operation:     base.CreateOp,
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -512,6 +517,7 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
+			operation:     base.CreateOp,
 			expectedState: base.InstanceNotCreated,
 			expectErr:     true,
 		},
@@ -560,26 +566,120 @@ func TestWaitAndCreateDBReadReplica(t *testing.T) {
 				},
 				Database: helpers.RandStr(10),
 			},
-			plan:          &catalog.RDSPlan{},
-			expectedState: base.InstanceNotCreated,
-			expectErr:     true,
+			operation:               base.CreateOp,
+			plan:                    &catalog.RDSPlan{},
+			expectedState:           base.InstanceNotCreated,
+			expectErr:               true,
+			expectedModifyDbCallNum: 1,
+		},
+		"error applying backup retention to replica": {
+			ctx: t.Context(),
+			settings: &config.Settings{
+				PollAwsMinDelay:    1 * time.Millisecond,
+				PollAwsMaxDuration: 1 * time.Millisecond,
+				DbConfig: &db.DBConfig{
+					DbType: "sqlite3",
+				},
+			},
+			rds: &mockRDSClient{
+				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+				modifyDbErrs: []error{errors.New("error applying backup retention period")},
+			},
+			logger: slog.New(&testutil.MockLogHandler{}),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			operation:               base.CreateOp,
+			plan:                    &catalog.RDSPlan{},
+			expectErr:               true,
+			expectedState:           base.InstanceNotCreated,
+			expectedModifyDbCallNum: 1,
+		},
+		"error applying backup retention to replica on modify": {
+			ctx: t.Context(),
+			settings: &config.Settings{
+				PollAwsMinDelay:    1 * time.Millisecond,
+				PollAwsMaxDuration: 1 * time.Millisecond,
+				DbConfig: &db.DBConfig{
+					DbType: "sqlite3",
+				},
+			},
+			rds: &mockRDSClient{
+				describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+					{
+						DBInstances: []rdsTypes.DBInstance{
+							{
+								DBInstanceStatus: aws.String("available"),
+							},
+						},
+					},
+				},
+				modifyDbErrs: []error{errors.New("error applying backup retention period")},
+			},
+			logger: slog.New(&testutil.MockLogHandler{}),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database: helpers.RandStr(10),
+			},
+			operation:               base.ModifyOp,
+			plan:                    &catalog.RDSPlan{},
+			expectErr:               true,
+			expectedState:           base.InstanceNotModified,
+			expectedModifyDbCallNum: 1,
 		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := waitAndCreateDBReadReplica(test.ctx, brokerDB, test.settings, test.rds, test.logger, base.CreateOp, test.dbInstance, test.plan)
+			err := waitAndCreateDBReadReplica(test.ctx, brokerDB, test.settings, test.rds, test.logger, test.operation, test.dbInstance, test.plan)
 			if !test.expectErr && err != nil {
 				t.Fatal(err)
 			}
 
-			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, base.CreateOp)
+			asyncJobMsg, err := asyncmessage.GetLastAsyncJobMessage(brokerDB, test.dbInstance.ServiceID, test.dbInstance.Uuid, test.operation)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			if asyncJobMsg.JobState.State != test.expectedState {
 				t.Fatalf("expected state: %s, got: %s", test.expectedState, asyncJobMsg.JobState.State)
+			}
+
+			if test.rds.modifyDbCallNum != test.expectedModifyDbCallNum {
+				t.Fatalf("expected %d calls to ModifyDBInstance, got %d", test.expectedModifyDbCallNum, test.rds.modifyDbCallNum)
 			}
 		})
 	}

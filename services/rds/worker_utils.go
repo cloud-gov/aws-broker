@@ -140,9 +140,14 @@ func waitAndCreateDBReadReplica(
 	i *RDSInstance,
 	plan *catalog.RDSPlan,
 ) error {
+	failedState := base.InstanceNotCreated
+	if operation == base.ModifyOp {
+		failedState = base.InstanceNotModified
+	}
+
 	err := waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.Database)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for database to become available: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, failedState, fmt.Sprintf("Error waiting for database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica, error waiting for database to be ready: %w", err)
 	}
 
@@ -151,7 +156,7 @@ func waitAndCreateDBReadReplica(
 	createReplicaOutput, err := createDBReadReplica(ctx, settings, rdsClient, logger, i, plan)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: createDBReadReplica failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Creating database read replica failed: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, failedState, fmt.Sprintf("Creating database read replica failed: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
@@ -160,7 +165,7 @@ func waitAndCreateDBReadReplica(
 	err = waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, failedState, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
@@ -169,7 +174,7 @@ func waitAndCreateDBReadReplica(
 	err = applyBackupRetentionPeriod(ctx, rdsClient, i, i.ReplicaDatabase)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: applyBackupRetentionPeriod failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error applying backup retention settings to replica: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, failedState, fmt.Sprintf("Error applying backup retention settings to replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
@@ -178,7 +183,7 @@ func waitAndCreateDBReadReplica(
 	err = waitForDbReady(ctx, db, settings, rdsClient, logger, operation, i, i.ReplicaDatabase)
 	if err != nil {
 		logger.Error("waitAndCreateDBReadReplica: waitForDbReady failed", "err", err)
-		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, failedState, fmt.Sprintf("Error waiting for replica database to become available: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 
@@ -186,7 +191,7 @@ func waitAndCreateDBReadReplica(
 
 	err = updateDBTags(ctx, rdsClient, i, *createReplicaOutput.DBInstance.DBInstanceArn)
 	if err != nil {
-		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, base.InstanceNotCreated, fmt.Sprintf("Error updating tags for database replica: %s", err))
+		asyncmessage.WriteAsyncJobMessageAndLogError(db, logger, i.ServiceID, i.Uuid, operation, failedState, fmt.Sprintf("Error updating tags for database replica: %s", err))
 		return fmt.Errorf("waitAndCreateDBReadReplica: %w", err)
 	}
 

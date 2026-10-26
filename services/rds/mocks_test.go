@@ -351,10 +351,11 @@ func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.
 }
 
 func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.ModifyDBInstanceInput, optFns ...func(*rds.Options)) (*rds.ModifyDBInstanceOutput, error) {
-	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[m.modifyDbCallNum] != nil {
-		return nil, m.modifyDbErrs[m.modifyDbCallNum]
-	}
+	modifyDbCallNum := m.modifyDbCallNum
 	m.modifyDbCallNum++
+	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[modifyDbCallNum] != nil {
+		return nil, m.modifyDbErrs[modifyDbCallNum]
+	}
 	return &rds.ModifyDBInstanceOutput{
 		DBInstance: &rdsTypes.DBInstance{
 			DBInstanceArn: aws.String("arn"),
