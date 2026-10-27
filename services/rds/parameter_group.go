@@ -22,6 +22,7 @@ import (
 
 const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
+const oracleSE2Engine = "oracle-se2"
 
 type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
@@ -275,7 +276,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(i.ParameterGroupName),
-			Description:            aws.String("aws broker parameter group for " + formatDBName(i.Database, i.DbType)),
+			Description:            aws.String("aws broker parameter group for " + parameterGroupDatabaseName(i)),
 			Tags:                   rdsTags,
 		}
 
@@ -315,6 +316,11 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 }
 
 func (p *awsParameterGroupClient) needCustomParameters(i *RDSInstance) bool {
+	// The catalog offers Oracle SE2 only. Do not broaden this to oracle-se1
+	// without confirming that engine has an approved and tested baseline.
+	if i.DbType == oracleSE2Engine {
+		return true
+	}
 	if i.EnableFunctions &&
 		p.settings.EnableFunctionsFeature &&
 		(i.DbType == "mysql") {
@@ -452,6 +458,30 @@ func (p *awsParameterGroupClient) getExistingParameters(i *RDSInstance) (map[str
 
 func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]map[string]paramDetails, error) {
 	customRDSParameters := make(map[string]map[string]paramDetails)
+
+	if i.DbType == oracleSE2Engine {
+		// These controls are enforced on every brokered Oracle SE2 instance.
+		// They should be effective at database creation; smoke tests verify that
+		// the provisioned instance has the expected values.
+		customRDSParameters[oracleSE2Engine] = map[string]paramDetails{
+			"audit_trail": {
+				value:       "xml,extended", // AWS valid values: NONE | OS | DB | DB,EXTENDED | XML | XML,EXTENDED
+				applyMethod: "pending-reboot",
+			},
+			"audit_sys_operations": {
+				value:       "TRUE",
+				applyMethod: "pending-reboot",
+			},
+			"sql92_security": {
+				value:       "TRUE",
+				applyMethod: "pending-reboot",
+			},
+			"max_idle_time": {
+				value:       "15",
+				applyMethod: "immediate",
+			},
+		}
+	}
 
 	if i.DbType == "mysql" {
 		// enable functions
@@ -604,9 +634,16 @@ func boolToParamvalue(b bool) string {
 
 // getParameterGroupName gets a parameter group name for the instance
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
-	// formatDBName() should always return the same value for the same database name,
-	// so the parameter group name should remain consistent
-	return p.parameterGroupPrefix + formatDBName(i.Database, i.DbType) + "-version-" + formatDBVersion(i.DbVersion)
+	return p.parameterGroupPrefix + parameterGroupDatabaseName(i) + "-version-" + formatDBVersion(i.DbVersion)
+}
+
+func parameterGroupDatabaseName(i *RDSInstance) string {
+	if i.DbType == oracleSE2Engine {
+		// Oracle's logical DB name is the fixed SID ORCL. Parameter groups are
+		// instance-owned resources and therefore need the unique RDS identifier.
+		return i.Database
+	}
+	return formatDBName(i.Database, i.DbType)
 }
 
 func formatDBVersion(version string) string {

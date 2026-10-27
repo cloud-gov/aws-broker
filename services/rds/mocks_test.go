@@ -2,8 +2,10 @@ package rds
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/go-test/deep"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdsTypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
@@ -169,6 +171,7 @@ type mockRDSClient struct {
 	describeEngVersionsErr              error
 	describeDbParamsErrs                []error
 	createDbParamGroupErr               error
+	createDbParamGroupInputs            []*rds.CreateDBParameterGroupInput
 	deleteDBInstancesCallNum            int
 	deleteDbInstancesErrs               []error
 	describeEngineDefaultParamsResults  []*rds.DescribeEngineDefaultParametersOutput
@@ -184,6 +187,7 @@ type mockRDSClient struct {
 	modifyDbErrs                        []error
 	modifyDbCallNum                     int
 	modifyDbParamGroupErr               error
+	modifyDbParamGroupInputs            []*rds.ModifyDBParameterGroupInput
 	addTagsToResourceErr                error
 	describeDBParameterGroupsOutput     []*rds.DescribeDBParameterGroupsOutput
 	describeDBParameterGroupsCallNum    int
@@ -198,6 +202,7 @@ type mockRDSClient struct {
 	modifyOptionGroupErr                error
 	deleteOptionGroupErrs               []error
 	deleteOptionGroupCallNum            int
+	expectedModifyDbInstanceParams      *rds.ModifyDBInstanceInput
 }
 
 func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.CreateOptionGroupInput, optFns ...func(*rds.Options)) (*rds.CreateOptionGroupOutput, error) {
@@ -266,6 +271,7 @@ func (m *mockRDSClient) CreateDBInstanceReadReplica(ctx context.Context, params 
 }
 
 func (m *mockRDSClient) CreateDBParameterGroup(ctx context.Context, params *rds.CreateDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.CreateDBParameterGroupOutput, error) {
+	m.createDbParamGroupInputs = append(m.createDbParamGroupInputs, params)
 	if m.createDbParamGroupErr != nil {
 		return nil, m.createDbParamGroupErr
 	}
@@ -340,6 +346,7 @@ func (m *mockRDSClient) DescribeDBParameters(ctx context.Context, params *rds.De
 }
 
 func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.ModifyDBParameterGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyDBParameterGroupOutput, error) {
+	m.modifyDbParamGroupInputs = append(m.modifyDbParamGroupInputs, params)
 	if m.modifyDbParamGroupErr != nil {
 		return nil, m.modifyDbParamGroupErr
 	}
@@ -347,10 +354,14 @@ func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.
 }
 
 func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.ModifyDBInstanceInput, optFns ...func(*rds.Options)) (*rds.ModifyDBInstanceOutput, error) {
-	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[m.modifyDbCallNum] != nil {
-		return nil, m.modifyDbErrs[m.modifyDbCallNum]
-	}
+	modifyDbCallNum := m.modifyDbCallNum
 	m.modifyDbCallNum++
+	if diff := deep.Equal(m.expectedModifyDbInstanceParams, params); diff != nil {
+		return nil, fmt.Errorf("input params did not have expected value: %s", diff)
+	}
+	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[modifyDbCallNum] != nil {
+		return nil, m.modifyDbErrs[modifyDbCallNum]
+	}
 	return &rds.ModifyDBInstanceOutput{
 		DBInstance: &rdsTypes.DBInstance{
 			DBInstanceArn: aws.String("arn"),

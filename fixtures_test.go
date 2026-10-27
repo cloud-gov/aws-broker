@@ -14,13 +14,13 @@ var (
 )
 
 // micro-psql plan
-var createRDSInstanceReq = []byte(
-	fmt.Sprintf(`{
+var createRDSInstanceReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
-}`, rdsServiceId))
+}`, rdsServiceId)
 
 var createRDSInstanceWithEnabledLogGroupsReq = []byte(
 	`{
@@ -134,8 +134,8 @@ var modifyRDSInstanceDbVersion = []byte(
 }`)
 
 // medium-psql plan
-var modifyRDSInstanceReq = []byte(
-	fmt.Sprintf(`{
+var modifyRDSInstanceReq = fmt.Appendf(nil,
+	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
@@ -143,7 +143,7 @@ var modifyRDSInstanceReq = []byte(
 	"previous_values": {
 		"plan_id": "da91e15c-98c9-46a9-b114-02b8d28062c6"
 	}
-}`, updateableRDSPlanID))
+}`, updateableRDSPlanID)
 
 // medium-psql-redundant plan
 var modifyRDSInstanceNotAllowedReq = []byte(
@@ -157,16 +157,31 @@ var modifyRDSInstanceNotAllowedReq = []byte(
 	}
 }`)
 
-var createRedisInstanceReq = []byte(
-	fmt.Sprintf(`{
-	"service_id":"%s",
-	"plan_id":"%s",
+var modifyRDSInstanceRotateCredentials = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"rotate_credentials": true
+	},
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
-}`, redisServiceId, originalRedisPlanID))
+}`)
 
-var createRedisInstanceWithRedisEngineReq = []byte(
-	fmt.Sprintf(`{
+var createRedisInstanceReq = fmt.Appendf(
+	nil,
+	`{
+		"service_id":"%s",
+		"plan_id":"%s",
+		"organization_guid":"an-org",
+		"space_guid":"a-space"
+	}`,
+	redisServiceId,
+	originalRedisPlanID,
+)
+
+var createRedisInstanceWithRedisEngineReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
@@ -174,10 +189,10 @@ var createRedisInstanceWithRedisEngineReq = []byte(
 	"parameters": {
 		"engine": "redis"
 	}
-}`, redisServiceId, originalRedisPlanID))
+}`, redisServiceId, originalRedisPlanID)
 
-var modifyRedisInstanceReq = []byte(
-	fmt.Sprintf(`{
+var modifyRedisInstanceReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
@@ -185,10 +200,10 @@ var modifyRedisInstanceReq = []byte(
 	"previous_values": {
 		"plan_id": "475e36bf-387f-44c1-9b81-575fec2ee443"
 	}
-}`, redisServiceId, updateableRedisPlanID))
+}`, redisServiceId, updateableRedisPlanID)
 
-var modifyRedisEngineVersion = []byte(
-	fmt.Sprintf(`{
+var modifyRedisEngineVersion = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
@@ -196,10 +211,10 @@ var modifyRedisEngineVersion = []byte(
 	"parameters": {
 		"engine_version": "9.1"
 	}
-}`, redisServiceId, originalRedisPlanID))
+}`, redisServiceId, originalRedisPlanID)
 
-var modifyRedisToRedisEngine = []byte(
-	fmt.Sprintf(`{
+var modifyRedisToRedisEngine = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
@@ -208,10 +223,10 @@ var modifyRedisToRedisEngine = []byte(
 		"engine": "redis",
 		"engine_version": "7.1"
 	}
-}`, redisServiceId, originalRedisPlanID))
+}`, redisServiceId, originalRedisPlanID)
 
-var createElasticsearchInstanceAdvancedOptionsReq = []byte(
-	fmt.Sprintf(`{
+var createElasticsearchInstanceAdvancedOptionsReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
 	"organization_guid":"an-org",
@@ -222,18 +237,18 @@ var createElasticsearchInstanceAdvancedOptionsReq = []byte(
 			"indices.fielddata.cache.size": "80"
 		}
 	}
-}`, elasticsearchServiceId))
+}`, elasticsearchServiceId)
 
-var createElasticsearchInstanceReq = []byte(
-	fmt.Sprintf(`{
+var createElasticsearchInstanceReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
 	"organization_guid":"an-org",
 	"space_guid":"a-space"
-}`, elasticsearchServiceId))
+}`, elasticsearchServiceId)
 
-var modifyElasticsearchInstancePlanReq = []byte(
-	fmt.Sprintf(`{
+var modifyElasticsearchInstancePlanReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"162ffae8-9cf8-4806-80e5-a7f92d514198",
 	"organization_guid":"an-org",
@@ -241,10 +256,10 @@ var modifyElasticsearchInstancePlanReq = []byte(
 	"previous_values": {
 		"plan_id": "55b529cf-639e-4673-94fd-ad0a5dafe0ad"
 	}
-}`, elasticsearchServiceId))
+}`, elasticsearchServiceId)
 
-var modifyElasticsearchInstanceParamsReq = []byte(
-	fmt.Sprintf(`{
+var modifyElasticsearchInstanceParamsReq = fmt.Appendf(nil,
+	`{
 	"service_id":"%s",
 	"plan_id":"55b529cf-639e-4673-94fd-ad0a5dafe0ad",
 	"organization_guid":"an-org",
@@ -255,4 +270,4 @@ var modifyElasticsearchInstanceParamsReq = []byte(
 			"indices.fielddata.cache.size": "80"
 		}
 	}
-}`, elasticsearchServiceId))
+}`, elasticsearchServiceId)

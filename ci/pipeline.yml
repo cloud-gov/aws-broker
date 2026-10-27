@@ -206,6 +206,19 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
+
+      - task: update-broker-search
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          BROKER_NAME: ((development-broker-name))
+          AUTH_USER: ((development-auth-user))
+          AUTH_PASS: ((development-auth-pass))
+          SERVICES: >-
             aws-elasticsearch:search-medium
             aws-elasticsearch:search-medium-ha
             aws-elasticsearch:search-large
@@ -214,6 +227,7 @@ jobs:
             aws-elasticsearch:search-xlarge-ha
             aws-elasticsearch:search-2xlarge-gp
             aws-elasticsearch:search-2xlarge-gp-ha
+          SERVICE_ORGANIZATION: ((search-plan-cf-orgs-development))
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -790,6 +804,7 @@ jobs:
                 NEW_VERSION: 18.6
                 ENABLE_PG_CRON_ON_CREATE: 'true'
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-oracle
               file: aws-broker-app/ci/run-smoke-tests.yml
@@ -1021,6 +1036,28 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
+
+      - task: update-broker-search
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          BROKER_NAME: ((staging-broker-name))
+          AUTH_USER: ((staging-auth-user))
+          AUTH_PASS: ((staging-auth-pass))
+          SERVICES: >-
+            aws-elasticsearch:search-medium
+            aws-elasticsearch:search-medium-ha
+            aws-elasticsearch:search-large
+            aws-elasticsearch:search-large-ha
+            aws-elasticsearch:search-xlarge
+            aws-elasticsearch:search-xlarge-ha
+            aws-elasticsearch:search-2xlarge-gp
+            aws-elasticsearch:search-2xlarge-gp-ha
+          SERVICE_ORGANIZATION: ((search-plan-cf-orgs-staging))
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -1513,6 +1550,55 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-medium
                 REGION: ((staging-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                TEST_NAME: update-plan
+                SERVICE_PLAN: es-medium
+                NEW_SERVICE_PLAN: search-medium
+                NEW_SERVICE_PLAN_DATA_NODES: 2
+                REGION: ((staging-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan-rejections
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                TEST_NAME: update-plan-rejections
+                SERVICE_PLAN: es-medium
+                REGION: ((staging-aws-default-region))
+                TEST_REJECTIONS: true
+                SINGLE_NODE_PLAN: es-dev
+                REJECTION_TARGET_PLAN: search-medium
+
+            - task: smoke-tests-elasticsearch-update-plan-ha
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((staging-broker-name))
+                CF_API_URL: ((staging-cf-api-url))
+                CF_USERNAME: ((staging-cf-deploy-username))
+                CF_PASSWORD: ((staging-cf-deploy-password))
+                CF_ORGANIZATION: ((staging-tests-cf-organization))
+                CF_SPACE: ((staging-tests-cf-space))
+                TEST_NAME: update-plan-ha
+                SERVICE_PLAN: search-medium
+                NEW_SERVICE_PLAN: search-medium-ha
+                NEW_SERVICE_PLAN_DATA_NODES: 4
+                REGION: ((staging-aws-default-region))
     on_failure:
       put: slack
       params:
@@ -1750,6 +1836,28 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
+
+      - task: update-broker-search
+        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-cf-organization))
+          CF_SPACE: ((prod-cf-space))
+          BROKER_NAME: ((prod-broker-name))
+          AUTH_USER: ((prod-auth-user))
+          AUTH_PASS: ((prod-auth-pass))
+          SERVICES: >-
+            aws-elasticsearch:search-medium
+            aws-elasticsearch:search-medium-ha
+            aws-elasticsearch:search-large
+            aws-elasticsearch:search-large-ha
+            aws-elasticsearch:search-xlarge
+            aws-elasticsearch:search-xlarge-ha
+            aws-elasticsearch:search-2xlarge-gp
+            aws-elasticsearch:search-2xlarge-gp-ha
+          SERVICE_ORGANIZATION: ((search-plan-cf-orgs-production))
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -2138,6 +2246,55 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-medium
+                REGION: ((prod-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                TEST_NAME: update-plan
+                SERVICE_PLAN: es-medium
+                NEW_SERVICE_PLAN: search-medium
+                NEW_SERVICE_PLAN_DATA_NODES: 2
+                REGION: ((prod-aws-default-region))
+
+            - task: smoke-tests-elasticsearch-update-plan-rejections
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                TEST_NAME: update-plan-rejections
+                SERVICE_PLAN: es-medium
+                REGION: ((prod-aws-default-region))
+                TEST_REJECTIONS: true
+                SINGLE_NODE_PLAN: es-dev
+                REJECTION_TARGET_PLAN: search-medium
+
+            - task: smoke-tests-elasticsearch-update-plan-ha
+              file: aws-broker-app/ci/run-smoke-tests-update-search.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((prod-broker-name))
+                CF_API_URL: ((prod-cf-api-url))
+                CF_USERNAME: ((prod-cf-deploy-username))
+                CF_PASSWORD: ((prod-cf-deploy-password))
+                CF_ORGANIZATION: ((prod-tests-cf-organization))
+                CF_SPACE: ((prod-tests-cf-space))
+                TEST_NAME: update-plan-ha
+                SERVICE_PLAN: search-medium
+                NEW_SERVICE_PLAN: search-medium-ha
+                NEW_SERVICE_PLAN_DATA_NODES: 4
                 REGION: ((prod-aws-default-region))
 
             - task: smoke-tests-postgres-update-version
