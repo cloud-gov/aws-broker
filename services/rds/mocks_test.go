@@ -119,7 +119,7 @@ func (m *mockOptionGroupClient) CleanupCustomOptionGroups() error {
 	return nil
 }
 
-func (m *mockOptionGroupClient) DeleteOptionGroup(optionGroupName string, onRetry func(attempt, maxAttempts int)) error {
+func (m *mockOptionGroupClient) DeleteOptionGroup(optionGroupName string) error {
 	m.deletedOptionGroupName = optionGroupName
 	return m.deleteOptionGroupErr
 }

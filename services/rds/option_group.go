@@ -25,7 +25,7 @@ type optionGroupClient interface {
 	ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
 	ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomOptionGroups() error
-	DeleteOptionGroup(optionGroupName string, onRetry func(attempt, maxAttempts int)) error
+	DeleteOptionGroup(optionGroupName string) error
 	IsCustomOptionGroup(optionGroupName string) bool
 	IsBrokerOptionGroup(optionGroupName string) bool
 	ReconcileRDSInstanceOptionGroup(dbInstanceState *rdsTypes.DBInstance, i RDSInstance) (*RDSInstance, error)
@@ -308,14 +308,14 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 	return createdOptionGroup, nil
 }
 
-// Deletes a broker-created option group. Retries deletion while it is still
-// in use because a recently detached group takes time to become deletable.
-// If the group is still in use after exhausting retries (e.g. it remains
-// attached to a retained automated backup/snapshot for the backup retention
-// period — not a short-lived race), returns ErrOptionGroupStillInUse so
-// callers can treat it as best-effort and defer to the later
-// CleanupCustomOptionGroups sweep instead of failing the overall operation.
-func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string, onRetry func(attempt, maxAttempts int)) error {
+// Deletes a broker-created option group. Attempts deletion exactly once; it
+// does not retry. If the group is still in use (e.g. it remains attached to
+// a retained automated backup/snapshot for the backup retention period —
+// this can be up to 14+ days, far longer than any short-lived AWS
+// consistency race), returns ErrOptionGroupStillInUse immediately so callers
+// can treat it as best-effort and defer to the later CleanupCustomOptionGroups
+// sweep instead of failing or blocking the overall operation.
+func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error {
 	if optionGroupName == "" {
 		return nil
 	}
@@ -334,44 +334,27 @@ func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string, onRetr
 		return nil
 	}
 
-	attempts := 1
-	maxRetries := int(o.settings.PollAwsMaxRetries)
-	var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
-
-	for attempts <= maxRetries {
-		_, err = o.rds.DeleteOptionGroup(o.ctx, &rds.DeleteOptionGroupInput{
-			OptionGroupName: &optionGroupName,
-		})
-		if err == nil {
-			// Deletion succeeded.
-			return nil
-		}
-
-		if errors.As(err, &invalidStateErr) {
-			o.logger.Debug(fmt.Sprintf("option group %s not yet deletable (attempt %d/%d): %s", optionGroupName, attempts, maxRetries, err))
-			if onRetry != nil {
-				onRetry(attempts, maxRetries)
-			}
-			attempts += 1
-			time.Sleep(o.settings.PollAwsMinDelay)
-			continue
-		}
-		var notFoundErr *rdsTypes.OptionGroupNotFoundFault
-		if errors.As(err, &notFoundErr) {
-			// Already gone — deletion goal achieved.
-			return nil
-		}
-		return err
+	_, err = o.rds.DeleteOptionGroup(o.ctx, &rds.DeleteOptionGroupInput{
+		OptionGroupName: &optionGroupName,
+	})
+	if err == nil {
+		// Deletion succeeded.
+		return nil
 	}
 
+	var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
 	if errors.As(err, &invalidStateErr) {
 		o.logger.Info(fmt.Sprintf(
-			"option group %s still in use after %d attempts (likely attached to a retained backup/snapshot); deferring to later cleanup",
-			optionGroupName, maxRetries,
+			"option group %s still in use (likely attached to a retained backup/snapshot); deferring to later cleanup",
+			optionGroupName,
 		))
 		return ErrOptionGroupStillInUse
 	}
-
+	var notFoundErr *rdsTypes.OptionGroupNotFoundFault
+	if errors.As(err, &notFoundErr) {
+		// Already gone — deletion goal achieved.
+		return nil
+	}
 	return err
 }
 
