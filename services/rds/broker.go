@@ -57,8 +57,10 @@ type Options struct {
 }
 
 // Validate the custom parameters passed in via the "-c <JSON string or file>"
-// flag that do not require checks against specific plan information.
-func (o Options) Validate(settings *config.Settings) error {
+// flag. dbType identifies the plan's database engine (e.g. "postgres",
+// "mysql", "oracle-se2") so that engine-specific checks, such as which
+// CloudWatch log export types are supported, can be enforced here too.
+func (o Options) Validate(settings *config.Settings, dbType string) error {
 	// Check to make sure that the allocated storage is less than the maximum
 	// allowed.  If allocated storage is passed in, the value defaults to 0.
 	if o.AllocatedStorage > settings.MaxAllocatedStorage {
@@ -86,6 +88,10 @@ func (o Options) Validate(settings *config.Settings) error {
 	}
 
 	if err := validatePgQueryLogging(o.PgQueryLogging); err != nil {
+		return err
+	}
+
+	if err := validateCloudwatchLogGroupExports(dbType, o.EnableCloudWatchLogGroupExports); err != nil {
 		return err
 	}
 
@@ -146,18 +152,6 @@ func (broker *rdsBroker) AsyncOperationRequired(o base.Operation) bool {
 func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetails) error {
 	newInstance := NewRDSInstance()
 
-	options := Options{}
-	if len(details.RawParameters) > 0 {
-		err := json.Unmarshal(details.RawParameters, &options)
-		if err != nil {
-			return apiresponses.ErrRawParamsInvalid
-		}
-		err = options.Validate(broker.settings)
-		if err != nil {
-			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
-		}
-	}
-
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(newInstance).Count(&count)
 	if count != 0 {
@@ -167,6 +161,18 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 	plan, err := broker.catalog.RdsService.FetchPlan(details.PlanID)
 	if err != nil {
 		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "fetching RDS plan")
+	}
+
+	options := Options{}
+	if len(details.RawParameters) > 0 {
+		err := json.Unmarshal(details.RawParameters, &options)
+		if err != nil {
+			return apiresponses.ErrRawParamsInvalid
+		}
+		err = options.Validate(broker.settings, plan.DbType)
+		if err != nil {
+			return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
+		}
 	}
 
 	// make sure it's a valid major version.
@@ -179,10 +185,6 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 				"checking RDS plan",
 			)
 		}
-	}
-
-	if err := validateCloudwatchLogGroupExports(plan.DbType, options.EnableCloudWatchLogGroupExports); err != nil {
-		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "checking RDS plan")
 	}
 
 	tags, err := broker.tagManager.GenerateTags(
@@ -262,6 +264,7 @@ func (broker *rdsBroker) CreateInstance(id string, details domain.ProvisionDetai
 
 func (broker *rdsBroker) parseModifyOptionsFromRequest(
 	details domain.UpdateDetails,
+	dbType string,
 ) (Options, error) {
 	options := Options{}
 	if len(details.RawParameters) > 0 {
@@ -269,7 +272,7 @@ func (broker *rdsBroker) parseModifyOptionsFromRequest(
 		if err != nil {
 			return options, err
 		}
-		err = options.Validate(broker.settings)
+		err = options.Validate(broker.settings, dbType)
 		if err != nil {
 			return options, err
 		}
@@ -285,11 +288,6 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
 	if count == 0 {
 		return apiresponses.ErrInstanceDoesNotExist
-	}
-
-	options, err := broker.parseModifyOptionsFromRequest(details)
-	if err != nil {
-		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 	}
 
 	// Fetch the current plan.
@@ -314,8 +312,9 @@ func (broker *rdsBroker) ModifyInstance(id string, details domain.UpdateDetails)
 		)
 	}
 
-	if err := validateCloudwatchLogGroupExports(newPlan.DbType, options.EnableCloudWatchLogGroupExports); err != nil {
-		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "modify RDS instance")
+	options, err := broker.parseModifyOptionsFromRequest(details, newPlan.DbType)
+	if err != nil {
+		return apiresponses.NewFailureResponse(err, http.StatusBadRequest, "validate input parameters")
 	}
 
 	tags, err := broker.tagManager.GenerateTags(

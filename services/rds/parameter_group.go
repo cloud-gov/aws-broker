@@ -24,8 +24,6 @@ const pgCronLibraryName = "pg_cron"
 const sharedPreloadLibrariesParameterName = "shared_preload_libraries"
 const oracleSE2Engine = "oracle-se2"
 
-var ErrParameterGroupStillInUse = errors.New("parameter group still in use; deferring to later cleanup")
-
 type parameterGroupClient interface {
 	ProvisionNewCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	ProvisionOrModifyCustomParameterGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
@@ -278,7 +276,7 @@ func (p *awsParameterGroupClient) createOrModifyCustomParameterGroup(
 		createInput := &rds.CreateDBParameterGroupInput{
 			DBParameterGroupFamily: aws.String(i.ParameterGroupFamily),
 			DBParameterGroupName:   aws.String(i.ParameterGroupName),
-			Description:            aws.String("aws broker parameter group for " + parameterGroupDatabaseName(i)),
+			Description:            aws.String("aws broker parameter group for " + getGroupDatabaseIdentifier(i)),
 			Tags:                   rdsTags,
 		}
 
@@ -636,13 +634,17 @@ func boolToParamvalue(b bool) string {
 
 // getParameterGroupName gets a parameter group name for the instance
 func getParameterGroupName(i *RDSInstance, p *awsParameterGroupClient) string {
-	return p.parameterGroupPrefix + parameterGroupDatabaseName(i) + "-version-" + formatDBVersion(i.DbVersion)
+	return p.parameterGroupPrefix + getGroupDatabaseIdentifier(i) + "-version-" + formatDBVersion(i.DbVersion)
 }
 
-func parameterGroupDatabaseName(i *RDSInstance) string {
+// getGroupDatabaseIdentifier returns the database identifier to use when
+// naming broker-owned parameter and option groups. Used by both
+// parameter_group.go and option_group.go.
+func getGroupDatabaseIdentifier(i *RDSInstance) string {
 	if i.DbType == oracleSE2Engine {
-		// Oracle's logical DB name is the fixed SID ORCL. Parameter groups are
-		// instance-owned resources and therefore need the unique RDS identifier.
+		// Oracle's logical DB name is the fixed SID ORCL. Parameter and
+		// option groups are instance-owned resources and therefore need the
+		// unique RDS identifier.
 		return i.Database
 	}
 	return formatDBName(i.Database, i.DbType)
@@ -691,11 +693,7 @@ func (p *awsParameterGroupClient) DeleteParameterGroup(parameterGroupName string
 		return err
 	}
 
-	p.logger.Info(fmt.Sprintf(
-		"parameter group %s still in use after %d attempts (likely attached to a retained backup/snapshot); deferring to later cleanup",
-		parameterGroupName, maxRetries,
-	))
-	return ErrParameterGroupStillInUse
+	return errors.New("could not verify deletion of parameter group")
 }
 
 // setParameterGroupName sets the parameter group name on the instance struct

@@ -224,7 +224,7 @@ func TestValidateRetentionPeriod(t *testing.T) {
 			opts := &Options{
 				BackupRetentionPeriod: aws.Int64(test.retentionPeriod),
 			}
-			err := opts.Validate(test.settings)
+			err := opts.Validate(test.settings, "")
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}

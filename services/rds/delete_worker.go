@@ -100,7 +100,7 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance, operat
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting parameter group")
 	err = w.parameterGroupClient.DeleteParameterGroup(i.ParameterGroupName)
-	if err != nil && !errors.Is(err, ErrParameterGroupStillInUse) {
+	if err != nil {
 		return common.FmtErr(ErrDeletingDBParameterGroup, err)
 	}
 

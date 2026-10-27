@@ -58,7 +58,7 @@ func (o *awsOptionsGroupClient) IsBrokerOptionGroup(optionGroupName string) bool
 }
 
 func (o *awsOptionsGroupClient) getOptionGroupName(i *RDSInstance, majorEngineVersion string) string {
-	return o.optionGroupPrefix + parameterGroupDatabaseName(i) + "-option-" + formatDBVersion(majorEngineVersion)
+	return o.optionGroupPrefix + getGroupDatabaseIdentifier(i) + "-option-" + formatDBVersion(majorEngineVersion)
 }
 
 func (o *awsOptionsGroupClient) getMajorEngineVersion(i *RDSInstance) (string, error) {
@@ -246,7 +246,7 @@ func (o *awsOptionsGroupClient) ProvisionBaselineOptionGroup(i *RDSInstance, rds
 	}
 	groupName := o.getOptionGroupName(i, majorVersion)
 
-	if _, err := o.ensureOptionGroupWithOptions(groupName, i.DbType, majorVersion, parameterGroupDatabaseName(i), opts, rdsTags); err != nil {
+	if _, err := o.ensureOptionGroupWithOptions(groupName, i.DbType, majorVersion, getGroupDatabaseIdentifier(i), opts, rdsTags); err != nil {
 		return fmt.Errorf("ProvisionBaselineOptionGroup: %w", err)
 	}
 
@@ -297,7 +297,7 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 	// Recreate the group for the new major version, carrying the same options.
 	existingOptions := optionsFromGroup(existingOptionGroup)
 	createdOptionGroup, err := o.ensureOptionGroupWithOptions(
-		targetOptionGroupName, i.DbType, targetMajorVersion, parameterGroupDatabaseName(i), existingOptions, rdsTags)
+		targetOptionGroupName, i.DbType, targetMajorVersion, getGroupDatabaseIdentifier(i), existingOptions, rdsTags)
 	if err != nil {
 		// created=false on any error, even if the group was created before the
 		// modify failed (preserves the original contract).
