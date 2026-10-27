@@ -217,14 +217,11 @@ func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.Creat
 
 func (m *mockRDSClient) ModifyOptionGroup(ctx context.Context, params *rds.ModifyOptionGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyOptionGroupOutput, error) {
 	m.modifyOptionGroupInput = params
+	callNum := m.modifyOptionGroupCallNum
+	m.modifyOptionGroupCallNum++		
 	if len(m.modifyOptionGroupErrs) > 0 {
-		var err error
-		if m.modifyOptionGroupCallNum < len(m.modifyOptionGroupErrs) {
-			err = m.modifyOptionGroupErrs[m.modifyOptionGroupCallNum]
-		}
-		m.modifyOptionGroupCallNum++
-		if err != nil {
-			return nil, err
+		if callNum < len(m.modifyOptionGroupErrs) {
+			return nil, m.modifyOptionGroupErrs[callNum]
 		}
 		return nil, nil
 	}
