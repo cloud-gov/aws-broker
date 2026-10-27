@@ -281,7 +281,9 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, operation base.Operati
 	if existingOptionGroupName != "" && i.OptionGroupName != existingOptionGroupName {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old option group")
 		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
-		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
+		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName, func(attempt, maxAttempts int) {
+			asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting old option group: waiting for it to no longer be in use (attempt %d/%d)", attempt, maxAttempts))
+		})
 		if err != nil && !errors.Is(err, ErrOptionGroupStillInUse) {
 			return common.FmtErr(ErrDeletingDBOptionGroup, err)
 		}

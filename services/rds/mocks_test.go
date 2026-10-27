@@ -119,7 +119,7 @@ func (m *mockOptionGroupClient) CleanupCustomOptionGroups() error {
 	return nil
 }
 
-func (m *mockOptionGroupClient) DeleteOptionGroup(optionGroupName string) error {
+func (m *mockOptionGroupClient) DeleteOptionGroup(optionGroupName string, onRetry func(attempt, maxAttempts int)) error {
 	m.deletedOptionGroupName = optionGroupName
 	return m.deleteOptionGroupErr
 }
@@ -218,7 +218,7 @@ func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.Creat
 func (m *mockRDSClient) ModifyOptionGroup(ctx context.Context, params *rds.ModifyOptionGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyOptionGroupOutput, error) {
 	m.modifyOptionGroupInput = params
 	callNum := m.modifyOptionGroupCallNum
-	m.modifyOptionGroupCallNum++		
+	m.modifyOptionGroupCallNum++
 	if len(m.modifyOptionGroupErrs) > 0 {
 		if callNum < len(m.modifyOptionGroupErrs) {
 			return nil, m.modifyOptionGroupErrs[callNum]

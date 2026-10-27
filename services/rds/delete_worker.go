@@ -3,6 +3,7 @@ package rds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/cloud-gov/aws-broker/asyncmessage"
@@ -111,7 +112,9 @@ func (w *DeleteWorker) asyncDeleteDB(ctx context.Context, i *RDSInstance, operat
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting option group")
-	err = w.optionGroupClient.DeleteOptionGroup(i.OptionGroupName)
+	err = w.optionGroupClient.DeleteOptionGroup(i.OptionGroupName, func(attempt, maxAttempts int) {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Deleting option group: waiting for it to no longer be in use (attempt %d/%d)", attempt, maxAttempts))
+	})
 	if err != nil && !errors.Is(err, ErrOptionGroupStillInUse) {
 		return common.FmtErr(ErrDeletingDBOptionGroup, err)
 	}

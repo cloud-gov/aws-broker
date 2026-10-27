@@ -25,7 +25,7 @@ type optionGroupClient interface {
 	ProvisionOrModifyCustomOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) (bool, error)
 	ProvisionBaselineOptionGroup(i *RDSInstance, rdsTags []rdsTypes.Tag) error
 	CleanupCustomOptionGroups() error
-	DeleteOptionGroup(optionGroupName string) error
+	DeleteOptionGroup(optionGroupName string, onRetry func(attempt, maxAttempts int)) error
 	IsCustomOptionGroup(optionGroupName string) bool
 	IsBrokerOptionGroup(optionGroupName string) bool
 	ReconcileRDSInstanceOptionGroup(dbInstanceState *rdsTypes.DBInstance, i RDSInstance) (*RDSInstance, error)
@@ -315,7 +315,7 @@ func (o *awsOptionsGroupClient) ProvisionOrModifyCustomOptionGroup(i *RDSInstanc
 // period — not a short-lived race), returns ErrOptionGroupStillInUse so
 // callers can treat it as best-effort and defer to the later
 // CleanupCustomOptionGroups sweep instead of failing the overall operation.
-func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error {
+func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string, onRetry func(attempt, maxAttempts int)) error {
 	if optionGroupName == "" {
 		return nil
 	}
@@ -348,6 +348,10 @@ func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error 
 		}
 
 		if errors.As(err, &invalidStateErr) {
+			o.logger.Debug(fmt.Sprintf("option group %s not yet deletable (attempt %d/%d): %s", optionGroupName, attempts, maxRetries, err))
+			if onRetry != nil {
+				onRetry(attempts, maxRetries)
+			}
 			attempts += 1
 			time.Sleep(o.settings.PollAwsMinDelay)
 			continue
