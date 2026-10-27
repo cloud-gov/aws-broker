@@ -150,6 +150,7 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 		params.StorageType = aws.String(i.StorageType)
 	}
 
+	// Only do actual rotation on the primary database, not the replica
 	if i.RotateCredentials && !isReplica {
 		password, err := w.credentialUtils.decryptCredential(i.Salt, i.Password, w.settings.EncryptionKey)
 		if err != nil {
