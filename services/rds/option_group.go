@@ -336,6 +336,7 @@ func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error 
 
 	attempts := 1
 	maxRetries := int(o.settings.PollAwsMaxRetries)
+	var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
 
 	for attempts <= maxRetries {
 		_, err = o.rds.DeleteOptionGroup(o.ctx, &rds.DeleteOptionGroupInput{
@@ -345,7 +346,7 @@ func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error 
 			// Deletion succeeded.
 			return nil
 		}
-		var invalidStateErr *rdsTypes.InvalidOptionGroupStateFault
+
 		if errors.As(err, &invalidStateErr) {
 			attempts += 1
 			time.Sleep(o.settings.PollAwsMinDelay)
@@ -359,11 +360,15 @@ func (o *awsOptionsGroupClient) DeleteOptionGroup(optionGroupName string) error 
 		return err
 	}
 
-	o.logger.Info(fmt.Sprintf(
-		"option group %s still in use after %d attempts (likely attached to a retained backup/snapshot); deferring to later cleanup",
-		optionGroupName, maxRetries,
-	))
-	return ErrOptionGroupStillInUse
+	if errors.As(err, &invalidStateErr) {
+		o.logger.Info(fmt.Sprintf(
+			"option group %s still in use after %d attempts (likely attached to a retained backup/snapshot); deferring to later cleanup",
+			optionGroupName, maxRetries,
+		))
+		return ErrOptionGroupStillInUse
+	}
+
+	return err
 }
 
 // Deletes any broker-created option groups that are no longer in use. Groups still attached
