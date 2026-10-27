@@ -464,8 +464,8 @@ func (p *awsParameterGroupClient) getNewParameters(i *RDSInstance) (map[string]m
 		// They should be effective at database creation; smoke tests verify that
 		// the provisioned instance has the expected values.
 		customRDSParameters[oracleSE2Engine] = map[string]paramDetails{
-			"audit_trail": {
-				value:       "xml,extended", // AWS valid values: NONE | OS | DB | DB,EXTENDED | XML | XML,EXTENDED
+			"audit_trail": { // "os": https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay/issues/48
+				value:       "os", // AWS valid values: NONE | OS | DB | DB,EXTENDED | XML | XML,EXTENDED
 				applyMethod: "pending-reboot",
 			},
 			"audit_sys_operations": {
