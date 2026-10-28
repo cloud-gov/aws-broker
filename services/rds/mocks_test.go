@@ -200,6 +200,8 @@ type mockRDSClient struct {
 	createOptionGroupErr                error
 	modifyOptionGroupInput              *rds.ModifyOptionGroupInput
 	modifyOptionGroupErr                error
+	modifyOptionGroupErrs               []error
+	modifyOptionGroupCallNum            int
 	deleteOptionGroupErrs               []error
 	deleteOptionGroupCallNum            int
 	expectedModifyDbInstanceParams      *rds.ModifyDBInstanceInput
@@ -215,6 +217,14 @@ func (m *mockRDSClient) CreateOptionGroup(ctx context.Context, params *rds.Creat
 
 func (m *mockRDSClient) ModifyOptionGroup(ctx context.Context, params *rds.ModifyOptionGroupInput, optFns ...func(*rds.Options)) (*rds.ModifyOptionGroupOutput, error) {
 	m.modifyOptionGroupInput = params
+	callNum := m.modifyOptionGroupCallNum
+	m.modifyOptionGroupCallNum++
+	if len(m.modifyOptionGroupErrs) > 0 {
+		if callNum < len(m.modifyOptionGroupErrs) {
+			return nil, m.modifyOptionGroupErrs[callNum]
+		}
+		return nil, nil
+	}
 	if m.modifyOptionGroupErr != nil {
 		return nil, m.modifyOptionGroupErr
 	}
@@ -356,8 +366,10 @@ func (m *mockRDSClient) ModifyDBParameterGroup(ctx context.Context, params *rds.
 func (m *mockRDSClient) ModifyDBInstance(ctx context.Context, params *rds.ModifyDBInstanceInput, optFns ...func(*rds.Options)) (*rds.ModifyDBInstanceOutput, error) {
 	modifyDbCallNum := m.modifyDbCallNum
 	m.modifyDbCallNum++
-	if diff := deep.Equal(m.expectedModifyDbInstanceParams, params); diff != nil {
-		return nil, fmt.Errorf("input params did not have expected value: %s", diff)
+	if m.expectedModifyDbInstanceParams != nil {
+		if diff := deep.Equal(m.expectedModifyDbInstanceParams, params); diff != nil {
+			return nil, fmt.Errorf("input params did not have expected value: %s", diff)
+		}
 	}
 	if len(m.modifyDbErrs) > 0 && m.modifyDbErrs[modifyDbCallNum] != nil {
 		return nil, m.modifyDbErrs[modifyDbCallNum]

@@ -2,6 +2,7 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"testing"
@@ -258,5 +259,139 @@ func TestDeleteOptionGroup(t *testing.T) {
 				t.Errorf("expected DeleteOptionGroup to be called %d times(s), got %d", tc.expectedDeleteCalls, mockRDS.deleteDBInstancesCallNum)
 			}
 		})
+	}
+}
+
+func TestDeleteOptionGroup_ReturnsErrOptionGroupStillInUseOnInvalidState(t *testing.T) {
+	invalidState := &rdsTypes.InvalidOptionGroupStateFault{
+		Message: aws.String("The option group 'cg-aws-broker-db1-option-19' cannot be deleted because it is in use."),
+	}
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{invalidState},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+
+	err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19")
+	if !errors.Is(err, ErrOptionGroupStillInUse) {
+		t.Fatalf("expected ErrOptionGroupStillInUse on the first InvalidOptionGroupStateFault, got: %v", err)
+	}
+	if mockRDS.deleteOptionGroupCallNum != 1 {
+		t.Errorf("expected DeleteOptionGroup to be called exactly once (no retry), got %d", mockRDS.deleteOptionGroupCallNum)
+	}
+}
+
+func TestDeleteOptionGroup_NotFoundIsSuccess(t *testing.T) {
+	notFound := &rdsTypes.OptionGroupNotFoundFault{}
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{notFound},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+
+	if err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19"); err != nil {
+		t.Fatalf("expected OptionGroupNotFoundFault to be treated as success, got error: %s", err)
+	}
+	if mockRDS.deleteOptionGroupCallNum != 1 {
+		t.Errorf("expected DeleteOptionGroup to be called exactly once, got %d", mockRDS.deleteOptionGroupCallNum)
+	}
+}
+
+func TestDeleteOptionGroup_NonRetryableErrorFailsImmediately(t *testing.T) {
+	otherErr := errors.New("boom")
+	mockRDS := &mockRDSClient{
+		describeOptionGroupsResults: []*rds.DescribeOptionGroupsOutput{
+			{
+				OptionGroupsList: []rdsTypes.OptionGroup{
+					{OptionGroupName: aws.String("cg-aws-broker-db1-option-19")},
+				},
+			},
+		},
+		deleteOptionGroupErrs: []error{otherErr},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+
+	err := o.DeleteOptionGroup("cg-aws-broker-db1-option-19")
+	if err == nil {
+		t.Fatal("expected a non-retryable error to be returned")
+	}
+	if errors.Is(err, ErrOptionGroupStillInUse) {
+		t.Fatal("expected the actual error to be returned, not ErrOptionGroupStillInUse")
+	}
+	if mockRDS.deleteOptionGroupCallNum != 1 {
+		t.Errorf("expected DeleteOptionGroup to be called exactly once (no retry), got %d", mockRDS.deleteOptionGroupCallNum)
+	}
+}
+
+func TestModifyOptionGroupWithRetry_RetriesOnInvalidState(t *testing.T) {
+	invalidState := &rdsTypes.InvalidOptionGroupStateFault{
+		Message: aws.String("This option group cannot be modified because it is currently being applied to DB Instance some-other-instance."),
+	}
+	mockRDS := &mockRDSClient{
+		modifyOptionGroupErrs: []error{invalidState, invalidState, nil},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 5
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	opts := []rdsTypes.OptionConfiguration{{OptionName: aws.String("SSL")}}
+	err := o.modifyOptionGroupWithRetry("cg-aws-broker-db1-option-19", opts)
+	if err != nil {
+		t.Fatalf("expected the retry to eventually succeed, got error: %s", err)
+	}
+	if mockRDS.modifyOptionGroupCallNum != 3 {
+		t.Errorf("expected ModifyOptionGroup to be called 3 times (2 failures + 1 success), got %d", mockRDS.modifyOptionGroupCallNum)
+	}
+}
+
+func TestModifyOptionGroupWithRetry_GivesUpAfterMaxRetries(t *testing.T) {
+	invalidState := &rdsTypes.InvalidOptionGroupStateFault{
+		Message: aws.String("This option group cannot be modified because it is currently being applied to DB Instance some-other-instance."),
+	}
+	mockRDS := &mockRDSClient{
+		modifyOptionGroupErrs: []error{invalidState, invalidState, invalidState},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 2
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	opts := []rdsTypes.OptionConfiguration{{OptionName: aws.String("SSL")}}
+	err := o.modifyOptionGroupWithRetry("cg-aws-broker-db1-option-19", opts)
+	if err == nil {
+		t.Fatal("expected an error after exhausting retries")
+	}
+	if mockRDS.modifyOptionGroupCallNum != 3 {
+		t.Errorf("expected ModifyOptionGroup to be called 3 times (1 initial + 2 retries), got %d", mockRDS.modifyOptionGroupCallNum)
+	}
+}
+
+func TestModifyOptionGroupWithRetry_NonRetryableErrorFailsImmediately(t *testing.T) {
+	otherErr := &rdsTypes.OptionGroupNotFoundFault{}
+	mockRDS := &mockRDSClient{
+		modifyOptionGroupErrs: []error{otherErr},
+	}
+	o := newTestOptionGroupClient(mockRDS)
+	o.settings.PollAwsMaxRetries = 5
+	o.settings.PollAwsMinDelay = 1 * time.Millisecond
+
+	opts := []rdsTypes.OptionConfiguration{{OptionName: aws.String("SSL")}}
+	err := o.modifyOptionGroupWithRetry("cg-aws-broker-db1-option-19", opts)
+	if err == nil {
+		t.Fatal("expected a non-retryable error to be returned")
+	}
+	if mockRDS.modifyOptionGroupCallNum != 1 {
+		t.Errorf("expected ModifyOptionGroup to be called exactly once (no retry), got %d", mockRDS.modifyOptionGroupCallNum)
 	}
 }

@@ -29,6 +29,17 @@ var createRDSInstanceWithEnabledLogGroupsReq = []byte(
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
+	  "enable_cloudwatch_log_groups_exports": ["postgresql"]
+	}
+}`)
+
+var createRDSInstanceWithInvalidLogGroupReq = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
 	  "enable_cloudwatch_log_groups_exports": ["foo"]
 	}
 }`)
@@ -112,6 +123,17 @@ var modifyRDSInstanceEnablePgCron = []byte(
 }`)
 
 var modifyRDSInstanceEnableCloudwatchLogGroups = []byte(
+	`{
+	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
+	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",
+	"parameters": {
+		"enable_cloudwatch_log_groups_exports": ["postgresql"]
+	},
+	"organization_guid":"an-org",
+	"space_guid":"a-space"
+}`)
+
+var modifyRDSInstanceEnableInvalidCloudwatchLogGroups = []byte(
 	`{
 	"service_id":"db80ca29-2d1b-4fbc-aad3-d03c0bfa7593",
 	"plan_id":"da91e15c-98c9-46a9-b114-02b8d28062c6",

@@ -410,8 +410,27 @@ func TestCreateRDSInstanceWithEnabledLogGroups(t *testing.T) {
 		t.Error("The instance should have metadata")
 	}
 
-	if !slices.Contains(i.EnabledCloudwatchLogGroupExports, "foo") {
-		t.Error("expected EnabledCloudwatchLogGroupExports to contain 'foo'")
+	if !slices.Contains(i.EnabledCloudwatchLogGroupExports, "postgresql") {
+		t.Error("expected EnabledCloudwatchLogGroupExports to contain 'postgresql'")
+	}
+}
+
+func TestCreateRDSInstanceWithInvalidLogGroupRejected(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := requestHandler.doRequest(urlAcceptsIncomplete, "PUT", true, bytes.NewBuffer(createRDSInstanceWithInvalidLogGroupReq))
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf(
+			"expected %d for an unsupported CloudWatch log group export type on a postgres plan, got %d. Body: %s",
+			http.StatusBadRequest, res.Code, res.Body.String(),
+		)
+	}
+
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if i.Uuid != "" {
+		t.Error("the instance should not have been saved in the DB after a rejected request")
 	}
 }
 
@@ -746,8 +765,38 @@ func TestModifyEnableCloudwatchLogGroups(t *testing.T) {
 		t.Error("The instance should be saved in the DB")
 	}
 
-	if !slices.Contains(i.EnabledCloudwatchLogGroupExports, "foo") {
-		t.Error("expected EnabledCloudwatchLogGroupExports to contain 'foo'")
+	if !slices.Contains(i.EnabledCloudwatchLogGroupExports, "postgresql") {
+		t.Error("expected EnabledCloudwatchLogGroupExports to contain 'postgresql'")
+	}
+}
+
+func TestModifyEnableCloudwatchLogGroupsInvalidRejected(t *testing.T) {
+	instanceUUID := uuid.NewString()
+	// We need to create an instance first before we can try to modify it.
+	createURL := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	res := requestHandler.doRequest(createURL, "PUT", true, bytes.NewBuffer(createRDSInstanceReq))
+
+	if res.Code != http.StatusAccepted {
+		t.Logf("Unable to create instance. Body is: %s", res.Body.String())
+		t.Error(createURL, "with auth should return 202 and it returned", res.Code)
+	}
+
+	urlAcceptsIncomplete := fmt.Sprintf("/v2/service_instances/%s?accepts_incomplete=true", instanceUUID)
+	resp := requestHandler.doRequest(urlAcceptsIncomplete, "PATCH", true, bytes.NewBuffer(modifyRDSInstanceEnableInvalidCloudwatchLogGroups))
+
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf(
+			"expected %d for an unsupported CloudWatch log group export type on a postgres plan, got %d. Body: %s",
+			http.StatusBadRequest, resp.Code, resp.Body.String(),
+		)
+	}
+
+	// The instance's log exports must not have been changed by a rejected
+	// modify request.
+	i := rds.RDSInstance{}
+	brokerDB.Where("uuid = ?", instanceUUID).First(&i)
+	if slices.Contains(i.EnabledCloudwatchLogGroupExports, "foo") {
+		t.Error("EnabledCloudwatchLogGroupExports should not have been updated by a rejected request")
 	}
 }
 
