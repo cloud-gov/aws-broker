@@ -1,0 +1,24 @@
+# Local Oracle engine for fast SQL-hardening iteration.
+# gvenzl/oracle-free is native arm64 (Apple Silicon) with a faststart tag.
+# DEVELOPMENT SIGNAL ONLY: 23c Free, not RDS Oracle 19c EE.
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    container_name: cg-oracle-free
+    ports:
+      # Bind to loopback only — a local dev DB with a known password must not be
+      # reachable from the LAN/VPN. Do NOT change to "1521:1521" (0.0.0.0).
+      - "127.0.0.1:1521:1521"
+    environment:
+      # Dev-only password; never used outside this local harness.
+      ORACLE_PASSWORD: "devpw_ChangeMe1"
+      # Create a dedicated app PDB user on first boot.
+      APP_USER: "APPUSER"
+      APP_USER_PASSWORD: "devpw_ChangeMe1"
+    volumes:
+      - ./init:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
