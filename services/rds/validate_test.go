@@ -373,3 +373,68 @@ func TestOracleCloudwatchLogExportsFlowUnchangedThroughCreatePath(t *testing.T) 
 		}
 	}
 }
+
+func TestOracleForcedCloudwatchLogExportsAreSupported(t *testing.T) {
+	supported := validCloudwatchLogTypesByDbType["oracle-se2"]
+	for _, forced := range oracleForcedCloudwatchLogExports {
+		if !slices.Contains(supported, forced) {
+			t.Errorf("oracleForcedCloudwatchLogExports contains %q, which is not in validCloudwatchLogTypesByDbType[\"oracle-se2\"] = %v", forced, supported)
+		}
+	}
+	if slices.Contains(oracleForcedCloudwatchLogExports, "trace") {
+		t.Error("\"trace\" must not be forced-on; it is the only Oracle SE2 log export type the customer can freely enable or disable")
+	}
+}
+
+func TestApplyOracleForcedCloudwatchLogExports(t *testing.T) {
+	testCases := map[string]struct {
+		dbType    string
+		requested []string
+		want      []string
+	}{
+		"oracle-se2: customer requests nothing (empty slice) still gets forced set": {
+			dbType:    "oracle-se2",
+			requested: []string{},
+			want:      []string{"alert", "audit", "listener"},
+		},
+		"oracle-se2: customer tries to request only trace, forced set is added": {
+			dbType:    "oracle-se2",
+			requested: []string{"trace"},
+			want:      []string{"alert", "audit", "listener", "trace"},
+		},
+		"oracle-se2: customer tries to request only a subset, forced set fills in the rest": {
+			dbType:    "oracle-se2",
+			requested: []string{"alert"},
+			want:      []string{"alert", "audit", "listener"},
+		},
+		"oracle-se2: duplicate requested values are not duplicated in output": {
+			dbType:    "oracle-se2",
+			requested: []string{"audit", "audit", "trace"},
+			want:      []string{"alert", "audit", "listener", "trace"},
+		},
+		"postgres: requested set is returned unchanged, nothing forced": {
+			dbType:    "postgres",
+			requested: []string{"postgresql"},
+			want:      []string{"postgresql"},
+		},
+		"mysql: requested set is returned unchanged, nothing forced": {
+			dbType:    "mysql",
+			requested: []string{"slowquery"},
+			want:      []string{"slowquery"},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			got := applyOracleForcedCloudwatchLogExports(test.dbType, test.requested)
+			for _, want := range test.want {
+				if !slices.Contains(got, want) {
+					t.Errorf("expected %q to be present in result %v", want, got)
+				}
+			}
+			if len(got) != len(test.want) {
+				t.Errorf("got %v, want exactly %v (length mismatch, possible duplicate or extra entry)", got, test.want)
+			}
+		})
+	}
+}

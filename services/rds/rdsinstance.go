@@ -346,9 +346,26 @@ func (i *RDSInstance) getTags() map[string]string {
 	return i.Tags
 }
 
+// setEnabledCloudwatchLogGroupExports sets which CloudWatch log export types
+// are enabled.
+//
+// For Oracle SE2: the audit/security-relevant export types in
+// oracleForcedCloudwatchLogExports (alert, audit, listener) are always
+// included and cannot be disabled by the customer. "trace" is diagnostic
+// detail, not an audit/security control, so it is the only Oracle SE2 export
+// type the customer can freely enable or disable via an explicit request.
+// Other engines are unaffected: nothing is forced, and nothing defaults on.
 func (i *RDSInstance) setEnabledCloudwatchLogGroupExports(enabledLogGroups []string) error {
 	if len(enabledLogGroups) > 0 {
-		i.EnabledCloudwatchLogGroupExports = enabledLogGroups
+		i.EnabledCloudwatchLogGroupExports = applyOracleForcedCloudwatchLogExports(i.DbType, enabledLogGroups)
+		return nil
+	}
+	if i.DbType == oracleSE2Engine {
+		if len(i.EnabledCloudwatchLogGroupExports) == 0 {
+			i.EnabledCloudwatchLogGroupExports = validCloudwatchLogTypesByDbType[oracleSE2Engine]
+		} else {
+			i.EnabledCloudwatchLogGroupExports = applyOracleForcedCloudwatchLogExports(i.DbType, i.EnabledCloudwatchLogGroupExports)
+		}
 	}
 	return nil
 }

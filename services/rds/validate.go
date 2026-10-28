@@ -45,6 +45,23 @@ var validCloudwatchLogTypesByDbType = map[string][]string{
 	"oracle-se2": {"alert", "audit", "listener", "trace"},
 }
 
+var oracleForcedCloudwatchLogExports = []string{"alert", "audit", "listener"}
+
+func applyOracleForcedCloudwatchLogExports(dbType string, requested []string) []string {
+	if dbType != oracleSE2Engine {
+		return requested
+	}
+
+	merged := make([]string, 0, len(oracleForcedCloudwatchLogExports)+len(requested))
+	merged = append(merged, oracleForcedCloudwatchLogExports...)
+	for _, logType := range requested {
+		if !slices.Contains(merged, logType) {
+			merged = append(merged, logType)
+		}
+	}
+	return merged
+}
+
 func validateCloudwatchLogGroupExports(dbType string, logTypes []string) error {
 	if len(logTypes) == 0 {
 		return nil

@@ -126,6 +126,121 @@ func TestInit(t *testing.T) {
 				Tags:                  map[string]string{},
 			},
 		},
+		"Oracle SE2 defaults to all supported CloudWatch log exports when none requested": {
+			options: Options{},
+			plan: &catalog.RDSPlan{
+				ServicePlan: domain.ServicePlan{
+					ID: "plan-1",
+				},
+				DbType:                "oracle-se2",
+				DbVersion:             "19",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 14,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				credentialUtils: &mockCredentialUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                           "oracle-se2",
+				DbVersion:                        "19",
+				BackupRetentionPeriod:            14,
+				AllocatedStorage:                 20,
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				Tags:                             map[string]string{},
+			},
+		},
+		"Oracle SE2 explicit request still gets the forced audit/security set added": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"alert"},
+			},
+			plan: &catalog.RDSPlan{
+				ServicePlan: domain.ServicePlan{
+					ID: "plan-1",
+				},
+				DbType:                "oracle-se2",
+				DbVersion:             "19",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 14,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				credentialUtils: &mockCredentialUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                           "oracle-se2",
+				DbVersion:                        "19",
+				BackupRetentionPeriod:            14,
+				AllocatedStorage:                 20,
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener"},
+				Tags:                             map[string]string{},
+			},
+		},
+		"Oracle SE2 explicit request for trace keeps trace and adds the forced set": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"trace"},
+			},
+			plan: &catalog.RDSPlan{
+				ServicePlan: domain.ServicePlan{
+					ID: "plan-1",
+				},
+				DbType:                "oracle-se2",
+				DbVersion:             "19",
+				AllocatedStorage:      20,
+				BackupRetentionPeriod: 14,
+			},
+			settings: &config.Settings{},
+			rdsInstance: &RDSInstance{
+				credentialUtils: &mockCredentialUtils{},
+			},
+			uuid:      "uuid-1",
+			orgGUID:   "org-1",
+			spaceGUID: "space-1",
+			serviceID: "service-1",
+			expectedInstance: &RDSInstance{
+				Instance: base.Instance{
+					Uuid: "uuid-1",
+					Request: request.Request{
+						ServiceID:        "service-1",
+						PlanID:           "plan-1",
+						OrganizationGUID: "org-1",
+						SpaceGUID:        "space-1",
+					},
+				},
+				DbType:                           "oracle-se2",
+				DbVersion:                        "19",
+				BackupRetentionPeriod:            14,
+				AllocatedStorage:                 20,
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				Tags:                             map[string]string{},
+			},
+		},
 		"MySQL sets db version from options": {
 			options: Options{
 				Version: "9.0",
@@ -977,6 +1092,55 @@ func TestModifyInstance(t *testing.T) {
 					LogStatement: aws.String("ddl"),
 				},
 				Tags: map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
+		"Oracle SE2 with no log exports yet defaults to all supported on next update": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				DbType: "oracle-se2",
+			},
+			expectedInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				Tags:                             map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
+		"Oracle SE2 with existing partial log exports gets forced set merged in on modify": {
+			options: Options{},
+			existingInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"trace"},
+			},
+			expectedInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				Tags:                             map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
+		"Oracle SE2 modify cannot disable the forced audit/security set": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"trace"},
+			},
+			existingInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+			},
+			expectedInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				Tags:                             map[string]string{},
 			},
 			currentPlan:   &catalog.RDSPlan{},
 			newPlan:       &catalog.RDSPlan{},
