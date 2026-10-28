@@ -3,6 +3,7 @@ package rds
 import (
 	"fmt"
 	"slices"
+	"strings"
 )
 
 func validateBinaryLogFormat(format string) error {
@@ -37,6 +38,40 @@ func validateLongQueryTime(v *float64) error {
 var validLogStatementValues = []string{"none", "ddl", "mod", "all"}
 var validLogConnectionsBoolValues = []string{"true", "false"}
 var validLogConnectionsStringValues = []string{"receipt", "authentication", "authorization", "setup_durations", "all"}
+
+var validCloudwatchLogTypesByDbType = map[string][]string{
+	"postgres":   {"postgresql", "upgrade"},
+	"mysql":      {"audit", "error", "general", "slowquery"},
+	"oracle-se2": {"alert", "audit", "listener", "trace"},
+}
+
+func validateCloudwatchLogGroupExports(dbType string, logTypes []string) error {
+	if len(logTypes) == 0 {
+		return nil
+	}
+
+	validTypes, ok := validCloudwatchLogTypesByDbType[dbType]
+	if !ok {
+		return nil
+	}
+
+	var invalid []string
+	for _, logType := range logTypes {
+		if !slices.Contains(validTypes, logType) {
+			invalid = append(invalid, logType)
+		}
+	}
+	if len(invalid) > 0 {
+		return fmt.Errorf(
+			"invalid CloudWatch log group export type(s) for %s: %s; must be one of: %s",
+			dbType,
+			strings.Join(invalid, ", "),
+			strings.Join(validTypes, ", "),
+		)
+	}
+
+	return nil
+}
 
 func validatePgQueryLogging(opts *PgQueryLoggingOptions) error {
 	if opts == nil {

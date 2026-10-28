@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -110,7 +111,7 @@ func TestProvisionBaselineOptionGroup_Oracle(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
-	expectedName := "cg-aws-broker-ORCL-option-19"
+	expectedName := "cg-aws-broker-db1-option-19"
 	if i.OptionGroupName != expectedName {
 		t.Errorf("expected OptionGroupName %q, got %q", expectedName, i.OptionGroupName)
 	}
@@ -149,5 +150,56 @@ func TestProvisionBaselineOptionGroup_NoOpForNonOracle(t *testing.T) {
 	}
 	if mockRDS.createOptionGroupInput != nil {
 		t.Error("expected CreateOptionGroup not to be called for postgres")
+	}
+}
+
+func TestProvisionBaselineOptionGroup_OracleInstancesGetDistinctGroups(t *testing.T) {
+	newInstance := func(database string) *RDSInstance {
+		return &RDSInstance{
+			Database:  database,
+			DbType:    "oracle-se2",
+			DbVersion: "19.0.0.0.ru-2024-01.rur-2024-01.r1",
+			SecGroup:  "sg-1",
+		}
+	}
+
+	optionGroupNotFound := &rdsTypes.OptionGroupNotFoundFault{}
+	dbEngineVersions := []rdsTypes.DBEngineVersion{{MajorEngineVersion: aws.String("19")}}
+
+	instanceA := newInstance("dba1b2c3")
+	mockRDSA := &mockRDSClient{
+		describeOptionGroupsErrs: []error{optionGroupNotFound},
+		dbEngineVersions:         dbEngineVersions,
+	}
+	oA := newTestOptionGroupClient(mockRDSA)
+	if err := oA.ProvisionBaselineOptionGroup(instanceA, nil); err != nil {
+		t.Fatalf("unexpected error for instance A: %s", err)
+	}
+
+	instanceB := newInstance("dbxyz9876")
+	mockRDSB := &mockRDSClient{
+		describeOptionGroupsErrs: []error{optionGroupNotFound},
+		dbEngineVersions:         dbEngineVersions,
+	}
+	oB := newTestOptionGroupClient(mockRDSB)
+	if err := oB.ProvisionBaselineOptionGroup(instanceB, nil); err != nil {
+		t.Fatalf("unexpected error for instance B: %s", err)
+	}
+
+	if instanceA.OptionGroupName == instanceB.OptionGroupName {
+		t.Fatalf(
+			"two different Oracle instances got the same option group name %q; "+
+				"each Oracle instance must have its own option group",
+			instanceA.OptionGroupName,
+		)
+	}
+	if instanceA.OptionGroupName == "" || instanceB.OptionGroupName == "" {
+		t.Fatalf("expected non-empty option group names, got %q and %q", instanceA.OptionGroupName, instanceB.OptionGroupName)
+	}
+	if strings.Contains(instanceA.OptionGroupName, "ORCL") || strings.Contains(instanceB.OptionGroupName, "ORCL") {
+		t.Errorf(
+			"expected option group names to be derived from the instance-unique database identifier, not the fixed Oracle SID ORCL; got %q and %q",
+			instanceA.OptionGroupName, instanceB.OptionGroupName,
+		)
 	}
 }

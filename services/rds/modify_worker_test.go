@@ -250,6 +250,87 @@ func TestAsyncModifyDb(t *testing.T) {
 			ctx:       t.Context(),
 			expectErr: true,
 		},
+		"modify primary DB retries on transient parameter group not found": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxRetries:  5,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+					modifyDbErrs: []error{
+						&rdsTypes.DBParameterGroupNotFoundFault{Message: aws.String("not found yet")},
+						&rdsTypes.DBParameterGroupNotFoundFault{Message: aws.String("not found yet")},
+						nil,
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
+				&RDSCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
+			},
+			plan: &catalog.RDSPlan{},
+			ctx:  t.Context(),
+		},
+		"modify primary DB gives up after exhausting retries on parameter group not found": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: 1,
+				},
+				&mockRDSClient{
+					modifyDbErrs: []error{
+						&rdsTypes.DBParameterGroupNotFoundFault{Message: aws.String("not found yet")},
+						&rdsTypes.DBParameterGroupNotFoundFault{Message: aws.String("still not found")},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{},
+				&RDSCredentialUtils{},
+			),
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Database:        helpers.RandStr(10),
+				credentialUtils: &RDSCredentialUtils{},
+			},
+			plan:      &catalog.RDSPlan{},
+			ctx:       t.Context(),
+			expectErr: true,
+		},
 		"error waiting for database to be ready": {
 			worker: NewModifyWorker(
 				brokerDB,
@@ -776,6 +857,56 @@ func TestAsyncModifyDb(t *testing.T) {
 			},
 			expectErr: true,
 			ctx:       t.Context(),
+		},
+
+		// Regression test: same as above, for option groups.
+		"old option group still in use is best-effort, not fatal": {
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRDSClient{
+					describeDbInstancesResults: []*rds.DescribeDBInstancesOutput{
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+						{
+							DBInstances: []rdsTypes.DBInstance{
+								{
+									DBInstanceStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+				&mockParameterGroupClient{},
+				&mockOptionGroupClient{
+					optionGroupName:      "new-option-group",
+					deleteOptionGroupErr: ErrOptionGroupStillInUse,
+				},
+				&RDSCredentialUtils{},
+			),
+			plan: &catalog.RDSPlan{},
+			dbInstance: &RDSInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+					},
+					Uuid: "uuid-1",
+				},
+				Database:        "db-1",
+				credentialUtils: &RDSCredentialUtils{},
+				DbVersion:       "9.0",
+				OptionGroupName: "existing-option-group",
+			},
+			ctx: t.Context(),
 		},
 	}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -167,6 +168,29 @@ func (w *ModifyWorker) prepareModifyDbInstanceInput(
 	return params, nil
 }
 
+func (w *ModifyWorker) modifyDBInstanceWithRetry(ctx context.Context, params *rds.ModifyDBInstanceInput) (*rds.ModifyDBInstanceOutput, error) {
+	attempts := 1
+	maxRetries := int(w.settings.PollAwsMaxRetries)
+	maxAttempts := 1 + maxRetries
+
+	var output *rds.ModifyDBInstanceOutput
+	var err error
+	for attempts <= maxAttempts {
+		output, err = w.rds.ModifyDBInstance(ctx, params)
+		if err == nil {
+			return output, nil
+		}
+		var notFoundErr *rdsTypes.DBParameterGroupNotFoundFault
+		if !errors.As(err, &notFoundErr) {
+			return nil, err
+		}
+		w.logger.Debug(fmt.Sprintf("parameter group not yet visible to ModifyDBInstance (attempt %d/%d): %s", attempts, maxAttempts, err))
+		attempts++
+		time.Sleep(w.settings.PollAwsMinDelay)
+	}
+	return nil, err
+}
+
 func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base.Operation, i *RDSInstance, plan *catalog.RDSPlan, database string, isReplica bool) error {
 	databaseOperationTarget := "primary database"
 	if isReplica {
@@ -187,7 +211,7 @@ func (w *ModifyWorker) asyncModifyDbInstance(ctx context.Context, operation base
 	}
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, fmt.Sprintf("Modifying %s", databaseOperationTarget))
-	modifyOutput, err := w.rds.ModifyDBInstance(ctx, modifyParams)
+	modifyOutput, err := w.modifyDBInstanceWithRetry(ctx, modifyParams)
 	if err != nil {
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceNotModified, fmt.Sprintf("Error modifying database: %s", err))
 		return fmt.Errorf("asyncModifyDb, error modifying database instance: %w", err)
@@ -258,7 +282,7 @@ func (w *ModifyWorker) asyncModifyDb(ctx context.Context, operation base.Operati
 		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting old option group")
 		// best effort deletion. Option group might still be attached to snapshots (preventing deletion), so leave it for later cleanup
 		err = w.optionGroupClient.DeleteOptionGroup(existingOptionGroupName)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrOptionGroupStillInUse) {
 			return common.FmtErr(ErrDeletingDBOptionGroup, err)
 		}
 	}

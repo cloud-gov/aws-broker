@@ -2209,6 +2209,7 @@ func TestDeleteParameterGroup(t *testing.T) {
 		oldParameterGroupName := "group"
 		parameterGroupAdapter := &awsParameterGroupClient{
 			settings: &config.Settings{},
+			logger:   slog.New(&testutil.MockLogHandler{}),
 			rds: &mockRDSClient{
 				deleteDbParameterGroupErrs: []error{errors.New("failed to delete")},
 			},
@@ -2261,6 +2262,7 @@ func TestDeleteParameterGroup(t *testing.T) {
 				PollAwsMaxRetries: 3,
 				PollAwsMinDelay:   1 * time.Millisecond,
 			},
+			logger: slog.New(&testutil.MockLogHandler{}),
 			rds: &mockRDSClient{
 				describeDbParamsResults: []*rds.DescribeDBParametersOutput{
 					{
