@@ -126,7 +126,7 @@ func TestInit(t *testing.T) {
 				Tags:                  map[string]string{},
 			},
 		},
-		"Oracle SE2 defaults to all supported CloudWatch log exports when none requested": {
+		"Oracle SE2 defaults to only the forced audit/security set when none requested; trace is not enabled by default": {
 			options: Options{},
 			plan: &catalog.RDSPlan{
 				ServicePlan: domain.ServicePlan{
@@ -159,7 +159,7 @@ func TestInit(t *testing.T) {
 				DbVersion:                        "19",
 				BackupRetentionPeriod:            14,
 				AllocatedStorage:                 20,
-				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener"},
 				Tags:                             map[string]string{},
 			},
 		},
@@ -1098,14 +1098,14 @@ func TestModifyInstance(t *testing.T) {
 			settings:      &config.Settings{},
 			expectUpdates: true,
 		},
-		"Oracle SE2 with no log exports yet defaults to all supported on next update": {
+		"Oracle SE2 with no log exports yet defaults to only the forced set on next update; trace is not enabled by default": {
 			options: Options{},
 			existingInstance: &RDSInstance{
 				DbType: "oracle-se2",
 			},
 			expectedInstance: &RDSInstance{
 				DbType:                           "oracle-se2",
-				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener"},
 				Tags:                             map[string]string{},
 			},
 			currentPlan:   &catalog.RDSPlan{},
@@ -1140,6 +1140,24 @@ func TestModifyInstance(t *testing.T) {
 			expectedInstance: &RDSInstance{
 				DbType:                           "oracle-se2",
 				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+				Tags:                             map[string]string{},
+			},
+			currentPlan:   &catalog.RDSPlan{},
+			newPlan:       &catalog.RDSPlan{},
+			settings:      &config.Settings{},
+			expectUpdates: true,
+		},
+		"Oracle SE2 modify can disable trace while forced set remains on": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"alert", "audit", "listener"},
+			},
+			existingInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener", "trace"},
+			},
+			expectedInstance: &RDSInstance{
+				DbType:                           "oracle-se2",
+				EnabledCloudwatchLogGroupExports: pq.StringArray{"alert", "audit", "listener"},
 				Tags:                             map[string]string{},
 			},
 			currentPlan:   &catalog.RDSPlan{},
