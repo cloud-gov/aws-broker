@@ -504,6 +504,7 @@ jobs:
             passed:
               - deploy-aws-broker-development
             trigger: true
+          - get: cg-oracle-stig-overlay
           - get: general-task
       - in_parallel:
           steps:
@@ -821,6 +822,21 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: medium-oracle-se2
                 DB_TYPE: oracle-se2
+
+            - task: smoke-test-oracle-stig-validation
+              file: aws-broker-app/ci/run-smoke-test-oracle-stig-validation.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_PLAN: medium-oracle-se2
+                ORACLE_STIG_VALIDATOR_IMAGE: ((oracle-stig-validator-image))
+                DOCKER_USER: ((ecr_aws_key))
+                CF_DOCKER_PASSWORD: ((ecr_aws_secret))
 
             - task: smoke-tests-oracle-enable-cloudwatch-log-exports
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -2421,6 +2437,13 @@ resources:
       commit_verification_keys: ((cloud-gov-pgp-keys))
       uri: ((aws-broker-url))
       branch: ((aws-broker-branch-development))
+
+  - name: cg-oracle-stig-overlay
+    type: git
+    source:
+      commit_verification_keys: ((cloud-gov-pgp-keys))
+      uri: https://github.com/cloud-gov/cg-oracle-database-19c-stig-overlay
+      branch: main
 
   - name: db-app-development
     source:
