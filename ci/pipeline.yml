@@ -728,6 +728,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgresql-update-replica
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -742,6 +743,7 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgres-update-version
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -771,6 +773,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-mysql-update-major-with-param-group
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1352,6 +1355,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgresql-update-replica
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1366,6 +1370,7 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgres-rotate-creds-replica
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -1379,6 +1384,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-mysql-update-major-with-param-group
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -2339,6 +2345,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgresql-update-replica
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -2353,6 +2360,7 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgres-rotate-creds-replica
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -2366,6 +2374,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-mysql-update-major-with-param-group
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
