@@ -1491,8 +1491,8 @@ jobs:
                 CF_ORGANIZATION: ((staging-tests-cf-organization))
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_ENGINE: "redis"
-                OLD_VERSION: "7.0"
+                OLD_ENGINE: "valkey"
+                OLD_VERSION: "8.2"
                 NEW_ENGINE: "valkey"
                 NEW_VERSION: "9.1"
     on_failure:
@@ -2208,8 +2208,8 @@ jobs:
                 CF_ORGANIZATION: ((prod-tests-cf-organization))
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_ENGINE: "redis"
-                OLD_VERSION: "7.0"
+                OLD_ENGINE: "valkey"
+                OLD_VERSION: "8.2"
                 NEW_ENGINE: "valkey"
                 NEW_VERSION: "9.1"
             - task: smoke-tests-unbound-elasticsearch
