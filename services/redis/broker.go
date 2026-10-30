@@ -129,6 +129,16 @@ func (broker *redisBroker) CreateInstance(id string, details domain.ProvisionDet
 		)
 	}
 
+	// A new instance has no current engine, so this restricts creation to the
+	// engine the plan provisions.
+	if err := validateEngine("", plan, options); err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusBadRequest,
+			"checking Redis engine",
+		)
+	}
+
 	err = newInstance.init(
 		id,
 		details.OrganizationGUID,
@@ -229,6 +239,17 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 			err,
 			http.StatusInternalServerError,
 			"generate tags",
+		)
+	}
+
+	// An existing instance may keep the engine it is already running even if
+	// its plan now provisions a different one. Must run before modify(), which
+	// resolves the engine from the options.
+	if err := validateEngine(existingInstance.Engine, newPlan, options); err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusBadRequest,
+			"checking Redis engine",
 		)
 	}
 
@@ -414,6 +435,26 @@ func (broker *redisBroker) DeleteInstance(id string) error {
 	default:
 		return apiresponses.NewFailureResponse(fmt.Errorf("encountered unexpected state %s, error: %s", status, err), http.StatusInternalServerError, "delete Redis instance")
 	}
+}
+
+// validateEngine enforces that an instance runs either the engine it already
+// has or the engine its plan provisions.
+func validateEngine(currentEngine string, plan catalog.RedisPlan, options RedisOptions) error {
+	if options.Engine == "" || options.Engine == currentEngine {
+		return nil
+	}
+	if options.Engine != plan.Engine {
+		allowed := []string{plan.Engine}
+		if currentEngine != "" && currentEngine != plan.Engine {
+			allowed = append(allowed, currentEngine)
+		}
+		return fmt.Errorf(
+			"%s is not an available engine for this instance; engine must be one of: %s",
+			options.Engine,
+			strings.Join(allowed, ", "),
+		)
+	}
+	return nil
 }
 
 func validateEngineAndVersion(i *RedisInstance, plan catalog.RedisPlan, options RedisOptions) error {

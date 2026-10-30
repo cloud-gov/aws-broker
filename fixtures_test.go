@@ -202,6 +202,17 @@ var createRedisInstanceReq = fmt.Appendf(
 	originalRedisPlanID,
 )
 
+var createRedisInstanceWithRedisEngineReq = fmt.Appendf(nil,
+	`{
+	"service_id":"%s",
+	"plan_id":"%s",
+	"organization_guid":"an-org",
+	"space_guid":"a-space",
+	"parameters": {
+		"engine": "redis"
+	}
+}`, redisServiceId, originalRedisPlanID)
+
 var modifyRedisInstanceReq = fmt.Appendf(nil,
 	`{
 	"service_id":"%s",
@@ -220,19 +231,19 @@ var modifyRedisEngineVersion = fmt.Appendf(nil,
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
-		"engine_version": "7.1"
+		"engine_version": "9.1"
 	}
 }`, redisServiceId, originalRedisPlanID)
 
-var modifyRedisEngineAndVersion = fmt.Appendf(nil,
+var modifyRedisToRedisEngine = fmt.Appendf(nil,
 	`{
 	"service_id":"%s",
 	"plan_id":"%s",
 	"organization_guid":"an-org",
 	"space_guid":"a-space",
 	"parameters": {
-		"engine": "valkey",
-		"engine_version": "8.2"
+		"engine": "redis",
+		"engine_version": "7.1"
 	}
 }`, redisServiceId, originalRedisPlanID)
 

@@ -326,24 +326,8 @@ jobs:
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_VERSION: "7.0"
-                NEW_VERSION: "7.1"
-
-            - task: smoke-tests-redis-upgrade-engine-and-version
-              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-tests-cf-organization))
-                CF_SPACE: ((development-tests-cf-space))
-                SERVICE_PLAN: redis-dev
-                OLD_ENGINE: "redis"
-                OLD_VERSION: "7.0"
-                NEW_ENGINE: "valkey"
-                NEW_VERSION: "8.2"
+                OLD_VERSION: "8.2"
+                NEW_VERSION: "9.1"
     on_failure:
       put: slack
       params:
@@ -1461,8 +1445,8 @@ jobs:
                 CF_ORGANIZATION: ((staging-tests-cf-organization))
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_VERSION: "7.0"
-                NEW_VERSION: "7.1"
+                OLD_VERSION: "8.2"
+                NEW_VERSION: "9.1"
 
             - task: smoke-tests-redis-upgrade-engine-and-version
               file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
@@ -1478,7 +1462,7 @@ jobs:
                 OLD_ENGINE: "redis"
                 OLD_VERSION: "7.0"
                 NEW_ENGINE: "valkey"
-                NEW_VERSION: "8.2"
+                NEW_VERSION: "9.1"
     on_failure:
       put: slack
       params:
@@ -2178,8 +2162,8 @@ jobs:
                 CF_ORGANIZATION: ((prod-tests-cf-organization))
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_VERSION: "7.0"
-                NEW_VERSION: "7.1"
+                OLD_VERSION: "8.2"
+                NEW_VERSION: "9.1"
 
             - task: smoke-tests-redis-upgrade-engine-and-version
               file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
@@ -2195,8 +2179,7 @@ jobs:
                 OLD_ENGINE: "redis"
                 OLD_VERSION: "7.0"
                 NEW_ENGINE: "valkey"
-                NEW_VERSION: "8.2"
-
+                NEW_VERSION: "9.1"
             - task: smoke-tests-unbound-elasticsearch
               file: aws-broker-app/ci/run-smoke-test-unbound.yml
               image: general-task
