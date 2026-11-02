@@ -544,6 +544,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				PreferredMaintenanceWindow:  aws.String("1AM"),
 				SnapshotWindow:              aws.String("4AM"),
 				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+				ApplyImmediately:            aws.Bool(true),
 			},
 		},
 		"sets engine version": {
@@ -576,6 +577,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:              aws.String("4AM"),
 				SnapshotRetentionLimit:      aws.Int32(int32(14)),
 				EngineVersion:               aws.String("7.0"),
+				ApplyImmediately:            aws.Bool(true),
 			},
 		},
 	}

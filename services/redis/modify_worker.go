@@ -233,6 +233,7 @@ func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyRe
 		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      snapshotRetentionLimit,
+		ApplyImmediately:            aws.Bool(true),
 	}
 	if i.EngineVersion != "" {
 		params.EngineVersion = aws.String(i.EngineVersion)
