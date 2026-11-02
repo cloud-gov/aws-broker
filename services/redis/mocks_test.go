@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -86,10 +87,17 @@ func (m *mockRedisClient) DeleteSnapshot(ctx context.Context, params *elasticach
 }
 
 func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params *elasticache.DescribeReplicationGroupsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeReplicationGroupsOutput, error) {
-	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum] != nil {
+	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsCallNum < len(m.describeReplicationGroupsErrs) && m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum] != nil {
 		return nil, m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum]
 	}
-	output := m.describeReplicationGroupsResults[m.describeReplicationGroupsCallNum]
+	if len(m.describeReplicationGroupsResults) == 0 {
+		return nil, errors.New("mockRedisClient: no more describeReplicationGroupsResults configured")
+	}
+	callNum := m.describeReplicationGroupsCallNum
+	if callNum >= len(m.describeReplicationGroupsResults) {
+		callNum = len(m.describeReplicationGroupsResults) - 1
+	}
+	output := m.describeReplicationGroupsResults[callNum]
 	m.describeReplicationGroupsCallNum++
 	return output, nil
 }
