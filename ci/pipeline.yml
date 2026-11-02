@@ -1653,7 +1653,6 @@ jobs:
     plan:
       - in_parallel:
           - get: aws-broker-app
-            resource: aws-broker-app-staging
             passed:
               - deploy-aws-broker-staging
           - get: general-task
@@ -2456,7 +2455,6 @@ jobs:
     plan:
       - in_parallel:
           - get: aws-broker-app
-            resource: aws-broker-app-prod
             passed:
               - deploy-aws-broker-prod
           - get: general-task
