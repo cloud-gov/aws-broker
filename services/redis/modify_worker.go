@@ -98,7 +98,44 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance, o
 		return common.FmtErr(ErrModifyingReplicationGroup, err)
 	}
 
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Waiting for replication group to finish modifying")
+
+	waiter := elasticache.NewReplicationGroupAvailableWaiter(w.elasticache, func(o *elasticache.ReplicationGroupAvailableWaiterOptions) {
+		o.MinDelay = w.settings.PollAwsMinDelay
+	})
+	err = waiter.Wait(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}, w.settings.PollAwsMaxDuration)
+	if err != nil {
+		return common.FmtErr(ErrModifyingReplicationGroup, err)
+	}
+
+	if err := verifyModifiedEngineAndVersion(ctx, w.elasticache, i); err != nil {
+		return common.FmtErr(ErrModifyingReplicationGroup, err)
+	}
+
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
+	return nil
+}
+
+func verifyModifiedEngineAndVersion(ctx context.Context, client ElasticacheClientInterface, i *RedisInstance) error {
+	output, err := client.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	})
+	if err != nil {
+		return err
+	}
+	if output == nil || len(output.ReplicationGroups) == 0 {
+		return fmt.Errorf("DescribeReplicationGroups returned no replication groups for %s", i.ClusterID)
+	}
+	group := output.ReplicationGroups[0]
+
+	if aws.ToString(group.Engine) != i.Engine {
+		return fmt.Errorf(
+			"replication group %s reports engine %q after modify, expected %q",
+			i.ClusterID, aws.ToString(group.Engine), i.Engine,
+		)
+	}
 	return nil
 }
 
