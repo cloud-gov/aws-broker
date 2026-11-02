@@ -2,6 +2,7 @@
 jobs:
   - name: deploy-aws-broker-development
     serial: true
+    serial_groups: [dev-deploy, dev-cache, dev-search, dev-db, dev-cleanup]
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -276,6 +277,7 @@ jobs:
 
   - name: acceptance-tests-redis-development
     serial: true
+    serial_groups: [dev-cache]
     plan:
       - in_parallel:
           steps:
@@ -326,24 +328,8 @@ jobs:
                 CF_ORGANIZATION: ((development-tests-cf-organization))
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_VERSION: "7.0"
-                NEW_VERSION: "7.1"
-
-            - task: smoke-tests-redis-upgrade-engine-and-version
-              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-tests-cf-organization))
-                CF_SPACE: ((development-tests-cf-space))
-                SERVICE_PLAN: redis-dev
-                OLD_ENGINE: "redis"
-                OLD_VERSION: "7.0"
-                NEW_ENGINE: "valkey"
-                NEW_VERSION: "8.2"
+                OLD_VERSION: "8.2"
+                NEW_VERSION: "9.1"
     on_failure:
       put: slack
       params:
@@ -354,6 +340,7 @@ jobs:
 
   - name: acceptance-tests-search-development
     serial: true
+    serial_groups: [dev-search]
     plan:
       - in_parallel:
           steps:
@@ -496,6 +483,7 @@ jobs:
 
   - name: acceptance-tests-db-development
     serial: true
+    serial_groups: [dev-db]
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -728,6 +716,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgresql-update-replica
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -742,6 +731,7 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgres-update-version
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -771,6 +761,7 @@ jobs:
                 CF_SPACE: ((development-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-mysql-update-major-with-param-group
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -832,13 +823,41 @@ jobs:
                 SERVICE_PLAN: medium-oracle-se2
                 DB_TYPE: oracle-se2
                 ENABLE_CLOUDWATCH_LOG_GROUP_EXPORTS: '["alert","audit","listener","trace"]'
-
     on_failure:
       put: slack
       params:
         <<: *slack-failure-config
         text: |
           :x: RDS acceptance tests for aws-broker on development FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
+  - name: cleanup-smoke-tests-development
+    serial: true
+    serial_groups: [dev-deploy, dev-cache, dev-search, dev-db, dev-cleanup]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            resource: aws-broker-app-development
+            passed:
+              - deploy-aws-broker-development
+          - get: general-task
+          - get: daily-cleanup-timer
+            trigger: true
+      - task: cleanup-smoke-tests
+        file: aws-broker-app/ci/cleanup-smoke-test-resources.yml
+        image: general-task
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-tests-cf-organization))
+          CF_SPACE: ((development-tests-cf-space))
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: Cleanup of smoke test resources on development FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
   - name: reconfigure
@@ -1352,6 +1371,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgresql-update-replica
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1366,6 +1386,7 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgres-rotate-creds-replica
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -1379,6 +1400,7 @@ jobs:
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-mysql-update-major-with-param-group
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -1455,8 +1477,8 @@ jobs:
                 CF_ORGANIZATION: ((staging-tests-cf-organization))
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_VERSION: "7.0"
-                NEW_VERSION: "7.1"
+                OLD_VERSION: "8.2"
+                NEW_VERSION: "9.1"
 
             - task: smoke-tests-redis-upgrade-engine-and-version
               file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
@@ -1469,10 +1491,10 @@ jobs:
                 CF_ORGANIZATION: ((staging-tests-cf-organization))
                 CF_SPACE: ((staging-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_ENGINE: "redis"
-                OLD_VERSION: "7.0"
+                OLD_ENGINE: "valkey"
+                OLD_VERSION: "8.2"
                 NEW_ENGINE: "valkey"
-                NEW_VERSION: "8.2"
+                NEW_VERSION: "9.1"
     on_failure:
       put: slack
       params:
@@ -2172,8 +2194,8 @@ jobs:
                 CF_ORGANIZATION: ((prod-tests-cf-organization))
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_VERSION: "7.0"
-                NEW_VERSION: "7.1"
+                OLD_VERSION: "8.2"
+                NEW_VERSION: "9.1"
 
             - task: smoke-tests-redis-upgrade-engine-and-version
               file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
@@ -2186,11 +2208,10 @@ jobs:
                 CF_ORGANIZATION: ((prod-tests-cf-organization))
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: redis-dev
-                OLD_ENGINE: "redis"
-                OLD_VERSION: "7.0"
+                OLD_ENGINE: "valkey"
+                OLD_VERSION: "8.2"
                 NEW_ENGINE: "valkey"
-                NEW_VERSION: "8.2"
-
+                NEW_VERSION: "9.1"
             - task: smoke-tests-unbound-elasticsearch
               file: aws-broker-app/ci/run-smoke-test-unbound.yml
               image: general-task
@@ -2339,6 +2360,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgresql-update-replica
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -2353,6 +2375,7 @@ jobs:
                 SERVICE_PLAN: micro-psql
                 NEW_SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-postgres-rotate-creds-replica
               file: aws-broker-app/ci/run-smoke-test-rotate-creds.yml
@@ -2366,6 +2389,7 @@ jobs:
                 CF_SPACE: ((prod-tests-cf-space))
                 SERVICE_PLAN: micro-psql-replica
                 DB_TYPE: postgres
+                WAIT_TIMEOUT: 7200
 
             - task: smoke-tests-mysql-update-major-with-param-group
               file: aws-broker-app/ci/run-smoke-tests-db-updates.yml
@@ -2541,6 +2565,16 @@ resources:
       aws_region: us-gov-west-1
       tag: latest
 
+  - name: daily-cleanup-timer
+    type: time
+    source:
+      interval: 24h
+      start: 1:00 AM
+      stop: 1:30 AM
+      days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+      initial_version: true
+      location: America/New_York
+
 resource_types:
   - name: registry-image
     type: registry-image
@@ -2584,5 +2618,14 @@ resource_types:
       aws_access_key_id: ((ecr_aws_key))
       aws_secret_access_key: ((ecr_aws_secret))
       repository: cf-resource
+      aws_region: us-gov-west-1
+      tag: latest
+
+  - name: time
+    type: registry-image
+    source:
+      aws_access_key_id: ((ecr_aws_key))
+      aws_secret_access_key: ((ecr_aws_secret))
+      repository: time-resource
       aws_region: us-gov-west-1
       tag: latest

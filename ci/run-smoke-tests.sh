@@ -2,11 +2,12 @@
 
 set -euxo pipefail
 
+# shellcheck disable=SC1091
 . aws-broker-app/ci/ci-utils.sh
 
 APP_NAME="smoke-tests-$SERVICE_PLAN"
 SERVICE_NAME="rds-smoke-tests-$SERVICE_PLAN"
-WAIT_TIMEOUT=3600
+WAIT_TIMEOUT=${WAIT_TIMEOUT:-3600}
 
 # Log in to CF
 login
@@ -24,7 +25,7 @@ cf set-env "smoke-tests-${SERVICE_PLAN}" DB_TYPE "$DB_TYPE"
 cf set-env "smoke-tests-${SERVICE_PLAN}" SERVICE_NAME "$SERVICE_NAME"
 
 # Create service
-if echo "$SERVICE_PLAN" | grep mysql >/dev/null ; then
+if echo "$SERVICE_PLAN" | grep mysql >/dev/null; then
   # test out the enable_functions stuff
   cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_NAME" -b "$BROKER_NAME" -c '{"enable_functions": true}'
 else

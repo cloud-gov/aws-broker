@@ -80,27 +80,40 @@ func TestRedisCheckVersion(t *testing.T) {
 		t.Error("Could not fetch plan " + redisTestPlanID)
 	}
 
-	// Test that a valid version for the current engine returns true.
-	validVersion := plan.CheckVersion("7.1", "")
-	if !validVersion {
-		t.Error("Valid version check failed.")
+	// Plans provision Valkey, so an empty engine resolves to Valkey.
+	if plan.Engine != "valkey" {
+		t.Errorf("Expected plan engine to be valkey, got %q", plan.Engine)
 	}
 
-	// Test that an invalid version for the current engine returns false.
-	validVersion = plan.CheckVersion("8.2", "")
-	if validVersion {
-		t.Error("Invalid version check failed.")
+	testCases := map[string]struct {
+		version string
+		engine  string
+		valid   bool
+	}{
+		// Valid versions for the plan engine, with the engine left implicit.
+		"8.2 on plan engine":            {version: "8.2", valid: true},
+		"9.1 on plan engine":            {version: "9.1", valid: true},
+		"redis version on plan engine":  {version: "7.1", valid: false},
+		"8.2 on valkey":                 {version: "8.2", engine: "valkey", valid: true},
+		"9.1 on valkey":                 {version: "9.1", engine: "valkey", valid: true},
+		"redis version on valkey":       {version: "7.0", engine: "valkey", valid: false},
+		"unsupported version on valkey": {version: "7.9", engine: "valkey", valid: false},
+		// Redis versions stay approved so pre-existing Redis instances can
+		// still be updated in place.
+		"7.0 on redis":                 {version: "7.0", engine: "redis", valid: true},
+		"7.1 on redis":                 {version: "7.1", engine: "redis", valid: true},
+		"valkey version on redis":      {version: "8.2", engine: "redis", valid: false},
+		"unsupported version on redis": {version: "6.2", engine: "redis", valid: false},
 	}
 
-	// Test that a valid version for a new engine returns true.
-	validVersion = plan.CheckVersion("8.2", "valkey")
-	if !validVersion {
-		t.Error("Valid version check failed.")
-	}
-
-	// Test that an invalid version for a new engine returns false.
-	validVersion = plan.CheckVersion("7.0", "valkey")
-	if validVersion {
-		t.Error("Invalid version check failed.")
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			if got := plan.CheckVersion(test.version, test.engine); got != test.valid {
+				t.Errorf(
+					"CheckVersion(%q, %q) = %t, want %t",
+					test.version, test.engine, got, test.valid,
+				)
+			}
+		})
 	}
 }

@@ -90,9 +90,9 @@ func TestCreateInstance(t *testing.T) {
 								ServicePlan: domain.ServicePlan{
 									ID: "123",
 								},
-								Engine: "redis",
+								Engine: "valkey",
 								ApprovedEngineVersions: map[string][]string{
-									"redis": {"7.1"},
+									"valkey": {"8.2"},
 								},
 							},
 						},
@@ -127,7 +127,47 @@ func TestCreateInstance(t *testing.T) {
 								ServicePlan: domain.ServicePlan{
 									ID: "123",
 								},
-								Engine: "redis",
+								Engine: "valkey",
+								ApprovedEngineVersions: map[string][]string{
+									"redis":  {"7.1"},
+									"valkey": {"8.2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		// Redis is no longer offered for creation: the engine option cannot
+		// name an engine the plan does not provision.
+		"engine from option is not the plan engine": {
+			planID: "123",
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			provisionDetails: domain.ProvisionDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"engine": "redis"}`),
+			},
+			redisBroker: &redisBroker{
+				settings: &config.Settings{
+					EncryptionKey: helpers.RandStr(32),
+					Environment:   "test", // use the mock adapter
+				},
+				tagManager: &mocks.MockTagGenerator{},
+				adapter:    &mockRedisAdapter{},
+				brokerDB:   brokerDB,
+				catalog: &catalog.Catalog{
+					RedisService: catalog.RedisService{
+						RedisPlans: []catalog.RedisPlan{
+							{
+								ServicePlan: domain.ServicePlan{
+									ID: "123",
+								},
+								Engine: "valkey",
 								ApprovedEngineVersions: map[string][]string{
 									"redis":  {"7.1"},
 									"valkey": {"8.2"},
@@ -148,7 +188,7 @@ func TestCreateInstance(t *testing.T) {
 			},
 			provisionDetails: domain.ProvisionDetails{
 				PlanID:        "123",
-				RawParameters: json.RawMessage(`{"engine_version":"8.2", "engine": "valkey"}`),
+				RawParameters: json.RawMessage(`{"engine_version":"9.1", "engine": "valkey"}`),
 			},
 			redisBroker: &redisBroker{
 				settings: &config.Settings{
@@ -165,10 +205,10 @@ func TestCreateInstance(t *testing.T) {
 								ServicePlan: domain.ServicePlan{
 									ID: "123",
 								},
-								Engine: "redis",
+								Engine: "valkey",
 								ApprovedEngineVersions: map[string][]string{
 									"redis":  {"7.1"},
-									"valkey": {"8.2"},
+									"valkey": {"9.1", "8.2"},
 								},
 							},
 						},
@@ -295,6 +335,7 @@ func TestModifyInstance(t *testing.T) {
 							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
+							Engine: "valkey",
 							ApprovedEngineVersions: map[string][]string{
 								"redis":  {"7.1"},
 								"valkey": {"8.2"},
@@ -377,9 +418,10 @@ func TestModifyInstance(t *testing.T) {
 							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
+							Engine: "valkey",
 							ApprovedEngineVersions: map[string][]string{
 								"redis":  {"7.1"},
-								"valkey": {"8.2"},
+								"valkey": {"9.1", "8.2"},
 							},
 						},
 					},
@@ -402,10 +444,10 @@ func TestModifyInstance(t *testing.T) {
 			},
 			updateDetails: domain.UpdateDetails{
 				PlanID:        "123",
-				RawParameters: json.RawMessage(`{"engine": "valkey", "engine_version": "8.2"}`),
+				RawParameters: json.RawMessage(`{"engine": "valkey", "engine_version": "9.1"}`),
 			},
 		},
-		"valid engine version for new engine from plan": {
+		"plan change retains the current engine": {
 			catalog: &catalog.Catalog{
 				RedisService: catalog.RedisService{
 					RedisPlans: []catalog.RedisPlan{
@@ -413,9 +455,10 @@ func TestModifyInstance(t *testing.T) {
 							ServicePlan: domain.ServicePlan{
 								ID: "123",
 							},
+							Engine: "valkey",
 							ApprovedEngineVersions: map[string][]string{
-								"redis":  {"7.1"},
-								"valkey": {"8.2"},
+								"redis":  {"7.1", "7.0"},
+								"valkey": {"9.1", "8.2"},
 							},
 						},
 						{
@@ -424,8 +467,57 @@ func TestModifyInstance(t *testing.T) {
 							},
 							Engine: "valkey",
 							ApprovedEngineVersions: map[string][]string{
+								"redis":  {"7.1", "7.0"},
+								"valkey": {"9.1", "8.2"},
+							},
+						},
+					},
+				},
+			},
+			redisInstance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "456",
+					},
+				},
+				Engine:        "redis",
+				EngineVersion: "7.0",
+			},
+			expectedInstance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceInProgress,
+				},
+				Engine:        "redis",
+				EngineVersion: "7.0",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID: "123",
+			},
+		},
+		// Redis can be retained but never adopted.
+		"engine from option is neither the current nor the plan engine": {
+			catalog: &catalog.Catalog{
+				RedisService: catalog.RedisService{
+					RedisPlans: []catalog.RedisPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "123",
+							},
+							Engine: "valkey",
+							ApprovedEngineVersions: map[string][]string{
 								"redis":  {"7.1"},
-								"valkey": {"8.2"},
+								"valkey": {"9.1", "8.2"},
 							},
 						},
 					},
@@ -439,7 +531,8 @@ func TestModifyInstance(t *testing.T) {
 						PlanID:    "123",
 					},
 				},
-				Engine: "redis",
+				Engine:        "valkey",
+				EngineVersion: "8.2",
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -447,8 +540,59 @@ func TestModifyInstance(t *testing.T) {
 				Environment:   "test", // use the mock adapter
 			},
 			updateDetails: domain.UpdateDetails{
-				PlanID:        "456",
-				RawParameters: json.RawMessage(`{"engine_version": "8.2"}`),
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"engine": "redis", "engine_version": "7.1"}`),
+			},
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		// An instance already running Redis may keep it.
+		"engine from option matches the current engine": {
+			catalog: &catalog.Catalog{
+				RedisService: catalog.RedisService{
+					RedisPlans: []catalog.RedisPlan{
+						{
+							ServicePlan: domain.ServicePlan{
+								ID: "123",
+							},
+							Engine: "valkey",
+							ApprovedEngineVersions: map[string][]string{
+								"redis":  {"7.1", "7.0"},
+								"valkey": {"9.1", "8.2"},
+							},
+						},
+					},
+				},
+			},
+			redisInstance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: uuid.NewString(),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+				},
+				Engine:        "redis",
+				EngineVersion: "7.0",
+			},
+			expectedInstance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "123",
+					},
+					State: base.InstanceInProgress,
+				},
+				Engine:        "redis",
+				EngineVersion: "7.1",
+			},
+			tagManager: &mocks.MockTagGenerator{},
+			settings: &config.Settings{
+				EncryptionKey: helpers.RandStr(32),
+				Environment:   "test", // use the mock adapter
+			},
+			updateDetails: domain.UpdateDetails{
+				PlanID:        "123",
+				RawParameters: json.RawMessage(`{"engine": "redis", "engine_version": "7.1"}`),
 			},
 		},
 	}
@@ -760,6 +904,35 @@ func TestValidateEngineAndVersion(t *testing.T) {
 		},
 		"engine version is approved": {
 			redisInstance: &RedisInstance{
+				Engine: "valkey",
+			},
+			options: RedisOptions{
+				EngineVersion: "9.1",
+			},
+			plan: catalog.RedisPlan{
+				ApprovedEngineVersions: map[string][]string{
+					"redis":  {"7.1", "7.0"},
+					"valkey": {"9.1", "8.2"},
+				},
+			},
+		},
+		// Redis versions stay approved for instances already running Redis.
+		"redis engine version is approved": {
+			redisInstance: &RedisInstance{
+				Engine: "redis",
+			},
+			options: RedisOptions{
+				EngineVersion: "7.1",
+			},
+			plan: catalog.RedisPlan{
+				ApprovedEngineVersions: map[string][]string{
+					"redis":  {"7.1", "7.0"},
+					"valkey": {"9.1", "8.2"},
+				},
+			},
+		},
+		"engine version is not approved": {
+			redisInstance: &RedisInstance{
 				Engine: "redis",
 			},
 			options: RedisOptions{
@@ -772,7 +945,7 @@ func TestValidateEngineAndVersion(t *testing.T) {
 			},
 			expectErr: true,
 		},
-		"engine version is not approved": {
+		"engine version is not approved for the engine": {
 			redisInstance: &RedisInstance{
 				Engine: "valkey",
 			},
@@ -782,7 +955,7 @@ func TestValidateEngineAndVersion(t *testing.T) {
 			plan: catalog.RedisPlan{
 				ApprovedEngineVersions: map[string][]string{
 					"redis":  {"7.1"},
-					"valkey": {"8.2"},
+					"valkey": {"9.1", "8.2"},
 				},
 			},
 			expectErr: true,
@@ -793,7 +966,78 @@ func TestValidateEngineAndVersion(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			err := validateEngineAndVersion(test.redisInstance, test.plan, test.options)
 			if err != nil && !test.expectErr {
-				t.Fatal("unexpected error")
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
+func TestValidateEngine(t *testing.T) {
+	valkeyPlan := catalog.RedisPlan{Engine: "valkey"}
+
+	testCases := map[string]struct {
+		currentEngine string
+		plan          catalog.RedisPlan
+		options       RedisOptions
+		expectErr     bool
+	}{
+		"no engine option on create": {
+			plan: valkeyPlan,
+		},
+		"no engine option on update": {
+			currentEngine: "redis",
+			plan:          valkeyPlan,
+		},
+		"plan engine on create": {
+			plan:    valkeyPlan,
+			options: RedisOptions{Engine: "valkey"},
+		},
+		// Redis is no longer offered for creation.
+		"redis on create": {
+			plan:      valkeyPlan,
+			options:   RedisOptions{Engine: "redis"},
+			expectErr: true,
+		},
+		"unknown engine on create": {
+			plan:      valkeyPlan,
+			options:   RedisOptions{Engine: "memcached"},
+			expectErr: true,
+		},
+		// A pre-existing Redis instance may keep its engine...
+		"current engine on update": {
+			currentEngine: "redis",
+			plan:          valkeyPlan,
+			options:       RedisOptions{Engine: "redis"},
+		},
+		// ...and may move to the engine its plan provisions.
+		"plan engine on update": {
+			currentEngine: "redis",
+			plan:          valkeyPlan,
+			options:       RedisOptions{Engine: "valkey"},
+		},
+		// ...but a Valkey instance cannot move back to Redis.
+		"redis on update from valkey": {
+			currentEngine: "valkey",
+			plan:          valkeyPlan,
+			options:       RedisOptions{Engine: "redis"},
+			expectErr:     true,
+		},
+		"unknown engine on update": {
+			currentEngine: "redis",
+			plan:          valkeyPlan,
+			options:       RedisOptions{Engine: "memcached"},
+			expectErr:     true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateEngine(test.currentEngine, test.plan, test.options)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
 			}
 			if err == nil && test.expectErr {
 				t.Fatal("expected error")

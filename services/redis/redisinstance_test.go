@@ -296,9 +296,10 @@ func TestInstanceModify(t *testing.T) {
 		expectedInstance *RedisInstance
 		expectUpdates    bool
 	}{
-		"sets plan properties": {
+		"sets plan properties but retains existing engine": {
 			existingInstance: &RedisInstance{
-				Engine: "redis",
+				Engine:        "redis",
+				EngineVersion: "7.0",
 			},
 			newPlan: catalog.RedisPlan{
 				Tags: map[string]string{
@@ -317,6 +318,7 @@ func TestInstanceModify(t *testing.T) {
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
 				Engine:                     "valkey",
+				EngineVersion:              "8.2",
 			},
 			expectedInstance: &RedisInstance{
 				Instance: base.Instance{
@@ -336,7 +338,8 @@ func TestInstanceModify(t *testing.T) {
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
 				},
-				Engine: "valkey",
+				Engine:        "redis",
+				EngineVersion: "7.0",
 			},
 			expectUpdates: true,
 		},
@@ -349,6 +352,17 @@ func TestInstanceModify(t *testing.T) {
 				EngineVersion: "version-2",
 			},
 			expectUpdates: true,
+		},
+		"retains existing engine version over plan": {
+			existingInstance: &RedisInstance{
+				EngineVersion: "version-1",
+			},
+			newPlan: catalog.RedisPlan{
+				EngineVersion: "version-2",
+			},
+			expectedInstance: &RedisInstance{
+				EngineVersion: "version-1",
+			},
 		},
 		"sets engine version from options": {
 			existingInstance: &RedisInstance{
@@ -370,7 +384,7 @@ func TestInstanceModify(t *testing.T) {
 				Engine: "redis",
 			},
 			newPlan: catalog.RedisPlan{
-				Engine: "redis",
+				Engine: "valkey",
 			},
 			options: RedisOptions{
 				Engine: "valkey",
@@ -523,16 +537,47 @@ func TestSetInstanceParameters(t *testing.T) {
 				NewReplicaCount:  4,
 			},
 		},
-		"update engine": {
+		"update engine from options": {
 			instance: &RedisInstance{
 				Engine: "redis",
 			},
-			options: RedisOptions{},
+			options: RedisOptions{
+				Engine: "valkey",
+			},
 			plan: catalog.RedisPlan{
 				Engine: "valkey",
 			},
 			expectedInstance: &RedisInstance{
 				Engine: "valkey",
+			},
+		},
+		"takes engine from plan for a new instance": {
+			instance: &RedisInstance{},
+			options:  RedisOptions{},
+			plan: catalog.RedisPlan{
+				Engine:        "valkey",
+				EngineVersion: "8.2",
+			},
+			expectedInstance: &RedisInstance{
+				Engine:        "valkey",
+				EngineVersion: "8.2",
+			},
+		},
+		// A plan change must not silently migrate a pre-existing Redis
+		// instance onto the plan's Valkey engine.
+		"retains existing engine when the plan engine differs": {
+			instance: &RedisInstance{
+				Engine:        "redis",
+				EngineVersion: "7.0",
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				Engine:        "valkey",
+				EngineVersion: "8.2",
+			},
+			expectedInstance: &RedisInstance{
+				Engine:        "redis",
+				EngineVersion: "7.0",
 			},
 		},
 	}
