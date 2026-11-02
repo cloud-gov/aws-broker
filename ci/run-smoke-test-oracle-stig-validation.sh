@@ -91,10 +91,6 @@ bind_service_with_timeout() {
   done
 }
 
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-
 for command in cf curl unzip md5sum sha1sum; do
   command -v "$command" >/dev/null 2>&1 || {
     echo "ERROR: required command not found: $command" >&2
@@ -114,6 +110,13 @@ for path in \
 done
 
 login
+
+# Register cleanup only once CF is targeted; before that there is nothing to
+# clean up and `cf` commands would fail with "No API endpoint set", masking the
+# real error.
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 cf create-service aws-rds "$SERVICE_PLAN" "$SERVICE_INSTANCE" -b "$BROKER_NAME"
 wait_for_service_instance_success_with_timeout "$SERVICE_INSTANCE" "$WAIT_TIMEOUT"
