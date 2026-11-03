@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -90,6 +91,9 @@ func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params 
 	m.describeReplicationGroupsCallNum++
 	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsErrs[callNum] != nil {
 		return nil, m.describeReplicationGroupsErrs[callNum]
+	}
+	if len(m.describeReplicationGroupsResults) == 0 {
+		return nil, errors.New("mockRedisClient: no more describeReplicationGroupsResults configured")
 	}
 	if len(m.describeReplicationGroupsResults) > 0 && m.describeReplicationGroupsResults[callNum] != nil {
 		return m.describeReplicationGroupsResults[callNum], nil
