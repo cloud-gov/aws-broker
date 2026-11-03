@@ -1,9 +1,11 @@
 package rds
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/cloud-gov/aws-broker/catalog"
 	"github.com/cloud-gov/aws-broker/config"
 )
 
@@ -222,12 +224,216 @@ func TestValidateRetentionPeriod(t *testing.T) {
 			opts := &Options{
 				BackupRetentionPeriod: aws.Int64(test.retentionPeriod),
 			}
-			err := opts.Validate(test.settings)
+			err := opts.Validate(test.settings, "")
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}
 			if !test.expectedErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}
+
+func TestValidateCloudwatchLogGroupExports(t *testing.T) {
+	testCases := map[string]struct {
+		dbType      string
+		logTypes    []string
+		expectedErr bool
+	}{
+		"nil logTypes": {
+			dbType:      "postgres",
+			logTypes:    nil,
+			expectedErr: false,
+		},
+		"empty logTypes": {
+			dbType:      "postgres",
+			logTypes:    []string{},
+			expectedErr: false,
+		},
+		"postgres valid single": {
+			dbType:      "postgres",
+			logTypes:    []string{"postgresql"},
+			expectedErr: false,
+		},
+		"postgres valid both": {
+			dbType:      "postgres",
+			logTypes:    []string{"postgresql", "upgrade"},
+			expectedErr: false,
+		},
+		"postgres invalid": {
+			dbType:      "postgres",
+			logTypes:    []string{"foo"},
+			expectedErr: true,
+		},
+		"postgres mysql log type rejected": {
+			dbType:      "postgres",
+			logTypes:    []string{"general"},
+			expectedErr: true,
+		},
+		"postgres one valid one invalid": {
+			dbType:      "postgres",
+			logTypes:    []string{"postgresql", "foo"},
+			expectedErr: true,
+		},
+		"mysql valid all": {
+			dbType:      "mysql",
+			logTypes:    []string{"audit", "error", "general", "slowquery"},
+			expectedErr: false,
+		},
+		"mysql invalid": {
+			dbType:      "mysql",
+			logTypes:    []string{"postgresql"},
+			expectedErr: true,
+		},
+		"oracle-se2 valid": {
+			dbType:      "oracle-se2",
+			logTypes:    []string{"alert", "audit", "listener", "trace"},
+			expectedErr: false,
+		},
+		"oracle-se2 invalid": {
+			dbType:      "oracle-se2",
+			logTypes:    []string{"general"},
+			expectedErr: true,
+		},
+		"unknown dbType is not validated": {
+			dbType:      "not-a-real-engine",
+			logTypes:    []string{"anything"},
+			expectedErr: false,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateCloudwatchLogGroupExports(test.dbType, test.logTypes)
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		})
+	}
+}
+
+func TestOracleCloudwatchLogExportsSupportedSetIsPinned(t *testing.T) {
+	wantSupported := []string{"alert", "audit", "listener", "trace"}
+
+	gotSupported := validCloudwatchLogTypesByDbType["oracle-se2"]
+	if !slices.Equal(gotSupported, wantSupported) {
+		t.Errorf(
+			"validCloudwatchLogTypesByDbType[\"oracle-se2\"] = %v, want %v (a change here must be deliberate, not an accidental drift)",
+			gotSupported, wantSupported,
+		)
+	}
+	if err := validateCloudwatchLogGroupExports("oracle-se2", wantSupported); err != nil {
+		t.Errorf("supported oracle-se2 log exports %v rejected by validateCloudwatchLogGroupExports: %v", wantSupported, err)
+	}
+}
+
+func TestOracleCloudwatchLogExportsFlowUnchangedThroughCreatePath(t *testing.T) {
+	supported := validCloudwatchLogTypesByDbType["oracle-se2"]
+
+	worker := &CreateWorker{
+		settings:          &config.Settings{},
+		rds:               &mockRDSClient{},
+		optionGroupClient: &mockOptionGroupClient{},
+		parameterGroupClient: &mockParameterGroupClient{
+			rds: &mockRDSClient{},
+		},
+	}
+
+	i := &RDSInstance{
+		Database:                         "db1",
+		DbType:                           "oracle-se2",
+		credentialUtils:                  &RDSCredentialUtils{},
+		Username:                         "fake-user",
+		EnabledCloudwatchLogGroupExports: supported,
+	}
+
+	params, err := worker.prepareCreateDbInput(i, &catalog.RDSPlan{}, "fake-password")
+	if err != nil {
+		t.Fatalf("prepareCreateDbInput: unexpected error: %s", err)
+	}
+
+	for _, logType := range supported {
+		if !slices.Contains(params.EnableCloudwatchLogsExports, logType) {
+			t.Errorf(
+				"supported oracle-se2 log export %q did not flow through to CreateDBInstanceInput.EnableCloudwatchLogsExports, got %v",
+				logType, params.EnableCloudwatchLogsExports,
+			)
+		}
+	}
+	for _, logType := range params.EnableCloudwatchLogsExports {
+		if !slices.Contains(supported, logType) {
+			t.Errorf(
+				"CreateDBInstanceInput.EnableCloudwatchLogsExports contains %q, which is not a member of the oracle-se2 supported set %v",
+				logType, supported,
+			)
+		}
+	}
+}
+
+func TestOracleForcedCloudwatchLogExportsAreSupported(t *testing.T) {
+	supported := validCloudwatchLogTypesByDbType["oracle-se2"]
+	for _, forced := range oracleForcedCloudwatchLogExports {
+		if !slices.Contains(supported, forced) {
+			t.Errorf("oracleForcedCloudwatchLogExports contains %q, which is not in validCloudwatchLogTypesByDbType[\"oracle-se2\"] = %v", forced, supported)
+		}
+	}
+	if slices.Contains(oracleForcedCloudwatchLogExports, "trace") {
+		t.Error("\"trace\" must not be forced-on; it is the only Oracle SE2 log export type the customer can freely enable or disable")
+	}
+}
+
+func TestApplyOracleForcedCloudwatchLogExports(t *testing.T) {
+	testCases := map[string]struct {
+		dbType    string
+		requested []string
+		want      []string
+	}{
+		"oracle-se2: customer requests nothing (empty slice) still gets forced set": {
+			dbType:    "oracle-se2",
+			requested: []string{},
+			want:      []string{"alert", "audit", "listener"},
+		},
+		"oracle-se2: customer tries to request only trace, forced set is added": {
+			dbType:    "oracle-se2",
+			requested: []string{"trace"},
+			want:      []string{"alert", "audit", "listener", "trace"},
+		},
+		"oracle-se2: customer tries to request only a subset, forced set fills in the rest": {
+			dbType:    "oracle-se2",
+			requested: []string{"alert"},
+			want:      []string{"alert", "audit", "listener"},
+		},
+		"oracle-se2: duplicate requested values are not duplicated in output": {
+			dbType:    "oracle-se2",
+			requested: []string{"audit", "audit", "trace"},
+			want:      []string{"alert", "audit", "listener", "trace"},
+		},
+		"postgres: requested set is returned unchanged, nothing forced": {
+			dbType:    "postgres",
+			requested: []string{"postgresql"},
+			want:      []string{"postgresql"},
+		},
+		"mysql: requested set is returned unchanged, nothing forced": {
+			dbType:    "mysql",
+			requested: []string{"slowquery"},
+			want:      []string{"slowquery"},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			got := applyOracleForcedCloudwatchLogExports(test.dbType, test.requested)
+			for _, want := range test.want {
+				if !slices.Contains(got, want) {
+					t.Errorf("expected %q to be present in result %v", want, got)
+				}
+			}
+			if len(got) != len(test.want) {
+				t.Errorf("got %v, want exactly %v (length mismatch, possible duplicate or extra entry)", got, test.want)
 			}
 		})
 	}

@@ -26,6 +26,7 @@ func TestValidate(t *testing.T) {
 	testCases := map[string]struct {
 		options     Options
 		settings    *config.Settings
+		dbType      string
 		expectedErr bool
 	}{
 		"invalid binary log format": {
@@ -90,11 +91,27 @@ func TestValidate(t *testing.T) {
 			settings:    &config.Settings{},
 			expectedErr: true,
 		},
+		"valid cloudwatch log group export for dbType": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"postgresql"},
+			},
+			settings:    &config.Settings{},
+			dbType:      "postgres",
+			expectedErr: false,
+		},
+		"invalid cloudwatch log group export for dbType": {
+			options: Options{
+				EnableCloudWatchLogGroupExports: []string{"not-a-real-log-type"},
+			},
+			settings:    &config.Settings{},
+			dbType:      "postgres",
+			expectedErr: true,
+		},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			err := test.options.Validate(test.settings)
+			err := test.options.Validate(test.settings, test.dbType)
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}
@@ -313,7 +330,7 @@ func TestParseModifyOptionsFromRequest(t *testing.T) {
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			options, err := test.broker.parseModifyOptionsFromRequest(test.updateDetails)
+			options, err := test.broker.parseModifyOptionsFromRequest(test.updateDetails, "")
 			if !test.expectErr && err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
