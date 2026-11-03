@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	ErrCheckingReplicationGroup = errors.New("checking if replication group exists")
 	ErrDeletingRecord           = errors.New("deleting record")
 	ErrDeletingReplicationGroup = errors.New("deleting replication group")
 	ErrExportingSnapshot        = errors.New("exporting snapshot")
@@ -88,16 +89,23 @@ func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) err
 func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance, operation base.Operation) error {
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
 
-	err := w.deleteReplicationGroup(ctx, i, operation)
+	exists, err := w.doesReplicationGroupExist(ctx, i)
 	if err != nil {
-		return common.FmtErr(ErrDeletingReplicationGroup, err)
+		return common.FmtErr(ErrCheckingReplicationGroup, err)
 	}
 
-	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+	if exists {
+		err := w.deleteReplicationGroup(ctx, i, operation)
+		if err != nil {
+			return common.FmtErr(ErrDeletingReplicationGroup, err)
+		}
 
-	err = w.exportRedisSnapshot(ctx, i)
-	if err != nil {
-		return common.FmtErr(ErrExportingSnapshot, err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+
+		err = w.exportRedisSnapshot(ctx, i)
+		if err != nil {
+			return common.FmtErr(ErrExportingSnapshot, err)
+		}
 	}
 
 	err = w.db.Unscoped().Delete(i).Error
@@ -142,6 +150,21 @@ func (w *DeleteWorker) deleteReplicationGroup(ctx context.Context, i *RedisInsta
 	}
 
 	return nil
+}
+
+func (w *DeleteWorker) doesReplicationGroupExist(ctx context.Context, i *RedisInstance) (bool, error) {
+	resp, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: aws.String(i.ClusterID),
+	})
+	exists := resp != nil && len(resp.ReplicationGroups) > 0 && *resp.ReplicationGroups[0].ReplicationGroupId != ""
+	if err != nil {
+		var notFoundException *types.ReplicationGroupNotFoundFault
+		if errors.As(err, &notFoundException) {
+			return false, nil
+		}
+		return exists, err
+	}
+	return exists, nil
 }
 
 func (w *DeleteWorker) exportRedisSnapshot(ctx context.Context, i *RedisInstance) error {

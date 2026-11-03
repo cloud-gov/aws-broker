@@ -102,6 +102,15 @@ func TestDeleteWorkerWork(t *testing.T) {
 					},
 				},
 				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
 					deleteReplicationGroupErr: errors.New("failure"),
 				},
 				&mockS3Client{},
@@ -230,7 +239,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 				},
 
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{errors.New("failed to delete")},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, errors.New("failed to delete")},
 				},
 				&mockS3Client{},
 				slog.New(&testutil.MockLogHandler{}),
@@ -256,6 +274,15 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
 					deleteReplicationGroupErr: errors.New("error deleting instance"),
 				},
 				&mockS3Client{},
@@ -282,7 +309,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsErrors:       []error{errors.New("describe snapshot error")},
 				},
 				&mockS3Client{},
@@ -309,7 +345,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults:      []*elasticache.DescribeSnapshotsOutput{},
 				},
 				&mockS3Client{},
@@ -336,7 +381,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -372,7 +426,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -409,7 +472,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -445,7 +517,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -489,23 +570,7 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxRetries:  1,
 				},
 				&mockRedisClient{
-					deleteReplicationGroupErr: notFoundErr,
-					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
-						{
-							Snapshots: []elasticacheTypes.Snapshot{
-								{
-									SnapshotStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							Snapshots: []elasticacheTypes.Snapshot{
-								{
-									SnapshotStatus: aws.String("available"),
-								},
-							},
-						},
-					},
+					describeReplicationGroupsErrs: []error{notFoundErr},
 				},
 				&mockS3Client{},
 				slog.New(&testutil.MockLogHandler{}),
