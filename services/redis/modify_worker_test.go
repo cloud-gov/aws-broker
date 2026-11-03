@@ -477,7 +477,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 				brokerDB,
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
-					PollAwsMaxDuration: 10 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
 				},
 				&mockRedisClient{
 					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{

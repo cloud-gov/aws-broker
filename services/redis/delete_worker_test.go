@@ -50,6 +50,7 @@ func TestDeleteWorkerWork(t *testing.T) {
 				&config.Settings{
 					PollAwsMaxDuration: 1 * time.Millisecond,
 					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
@@ -101,6 +102,15 @@ func TestDeleteWorkerWork(t *testing.T) {
 					},
 				},
 				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
 					deleteReplicationGroupErr: errors.New("failure"),
 				},
 				&mockS3Client{},
@@ -159,8 +169,8 @@ func TestAsyncDeleteRedis(t *testing.T) {
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
 				},
-
 				&mockRedisClient{
 					describeReplicationGroupsErrs: []error{notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
@@ -229,7 +239,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 				},
 
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{errors.New("failed to delete")},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, errors.New("failed to delete")},
 				},
 				&mockS3Client{},
 				slog.New(&testutil.MockLogHandler{}),
@@ -255,6 +274,15 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
 					deleteReplicationGroupErr: errors.New("error deleting instance"),
 				},
 				&mockS3Client{},
@@ -281,8 +309,53 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsErrors:       []error{errors.New("describe snapshot error")},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			expectedState:       base.InstanceNotGone,
+			expectedRecordCount: 1,
+			expectErr:           true,
+		},
+		"incomplete response describing snapshot": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Millisecond,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
+					describeSnapshotsResults:      []*elasticache.DescribeSnapshotsOutput{},
 				},
 				&mockS3Client{},
 				slog.New(&testutil.MockLogHandler{}),
@@ -308,7 +381,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -344,7 +426,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -381,7 +472,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -417,7 +517,16 @@ func TestAsyncDeleteRedis(t *testing.T) {
 					PollAwsMaxDuration: 10 * time.Millisecond,
 				},
 				&mockRedisClient{
-					describeReplicationGroupsErrs: []error{notFoundErr},
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									ReplicationGroupId: aws.String(helpers.RandStr(10)),
+								},
+							},
+						},
+					},
+					describeReplicationGroupsErrs: []error{nil, notFoundErr},
 					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
 						{
 							Snapshots: []elasticacheTypes.Snapshot{
@@ -458,26 +567,10 @@ func TestAsyncDeleteRedis(t *testing.T) {
 				&config.Settings{
 					PollAwsMinDelay:    1 * time.Millisecond,
 					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
 				},
-
 				&mockRedisClient{
-					deleteReplicationGroupErr: notFoundErr,
-					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
-						{
-							Snapshots: []elasticacheTypes.Snapshot{
-								{
-									SnapshotStatus: aws.String("available"),
-								},
-							},
-						},
-						{
-							Snapshots: []elasticacheTypes.Snapshot{
-								{
-									SnapshotStatus: aws.String("available"),
-								},
-							},
-						},
-					},
+					describeReplicationGroupsErrs: []error{notFoundErr},
 				},
 				&mockS3Client{},
 				slog.New(&testutil.MockLogHandler{}),
@@ -518,6 +611,151 @@ func TestAsyncDeleteRedis(t *testing.T) {
 			brokerDB.Where("uuid = ?", test.instance.Uuid).First(test.instance).Count(&count)
 			if count != test.expectedRecordCount {
 				t.Fatalf("expected %d records, found %d", test.expectedRecordCount, count)
+			}
+		})
+	}
+}
+
+func TestPollForSnapshot(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		ctx                             context.Context
+		snapshotName                    string
+		worker                          *DeleteWorker
+		expectErr                       bool
+		expectedDescribeSnapshotCallNum int
+	}{
+		"success": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
+				},
+				&mockRedisClient{
+					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
+						{
+							Snapshots: []elasticacheTypes.Snapshot{
+								{
+									SnapshotStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			snapshotName:                    helpers.RandStr(20),
+			expectedDescribeSnapshotCallNum: 1,
+		},
+		"error describing snapshot": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
+				},
+				&mockRedisClient{
+					describeSnapshotsErrors: []error{errors.New("error describing snapshot")},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			snapshotName:                    helpers.RandStr(20),
+			expectErr:                       true,
+			expectedDescribeSnapshotCallNum: 1,
+		},
+		"missing snapshot response": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  1,
+				},
+				&mockRedisClient{
+					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			snapshotName:                    helpers.RandStr(20),
+			expectErr:                       true,
+			expectedDescribeSnapshotCallNum: 1,
+		},
+		"gives up after maximum retries": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  3,
+				},
+				&mockRedisClient{
+					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			snapshotName:                    helpers.RandStr(20),
+			expectErr:                       true,
+			expectedDescribeSnapshotCallNum: 3,
+		},
+		"succeeds after retries": {
+			ctx: t.Context(),
+			worker: NewDeleteWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxRetries:  3,
+				},
+				&mockRedisClient{
+					describeSnapshotsResults: []*elasticache.DescribeSnapshotsOutput{
+						nil,
+						nil,
+						{
+							Snapshots: []elasticacheTypes.Snapshot{
+								{
+									SnapshotStatus: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
+				&mockS3Client{},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			snapshotName:                    helpers.RandStr(20),
+			expectedDescribeSnapshotCallNum: 3,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err = test.worker.pollForSnapshot(test.ctx, test.snapshotName)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error but received none")
+			}
+			mockClient, ok := test.worker.elasticache.(*mockRedisClient)
+			if ok {
+				if mockClient.describeSnapshotsCallNum != test.expectedDescribeSnapshotCallNum {
+					t.Fatalf("expected %d, got %d", test.expectedDescribeSnapshotCallNum, mockClient.describeSnapshotsCallNum)
+				}
 			}
 		})
 	}
