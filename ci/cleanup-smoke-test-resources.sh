@@ -9,9 +9,8 @@ set -euxo pipefail
 login
 
 # Delete leftover apps
-for app in $(cf apps | grep smoke-test | awk '{print $1}'); do
-  cf delete -f "$app"
-done
+cf apps | grep smoke-test || true | awk '{print $1}' | xargs -I {} cf delete -f {}
+
 echo "All leftover smoke test apps have been deleted."
 
 cf delete-orphaned-routes -f
@@ -19,8 +18,8 @@ echo "Orphaned routes have been deleted."
 
 # Delete leftover services
 wait_deletion_pids=()
-for service in $(cf services | grep smoke-test | awk '{print $1}'); do
-  cf delete-service -f "$service" &
+for service in $(cf services | grep smoke-test || true | awk '{print $1}'); do
+  cf delete-service -f "$service"
   wait_for_deletion "$service" &
   wait_deletion_pids+=($!)
 done
