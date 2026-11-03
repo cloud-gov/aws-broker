@@ -885,6 +885,7 @@ jobs:
 
   - name: deploy-aws-broker-staging
     serial: true
+    serial_groups: [staging-deploy, staging-cache, staging-search, staging-db, staging-cleanup]
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -1155,6 +1156,7 @@ jobs:
 
   - name: acceptance-tests-db-staging
     serial: true
+    serial_groups: [staging-db]
     plan:
       - in_parallel:
           steps:
@@ -1444,6 +1446,7 @@ jobs:
 
   - name: acceptance-tests-redis-staging
     serial: true
+    serial_groups: [staging-cache]
     plan:
       - in_parallel:
           steps:
@@ -1521,6 +1524,7 @@ jobs:
 
   - name: acceptance-tests-search-staging
     serial: true
+    serial_groups: [staging-search]
     plan:
       - in_parallel:
           steps:
@@ -1659,6 +1663,34 @@ jobs:
           :x: OpenSearch acceptance tests for aws-broker on staging FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
+  - name: cleanup-smoke-tests-staging
+    serial: true
+    serial_groups: [staging-deploy, staging-cache, staging-search, staging-db, staging-cleanup]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            passed:
+              - deploy-aws-broker-staging
+          - get: general-task
+          - get: daily-cleanup-timer
+            trigger: true
+      - task: cleanup-smoke-tests
+        file: aws-broker-app/ci/cleanup-smoke-test-resources.yml
+        image: general-task
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-tests-cf-organization))
+          CF_SPACE: ((staging-tests-cf-space))
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: Cleanup of smoke test resources on staging FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
   - name: terraform-plan-aws-broker-prod
     plan:
       - in_parallel:
@@ -1722,6 +1754,7 @@ jobs:
 
   - name: deploy-aws-broker-prod
     serial: true
+    serial_groups: [prod-deploy, prod-tests, prod-cleanup]
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -1971,6 +2004,7 @@ jobs:
 
   - name: acceptance-tests-prod
     serial: true
+    serial_groups: [prod-tests]
     plan:
       - in_parallel:
           - get: aws-broker-app
@@ -2430,6 +2464,35 @@ jobs:
         text: |
           :x: Acceptance Tests for aws-broker on production FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
+  - name: cleanup-smoke-tests-prod
+    serial: true
+    serial_groups: [prod-deploy, prod-tests, prod-cleanup]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            passed:
+              - deploy-aws-broker-prod
+          - get: general-task
+          - get: daily-cleanup-timer
+            trigger: true
+      - task: cleanup-smoke-tests
+        file: aws-broker-app/ci/cleanup-smoke-test-resources.yml
+        image: general-task
+        params:
+          CF_API_URL: ((prod-cf-api-url))
+          CF_USERNAME: ((prod-cf-deploy-username))
+          CF_PASSWORD: ((prod-cf-deploy-password))
+          CF_ORGANIZATION: ((prod-tests-cf-organization))
+          CF_SPACE: ((prod-tests-cf-space))
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: Cleanup of smoke test resources on prod FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
 
 resources:
   - name: pipeline-tasks

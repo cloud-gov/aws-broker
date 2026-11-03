@@ -14,7 +14,6 @@ cf apps | grep smoke-test || true | awk '{print $1}' | xargs -I {} cf delete -f 
 echo "All leftover smoke test apps have been deleted."
 
 cf delete-orphaned-routes -f
-
 echo "Orphaned routes have been deleted."
 
 # Delete leftover services
@@ -26,6 +25,8 @@ for service in $(cf services | grep smoke-test || true | awk '{print $1}'); do
 done
 
 # Wait for all service deletions to finish
-wait "${wait_deletion_pids[@]}"
+if ((${#wait_deletion_pids[@]} > 0)); then
+  wait "${wait_deletion_pids[@]}"
+fi
 
 echo "All leftover smoke test services have been deleted."

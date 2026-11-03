@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	ErrCheckingReplicationGroup = errors.New("checking if replication group exists")
 	ErrDeletingRecord           = errors.New("deleting record")
 	ErrDeletingReplicationGroup = errors.New("deleting replication group")
 	ErrExportingSnapshot        = errors.New("exporting snapshot")
@@ -88,16 +89,23 @@ func (w *DeleteWorker) Work(ctx context.Context, job *river.Job[DeleteArgs]) err
 func (w *DeleteWorker) asyncDeleteRedis(ctx context.Context, i *RedisInstance, operation base.Operation) error {
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Deleting replication group")
 
-	err := w.deleteReplicationGroup(ctx, i, operation)
+	exists, err := w.doesReplicationGroupExist(ctx, i)
 	if err != nil {
-		return common.FmtErr(ErrDeletingReplicationGroup, err)
+		return common.FmtErr(ErrCheckingReplicationGroup, err)
 	}
 
-	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+	if exists {
+		err := w.deleteReplicationGroup(ctx, i, operation)
+		if err != nil {
+			return common.FmtErr(ErrDeletingReplicationGroup, err)
+		}
 
-	err = w.exportRedisSnapshot(ctx, i)
-	if err != nil {
-		return common.FmtErr(ErrExportingSnapshot, err)
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Exporting snapshot")
+
+		err = w.exportRedisSnapshot(ctx, i)
+		if err != nil {
+			return common.FmtErr(ErrExportingSnapshot, err)
+		}
 	}
 
 	err = w.db.Unscoped().Delete(i).Error
@@ -144,39 +152,42 @@ func (w *DeleteWorker) deleteReplicationGroup(ctx context.Context, i *RedisInsta
 	return nil
 }
 
+func (w *DeleteWorker) doesReplicationGroupExist(ctx context.Context, i *RedisInstance) (bool, error) {
+	resp, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: aws.String(i.ClusterID),
+	})
+	exists := resp != nil && len(resp.ReplicationGroups) > 0 && *resp.ReplicationGroups[0].ReplicationGroupId != ""
+	if err != nil {
+		var notFoundException *types.ReplicationGroupNotFoundFault
+		if errors.As(err, &notFoundException) {
+			return false, nil
+		}
+		return exists, err
+	}
+	return exists, nil
+}
+
 func (w *DeleteWorker) exportRedisSnapshot(ctx context.Context, i *RedisInstance) error {
 	path := i.OrganizationGUID + "/" + i.SpaceGUID + "/" + i.ServiceID + "/" + i.Uuid
 	bucket := w.settings.SnapshotsBucketName
 
-	snapshot_name := i.ClusterID + "-final"
-	sleep := 30 * time.Second
+	snapshotName := i.ClusterID + "-final"
 	w.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot to Complete")
 
 	// poll for snapshot being available
-	check_input := &elasticache.DescribeSnapshotsInput{
-		SnapshotName: &snapshot_name,
-	}
-	for {
-		resp, err := w.elasticache.DescribeSnapshots(ctx, check_input)
-		if err != nil {
-			w.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", "err", err)
-			return err
-		}
-
-		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
-			break
-		}
-		time.Sleep(sleep)
+	err := w.pollForSnapshot(ctx, snapshotName)
+	if err != nil {
+		return err
 	}
 
 	w.logger.Info("exportRedisSnapshot: Exporting Instance Snapshot to s3")
 	// export to s3 bucket so copy will autoexpire after 14 days
 	copy_input := &elasticache.CopySnapshotInput{
 		TargetBucket:       aws.String(bucket),
-		TargetSnapshotName: aws.String(path + "/" + snapshot_name),
-		SourceSnapshotName: aws.String(snapshot_name),
+		TargetSnapshotName: aws.String(path + "/" + snapshotName),
+		SourceSnapshotName: aws.String(snapshotName),
 	}
-	_, err := w.elasticache.CopySnapshot(ctx, copy_input)
+	_, err = w.elasticache.CopySnapshot(ctx, copy_input)
 	if err != nil {
 		w.logger.Error("exportRedisSnapshot: Redis.CopySnapshot Failed", "err", err)
 		return err
@@ -218,26 +229,15 @@ func (w *DeleteWorker) exportRedisSnapshot(ctx context.Context, i *RedisInstance
 
 	w.logger.Info("exportRedisSnapshot: Waiting for Instance Snapshot Copy to Complete")
 	// poll for snapshot being available again before delete
-	check_input = &elasticache.DescribeSnapshotsInput{
-		SnapshotName: &snapshot_name,
-	}
-	for {
-		resp, err := w.elasticache.DescribeSnapshots(ctx, check_input)
-		if err != nil {
-			w.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", "err", err)
-			return err
-		}
-
-		if *(resp.Snapshots[0].SnapshotStatus) == "available" {
-			break
-		}
-		time.Sleep(sleep)
+	err = w.pollForSnapshot(ctx, snapshotName)
+	if err != nil {
+		return err
 	}
 
 	w.logger.Info("exportRedisSnapshot: Deleting ElatiCache Service Snapshot", "err", err)
 	// now cleanup snapshot from ElastiCache
 	delete_input := &elasticache.DeleteSnapshotInput{
-		SnapshotName: aws.String(snapshot_name),
+		SnapshotName: aws.String(snapshotName),
 	}
 	_, err = w.elasticache.DeleteSnapshot(ctx, delete_input)
 	if err != nil {
@@ -246,5 +246,34 @@ func (w *DeleteWorker) exportRedisSnapshot(ctx context.Context, i *RedisInstance
 	}
 
 	w.logger.Info("exportRedisSnapshot: Snapshot and Manifest backup to s3 Complete")
+	return nil
+}
+
+func (w *DeleteWorker) pollForSnapshot(ctx context.Context, snapshotName string) error {
+	attempts := 1
+	available := false
+
+	for attempts <= int(w.settings.PollAwsMaxRetries) {
+		resp, err := w.elasticache.DescribeSnapshots(ctx, &elasticache.DescribeSnapshotsInput{
+			SnapshotName: &snapshotName,
+		})
+		if err != nil {
+			w.logger.Error("exportRedisSnapshot: Redis.DescribeSnapshots Failed", "err", err)
+			return err
+		}
+
+		available = resp != nil && len(resp.Snapshots) > 0 && *(resp.Snapshots[0].SnapshotStatus) == "available"
+		if available {
+			break
+		}
+
+		attempts += 1
+		time.Sleep(w.settings.PollAwsMinDelay)
+	}
+
+	if !available {
+		return fmt.Errorf("could not verify availablility of snapshot %s", snapshotName)
+	}
+
 	return nil
 }
