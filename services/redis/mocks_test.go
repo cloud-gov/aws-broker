@@ -86,21 +86,27 @@ func (m *mockRedisClient) DeleteSnapshot(ctx context.Context, params *elasticach
 }
 
 func (m *mockRedisClient) DescribeReplicationGroups(ctx context.Context, params *elasticache.DescribeReplicationGroupsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeReplicationGroupsOutput, error) {
-	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum] != nil {
-		return nil, m.describeReplicationGroupsErrs[m.describeReplicationGroupsCallNum]
-	}
-	output := m.describeReplicationGroupsResults[m.describeReplicationGroupsCallNum]
+	callNum := m.describeReplicationGroupsCallNum
 	m.describeReplicationGroupsCallNum++
-	return output, nil
+	if len(m.describeReplicationGroupsErrs) > 0 && m.describeReplicationGroupsErrs[callNum] != nil {
+		return nil, m.describeReplicationGroupsErrs[callNum]
+	}
+	if len(m.describeReplicationGroupsResults) > 0 && m.describeReplicationGroupsResults[callNum] != nil {
+		return m.describeReplicationGroupsResults[callNum], nil
+	}
+	return nil, nil
 }
 
 func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elasticache.DescribeSnapshotsInput, optFns ...func(*elasticache.Options)) (*elasticache.DescribeSnapshotsOutput, error) {
-	if len(m.describeSnapshotsErrors) > 0 && m.describeSnapshotsErrors[m.describeSnapshotsCallNum] != nil {
-		return nil, m.describeSnapshotsErrors[m.describeSnapshotsCallNum]
-	}
-	output := m.describeSnapshotsResults[m.describeSnapshotsCallNum]
+	callNum := m.describeSnapshotsCallNum
 	m.describeSnapshotsCallNum++
-	return output, nil
+	if len(m.describeSnapshotsErrors) > 0 && m.describeSnapshotsErrors[callNum] != nil {
+		return nil, m.describeSnapshotsErrors[callNum]
+	}
+	if len(m.describeSnapshotsResults) > 0 && m.describeSnapshotsResults[callNum] != nil {
+		return m.describeSnapshotsResults[callNum], nil
+	}
+	return nil, nil
 }
 
 func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elasticache.IncreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.IncreaseReplicaCountOutput, error) {
