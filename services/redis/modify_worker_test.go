@@ -51,13 +51,30 @@ func TestModifyWorkerWork(t *testing.T) {
 			worker: NewModifyWorker(
 				brokerDB,
 				&config.Settings{
-					PollAwsMaxDuration: 1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Second,
 					PollAwsMinDelay:    1 * time.Millisecond,
 					DbConfig: &db.DBConfig{
 						DbType: "sqlite3",
 					},
 				},
-				&mockRedisClient{},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+					},
+				},
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			expectedState: base.InstanceReady,
@@ -133,8 +150,29 @@ func TestAsyncModifyRedis(t *testing.T) {
 			ctx: t.Context(),
 			worker: NewModifyWorker(
 				brokerDB,
-				&config.Settings{},
-				&mockRedisClient{},
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("valkey"),
+								},
+							},
+						},
+					},
+				},
 				slog.New(&testutil.MockLogHandler{}),
 			),
 			plan: &catalog.RDSPlan{},
@@ -145,6 +183,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 					},
 					Uuid: "uuid-1",
 				},
+				Engine: "valkey",
 			},
 		},
 		"error modifying redis isntance": {
@@ -221,6 +260,21 @@ func TestAsyncModifyRedis(t *testing.T) {
 								},
 							},
 						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("valkey"),
+								},
+							},
+						},
 					},
 				},
 				slog.New(&testutil.MockLogHandler{}),
@@ -233,6 +287,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				NewReplicaCount: 1,
+				Engine:          "valkey",
 			},
 		},
 		"failure waiting for increased replica count": {
@@ -308,6 +363,21 @@ func TestAsyncModifyRedis(t *testing.T) {
 								},
 							},
 						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("valkey"),
+								},
+							},
+						},
 					},
 				},
 				slog.New(&testutil.MockLogHandler{}),
@@ -320,6 +390,7 @@ func TestAsyncModifyRedis(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				NewReplicaCount: 1,
+				Engine:          "valkey",
 			},
 		},
 		"replica never appears before attempts are exhausted": {
@@ -351,6 +422,124 @@ func TestAsyncModifyRedis(t *testing.T) {
 					Uuid: helpers.RandStr(10),
 				},
 				NewReplicaCount: 1,
+			},
+			expectErr: true,
+		},
+		"waits for replication group to become available after modify": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("modifying"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("valkey"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Engine: "valkey",
+			},
+		},
+		"fails if replication group never becomes available after modify": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 1 * time.Millisecond,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("modifying"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Engine: "valkey",
+			},
+			expectErr: true,
+		},
+		"fails if engine does not match after replication group becomes available": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("redis"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Engine: "valkey",
 			},
 			expectErr: true,
 		},
@@ -544,6 +733,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				PreferredMaintenanceWindow:  aws.String("1AM"),
 				SnapshotWindow:              aws.String("4AM"),
 				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+				ApplyImmediately:            aws.Bool(true),
 			},
 		},
 		"sets engine version": {
@@ -576,6 +766,7 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				SnapshotWindow:              aws.String("4AM"),
 				SnapshotRetentionLimit:      aws.Int32(int32(14)),
 				EngineVersion:               aws.String("7.0"),
+				ApplyImmediately:            aws.Bool(true),
 			},
 		},
 	}
