@@ -25,8 +25,6 @@ for service in $(cf services | grep smoke-test || true | awk '{print $1}'); do
 done
 
 # Wait for all service deletions to finish
-if ((${#wait_deletion_pids[@]} > 0)); then
-  wait "${wait_deletion_pids[@]}"
-fi
+wait "${wait_deletion_pids[@]}"
 
 echo "All leftover smoke test services have been deleted."
