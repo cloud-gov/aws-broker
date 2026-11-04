@@ -1525,8 +1525,6 @@ elasticsearch:
     elasticsearchVersion: &default-opensearch-version OpenSearch_3.7
     approvedMajorVersions: &approved-opensearch-versions
     - "OpenSearch_3.7"
-    - "OpenSearch_2.19"
-    - "OpenSearch_1.3"
     dataCount: 1
     instanceType: t3.small.search
     instanceSizeRank: 10
