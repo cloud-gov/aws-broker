@@ -1591,8 +1591,8 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((staging-aws-default-region))
-                ES_START_VERSION: OpenSearch_1.3
-                ES_TARGET_VERSION: OpenSearch_2.3
+                ES_START_VERSION: OpenSearch_2.19
+                ES_TARGET_VERSION: OpenSearch_3.7
             - task: smoke-tests-elasticsearch-logging
               file: aws-broker-app/ci/run-smoke-test-es-logging.yml
               image: general-task
@@ -2317,8 +2317,8 @@ jobs:
                 SERVICE_NAME: aws-elasticsearch
                 SERVICE_PLAN: es-dev
                 REGION: ((prod-aws-default-region))
-                ES_START_VERSION: OpenSearch_1.3
-                ES_TARGET_VERSION: OpenSearch_2.3
+                ES_START_VERSION: OpenSearch_2.19
+                ES_TARGET_VERSION: OpenSearch_3.7
             - task: smoke-tests-elasticsearch-logging
               file: aws-broker-app/ci/run-smoke-test-es-logging.yml
               image: general-task
