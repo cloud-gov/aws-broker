@@ -1340,10 +1340,10 @@ rds:
 redis:
   id: "cda65825-e357-4a93-a24b-9ab138d97815"
   name: "aws-elasticache-redis"
-  description: "AWS Elasticache Redis Broker"
+  description: "AWS Elasticache valkey Broker"
   bindable: true
   tags:
-    - "redis"
+    - "Valkey"
     - "Elasticache"
     - "AWS"
   metadata:
