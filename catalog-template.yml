@@ -1343,7 +1343,6 @@ redis:
   description: "AWS ElastiCache Broker"
   bindable: true
   tags:
-    - "Valkey"
     - "Elasticache"
     - "AWS"
   metadata:
