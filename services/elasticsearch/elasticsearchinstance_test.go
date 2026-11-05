@@ -65,25 +65,25 @@ func TestUpdateInstance(t *testing.T) {
 		},
 		"version upgrade stages TargetElasticSearchVersion": {
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			existingInstance: &ElasticsearchInstance{
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			expectedInstance: &ElasticsearchInstance{
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion:       "OpenSearch_2.19",
+				TargetElasticsearchVersion: "OpenSearch_3.7",
 			},
 		},
 		"same version does not stage TargetElasticSearchVersion": {
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			existingInstance: &ElasticsearchInstance{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			expectedInstance: &ElasticsearchInstance{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 		},
 		"empty version is a no-op": {
@@ -91,10 +91,10 @@ func TestUpdateInstance(t *testing.T) {
 				ElasticsearchVersion: "",
 			},
 			existingInstance: &ElasticsearchInstance{
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			expectedInstance: &ElasticsearchInstance{
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 		},
 		"empty volume type is a no-op": {

@@ -298,7 +298,6 @@ func TestElasticsearchCatalogPlanVersions(t *testing.T) {
 	wantApproved := []string{
 		"OpenSearch_3.7",
 		"OpenSearch_2.19",
-		"OpenSearch_1.3",
 	}
 
 	plans := parseCatalogTemplate(t).ElasticsearchService.ElasticsearchPlans
