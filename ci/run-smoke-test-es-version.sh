@@ -14,7 +14,7 @@ set -euxo pipefail
 # $SERVICE_NAME - ie. aws-rds, aws-elasticache-redis
 # $SERVICE_PLAN - ie. micro-psql, small-mysql, redis-dev
 # $REGION -- which region service is running in (for ES)
-# $ES_START_VERSION -- e.g. OpenSearch_1.3
+# $ES_START_VERSION -- e.g. OpenSearch_2.19
 # $ES_TARGET_VERSION
 
 # Computed vars

@@ -135,10 +135,10 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			targetPlanID:   "plan-123",
 			expectedPlanID: "plan-123",
@@ -150,7 +150,7 @@ func TestModifyInstance(t *testing.T) {
 		},
 		"version with other options rejected": {
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 				VolumeType:           aws.String("gp3"),
 			},
 			existingInstance: &ElasticsearchInstance{
@@ -161,7 +161,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			expectedErrMsg: "engine version upgrade cannot be combined with other configuration options",
 			targetPlanID:   "plan-123",
@@ -181,10 +181,10 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 				LogPublishing:        ElasticsearchLogOptions{ErrorLogs: aws.Bool(true)},
 			},
 			targetPlanID:   "plan-123",
@@ -201,7 +201,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 				InstanceType:         "r7g.medium.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
@@ -235,7 +235,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 				InstanceType:         "r7g.large.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
@@ -474,7 +474,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			plans: []catalog.ElasticsearchPlan{
 				{
@@ -497,7 +497,7 @@ func TestModifyInstance(t *testing.T) {
 			targetPlanID:   "plan-large",
 			expectedPlanID: "plan-medium",
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			expectedErrMsg: "plan change cannot be combined with an engine version upgrade",
 			expectedStatus: http.StatusBadRequest,

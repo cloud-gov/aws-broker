@@ -284,69 +284,69 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			instance: &ElasticsearchInstance{
 				Instance:                   base.Instance{State: base.InstanceInProgress},
 				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion:       "OpenSearch_2.19",
+				TargetElasticsearchVersion: "OpenSearch_3.7",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, true, "OpenSearch_1.3")},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, true, "OpenSearch_2.19")},
 			expectedState:                    base.InstanceInProgress,
 			expectedVersionUpgradeInProgress: true,
-			expectedESVersion:                "OpenSearch_1.3",
-			expectedTargetESVersion:          "OpenSearch_2.3",
+			expectedESVersion:                "OpenSearch_2.19",
+			expectedTargetESVersion:          "OpenSearch_3.7",
 		},
 		"upgrade done and EngineVersion matches target": {
 			instance: &ElasticsearchInstance{
 				Instance:                   base.Instance{State: base.InstanceInProgress},
 				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion:       "OpenSearch_2.19",
+				TargetElasticsearchVersion: "OpenSearch_3.7",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_2.3")},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_3.7")},
 			expectedState:                    base.InstanceReady,
 			expectedVersionUpgradeInProgress: false,
-			expectedESVersion:                "OpenSearch_2.3",
+			expectedESVersion:                "OpenSearch_3.7",
 			expectedTargetESVersion:          "",
 		},
 		"upgrade done but old EngineVersion reports failed and leaves versions unchanged": {
 			instance: &ElasticsearchInstance{
 				Instance:                   base.Instance{State: base.InstanceInProgress},
 				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion:       "OpenSearch_2.19",
+				TargetElasticsearchVersion: "OpenSearch_3.7",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_1.3")},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_2.19")},
 			expectedState:                    base.InstanceNotModified,
 			expectedVersionUpgradeInProgress: false,
-			expectedESVersion:                "OpenSearch_1.3",
+			expectedESVersion:                "OpenSearch_2.19",
 			expectedTargetESVersion:          "",
 		},
 		"Processing false and UpgradeProcessing false returns ready": {
 			instance: &ElasticsearchInstance{
 				Instance:             base.Instance{State: base.InstanceInProgress},
 				Domain:               "test-domain",
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_1.3")},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(false, false, "OpenSearch_2.19")},
 			expectedState:                    base.InstanceReady,
 			expectedVersionUpgradeInProgress: false,
-			expectedESVersion:                "OpenSearch_1.3",
+			expectedESVersion:                "OpenSearch_2.19",
 			expectedTargetESVersion:          "",
 		},
 		"Processing true keeps status as in progress": {
 			instance: &ElasticsearchInstance{
 				Instance:             base.Instance{State: base.InstanceInProgress},
 				Domain:               "test-domain",
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
-			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(true, false, "OpenSearch_1.3")},
+			describeDomainResults:            []*opensearch.DescribeDomainOutput{domainStatus(true, false, "OpenSearch_2.19")},
 			expectedState:                    base.InstanceInProgress,
 			expectedVersionUpgradeInProgress: false,
-			expectedESVersion:                "OpenSearch_1.3",
+			expectedESVersion:                "OpenSearch_2.19",
 		},
 		"nil Processing and UpgradeProcessing returns ready": {
 			instance: &ElasticsearchInstance{
 				Instance:             base.Instance{State: base.InstanceInProgress},
 				Domain:               "test-domain",
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			describeDomainResults: []*opensearch.DescribeDomainOutput{{
 				DomainStatus: &opensearchTypes.DomainStatus{
@@ -358,7 +358,7 @@ func TestCheckElasticsearchStatus(t *testing.T) {
 			}},
 			expectedState:                    base.InstanceReady,
 			expectedVersionUpgradeInProgress: false,
-			expectedESVersion:                "OpenSearch_1.3",
+			expectedESVersion:                "OpenSearch_2.19",
 		},
 		"upgrade done and manager instance type matches target": {
 			instance: &ElasticsearchInstance{
@@ -444,8 +444,8 @@ func TestModifyElasticsearch(t *testing.T) {
 		"version upgrae calls UpgradeDomain": {
 			instance: &ElasticsearchInstance{
 				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion:       "OpenSearch_2.19",
+				TargetElasticsearchVersion: "OpenSearch_3.7",
 			},
 			expectUpgradeCalled: true,
 			expectedState:       base.InstanceInProgress,
@@ -453,8 +453,8 @@ func TestModifyElasticsearch(t *testing.T) {
 		"UpgradeDomain error returns InstanceNotModified": {
 			instance: &ElasticsearchInstance{
 				Domain:                     "test-domain",
-				ElasticsearchVersion:       "OpenSearch_1.3",
-				TargetElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion:       "OpenSearch_2.19",
+				TargetElasticsearchVersion: "OpenSearch_3.7",
 			},
 			upgradeDomainErr:    errors.New("upgrade failed"),
 			expectUpgradeCalled: true,
@@ -514,27 +514,27 @@ func TestCheckCompatibleVersions(t *testing.T) {
 		errContains        string
 	}{
 		"target in compatible list succeeds": {
-			targetVersion: "OpenSearch_2.3",
+			targetVersion: "OpenSearch_3.7",
 			compatibleVersions: []opensearchTypes.CompatibleVersionsMap{
-				{SourceVersion: aws.String("OpenSearch_1.3"), TargetVersions: []string{"OpenSearch_2.3"}},
+				{SourceVersion: aws.String("OpenSearch_2.19"), TargetVersions: []string{"OpenSearch_3.7"}},
 			},
 		},
 		"target not in compatible list returns error with valid options": {
 			targetVersion: "OpenSearch_3.0",
 			compatibleVersions: []opensearchTypes.CompatibleVersionsMap{
-				{SourceVersion: aws.String("OpenSearch_1.3"), TargetVersions: []string{"OpenSearch_2.3"}},
+				{SourceVersion: aws.String("OpenSearch_2.19"), TargetVersions: []string{"OpenSearch_3.7"}},
 			},
 			expectErr:   true,
-			errContains: "OpenSearch_2.3",
+			errContains: "OpenSearch_3.7",
 		},
 		"no compatible paths returns error": {
-			targetVersion:      "OpenSearch_2.3",
+			targetVersion:      "OpenSearch_3.7",
 			compatibleVersions: []opensearchTypes.CompatibleVersionsMap{},
 			expectErr:          true,
 			errContains:        "no upgrade paths are available",
 		},
 		"AWS API error is returned": {
-			targetVersion: "OpenSearch_2.3",
+			targetVersion: "OpenSearch_3.7",
 			apiErr:        errors.New("AWS error"),
 			expectErr:     true,
 			errContains:   "AWS error",
