@@ -507,6 +507,24 @@ func (broker *rdsBroker) BindInstance(id string, details domain.BindDetails) (do
 	return binding, nil
 }
 
+func (broker *rdsBroker) GetInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
+	existingInstance := NewRDSInstance()
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(existingInstance).Count(&count)
+	if count == 0 {
+		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceDoesNotExist
+	}
+
+	return domain.GetInstanceDetailsSpec{
+		ServiceID: existingInstance.ServiceID,
+		PlanID:    existingInstance.PlanID,
+		Parameters: map[string]string{
+			"current_version": existingInstance.DbVersion,
+		},
+	}, nil
+}
+
 func (broker *rdsBroker) DeleteInstance(id string) error {
 	existingInstance := NewRDSInstance()
 	var count int64

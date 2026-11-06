@@ -135,10 +135,10 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			targetPlanID:   "plan-123",
 			expectedPlanID: "plan-123",
@@ -150,7 +150,7 @@ func TestModifyInstance(t *testing.T) {
 		},
 		"version with other options rejected": {
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 				VolumeType:           aws.String("gp3"),
 			},
 			existingInstance: &ElasticsearchInstance{
@@ -161,7 +161,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			expectedErrMsg: "engine version upgrade cannot be combined with other configuration options",
 			targetPlanID:   "plan-123",
@@ -181,10 +181,10 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 				LogPublishing:        ElasticsearchLogOptions{ErrorLogs: aws.Bool(true)},
 			},
 			targetPlanID:   "plan-123",
@@ -201,7 +201,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 				InstanceType:         "r7g.medium.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
@@ -235,7 +235,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 				InstanceType:         "r7g.large.search",
 			},
 			plans: []catalog.ElasticsearchPlan{
@@ -474,7 +474,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					Uuid: helpers.RandStr(10),
 				},
-				ElasticsearchVersion: "OpenSearch_1.3",
+				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			plans: []catalog.ElasticsearchPlan{
 				{
@@ -497,7 +497,7 @@ func TestModifyInstance(t *testing.T) {
 			targetPlanID:   "plan-large",
 			expectedPlanID: "plan-medium",
 			options: ElasticsearchOptions{
-				ElasticsearchVersion: "OpenSearch_2.3",
+				ElasticsearchVersion: "OpenSearch_3.7",
 			},
 			expectedErrMsg: "plan change cannot be combined with an engine version upgrade",
 			expectedStatus: http.StatusBadRequest,
@@ -753,6 +753,90 @@ func TestLastOperation(t *testing.T) {
 
 			if lastOperation.State != test.expectedState.ToLastOperationState() {
 				t.Errorf("expected: %s, got: %s", test.expectedState, lastOperation.State)
+			}
+		})
+	}
+}
+
+func TestGetInstance(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance         *ElasticsearchInstance
+		createTestInstance bool
+		expectErr          bool
+		expectedVersion    string
+	}{
+		"existing instance returns current version": {
+			dbInstance: &ElasticsearchInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+						PlanID:    "plan-123",
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				ElasticsearchVersion: "OpenSearch_2.19",
+			},
+			createTestInstance: true,
+			expectedVersion:    "OpenSearch_2.19",
+		},
+		"instance not found returns error": {
+			dbInstance: &ElasticsearchInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			createTestInstance: false,
+			expectErr:          true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &elasticsearchBroker{
+				brokerDB: brokerDB,
+				logger:   slog.New(&testutil.MockLogHandler{}),
+			}
+
+			if test.createTestInstance {
+				if err := brokerDB.Create(&base.Instance{
+					Uuid:    test.dbInstance.Uuid,
+					Request: test.dbInstance.Request,
+				}).Error; err != nil {
+					t.Fatal(err)
+				}
+				if err := brokerDB.Create(test.dbInstance).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			spec, err := broker.GetInstance(test.dbInstance.Uuid, domain.FetchInstanceDetails{})
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			params, ok := spec.Parameters.(map[string]string)
+			if !ok {
+				t.Fatalf("expected Parameters to be map[string]string, got %T", spec.Parameters)
+			}
+			if params["current_elasticsearch_version"] != test.expectedVersion {
+				t.Errorf("expected current_elasticsearch_version=%q, got %q", test.expectedVersion, params["current_elasticsearch_version"])
+			}
+			if spec.ServiceID != test.dbInstance.ServiceID {
+				t.Errorf("expected ServiceID=%q, got %q", test.dbInstance.ServiceID, spec.ServiceID)
+			}
+			if spec.PlanID != test.dbInstance.PlanID {
+				t.Errorf("expected PlanID=%q, got %q", test.dbInstance.PlanID, spec.PlanID)
 			}
 		})
 	}
