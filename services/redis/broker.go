@@ -409,6 +409,24 @@ func (broker *redisBroker) BindInstance(id string, details domain.BindDetails) (
 	return binding, nil
 }
 
+func (broker *redisBroker) GetInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
+	existingInstance := RedisInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceDoesNotExist
+	}
+
+	return domain.GetInstanceDetailsSpec{
+		ServiceID: existingInstance.ServiceID,
+		PlanID:    existingInstance.PlanID,
+		Parameters: map[string]string{
+			"current_redis_engine_version": existingInstance.EngineVersion,
+		},
+	}, nil
+}
+
 func (broker *redisBroker) DeleteInstance(id string) error {
 	existingInstance := RedisInstance{}
 	var count int64

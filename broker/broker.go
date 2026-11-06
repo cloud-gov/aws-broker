@@ -124,7 +124,7 @@ func (b *AWSBroker) GetInstance(
 	instanceID string,
 	details domain.FetchInstanceDetails,
 ) (domain.GetInstanceDetailsSpec, error) {
-	return domain.GetInstanceDetailsSpec{}, errors.New("this broker does not support GetInstance")
+	return b.getInstance(instanceID, details)
 }
 
 func (b *AWSBroker) LastBindingOperation(
@@ -305,4 +305,16 @@ func (b *AWSBroker) lastOperation(id string, details domain.PollDetails) (domain
 	}
 
 	return broker.LastOperation(id, details)
+}
+
+func (b *AWSBroker) getInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
+	broker, err := b.findBroker(details.ServiceID)
+	if err != nil {
+		return domain.GetInstanceDetailsSpec{}, err
+	}
+	if broker == nil {
+		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceDoesNotExist
+	}
+
+	return broker.GetInstance(id, details)
 }

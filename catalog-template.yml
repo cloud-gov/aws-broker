@@ -3,6 +3,7 @@ rds:
   name: "aws-rds"
   description: "Persistent, relational databases using Amazon RDS"
   bindable: true
+  instances_retrievable: true
   tags:
   - "database"
   - "RDS"
@@ -1342,6 +1343,7 @@ redis:
   name: "aws-elasticache-redis"
   description: "AWS ElastiCache Broker"
   bindable: true
+  instances_retrievable: true
   tags:
     - "Elasticache"
     - "AWS"
@@ -1498,6 +1500,7 @@ elasticsearch:
   name: "aws-elasticsearch"
   description: "AWS Elasticsearch Broker"
   bindable: true
+  instances_retrievable: true
   plan_updateable: true
   tags:
   - "elasticsearch"

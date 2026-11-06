@@ -455,6 +455,24 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 	return binding, nil
 }
 
+func (broker *elasticsearchBroker) GetInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
+	existingInstance := ElasticsearchInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceDoesNotExist
+	}
+
+	return domain.GetInstanceDetailsSpec{
+		ServiceID: existingInstance.ServiceID,
+		PlanID:    existingInstance.PlanID,
+		Parameters: map[string]string{
+			"current_elasticsearch_version": existingInstance.ElasticsearchVersion,
+		},
+	}, nil
+}
+
 func (broker *elasticsearchBroker) DeleteInstance(id string) error {
 	existingInstance := ElasticsearchInstance{}
 	var count int64

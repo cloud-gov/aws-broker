@@ -757,3 +757,87 @@ func TestLastOperation(t *testing.T) {
 		})
 	}
 }
+
+func TestGetInstance(t *testing.T) {
+	testCases := map[string]struct {
+		dbInstance         *ElasticsearchInstance
+		createTestInstance bool
+		expectErr          bool
+		expectedVersion    string
+	}{
+		"existing instance returns current version": {
+			dbInstance: &ElasticsearchInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+						PlanID:    "plan-123",
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				ElasticsearchVersion: "OpenSearch_2.19",
+			},
+			createTestInstance: true,
+			expectedVersion:    "OpenSearch_2.19",
+		},
+		"instance not found returns error": {
+			dbInstance: &ElasticsearchInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+				},
+			},
+			createTestInstance: false,
+			expectErr:          true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			brokerDB, err := testDBInit()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &elasticsearchBroker{
+				brokerDB: brokerDB,
+				logger:   slog.New(&testutil.MockLogHandler{}),
+			}
+
+			if test.createTestInstance {
+				if err := brokerDB.Create(&base.Instance{
+					Uuid:    test.dbInstance.Uuid,
+					Request: test.dbInstance.Request,
+				}).Error; err != nil {
+					t.Fatal(err)
+				}
+				if err := brokerDB.Create(test.dbInstance).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			spec, err := broker.GetInstance(test.dbInstance.Uuid, domain.FetchInstanceDetails{})
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			params, ok := spec.Parameters.(map[string]string)
+			if !ok {
+				t.Fatalf("expected Parameters to be map[string]string, got %T", spec.Parameters)
+			}
+			if params["current_elasticsearch_version"] != test.expectedVersion {
+				t.Errorf("expected current_elasticsearch_version=%q, got %q", test.expectedVersion, params["current_elasticsearch_version"])
+			}
+			if spec.ServiceID != test.dbInstance.ServiceID {
+				t.Errorf("expected ServiceID=%q, got %q", test.dbInstance.ServiceID, spec.ServiceID)
+			}
+			if spec.PlanID != test.dbInstance.PlanID {
+				t.Errorf("expected PlanID=%q, got %q", test.dbInstance.PlanID, spec.PlanID)
+			}
+		})
+	}
+}
