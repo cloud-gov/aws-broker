@@ -322,9 +322,6 @@ func (b *AWSBroker) getInstance(id string, details domain.FetchInstanceDetails) 
 	if err != nil {
 		return domain.GetInstanceDetailsSpec{}, err
 	}
-	if broker == nil {
-		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceNotFound
-	}
 
 	return broker.GetInstance(id, details)
 }
