@@ -159,7 +159,7 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 		}
 		return broker, nil
 	default:
-		return nil, fmt.Errorf("unsupported service: %s", serviceID)
+		return nil, errors.New("unsupported service")
 	}
 }
 
