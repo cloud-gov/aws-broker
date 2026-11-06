@@ -478,9 +478,9 @@ func (broker *elasticsearchBroker) GetInstance(id string, details domain.FetchIn
 }
 
 func splitEngineVersion(engineVersion string) (engine string, version string) {
-    engineInfo := strings.Split(engineVersion, "_")
-    engine := strings.Lower(engineInfo[0])
-    version := engineInfo[1]
+	engineInfo := strings.Split(engineVersion, "_")
+	engine = strings.ToLower(engineInfo[0])
+	version = engineInfo[1]
 	return engine, version
 }
 
