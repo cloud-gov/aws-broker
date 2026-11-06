@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -157,9 +158,9 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 			return nil, err
 		}
 		return broker, nil
+	default:
+		return nil, fmt.Errorf("unsupported service: %s", serviceID)
 	}
-
-	return nil, nil
 }
 
 func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) (domain.ProvisionedServiceSpec, error) {
