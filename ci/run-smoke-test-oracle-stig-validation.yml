@@ -1,0 +1,9 @@
+---
+platform: linux
+
+inputs:
+- name: aws-broker-app
+- name: cg-oracle-stig-overlay
+
+run:
+  path: aws-broker-app/ci/run-smoke-test-oracle-stig-validation.sh
