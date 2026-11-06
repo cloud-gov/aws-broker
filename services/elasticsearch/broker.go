@@ -478,19 +478,9 @@ func (broker *elasticsearchBroker) GetInstance(id string, details domain.FetchIn
 }
 
 func splitEngineVersion(engineVersion string) (engine string, version string) {
-	switch {
-	case strings.HasPrefix(strings.ToLower(engineVersion), "opensearch"):
-		engine = "opensearch"
-	case strings.HasPrefix(strings.ToLower(engineVersion), "elasticsearch"):
-		engine = "elasticsearch"
-	}
-
-	if _, v, found := strings.Cut(engineVersion, "_"); found {
-		version = v
-	} else {
-		version = engineVersion
-	}
-
+    engineInfo := strings.Split(engineVersion, "_")
+    engine := strings.Lower(engineInfo[0])
+    version := engineInfo[1]
 	return engine, version
 }
 
