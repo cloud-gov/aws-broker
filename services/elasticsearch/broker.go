@@ -461,7 +461,7 @@ func (broker *elasticsearchBroker) GetInstance(id string, details domain.FetchIn
 	var count int64
 	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
 	if count == 0 {
-		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceDoesNotExist
+		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceNotFound
 	}
 
 	return domain.GetInstanceDetailsSpec{
