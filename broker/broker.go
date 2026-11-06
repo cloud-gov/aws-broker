@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -124,7 +125,7 @@ func (b *AWSBroker) GetInstance(
 	instanceID string,
 	details domain.FetchInstanceDetails,
 ) (domain.GetInstanceDetailsSpec, error) {
-	return domain.GetInstanceDetailsSpec{}, errors.New("this broker does not support GetInstance")
+	return b.getInstance(instanceID, details)
 }
 
 func (b *AWSBroker) LastBindingOperation(
@@ -157,9 +158,9 @@ func (b *AWSBroker) findBroker(serviceID string) (base.Broker, error) {
 			return nil, err
 		}
 		return broker, nil
+	default:
+		return nil, errors.New("unsupported service")
 	}
-
-	return nil, nil
 }
 
 func (b *AWSBroker) createInstance(id string, details domain.ProvisionDetails, asyncAllowed bool) (domain.ProvisionedServiceSpec, error) {
@@ -305,4 +306,22 @@ func (b *AWSBroker) lastOperation(id string, details domain.PollDetails) (domain
 	}
 
 	return broker.LastOperation(id, details)
+}
+
+func (b *AWSBroker) getInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
+	serviceID := details.ServiceID
+	if serviceID == "" {
+		baseInstance, err := base.FindBaseInstance(b.db, id)
+		if err != nil {
+			return domain.GetInstanceDetailsSpec{}, err
+		}
+		serviceID = baseInstance.ServiceID
+	}
+
+	broker, err := b.findBroker(serviceID)
+	if err != nil {
+		return domain.GetInstanceDetailsSpec{}, err
+	}
+
+	return broker.GetInstance(id, details)
 }

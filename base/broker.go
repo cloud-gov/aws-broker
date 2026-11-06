@@ -57,6 +57,7 @@ type Broker interface {
 	DeleteInstance(string) error
 	LastOperation(string, domain.PollDetails) (domain.LastOperation, error)
 	BindInstance(string, domain.BindDetails) (domain.Binding, error)
+	GetInstance(string, domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error)
 }
 
 func ConvertOperationStringToConstant(operation string) Operation {
