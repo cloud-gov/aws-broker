@@ -308,7 +308,16 @@ func (b *AWSBroker) lastOperation(id string, details domain.PollDetails) (domain
 }
 
 func (b *AWSBroker) getInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
-	broker, err := b.findBroker(details.ServiceID)
+	serviceID := details.ServiceID
+	if serviceID == "" {
+		baseInstance, err := base.FindBaseInstance(b.db, id)
+		if err != nil {
+			return domain.GetInstanceDetailsSpec{}, err
+		}
+		serviceID = baseInstance.ServiceID
+	}
+
+	broker, err := b.findBroker(serviceID)
 	if err != nil {
 		return domain.GetInstanceDetailsSpec{}, err
 	}
