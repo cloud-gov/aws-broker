@@ -763,9 +763,10 @@ func TestGetInstance(t *testing.T) {
 		dbInstance         *ElasticsearchInstance
 		createTestInstance bool
 		expectErr          bool
+		expectedEngine     string
 		expectedVersion    string
 	}{
-		"existing instance returns current version": {
+		"existing instance returns current engine and version": {
 			dbInstance: &ElasticsearchInstance{
 				Instance: base.Instance{
 					Request: request.Request{
@@ -777,7 +778,8 @@ func TestGetInstance(t *testing.T) {
 				ElasticsearchVersion: "OpenSearch_2.19",
 			},
 			createTestInstance: true,
-			expectedVersion:    "OpenSearch_2.19",
+			expectedEngine:     "opensearch",
+			expectedVersion:    "2.19",
 		},
 		"instance not found returns error": {
 			dbInstance: &ElasticsearchInstance{
@@ -828,6 +830,9 @@ func TestGetInstance(t *testing.T) {
 			params, ok := spec.Parameters.(map[string]string)
 			if !ok {
 				t.Fatalf("expected Parameters to be map[string]string, got %T", spec.Parameters)
+			}
+			if params["current_engine"] != test.expectedEngine {
+				t.Errorf("expected current_engine=%q, got %q", test.expectedEngine, params["current_engine"])
 			}
 			if params["current_elasticsearch_version"] != test.expectedVersion {
 				t.Errorf("expected current_elasticsearch_version=%q, got %q", test.expectedVersion, params["current_elasticsearch_version"])

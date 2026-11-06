@@ -520,6 +520,7 @@ func (broker *rdsBroker) GetInstance(id string, details domain.FetchInstanceDeta
 		ServiceID: existingInstance.ServiceID,
 		PlanID:    existingInstance.PlanID,
 		Parameters: map[string]string{
+			"current_db_type": existingInstance.DbType,
 			"current_version": existingInstance.DbVersion,
 		},
 	}, nil

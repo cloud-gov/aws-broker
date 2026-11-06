@@ -422,6 +422,7 @@ func (broker *redisBroker) GetInstance(id string, details domain.FetchInstanceDe
 		ServiceID: existingInstance.ServiceID,
 		PlanID:    existingInstance.PlanID,
 		Parameters: map[string]string{
+			"current_engine":               existingInstance.Engine,
 			"current_redis_engine_version": existingInstance.EngineVersion,
 		},
 	}, nil
