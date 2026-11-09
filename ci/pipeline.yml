@@ -2493,6 +2493,124 @@ jobs:
           :x: Cleanup of smoke test resources on prod FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 
+  - name: nightly-elasticache-service-updates-preview-development
+    serial_groups: [dev-cache]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            resource: aws-broker-app-development
+            trigger: false
+          - get: nightly
+            trigger: true
+          - get: general-task
+      - task: apply-elasticache-service-updates
+        file: aws-broker-app/ci/apply-elasticache-service-updates.yml
+        image: general-task
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          DRY_RUN: "true"
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: AWS Elasticache service updates preview on development FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
+  - name: nightly-elasticache-service-updates-apply-development
+    serial_groups: [dev-cache]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            resource: aws-broker-app-development
+            trigger: false
+          - get: nightly
+            trigger: false
+            passed:
+              - nightly-elasticache-service-updates-preview-development
+          - get: general-task
+      - task: apply-elasticache-service-updates
+        file: aws-broker-app/ci/apply-elasticache-service-updates.yml
+        image: general-task
+        params:
+          CF_API_URL: ((development-cf-api-url))
+          CF_USERNAME: ((development-cf-deploy-username))
+          CF_PASSWORD: ((development-cf-deploy-password))
+          CF_ORGANIZATION: ((development-cf-organization))
+          CF_SPACE: ((development-cf-space))
+          DRY_RUN: "false"
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: AWS Elasticache service updates apply on development FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
+  - name: nightly-elasticache-service-updates-preview-staging
+    serial_groups: [staging-cache]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            passed:
+              - nightly-elasticache-service-updates-apply-development
+          - get: nightly
+            trigger: true
+            passed:
+              - nightly-elasticache-service-updates-apply-development
+          - get: general-task
+      - task: apply-elasticache-service-updates
+        file: aws-broker-app/ci/apply-elasticache-service-updates.yml
+        image: general-task
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          DRY_RUN: "true"
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: AWS Elasticache service updates preview on staging FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
+  - name: nightly-elasticache-service-updates-apply-staging
+    serial_groups: [staging-cache]
+    plan:
+      - in_parallel:
+          - get: aws-broker-app
+            passed:
+              - nightly-elasticache-service-updates-preview-staging
+          - get: nightly
+            trigger: false
+            passed:
+              - nightly-elasticache-service-updates-preview-staging
+          - get: general-task
+      - task: apply-elasticache-service-updates
+        file: aws-broker-app/ci/apply-elasticache-service-updates.yml
+        image: general-task
+        params:
+          CF_API_URL: ((staging-cf-api-url))
+          CF_USERNAME: ((staging-cf-deploy-username))
+          CF_PASSWORD: ((staging-cf-deploy-password))
+          CF_ORGANIZATION: ((staging-cf-organization))
+          CF_SPACE: ((staging-cf-space))
+          DRY_RUN: "false"
+    on_failure:
+      put: slack
+      params:
+        <<: *slack-failure-config
+        text: |
+          :x: AWS Elasticache service updates apply on staging FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
 
 resources:
   - name: pipeline-tasks
@@ -2661,6 +2779,13 @@ resources:
       initial_version: true
       location: America/New_York
 
+  - name: nightly
+    type: cron-resource
+    source:
+      expression: "0 2 * * *"
+      location: "America/New_York"
+      fire_immediately: true
+
 resource_types:
   - name: registry-image
     type: registry-image
@@ -2713,5 +2838,14 @@ resource_types:
       aws_access_key_id: ((ecr_aws_key))
       aws_secret_access_key: ((ecr_aws_secret))
       repository: time-resource
+      aws_region: us-gov-west-1
+      tag: latest
+
+  - name: cron-resource
+    type: registry-image
+    source:
+      aws_access_key_id: ((ecr_aws_key))
+      aws_secret_access_key: ((ecr_aws_secret))
+      repository: cron-resource
       aws_region: us-gov-west-1
       tag: latest

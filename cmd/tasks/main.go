@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -42,8 +43,11 @@ func (s *serviceNames) Set(value string) error {
 var services serviceNames
 
 func run() error {
-	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups', 'reconcile-parameter-groups', 'find-orphaned-instances'")
+	actionPtr := flag.String("action", "", "Action to take. Accepted options: 'reconcile-tags', 'reconcile-log-groups', 'reconcile-parameter-groups', 'find-orphaned-instances', 'apply-elasticache-service-updates'")
 	flag.Var(&services, "service", "Specify AWS service whose instances should have tags updated. Accepted options: 'rds', 'elasticache', 'elasticsearch', 'opensearch'")
+	dryRunPtr := flag.Bool("dry-run", false, "For 'apply-elasticache-service-updates': discover and log what would be applied without calling AWS to apply anything. Use this to preview a run before allowing it to mutate anything (e.g. the first run in a newly-enabled environment).")
+	batchSizePtr := flag.Int("batch-size", tasksElasticache.DefaultApplyBatchSize, "For 'apply-elasticache-service-updates': maximum number of replication groups to include in a single apply call, bounding how many simultaneous failovers/reboots a single run can trigger. Clamped to the AWS hard limit of 20.")
+	staggerDelayPtr := flag.Duration("stagger-delay", tasksElasticache.DefaultStaggerDelay, "For 'apply-elasticache-service-updates': pause between consecutive apply batches (e.g. '5m'), spreading correlated failovers/reboots out over time instead of triggering them all at once.")
 	flag.Parse()
 
 	if *actionPtr == "" {
@@ -140,6 +144,22 @@ func run() error {
 		if slices.Contains(services, "rds") {
 			rdsClient := rds.NewFromConfig(cfg)
 			err := tasksRds.FindOrphanedInstances(rdsClient, db, settings.DbNamePrefix, settings.DbConfig.URL)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if *actionPtr == "apply-elasticache-service-updates" {
+		if slices.Contains(services, "elasticache") {
+			elasticacheClient := elasticache.NewFromConfig(cfg)
+			opts := tasksElasticache.ApplyOptions{
+				BatchSize:    *batchSizePtr,
+				StaggerDelay: *staggerDelayPtr,
+				DryRun:       *dryRunPtr,
+				Sleep:        time.Sleep,
+			}
+			err := tasksElasticache.ApplyElasticacheServiceUpdates(db, elasticacheClient, opts)
 			if err != nil {
 				return err
 			}
