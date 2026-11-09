@@ -9,7 +9,7 @@ TASK_APP="aws-broker-tasks"
 
 DRY_RUN="${DRY_RUN:-false}"
 
-TASK_COMMAND="aws-broker-tasks -action apply-elasticache-service-updates -service elasticache"
+TASK_COMMAND="tasks -action apply-elasticache-service-updates -service elasticache"
 
 if [ "$DRY_RUN" = "true" ]; then
   TASK_COMMAND="$TASK_COMMAND -dry-run"
