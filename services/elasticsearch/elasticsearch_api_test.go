@@ -77,9 +77,9 @@ func NewTestEsAPIHandler(client *opensearch.Client, logger *slog.Logger) *EsApiH
 
 func TestAuditApiBasePath(t *testing.T) {
 	cases := map[string]string{
-		"OpenSearch_2.3":    "/_plugins/_security/api/audit",
-		"OpenSearch_1.3":    "/_plugins/_security/api/audit",
-		"openSearch_1.3":    "/_plugins/_security/api/audit",
+		"OpenSearch_3.7":    "/_plugins/_security/api/audit",
+		"OpenSearch_2.19":   "/_plugins/_security/api/audit",
+		"openSearch_2.19":   "/_plugins/_security/api/audit",
 		"Elasticsearch_7.4": "/_opendistro/_security/api/audit",
 		"elasticsearch_7.4": "/_opendistro/_security/api/audit",
 		"7.4":               "/_opendistro/_security/api/audit",
@@ -106,7 +106,7 @@ func TestEnableAuditLogging(t *testing.T) {
 
 	es := NewTestEsAPIHandler(client, slog.New(&testutil.MockLogHandler{}))
 
-	if err := es.EnableAuditLogging("OpenSearch_2.3"); err != nil {
+	if err := es.EnableAuditLogging("OpenSearch_3.7"); err != nil {
 		t.Fatal(err)
 	}
 

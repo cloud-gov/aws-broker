@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 	"code.cloudfoundry.org/brokerapi/v13/domain/apiresponses"
@@ -453,6 +454,34 @@ func (broker *elasticsearchBroker) BindInstance(id string, details domain.BindDe
 	}
 
 	return binding, nil
+}
+
+func (broker *elasticsearchBroker) GetInstance(id string, details domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
+	existingInstance := ElasticsearchInstance{}
+
+	var count int64
+	broker.brokerDB.Where("uuid = ?", id).First(&existingInstance).Count(&count)
+	if count == 0 {
+		return domain.GetInstanceDetailsSpec{}, apiresponses.ErrInstanceNotFound
+	}
+
+	engine, version := splitEngineVersion(existingInstance.ElasticsearchVersion)
+
+	return domain.GetInstanceDetailsSpec{
+		ServiceID: existingInstance.ServiceID,
+		PlanID:    existingInstance.PlanID,
+		Parameters: map[string]string{
+			"current_engine":                engine,
+			"current_elasticsearch_version": version,
+		},
+	}, nil
+}
+
+func splitEngineVersion(engineVersion string) (engine string, version string) {
+	engineInfo := strings.Split(engineVersion, "_")
+	engine = strings.ToLower(engineInfo[0])
+	version = engineInfo[1]
+	return engine, version
 }
 
 func (broker *elasticsearchBroker) DeleteInstance(id string) error {
