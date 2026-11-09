@@ -15,7 +15,7 @@ set -euxo pipefail
 # $SERVICE_PLAN - ie. micro-psql, small-mysql, redis-dev
 # $REGION -- which region service is running in (for ES)
 # $ES_START_VERSION -- e.g. OpenSearch_2.19
-# $ES_TARGET_VERSION
+# $ES_TARGET_VERSION -- e.g. OpenSearch_3.7
 
 # Computed vars
 TEST_ID=$(get_test_id)
