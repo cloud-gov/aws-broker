@@ -106,6 +106,15 @@ func getBrokeredReplicationGroupIDs(db *gorm.DB) ([]string, error) {
 // groups that have it outstanding.
 type outstandingUpdatesByName map[string][]string
 
+func isOutstandingUpdateActionStatus(status elasticacheTypes.UpdateActionStatus) bool {
+	for _, s := range outstandingUpdateActionStatuses {
+		if status == s {
+			return true
+		}
+	}
+	return false
+}
+
 // describeOutstandingServiceUpdates returns outstanding service updates for
 // replicationGroupIDs, grouped by update name.
 func describeOutstandingServiceUpdates(elasticacheClient ElasticacheClientInterface, replicationGroupIDs []string) (outstandingUpdatesByName, error) {
@@ -114,7 +123,6 @@ func describeOutstandingServiceUpdates(elasticacheClient ElasticacheClientInterf
 	for _, chunk := range chunkStrings(replicationGroupIDs, maxReplicationGroupIDsPerRequest) {
 		input := &elasticache.DescribeUpdateActionsInput{
 			ReplicationGroupIds: chunk,
-			UpdateActionStatus:  outstandingUpdateActionStatuses,
 		}
 
 		for {
@@ -125,6 +133,9 @@ func describeOutstandingServiceUpdates(elasticacheClient ElasticacheClientInterf
 
 			for _, action := range output.UpdateActions {
 				if action.ServiceUpdateName == nil || action.ReplicationGroupId == nil {
+					continue
+				}
+				if !isOutstandingUpdateActionStatus(action.UpdateActionStatus) {
 					continue
 				}
 				name := *action.ServiceUpdateName
