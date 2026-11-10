@@ -138,6 +138,9 @@ func describeOutstandingServiceUpdates(elasticacheClient ElasticacheClientInterf
 				if !isOutstandingUpdateActionStatus(action.UpdateActionStatus) {
 					continue
 				}
+				if action.ServiceUpdateStatus != elasticacheTypes.ServiceUpdateStatusAvailable {
+					continue
+				}
 				name := *action.ServiceUpdateName
 				updates[name] = append(updates[name], *action.ReplicationGroupId)
 			}
