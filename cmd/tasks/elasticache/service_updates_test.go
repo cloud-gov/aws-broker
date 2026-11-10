@@ -224,8 +224,8 @@ func TestDescribeOutstandingServiceUpdates(t *testing.T) {
 			mockClient: &mockElasticacheServiceUpdatesClient{
 				describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 					UpdateActions: []elasticacheTypes.UpdateAction{
-						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 					},
 				},
 			},
@@ -238,9 +238,9 @@ func TestDescribeOutstandingServiceUpdates(t *testing.T) {
 			mockClient: &mockElasticacheServiceUpdatesClient{
 				describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 					UpdateActions: []elasticacheTypes.UpdateAction{
-						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-						{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-						{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+						{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+						{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 					},
 				},
 			},
@@ -261,8 +261,8 @@ func TestDescribeOutstandingServiceUpdates(t *testing.T) {
 			mockClient: &mockElasticacheServiceUpdatesClient{
 				describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 					UpdateActions: []elasticacheTypes.UpdateAction{
-						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusWaitingToStart},
+						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusWaitingToStart, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 						{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusComplete},
 						{ServiceUpdateName: aws.String("update-3"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusInProgress},
 					},
@@ -277,7 +277,7 @@ func TestDescribeOutstandingServiceUpdates(t *testing.T) {
 			mockClient: &mockElasticacheServiceUpdatesClient{
 				describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 					UpdateActions: []elasticacheTypes.UpdateAction{
-						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-0"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+						{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-0"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 					},
 				},
 			},
@@ -287,6 +287,30 @@ func TestDescribeOutstandingServiceUpdates(t *testing.T) {
 				// action, so the real assertion here (done separately
 				// below, not via expectUpdates) is the call count.
 				"update-1": {"cluster-0", "cluster-0", "cluster-0"},
+			},
+		},
+		// Regression test: AWS can expire or cancel a service update at
+		// the service level (ServiceUpdateStatus) independently of the
+		// per-replication-group UpdateActionStatus, which can remain
+		// stuck at "not-applied"/"waiting-to-start" even after the update
+		// itself is no longer available. Attempting to apply an
+		// expired/cancelled update is rejected by AWS with a 400
+		// (InvalidParameterValue: "The service update is not in a valid
+		// status. Current status: expired."), so these must be filtered
+		// out during discovery, not just left to fail at apply time.
+		"expired or cancelled service updates are filtered out even if the update action itself looks outstanding": {
+			mockClient: &mockElasticacheServiceUpdatesClient{
+				describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
+					UpdateActions: []elasticacheTypes.UpdateAction{
+						{ServiceUpdateName: aws.String("update-expired"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusExpired},
+						{ServiceUpdateName: aws.String("update-cancelled"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusWaitingToStart, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusCancelled},
+						{ServiceUpdateName: aws.String("update-available"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+					},
+				},
+			},
+			groupIDs: []string{"cluster-1"},
+			expectUpdates: outstandingUpdatesByName{
+				"update-available": {"cluster-1"},
 			},
 		},
 	}
@@ -489,9 +513,9 @@ func TestApplyElasticacheServiceUpdates(t *testing.T) {
 		mockClient := &mockElasticacheServiceUpdatesClient{
 			describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 				UpdateActions: []elasticacheTypes.UpdateAction{
-					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-					{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+					{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 				},
 			},
 		}
@@ -512,8 +536,8 @@ func TestApplyElasticacheServiceUpdates(t *testing.T) {
 		mockClient := &mockElasticacheServiceUpdatesClient{
 			describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 				UpdateActions: []elasticacheTypes.UpdateAction{
-					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-					{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+					{ServiceUpdateName: aws.String("update-2"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 				},
 			},
 			batchApplyErrs: map[string]error{
@@ -558,7 +582,7 @@ func TestApplyElasticacheServiceUpdates(t *testing.T) {
 		mockClient := &mockElasticacheServiceUpdatesClient{
 			describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 				UpdateActions: []elasticacheTypes.UpdateAction{
-					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-0"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-0"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 				},
 			},
 		}
@@ -590,9 +614,10 @@ func TestApplyElasticacheServiceUpdates(t *testing.T) {
 		var updateActions []elasticacheTypes.UpdateAction
 		for _, id := range clusterIDs {
 			updateActions = append(updateActions, elasticacheTypes.UpdateAction{
-				ServiceUpdateName:  aws.String("update-1"),
-				ReplicationGroupId: aws.String(id),
-				UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied,
+				ServiceUpdateName:   aws.String("update-1"),
+				ReplicationGroupId:  aws.String(id),
+				UpdateActionStatus:  elasticacheTypes.UpdateActionStatusNotApplied,
+				ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable,
 			})
 		}
 
@@ -626,8 +651,8 @@ func TestApplyElasticacheServiceUpdates(t *testing.T) {
 		mockClient := &mockElasticacheServiceUpdatesClient{
 			describeUpdateActionsOutput: &elasticache.DescribeUpdateActionsOutput{
 				UpdateActions: []elasticacheTypes.UpdateAction{
-					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
-					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied},
+					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-1"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
+					{ServiceUpdateName: aws.String("update-1"), ReplicationGroupId: aws.String("cluster-2"), UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied, ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable},
 				},
 			},
 		}
@@ -658,9 +683,10 @@ func TestApplyElasticacheServiceUpdates(t *testing.T) {
 		var updateActions []elasticacheTypes.UpdateAction
 		for _, id := range clusterIDs {
 			updateActions = append(updateActions, elasticacheTypes.UpdateAction{
-				ServiceUpdateName:  aws.String("update-1"),
-				ReplicationGroupId: aws.String(id),
-				UpdateActionStatus: elasticacheTypes.UpdateActionStatusNotApplied,
+				ServiceUpdateName:   aws.String("update-1"),
+				ReplicationGroupId:  aws.String(id),
+				UpdateActionStatus:  elasticacheTypes.UpdateActionStatusNotApplied,
+				ServiceUpdateStatus: elasticacheTypes.ServiceUpdateStatusAvailable,
 			})
 		}
 
