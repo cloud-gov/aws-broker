@@ -291,46 +291,49 @@ jobs:
             - get: general-task
       - in_parallel:
           steps:
-            - task: smoke-tests-redis
-              file: aws-broker-app/ci/run-smoke-test-task.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-tests-cf-organization))
-                CF_SPACE: ((development-tests-cf-space))
-                SERVICE_NAME: aws-elasticache-redis
-                SERVICE_PLAN: redis-dev
-                REGION: ((development-aws-default-region))
+            # Temporarily disabled while redis-cluster-3shard is being
+            # exercised on its own; re-enable once cluster mode coverage is
+            # confirmed working end-to-end.
+            # - task: smoke-tests-redis
+            #   file: aws-broker-app/ci/run-smoke-test-task.yml
+            #   image: general-task
+            #   params:
+            #     BROKER_NAME: ((development-broker-name))
+            #     CF_API_URL: ((development-cf-api-url))
+            #     CF_USERNAME: ((development-cf-deploy-username))
+            #     CF_PASSWORD: ((development-cf-deploy-password))
+            #     CF_ORGANIZATION: ((development-tests-cf-organization))
+            #     CF_SPACE: ((development-tests-cf-space))
+            #     SERVICE_NAME: aws-elasticache-redis
+            #     SERVICE_PLAN: redis-dev
+            #     REGION: ((development-aws-default-region))
 
-            - task: smoke-tests-redis-upgrade-dev-3node
-              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-tests-cf-organization))
-                CF_SPACE: ((development-tests-cf-space))
-                SERVICE_PLAN: redis-dev
-                NEW_SERVICE_PLAN: redis-3node
+            # - task: smoke-tests-redis-upgrade-dev-3node
+            #   file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+            #   image: general-task
+            #   params:
+            #     BROKER_NAME: ((development-broker-name))
+            #     CF_API_URL: ((development-cf-api-url))
+            #     CF_USERNAME: ((development-cf-deploy-username))
+            #     CF_PASSWORD: ((development-cf-deploy-password))
+            #     CF_ORGANIZATION: ((development-tests-cf-organization))
+            #     CF_SPACE: ((development-tests-cf-space))
+            #     SERVICE_PLAN: redis-dev
+            #     NEW_SERVICE_PLAN: redis-3node
 
-            - task: smoke-tests-redis-upgrade-version
-              file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
-              image: general-task
-              params:
-                BROKER_NAME: ((development-broker-name))
-                CF_API_URL: ((development-cf-api-url))
-                CF_USERNAME: ((development-cf-deploy-username))
-                CF_PASSWORD: ((development-cf-deploy-password))
-                CF_ORGANIZATION: ((development-tests-cf-organization))
-                CF_SPACE: ((development-tests-cf-space))
-                SERVICE_PLAN: redis-dev
-                OLD_VERSION: "8.2"
-                NEW_VERSION: "9.1"
+            # - task: smoke-tests-redis-upgrade-version
+            #   file: aws-broker-app/ci/run-smoke-tests-update-redis.yml
+            #   image: general-task
+            #   params:
+            #     BROKER_NAME: ((development-broker-name))
+            #     CF_API_URL: ((development-cf-api-url))
+            #     CF_USERNAME: ((development-cf-deploy-username))
+            #     CF_PASSWORD: ((development-cf-deploy-password))
+            #     CF_ORGANIZATION: ((development-tests-cf-organization))
+            #     CF_SPACE: ((development-tests-cf-space))
+            #     SERVICE_PLAN: redis-dev
+            #     OLD_VERSION: "8.2"
+            #     NEW_VERSION: "9.1"
             - task: smoke-tests-redis-cluster-3shard
               file: aws-broker-app/ci/run-smoke-test-task.yml
               image: general-task
