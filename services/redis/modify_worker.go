@@ -22,6 +22,7 @@ var (
 	ErrPreparingModifyInput      = errors.New("preparing modify input")
 	ErrIncreasingReplicaCount    = errors.New("increasing replica count")
 	ErrModifyingReplicationGroup = errors.New("modifying replication group")
+	ErrIncreasingShardCount      = errors.New("increasing shard count")
 )
 
 const (
@@ -82,6 +83,13 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance, o
 	params, err := prepareModifyReplicationGroupInput(i)
 	if err != nil {
 		return common.FmtErr(ErrPreparingModifyInput, err)
+	}
+
+	if i.NewNumNodeGroups > 0 {
+		err = w.increaseShardCount(ctx, i, operation)
+		if err != nil {
+			return common.FmtErr(ErrIncreasingShardCount, err)
+		}
 	}
 
 	if i.NewReplicaCount > 0 {
@@ -147,11 +155,29 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 		return err
 	}
 
-	_, err = w.elasticache.IncreaseReplicaCount(ctx, &elasticache.IncreaseReplicaCountInput{
+	input := &elasticache.IncreaseReplicaCountInput{
 		ReplicationGroupId: &i.ClusterID,
-		NewReplicaCount:    newReplicaCount,
 		ApplyImmediately:   aws.Bool(true),
-	})
+	}
+
+	if i.ClusterModeEnabled() {
+		nodeGroupIDs, err := w.nodeGroupIDs(ctx, i)
+		if err != nil {
+			return err
+		}
+		replicaConfiguration := make([]elasticacheTypes.ConfigureShard, 0, len(nodeGroupIDs))
+		for _, nodeGroupID := range nodeGroupIDs {
+			replicaConfiguration = append(replicaConfiguration, elasticacheTypes.ConfigureShard{
+				NodeGroupId:     aws.String(nodeGroupID),
+				NewReplicaCount: newReplicaCount,
+			})
+		}
+		input.ReplicaConfiguration = replicaConfiguration
+	} else {
+		input.NewReplicaCount = newReplicaCount
+	}
+
+	_, err = w.elasticache.IncreaseReplicaCount(ctx, input)
 	if err != nil {
 		w.logger.Error("error increasing replica count", "err", err)
 		return err
@@ -179,14 +205,108 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	return nil
 }
 
-// verifyIncreasedReplicaCount polls until the replication group reports the
-// requested number of replica nodes. Exhausting every attempt without seeing them
-// is a failure, not a success: the caller marks the instance ready on a nil error,
-// so returning nil here would tell the tenant the resize completed when it did not.
+func (w *ModifyWorker) nodeGroupIDs(ctx context.Context, i *RedisInstance) ([]string, error) {
+	output, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	nodeGroups, err := allNodeGroups(output)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(nodeGroups))
+	for _, nodeGroup := range nodeGroups {
+		ids = append(ids, aws.ToString(nodeGroup.NodeGroupId))
+	}
+	return ids, nil
+}
+
+func (w *ModifyWorker) increaseShardCount(ctx context.Context, i *RedisInstance, operation base.Operation) error {
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new shards")
+
+	nodeGroupCount, err := common.ConvertIntToInt32Safely(i.NewNumNodeGroups)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.elasticache.ModifyReplicationGroupShardConfiguration(ctx, &elasticache.ModifyReplicationGroupShardConfigurationInput{
+		ReplicationGroupId: &i.ClusterID,
+		NodeGroupCount:     nodeGroupCount,
+		ApplyImmediately:   aws.Bool(true),
+	})
+	if err != nil {
+		w.logger.Error("error increasing shard count", "err", err)
+		return err
+	}
+
+	waiter := elasticache.NewReplicationGroupAvailableWaiter(w.elasticache, func(dawo *elasticache.ReplicationGroupAvailableWaiterOptions) {
+		dawo.MinDelay = w.settings.PollAwsMinDelay
+	})
+	waiterInput := &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}
+	err = waiter.Wait(ctx, waiterInput, w.settings.PollAwsMaxDuration)
+	if err != nil {
+		return err
+	}
+
+	return w.verifyIncreasedShardCount(ctx, i)
+}
+
+// verifyIncreasedShardCount polls until the replication group reports the
+// requested number of shards. As with verifyIncreasedReplicaCount, exhausting
+// every attempt without seeing the expected count is a failure: the caller
+// treats a nil error as a completed resize.
+func (w *ModifyWorker) verifyIncreasedShardCount(ctx context.Context, i *RedisInstance) error {
+	var ready bool
+	observedCount := 0
+
+	attempts := 1
+	maxAttempts := 1 + int(w.settings.PollAwsMaxRetries)
+
+	for !ready && attempts <= maxAttempts {
+		w.logger.Info(fmt.Sprintf("verifying shard count. attempt %d of %d", attempts, maxAttempts))
+		output, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+			ReplicationGroupId: &i.ClusterID,
+		})
+		if err != nil {
+			return err
+		}
+		if output == nil || len(output.ReplicationGroups) == 0 {
+			return fmt.Errorf("DescribeReplicationGroups returned no replication groups for %s", i.ClusterID)
+		}
+
+		observedCount = len(output.ReplicationGroups[0].NodeGroups)
+		ready = observedCount == i.NewNumNodeGroups
+		if ready {
+			break
+		}
+
+		attempts += 1
+		time.Sleep(w.settings.PollAwsMinDelay)
+	}
+
+	if !ready {
+		return fmt.Errorf(
+			"replication group %s did not report %d shards after %d attempts; last saw %d shards",
+			i.ClusterID, i.NewNumNodeGroups, maxAttempts, observedCount,
+		)
+	}
+
+	return nil
+}
+
+// verifyIncreasedReplicaCount polls until every shard in the replication
+// group reports the requested number of replica nodes. Exhausting every
+// attempt without seeing them is a failure, not a success: the caller marks
+// the instance ready on a nil error, so returning nil here would tell the
+// tenant the resize completed when it did not.
 func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *RedisInstance) error {
 	var nodesReady bool
-	observedReplicas := 0
-	observedStatus := "unknown"
+	var observedStatuses []string
+	var observedReplicaCounts []int
 
 	attempts := 1
 	maxAttempts := 1 + int(w.settings.PollAwsMaxRetries)
@@ -201,23 +321,33 @@ func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *Redis
 			return err
 		}
 
-		nodeGroup, err := singleNodeGroup(output)
+		nodeGroups, err := allNodeGroups(output)
 		if err != nil {
 			return err
 		}
-		status := aws.ToString(nodeGroup.Status)
 
-		var replicaNodes []elasticacheTypes.NodeGroupMember
-		for _, nodeMember := range nodeGroup.NodeGroupMembers {
-			if aws.ToString(nodeMember.CurrentRole) == "replica" {
-				replicaNodes = append(replicaNodes, nodeMember)
+		observedStatuses = make([]string, 0, len(nodeGroups))
+		observedReplicaCounts = make([]int, 0, len(nodeGroups))
+		nodesReady = true
+
+		for _, nodeGroup := range nodeGroups {
+			status := aws.ToString(nodeGroup.Status)
+
+			var replicaNodes []elasticacheTypes.NodeGroupMember
+			for _, nodeMember := range nodeGroup.NodeGroupMembers {
+				if aws.ToString(nodeMember.CurrentRole) == "replica" {
+					replicaNodes = append(replicaNodes, nodeMember)
+				}
+			}
+
+			observedStatuses = append(observedStatuses, status)
+			observedReplicaCounts = append(observedReplicaCounts, len(replicaNodes))
+
+			if status != "available" || len(replicaNodes) != i.NewReplicaCount {
+				nodesReady = false
 			}
 		}
 
-		observedStatus = status
-		observedReplicas = len(replicaNodes)
-
-		nodesReady = (status == "available" && observedReplicas == i.NewReplicaCount)
 		if nodesReady {
 			break
 		}
@@ -229,26 +359,28 @@ func (w *ModifyWorker) verifyIncreasedReplicaCount(ctx context.Context, i *Redis
 
 	if !nodesReady {
 		return fmt.Errorf(
-			"replication group %s did not report %d replica nodes after %d attempts; last seen status %q with %d replica nodes",
-			i.ClusterID, i.NewReplicaCount, maxAttempts, observedStatus, observedReplicas,
+			"replication group %s did not report %d replica nodes in every shard after %d attempts; last seen statuses %v with replica counts %v",
+			i.ClusterID, i.NewReplicaCount, maxAttempts, observedStatuses, observedReplicaCounts,
 		)
 	}
 
 	return nil
 }
 
-// singleNodeGroup returns the sole node group the broker provisions, converting a
-// short or empty response into an error. Indexing it directly would panic inside
-// the worker instead of failing the job with a diagnosable message.
-func singleNodeGroup(output *elasticache.DescribeReplicationGroupsOutput) (elasticacheTypes.NodeGroup, error) {
+// allNodeGroups returns every shard the replication group reports,
+// converting a short or empty response into an error. Indexing it directly
+// would panic inside the worker instead of failing the job with a
+// diagnosable message. For a cluster-mode-disabled replication group this
+// is always a single-element slice.
+func allNodeGroups(output *elasticache.DescribeReplicationGroupsOutput) ([]elasticacheTypes.NodeGroup, error) {
 	if output == nil || len(output.ReplicationGroups) == 0 {
-		return elasticacheTypes.NodeGroup{}, errors.New("DescribeReplicationGroups returned no replication groups")
+		return nil, errors.New("DescribeReplicationGroups returned no replication groups")
 	}
 	nodeGroups := output.ReplicationGroups[0].NodeGroups
 	if len(nodeGroups) == 0 {
-		return elasticacheTypes.NodeGroup{}, errors.New("DescribeReplicationGroups returned a replication group with no node groups")
+		return nil, errors.New("DescribeReplicationGroups returned a replication group with no node groups")
 	}
-	return nodeGroups[0], nil
+	return nodeGroups, nil
 }
 
 func prepareModifyReplicationGroupInput(i *RedisInstance) (*elasticache.ModifyReplicationGroupInput, error) {

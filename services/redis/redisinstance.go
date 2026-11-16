@@ -35,6 +35,9 @@ type RedisInstance struct {
 	SnapshotWindow             string `sql:"size(255)"`
 	SnapshotRetentionLimit     int    `sql:"size(255)"`
 	AutomaticFailoverEnabled   bool   `sql:"size(255)"`
+	NumNodeGroups              int    `sql:"size(255)"`
+	ReplicasPerNodeGroup       int    `sql:"size(255)"`
+	NewNumNodeGroups           int    `gorm:"-"`
 
 	Tags          map[string]string `gorm:"-"`
 	DbSubnetGroup string            `gorm:"-"`
@@ -179,11 +182,38 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 		i.NumCacheClusters = plan.NumCacheClusters
 	}
 
+	planNumNodeGroups := plan.NumNodeGroups
+	if planNumNodeGroups <= 0 {
+		planNumNodeGroups = 1
+	}
+
+	if planNumNodeGroups > i.NumNodeGroups {
+		if i.NumNodeGroups > 0 {
+			i.NewNumNodeGroups = planNumNodeGroups
+		}
+		i.NumNodeGroups = planNumNodeGroups
+	}
+
+	if plan.ClusterModeEnabled() && plan.ReplicasPerNodeGroup > i.ReplicasPerNodeGroup {
+		if i.ReplicasPerNodeGroup > 0 {
+			i.NewReplicaCount = plan.ReplicasPerNodeGroup
+		}
+		i.ReplicasPerNodeGroup = plan.ReplicasPerNodeGroup
+	}
+
 	i.CacheNodeType = plan.CacheNodeType
 	i.PreferredMaintenanceWindow = plan.PreferredMaintenanceWindow
 	i.SnapshotWindow = plan.SnapshotWindow
 	i.SnapshotRetentionLimit = plan.SnapshotRetentionLimit
-	i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
+	if plan.ClusterModeEnabled() {
+		i.AutomaticFailoverEnabled = true
+	} else {
+		i.AutomaticFailoverEnabled = plan.AutomaticFailoverEnabled
+	}
+}
+
+func (i *RedisInstance) ClusterModeEnabled() bool {
+	return i.NumNodeGroups > 1
 }
 
 func (i *RedisInstance) setTags(

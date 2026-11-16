@@ -140,6 +140,31 @@ redis:
         environment: (( grab meta.environment ))
         client: "paas-cf"
         service: "aws-broker"
+    - id: "2feccec2-8588-46c2-b171-209be2da560b"
+      name: "test-aws-redis-cluster-3shard"
+      description: "Redis Test (cluster mode enabled)"
+      metadata:
+        bullets:
+          - "Redis"
+          - "cluster mode enabled"
+        displayName: "3 shard Elasticache redis (cluster mode enabled)"
+      free: true
+      securityGroup: (( grab meta.redis.security_group ))
+      engine: valkey
+      engineVersion: "8.2"
+      approvedEngineVersions: *approved-elasticache-versions
+      numberNodeGroups: 3
+      replicasPerNodeGroup: 1
+      nodeType: cache.t3.micro
+      subnetGroup: (( grab meta.redis.subnet_group ))
+      preferredMaintenanceWindow: mon:07:00-mon:08:00
+      snapshotWindow: 06:00-07:00
+      snapshotRetentionLimit: 3
+      automaticFailoverEnabled: true
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        service: "aws-broker"
 rds:
   id: "db80ca29-2d1b-4fbc-aad3-d03c0bfa7593"
   name: "rds"
@@ -198,7 +223,7 @@ rds:
         displayName: "Dedicated medium PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.medium
       allocatedStorage: 20
       approvedMajorVersions: *rds-postgres-approved-major-versions
       dbType: postgres
@@ -224,7 +249,7 @@ rds:
         displayName: "Dedicated redundant medium PostgreSQL"
       free: false
       adapter: dedicated
-      instanceClass: db.m3.medium
+      instanceClass: db.m5.medium
       allocatedStorage: 20
       approvedMajorVersions: *rds-postgres-approved-major-versions
       dbType: postgres

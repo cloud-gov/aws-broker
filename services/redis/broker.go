@@ -253,6 +253,14 @@ func (broker *redisBroker) ModifyInstance(id string, details domain.UpdateDetail
 		)
 	}
 
+	if err := validateShardCountChange(existingInstance, newPlan); err != nil {
+		return apiresponses.NewFailureResponse(
+			err,
+			http.StatusBadRequest,
+			"checking Redis shard count",
+		)
+	}
+
 	modifiedInstance := existingInstance.modify(options, &newPlan, tags)
 
 	err = validateEngineAndVersion(modifiedInstance, newPlan, options)
@@ -483,5 +491,37 @@ func validateEngineAndVersion(i *RedisInstance, plan catalog.RedisPlan, options 
 			return fmt.Errorf("%s is not a supported major version; major version must be one of: %s", options.EngineVersion, strings.Join(plan.GetApprovedVersions(i.Engine), ", "))
 		}
 	}
+	return nil
+}
+
+func validateShardCountChange(existing *RedisInstance, newPlan catalog.RedisPlan) error {
+	currentNumNodeGroups := existing.NumNodeGroups
+	if currentNumNodeGroups <= 0 {
+		currentNumNodeGroups = 1
+	}
+	newNumNodeGroups := newPlan.NumNodeGroups
+	if newNumNodeGroups <= 0 {
+		newNumNodeGroups = 1
+	}
+
+	if existing.ClusterID == "" {
+		return nil
+	}
+
+	if newNumNodeGroups < currentNumNodeGroups {
+		return fmt.Errorf(
+			"cannot change plan: reducing the number of shards (from %d to %d) is not supported, as it may result in data loss; to scale down, provision a new instance and migrate data",
+			currentNumNodeGroups, newNumNodeGroups,
+		)
+	}
+
+	existingClusterModeEnabled := currentNumNodeGroups > 1
+	newClusterModeEnabled := newNumNodeGroups > 1
+	if existingClusterModeEnabled != newClusterModeEnabled {
+		return fmt.Errorf(
+			"cannot change plan: switching between cluster mode enabled and cluster mode disabled is not supported; to migrate, provision a new instance and migrate data",
+		)
+	}
+
 	return nil
 }

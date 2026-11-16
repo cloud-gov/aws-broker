@@ -543,6 +543,166 @@ func TestAsyncModifyRedis(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		"increases shard count before modifying replication group": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{Status: aws.String("available")},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{{}, {}, {}, {}, {}},
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{Status: aws.String("available")},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("valkey"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Engine:           "valkey",
+				NumNodeGroups:    5,
+				NewNumNodeGroups: 5,
+			},
+		},
+		"error increasing shard count": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRedisClient{
+					modifyReplicationGroupShardConfigErr: errors.New("error increasing shard count"),
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				NewNumNodeGroups: 5,
+			},
+			expectErr: true,
+		},
+		"cluster mode enabled increases replicas per shard via ReplicaConfiguration": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{NodeGroupId: aws.String("0001")},
+										{NodeGroupId: aws.String("0002")},
+										{NodeGroupId: aws.String("0003")},
+									},
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{Status: aws.String("available")},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{Status: aws.String("available")},
+							},
+						},
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									Status: aws.String("available"),
+									Engine: aws.String("valkey"),
+								},
+							},
+						},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Engine:               "valkey",
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 2,
+				NewReplicaCount:      2,
+			},
+		},
 	}
 
 	for name, test := range testCases {
@@ -630,7 +790,7 @@ func TestVerifyIncreasedReplicaCount(t *testing.T) {
 			newReplicaCount: 1,
 			maxRetries:      2,
 			expectErr:       true,
-			expectErrMsg:    "did not report 1 replica nodes after 3 attempts",
+			expectErrMsg:    "did not report 1 replica nodes in every shard after 3 attempts",
 		},
 		"describe error is surfaced": {
 			errs:            []error{errors.New("boom")},
@@ -779,6 +939,183 @@ func TestPrepareModifyReplicationGroupInput(t *testing.T) {
 				t.Fatal(err)
 			}
 			if diff := deep.Equal(params, test.expectedParams); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestVerifyIncreasedShardCount(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	withNodeGroups := func(count int) *elasticache.DescribeReplicationGroupsOutput {
+		nodeGroups := make([]elasticacheTypes.NodeGroup, count)
+		return &elasticache.DescribeReplicationGroupsOutput{
+			ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+				{NodeGroups: nodeGroups},
+			},
+		}
+	}
+
+	testCases := map[string]struct {
+		results          []*elasticache.DescribeReplicationGroupsOutput
+		errs             []error
+		newNumNodeGroups int
+		maxRetries       int64
+		expectErr        bool
+		expectErrMsg     string
+	}{
+		"shard count matches on first attempt": {
+			results:          []*elasticache.DescribeReplicationGroupsOutput{withNodeGroups(5)},
+			newNumNodeGroups: 5,
+			maxRetries:       2,
+		},
+		"shard count matches on a later attempt": {
+			results: []*elasticache.DescribeReplicationGroupsOutput{
+				withNodeGroups(3),
+				withNodeGroups(5),
+			},
+			newNumNodeGroups: 5,
+			maxRetries:       2,
+		},
+		"shard count never matches": {
+			results: []*elasticache.DescribeReplicationGroupsOutput{
+				withNodeGroups(3),
+				withNodeGroups(3),
+				withNodeGroups(3),
+			},
+			newNumNodeGroups: 5,
+			maxRetries:       2,
+			expectErr:        true,
+			expectErrMsg:     "did not report 5 shards after 3 attempts",
+		},
+		"describe error is surfaced": {
+			errs:             []error{errors.New("boom")},
+			newNumNodeGroups: 5,
+			maxRetries:       2,
+			expectErr:        true,
+			expectErrMsg:     "boom",
+		},
+		"empty response is surfaced rather than panicking": {
+			results:          []*elasticache.DescribeReplicationGroupsOutput{{}},
+			newNumNodeGroups: 5,
+			maxRetries:       0,
+			expectErr:        true,
+			expectErrMsg:     "no replication groups",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			worker := NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:   1 * time.Millisecond,
+					PollAwsMaxRetries: test.maxRetries,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: test.results,
+					describeReplicationGroupsErrs:    test.errs,
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			)
+
+			instance := &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{ServiceID: helpers.RandStr(10)},
+					Uuid:    helpers.RandStr(10),
+				},
+				ClusterID:        "cluster-1",
+				NewNumNodeGroups: test.newNumNodeGroups,
+			}
+
+			err := worker.verifyIncreasedShardCount(t.Context(), instance)
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected an error, got nil: the caller treats nil as a completed resize")
+				}
+				if !strings.Contains(err.Error(), test.expectErrMsg) {
+					t.Fatalf("expected error containing %q, got %q", test.expectErrMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestNodeGroupIDs(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		result      *elasticache.DescribeReplicationGroupsOutput
+		err         error
+		expectedIDs []string
+		expectErr   bool
+	}{
+		"returns every shard's NodeGroupId": {
+			result: &elasticache.DescribeReplicationGroupsOutput{
+				ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+					{
+						NodeGroups: []elasticacheTypes.NodeGroup{
+							{NodeGroupId: aws.String("0001")},
+							{NodeGroupId: aws.String("0002")},
+						},
+					},
+				},
+			},
+			expectedIDs: []string{"0001", "0002"},
+		},
+		"describe error is surfaced": {
+			err:       errors.New("boom"),
+			expectErr: true,
+		},
+		"empty response is surfaced": {
+			result:    &elasticache.DescribeReplicationGroupsOutput{},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var results []*elasticache.DescribeReplicationGroupsOutput
+			var errs []error
+			if test.result != nil {
+				results = []*elasticache.DescribeReplicationGroupsOutput{test.result}
+			}
+			if test.err != nil {
+				errs = []error{test.err}
+			}
+
+			worker := NewModifyWorker(
+				brokerDB,
+				&config.Settings{},
+				&mockRedisClient{
+					describeReplicationGroupsResults: results,
+					describeReplicationGroupsErrs:    errs,
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			)
+
+			ids, err := worker.nodeGroupIDs(t.Context(), &RedisInstance{ClusterID: "cluster-1"})
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected an error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if diff := deep.Equal(ids, test.expectedIDs); diff != nil {
 				t.Error(diff)
 			}
 		})
