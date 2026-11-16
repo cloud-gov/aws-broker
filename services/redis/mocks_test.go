@@ -57,17 +57,18 @@ func NewTestDedicatedRedisAdapter(
 }
 
 type mockRedisClient struct {
-	modifyReplicationGroupErr        error
-	increaseReplicaCountErr          error
-	describeReplicationGroupsErrs    []error
-	describeReplicationGroupsCallNum int
-	describeReplicationGroupsResults []*elasticache.DescribeReplicationGroupsOutput
-	describeSnapshotsResults         []*elasticache.DescribeSnapshotsOutput
-	describeSnapshotsCallNum         int
-	describeSnapshotsErrors          []error
-	deleteReplicationGroupErr        error
-	copySnapshotErr                  error
-	deleteSnapshotErr                error
+	modifyReplicationGroupErr            error
+	increaseReplicaCountErr              error
+	modifyReplicationGroupShardConfigErr error
+	describeReplicationGroupsErrs        []error
+	describeReplicationGroupsCallNum     int
+	describeReplicationGroupsResults     []*elasticache.DescribeReplicationGroupsOutput
+	describeSnapshotsResults             []*elasticache.DescribeSnapshotsOutput
+	describeSnapshotsCallNum             int
+	describeSnapshotsErrors              []error
+	deleteReplicationGroupErr            error
+	copySnapshotErr                      error
+	deleteSnapshotErr                    error
 }
 
 func (m *mockRedisClient) CopySnapshot(ctx context.Context, params *elasticache.CopySnapshotInput, optFns ...func(*elasticache.Options)) (*elasticache.CopySnapshotOutput, error) {
@@ -119,6 +120,10 @@ func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elas
 
 func (m *mockRedisClient) ModifyReplicationGroup(ctx context.Context, params *elasticache.ModifyReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.ModifyReplicationGroupOutput, error) {
 	return nil, m.modifyReplicationGroupErr
+}
+
+func (m *mockRedisClient) ModifyReplicationGroupShardConfiguration(ctx context.Context, params *elasticache.ModifyReplicationGroupShardConfigurationInput, optFns ...func(*elasticache.Options)) (*elasticache.ModifyReplicationGroupShardConfigurationOutput, error) {
+	return nil, m.modifyReplicationGroupShardConfigErr
 }
 
 type mockS3Client struct {

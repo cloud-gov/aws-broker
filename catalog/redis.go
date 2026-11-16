@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"fmt"
+
 	"code.cloudfoundry.org/brokerapi/v13/domain"
 )
 
@@ -52,12 +54,34 @@ type RedisPlan struct {
 	SubnetGroup                string              `yaml:"subnetGroup" json:"-" validate:"required"`
 	SecurityGroup              string              `yaml:"securityGroup" json:"-" validate:"required"`
 	CacheNodeType              string              `yaml:"nodeType" json:"-" validate:"required"`
-	NumCacheClusters           int                 `yaml:"numberCluster" json:"-" validate:"required"`
+	NumCacheClusters           int                 `yaml:"numberCluster" json:"-"`
 	PreferredMaintenanceWindow string              `yaml:"preferredMaintenanceWindow" json:"-" validate:"required"`
 	SnapshotWindow             string              `yaml:"snapshotWindow" json:"-" validate:"required"`
 	SnapshotRetentionLimit     int                 `yaml:"snapshotRetentionLimit" json:"-"`
 	AutomaticFailoverEnabled   bool                `yaml:"automaticFailoverEnabled" json:"-"`
 	ApprovedEngineVersions     map[string][]string `yaml:"approvedEngineVersions" json:"-"`
+	NumNodeGroups              int                 `yaml:"numberNodeGroups" json:"-"`
+	ReplicasPerNodeGroup       int                 `yaml:"replicasPerNodeGroup" json:"-"`
+}
+
+func (p RedisPlan) ClusterModeEnabled() bool {
+	return p.NumNodeGroups > 1
+}
+
+func (s RedisService) ValidatePlans() error {
+	for _, plan := range s.RedisPlans {
+		if plan.ClusterModeEnabled() {
+			if plan.ReplicasPerNodeGroup <= 0 {
+				return fmt.Errorf("redis plan %q: replicasPerNodeGroup is required when numberNodeGroups > 1", plan.Name)
+			}
+			if !plan.AutomaticFailoverEnabled {
+				return fmt.Errorf("redis plan %q: automaticFailoverEnabled must be true when numberNodeGroups > 1 (required by AWS for cluster mode enabled)", plan.Name)
+			}
+		} else if plan.NumCacheClusters <= 0 {
+			return fmt.Errorf("redis plan %q: numberCluster is required when numberNodeGroups is 0 or 1 (cluster mode disabled)", plan.Name)
+		}
+	}
+	return nil
 }
 
 func (p RedisPlan) GetApprovedVersions(engine string) []string {

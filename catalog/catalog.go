@@ -71,6 +71,10 @@ func parseCatalog(data []byte) (*Catalog, error) {
 		return nil, fmt.Errorf("validating catalog: %w", err)
 	}
 
+	if err := catalog.RedisService.ValidatePlans(); err != nil {
+		return nil, fmt.Errorf("validating catalog: %w", err)
+	}
+
 	return &catalog, nil
 }
 

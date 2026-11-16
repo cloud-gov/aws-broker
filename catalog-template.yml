@@ -299,7 +299,7 @@ rds:
         displayName: *medium-gp-psql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -328,7 +328,7 @@ rds:
         displayName: *medium-gp-psql-redundant
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -358,7 +358,7 @@ rds:
         displayName: *medium-gp-psql-replica
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -388,7 +388,7 @@ rds:
         displayName: *large-gp-psql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -417,7 +417,7 @@ rds:
         displayName: *large-gp-psql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -446,7 +446,7 @@ rds:
         displayName: *large-gp-psql-replica-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -476,7 +476,7 @@ rds:
         displayName: *xlarge-gp-psql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.xlarge
+      instanceClass: db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -505,7 +505,7 @@ rds:
         displayName: *xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.xlarge
+      instanceClass: db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -535,7 +535,7 @@ rds:
         displayName: *xlarge-gp-psql-replica-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.xlarge
+      instanceClass: db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -566,7 +566,7 @@ rds:
         displayName: *2xlarge-gp-psql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.2xlarge
+      instanceClass: db.m6g.2xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -595,7 +595,7 @@ rds:
         displayName: *2xlarge-gp-psql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.2xlarge
+      instanceClass: db.m6g.2xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -625,7 +625,7 @@ rds:
         displayName: *2xlarge-gp-psql-replica-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.2xlarge
+      instanceClass: db.m6g.2xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved_rds_pg_versions
       dbVersion: *default-pg-version
@@ -1015,7 +1015,7 @@ rds:
         displayName: *medium-gp-mysql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1044,7 +1044,7 @@ rds:
         displayName: *medium-gp-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1074,7 +1074,7 @@ rds:
         displayName: *medium-gp-mysql-replica-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1104,7 +1104,7 @@ rds:
         displayName: *large-gp-mysql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1133,7 +1133,7 @@ rds:
         displayName: *large-gp-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1163,7 +1163,7 @@ rds:
         displayName: *large-gp-mysql-replica-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.large
+      instanceClass: db.m6g.large
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1193,7 +1193,7 @@ rds:
         displayName: *xlarge-gp-mysql-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.xlarge
+      instanceClass: db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1222,7 +1222,7 @@ rds:
         displayName: *xlarge-gp-mysql-redundant-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.xlarge
+      instanceClass: db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1252,7 +1252,7 @@ rds:
         displayName: *xlarge-gp-mysql-replica-name
       free: false
       adapter: dedicated
-      instanceClass: db.m5.xlarge
+      instanceClass: db.m6g.xlarge
       allocatedStorage: 20
       approvedMajorVersions: *approved-mysql-versions
       dbVersion: *default-mysql-version
@@ -1484,6 +1484,62 @@ redis:
       engineVersion: *default-elasticache-version
       approvedEngineVersions: *approved-elasticache-versions
       numberCluster: 5
+      nodeType: cache.t3.small
+      subnetGroup: (( grab meta.redis.subnet_group ))
+      preferredMaintenanceWindow: mon:07:00-mon:08:00
+      snapshotWindow: 06:00-07:00
+      snapshotRetentionLimit: 3
+      automaticFailoverEnabled: true
+      plan_updateable: true
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        broker: "AWS broker"
+    - id: "aea9fa82-a017-4f26-aeef-42768939facb"
+      name: "redis-cluster-3shard"
+      description: "AWS Elasticache Valkey/Redis OSS, cluster mode enabled, 3 shards"
+      metadata:
+        bullets:
+          - "Elasticache"
+          - "redis"
+          - "cluster mode enabled"
+          - "3 shards"
+        displayName: "3 shard Elasticache redis (cluster mode enabled), persistent storage, 1.37GiB memory limit per shard"
+      free: false
+      securityGroup: (( grab meta.redis.security_group ))
+      engine: *default-elasticache-engine
+      engineVersion: *default-elasticache-version
+      approvedEngineVersions: *approved-elasticache-versions
+      numberNodeGroups: 3
+      replicasPerNodeGroup: 1
+      nodeType: cache.t3.small
+      subnetGroup: (( grab meta.redis.subnet_group ))
+      preferredMaintenanceWindow: mon:07:00-mon:08:00
+      snapshotWindow: 06:00-07:00
+      snapshotRetentionLimit: 3
+      automaticFailoverEnabled: true
+      plan_updateable: true
+      tags:
+        environment: (( grab meta.environment ))
+        client: "paas-cf"
+        broker: "AWS broker"
+    - id: "61c541c9-9c94-487f-9dd7-9baf1511257b"
+      name: "redis-cluster-5shard"
+      description: "AWS Elasticache Valkey/Redis OSS, cluster mode enabled, 5 shards"
+      metadata:
+        bullets:
+          - "Elasticache"
+          - "redis"
+          - "cluster mode enabled"
+          - "5 shards"
+        displayName: "5 shard Elasticache redis (cluster mode enabled), persistent storage, 1.37GiB memory limit per shard"
+      free: false
+      securityGroup: (( grab meta.redis.security_group ))
+      engine: *default-elasticache-engine
+      engineVersion: *default-elasticache-version
+      approvedEngineVersions: *approved-elasticache-versions
+      numberNodeGroups: 5
+      replicasPerNodeGroup: 1
       nodeType: cache.t3.small
       subnetGroup: (( grab meta.redis.subnet_group ))
       preferredMaintenanceWindow: mon:07:00-mon:08:00

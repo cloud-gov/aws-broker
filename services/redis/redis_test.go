@@ -114,6 +114,51 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				EngineVersion: aws.String("7.0"),
 			},
 		},
+		"cluster mode enabled sets NumNodeGroups and ReplicasPerNodeGroup instead of NumCacheClusters": {
+			redisInstance: &RedisInstance{
+				Description:              "description",
+				AutomaticFailoverEnabled: true,
+				Tags: map[string]string{
+					"foo": "bar",
+				},
+				ClusterID:                  "cluster-1",
+				CacheNodeType:              "node-type",
+				DbSubnetGroup:              "db-group-1",
+				SecGroup:                   "sec-group-1",
+				NumNodeGroups:              3,
+				ReplicasPerNodeGroup:       1,
+				PreferredMaintenanceWindow: "1AM",
+				SnapshotWindow:             "4AM",
+				SnapshotRetentionLimit:     14,
+				ClearPassword:              "fake-password",
+				Engine:                     "valkey",
+			},
+			expectedParams: &elasticache.CreateReplicationGroupInput{
+				AtRestEncryptionEnabled:     aws.Bool(true),
+				TransitEncryptionEnabled:    aws.Bool(true),
+				AutoMinorVersionUpgrade:     aws.Bool(true),
+				ReplicationGroupDescription: aws.String("description"),
+				AuthToken:                   aws.String("fake-password"),
+				AutomaticFailoverEnabled:    aws.Bool(true),
+				ReplicationGroupId:          aws.String("cluster-1"),
+				CacheNodeType:               aws.String("node-type"),
+				CacheSubnetGroupName:        aws.String("db-group-1"),
+				SecurityGroupIds:            []string{"sec-group-1"},
+				Engine:                      aws.String("valkey"),
+				NumNodeGroups:               aws.Int32(int32(3)),
+				ReplicasPerNodeGroup:        aws.Int32(int32(1)),
+				Port:                        aws.Int32(6379),
+				PreferredMaintenanceWindow:  aws.String("1AM"),
+				SnapshotWindow:              aws.String("4AM"),
+				SnapshotRetentionLimit:      aws.Int32(int32(14)),
+				Tags: []elasticacheTypes.Tag{
+					{
+						Key:   aws.String("foo"),
+						Value: aws.String("bar"),
+					},
+				},
+			},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -273,6 +318,76 @@ func TestDeleteRedis(t *testing.T) {
 
 			if job.Args.Instance.Uuid != test.instance.Uuid {
 				t.Fatal("Did not receive expected instance as delete worker argument")
+			}
+		})
+	}
+}
+
+func TestConnectionEndpoint(t *testing.T) {
+	testCases := map[string]struct {
+		group           elasticacheTypes.ReplicationGroup
+		expectedAddress string
+		expectedPort    int32
+		expectErr       bool
+	}{
+		"cluster mode disabled uses NodeGroups[0].PrimaryEndpoint": {
+			group: elasticacheTypes.ReplicationGroup{
+				NodeGroups: []elasticacheTypes.NodeGroup{
+					{
+						PrimaryEndpoint: &elasticacheTypes.Endpoint{
+							Address: aws.String("primary.example.com"),
+							Port:    aws.Int32(6379),
+						},
+					},
+				},
+			},
+			expectedAddress: "primary.example.com",
+			expectedPort:    6379,
+		},
+		"cluster mode enabled uses ConfigurationEndpoint": {
+			group: elasticacheTypes.ReplicationGroup{
+				ClusterEnabled: aws.Bool(true),
+				ConfigurationEndpoint: &elasticacheTypes.Endpoint{
+					Address: aws.String("config.example.com"),
+					Port:    aws.Int32(6379),
+				},
+				NodeGroups: []elasticacheTypes.NodeGroup{
+					{PrimaryEndpoint: &elasticacheTypes.Endpoint{Address: aws.String("shard-1.example.com"), Port: aws.Int32(6379)}},
+					{PrimaryEndpoint: &elasticacheTypes.Endpoint{Address: aws.String("shard-2.example.com"), Port: aws.Int32(6379)}},
+				},
+			},
+			expectedAddress: "config.example.com",
+			expectedPort:    6379,
+		},
+		"cluster mode enabled with missing ConfigurationEndpoint errors": {
+			group: elasticacheTypes.ReplicationGroup{
+				ClusterEnabled: aws.Bool(true),
+			},
+			expectErr: true,
+		},
+		"cluster mode disabled with no node groups errors": {
+			group:     elasticacheTypes.ReplicationGroup{},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			endpoint, err := connectionEndpoint(test.group)
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected an error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if aws.ToString(endpoint.Address) != test.expectedAddress {
+				t.Errorf("expected address %q, got %q", test.expectedAddress, aws.ToString(endpoint.Address))
+			}
+			if aws.ToInt32(endpoint.Port) != test.expectedPort {
+				t.Errorf("expected port %d, got %d", test.expectedPort, aws.ToInt32(endpoint.Port))
 			}
 		})
 	}

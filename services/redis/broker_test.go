@@ -280,6 +280,7 @@ func TestModifyInstance(t *testing.T) {
 					},
 					State: base.InstanceInProgress,
 				},
+				NumNodeGroups: 1,
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -495,6 +496,7 @@ func TestModifyInstance(t *testing.T) {
 				},
 				Engine:        "redis",
 				EngineVersion: "7.0",
+				NumNodeGroups: 1,
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -584,6 +586,7 @@ func TestModifyInstance(t *testing.T) {
 				},
 				Engine:        "redis",
 				EngineVersion: "7.1",
+				NumNodeGroups: 1,
 			},
 			tagManager: &mocks.MockTagGenerator{},
 			settings: &config.Settings{
@@ -1036,6 +1039,58 @@ func TestValidateEngine(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			err := validateEngine(test.currentEngine, test.plan, test.options)
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
+func TestValidateShardCountChange(t *testing.T) {
+	testCases := map[string]struct {
+		existing  *RedisInstance
+		newPlan   catalog.RedisPlan
+		expectErr bool
+	}{
+		"new instance (no ClusterID yet) is never validated": {
+			existing: &RedisInstance{NumNodeGroups: 5},
+			newPlan:  catalog.RedisPlan{NumNodeGroups: 3},
+		},
+		"cluster-mode-disabled plan unchanged": {
+			existing: &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 1},
+			newPlan:  catalog.RedisPlan{},
+		},
+		"cluster-mode-enabled shard count increases": {
+			existing: &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 3},
+			newPlan:  catalog.RedisPlan{NumNodeGroups: 5},
+		},
+		"cluster-mode-enabled shard count decreases is rejected": {
+			existing:  &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 5},
+			newPlan:   catalog.RedisPlan{NumNodeGroups: 3},
+			expectErr: true,
+		},
+		"cluster mode disabled to enabled is rejected": {
+			existing:  &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 1},
+			newPlan:   catalog.RedisPlan{NumNodeGroups: 3},
+			expectErr: true,
+		},
+		"cluster mode enabled to disabled is rejected": {
+			existing:  &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 3},
+			newPlan:   catalog.RedisPlan{},
+			expectErr: true,
+		},
+		"NumNodeGroups of 0 on existing instance treated as cluster mode disabled": {
+			existing: &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 0},
+			newPlan:  catalog.RedisPlan{},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateShardCountChange(test.existing, test.newPlan)
 			if err != nil && !test.expectErr {
 				t.Fatalf("unexpected error: %s", err)
 			}

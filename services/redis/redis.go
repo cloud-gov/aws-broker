@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
+	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 
 	"fmt"
 )
@@ -212,31 +213,47 @@ func (d *dedicatedRedisAdapter) bindRedisToApp(i *RedisInstance, password string
 
 		numOfInstances := len(resp.ReplicationGroups)
 		if numOfInstances > 0 {
-			for _, value := range resp.ReplicationGroups {
-				// First check that the instance is up.
-				if value.Status != nil && *(value.Status) == "available" {
-					if value.NodeGroups[0].PrimaryEndpoint != nil && value.NodeGroups[0].PrimaryEndpoint.Address != nil && value.NodeGroups[0].PrimaryEndpoint.Port != nil {
-						port := *(value.NodeGroups[0].PrimaryEndpoint.Port)
-						d.logger.Debug(fmt.Sprintf("host: %s port: %d \n", *(value.NodeGroups[0].PrimaryEndpoint.Address), port))
+			// Only the first replication group is used; a ReplicationGroupId
+			// lookup always returns at most one.
+			value := resp.ReplicationGroups[0]
 
-						i.Port = int64(port)
-						i.Host = *(value.NodeGroups[0].PrimaryEndpoint.Address)
-						i.State = base.InstanceReady
-						// Should only be one regardless. Just return now.
-						break
-					} else {
-						// Something went horribly wrong. Should never get here.
-						return nil, errors.New("invalid memory for endpoint and/or endpoint members")
-					}
-				} else {
-					// Instance not up yet.
-					return nil, errors.New("instance not available yet. Please wait and try again")
-				}
+			// First check that the instance is up.
+			if value.Status == nil || *(value.Status) != "available" {
+				// Instance not up yet.
+				return nil, errors.New("instance not available yet. Please wait and try again")
 			}
+
+			endpoint, err := connectionEndpoint(value)
+			if err != nil {
+				return nil, err
+			}
+
+			d.logger.Debug(fmt.Sprintf("host: %s port: %d \n", *endpoint.Address, *endpoint.Port))
+
+			i.Port = int64(*endpoint.Port)
+			i.Host = *endpoint.Address
+			i.State = base.InstanceReady
 		}
 	}
 	// If we get here that means the instance is up and we have the information for it.
 	return i.getCredentials(password)
+}
+
+func connectionEndpoint(group elasticacheTypes.ReplicationGroup) (*elasticacheTypes.Endpoint, error) {
+	if aws.ToBool(group.ClusterEnabled) {
+		if group.ConfigurationEndpoint == nil || group.ConfigurationEndpoint.Address == nil || group.ConfigurationEndpoint.Port == nil {
+			return nil, errors.New("invalid memory for configuration endpoint")
+		}
+		return group.ConfigurationEndpoint, nil
+	}
+
+	if len(group.NodeGroups) == 0 ||
+		group.NodeGroups[0].PrimaryEndpoint == nil ||
+		group.NodeGroups[0].PrimaryEndpoint.Address == nil ||
+		group.NodeGroups[0].PrimaryEndpoint.Port == nil {
+		return nil, errors.New("invalid memory for endpoint and/or endpoint members")
+	}
+	return group.NodeGroups[0].PrimaryEndpoint, nil
 }
 
 func (d *dedicatedRedisAdapter) deleteRedis(i *RedisInstance) (base.InstanceState, error) {
@@ -272,11 +289,6 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 
 	securityGroups := []string{i.SecGroup}
 
-	numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
-	if err != nil {
-		return nil, err
-	}
-
 	snapshotRetentionLimit, err := common.ConvertIntToInt32Safely(i.SnapshotRetentionLimit)
 	if err != nil {
 		return nil, err
@@ -295,13 +307,32 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 		CacheSubnetGroupName:        aws.String(i.DbSubnetGroup),
 		SecurityGroupIds:            securityGroups,
 		Engine:                      aws.String(i.Engine),
-		NumCacheClusters:            numCacheClusters,
 		Port:                        aws.Int32(6379),
 		PreferredMaintenanceWindow:  aws.String(i.PreferredMaintenanceWindow),
 		SnapshotWindow:              aws.String(i.SnapshotWindow),
 		SnapshotRetentionLimit:      snapshotRetentionLimit,
 		Tags:                        redisTags,
 	}
+
+	if i.ClusterModeEnabled() {
+		numNodeGroups, err := common.ConvertIntToInt32Safely(i.NumNodeGroups)
+		if err != nil {
+			return nil, err
+		}
+		replicasPerNodeGroup, err := common.ConvertIntToInt32Safely(i.ReplicasPerNodeGroup)
+		if err != nil {
+			return nil, err
+		}
+		params.NumNodeGroups = numNodeGroups
+		params.ReplicasPerNodeGroup = replicasPerNodeGroup
+	} else {
+		numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
+		if err != nil {
+			return nil, err
+		}
+		params.NumCacheClusters = numCacheClusters
+	}
+
 	if i.EngineVersion != "" {
 		params.EngineVersion = aws.String(i.EngineVersion)
 	}

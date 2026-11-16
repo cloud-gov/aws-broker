@@ -48,6 +48,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				Engine:                     "redis",
 			},
 			tags: map[string]string{
@@ -76,6 +77,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				ClusterID:                  "prefix-uuid-1",
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
@@ -105,6 +107,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				EngineVersion:              "version-1",
 			},
 			tags: map[string]string{
@@ -133,6 +136,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				ClusterID:                  "prefix-uuid-1",
 				EngineVersion:              "version-1",
 				Tags: map[string]string{
@@ -162,6 +166,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				EngineVersion:              "version-1",
 			},
 			tags: map[string]string{
@@ -193,6 +198,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				ClusterID:                  "prefix-uuid-1",
 				EngineVersion:              "version-2",
 				Tags: map[string]string{
@@ -222,6 +228,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				EngineVersion:              "version-1",
 			},
 			tags: map[string]string{
@@ -253,6 +260,7 @@ func TestInstanceInit(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				ClusterID:                  "prefix-uuid-1",
 				Engine:                     "valkey",
 				EngineVersion:              "version-1",
@@ -335,6 +343,7 @@ func TestInstanceModify(t *testing.T) {
 				SnapshotWindow:             "3 AM",
 				SnapshotRetentionLimit:     14,
 				AutomaticFailoverEnabled:   true,
+				NumNodeGroups:              1,
 				Tags: map[string]string{
 					"plan-tag-1": "foo",
 				},
@@ -349,6 +358,7 @@ func TestInstanceModify(t *testing.T) {
 				EngineVersion: "version-2",
 			},
 			expectedInstance: &RedisInstance{
+				NumNodeGroups: 1,
 				EngineVersion: "version-2",
 			},
 			expectUpdates: true,
@@ -361,6 +371,7 @@ func TestInstanceModify(t *testing.T) {
 				EngineVersion: "version-2",
 			},
 			expectedInstance: &RedisInstance{
+				NumNodeGroups: 1,
 				EngineVersion: "version-1",
 			},
 		},
@@ -375,6 +386,7 @@ func TestInstanceModify(t *testing.T) {
 				EngineVersion: "version-3",
 			},
 			expectedInstance: &RedisInstance{
+				NumNodeGroups: 1,
 				EngineVersion: "version-3",
 			},
 			expectUpdates: true,
@@ -390,7 +402,8 @@ func TestInstanceModify(t *testing.T) {
 				Engine: "valkey",
 			},
 			expectedInstance: &RedisInstance{
-				Engine: "valkey",
+				NumNodeGroups: 1,
+				Engine:        "valkey",
 			},
 			expectUpdates: true,
 		},
@@ -405,6 +418,7 @@ func TestInstanceModify(t *testing.T) {
 				"foo2": "baz",
 			},
 			expectedInstance: &RedisInstance{
+				NumNodeGroups: 1,
 				Tags: map[string]string{
 					"foo":  "bar",
 					"foo2": "baz",
@@ -509,11 +523,13 @@ func TestSetInstanceParameters(t *testing.T) {
 			},
 			expectedInstance: &RedisInstance{
 				NumCacheClusters: 1,
+				NumNodeGroups:    1,
 			},
 		},
 		"update from 1 to 3 cache clusters": {
 			instance: &RedisInstance{
 				NumCacheClusters: 1,
+				NumNodeGroups:    1,
 			},
 			options: RedisOptions{},
 			plan: catalog.RedisPlan{
@@ -522,11 +538,13 @@ func TestSetInstanceParameters(t *testing.T) {
 			expectedInstance: &RedisInstance{
 				NumCacheClusters: 3,
 				NewReplicaCount:  2,
+				NumNodeGroups:    1,
 			},
 		},
 		"update from 1 to 5 cache clusters": {
 			instance: &RedisInstance{
 				NumCacheClusters: 1,
+				NumNodeGroups:    1,
 			},
 			options: RedisOptions{},
 			plan: catalog.RedisPlan{
@@ -535,6 +553,7 @@ func TestSetInstanceParameters(t *testing.T) {
 			expectedInstance: &RedisInstance{
 				NumCacheClusters: 5,
 				NewReplicaCount:  4,
+				NumNodeGroups:    1,
 			},
 		},
 		"update engine from options": {
@@ -548,7 +567,8 @@ func TestSetInstanceParameters(t *testing.T) {
 				Engine: "valkey",
 			},
 			expectedInstance: &RedisInstance{
-				Engine: "valkey",
+				Engine:        "valkey",
+				NumNodeGroups: 1,
 			},
 		},
 		"takes engine from plan for a new instance": {
@@ -561,6 +581,7 @@ func TestSetInstanceParameters(t *testing.T) {
 			expectedInstance: &RedisInstance{
 				Engine:        "valkey",
 				EngineVersion: "8.2",
+				NumNodeGroups: 1,
 			},
 		},
 		// A plan change must not silently migrate a pre-existing Redis
@@ -578,6 +599,55 @@ func TestSetInstanceParameters(t *testing.T) {
 			expectedInstance: &RedisInstance{
 				Engine:        "redis",
 				EngineVersion: "7.0",
+				NumNodeGroups: 1,
+			},
+		},
+		"new instance on a cluster-mode-enabled plan": {
+			instance: &RedisInstance{},
+			options:  RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumNodeGroups:            3,
+				ReplicasPerNodeGroup:     1,
+				AutomaticFailoverEnabled: false,
+			},
+			expectedInstance: &RedisInstance{
+				NumNodeGroups:            3,
+				ReplicasPerNodeGroup:     1,
+				AutomaticFailoverEnabled: true,
+			},
+		},
+		"existing cluster-mode-enabled instance scales up shard count": {
+			instance: &RedisInstance{
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 1,
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumNodeGroups:        5,
+				ReplicasPerNodeGroup: 1,
+			},
+			expectedInstance: &RedisInstance{
+				NumNodeGroups:            5,
+				NewNumNodeGroups:         5,
+				ReplicasPerNodeGroup:     1,
+				AutomaticFailoverEnabled: true,
+			},
+		},
+		"existing cluster-mode-enabled instance scales up replicas per shard": {
+			instance: &RedisInstance{
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 1,
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 2,
+			},
+			expectedInstance: &RedisInstance{
+				NumNodeGroups:            3,
+				ReplicasPerNodeGroup:     2,
+				NewReplicaCount:          2,
+				AutomaticFailoverEnabled: true,
 			},
 		},
 	}
