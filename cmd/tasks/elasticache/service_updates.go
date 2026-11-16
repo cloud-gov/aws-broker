@@ -107,12 +107,7 @@ func getBrokeredReplicationGroupIDs(db *gorm.DB) ([]string, error) {
 type outstandingUpdatesByName map[string][]string
 
 func isOutstandingUpdateActionStatus(status elasticacheTypes.UpdateActionStatus) bool {
-	for _, s := range outstandingUpdateActionStatuses {
-		if status == s {
-			return true
-		}
-	}
-	return false
+  return slices.Contains(outstandingUpdateActionStatuses, s)
 }
 
 // describeOutstandingServiceUpdates returns outstanding service updates for
