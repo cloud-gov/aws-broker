@@ -133,6 +133,27 @@ When you do that you will have all the credentials in the `VCAP_SERVICES` enviro
 
 Also, you will have a `DATABASE_URL` environment variable that will be the connection string to the DB.
 
+### Fetching instance parameters
+
+All three services (RDS, Redis, Elasticsearch/OpenSearch) implement the OSB
+[fetch a service instance](https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#fetching-a-service-instance)
+endpoint, so `cf service SERVICE_NAME --params` returns the instance's current
+engine and version instead of erroring, e.g.:
+
+```shell
+cf service MYDB --params
+```
+
+returns parameters such as `current_db_type` / `current_version` (RDS),
+`current_engine` / `current_version` (Redis/Elasticsearch, as applicable to
+each service's instance record). If the instance does not exist, or the
+`service_id` passed by the platform does not match a service this broker
+supports, the broker returns the OSB `404 Not Found` /
+`ErrInstanceNotFound` response. Per spec, `service_id` on this request is
+optional; if the platform omits it, the broker looks up the instance's
+service ID from its own database before dispatching to the right service's
+`GetInstance`.
+
 ## Credential handling
 
 This section is primarily for auditors who need to understand how the broker, and related components, handle credentials so that they aren't stored or transmitted in the clear. All calls between entities are made over HTTPS, unless otherwise specified.
