@@ -196,6 +196,7 @@ jobs:
             aws-elasticache-redis:redis-5node
             aws-elasticache-redis:redis-3node-large
             aws-elasticache-redis:redis-5node-large
+            aws-elasticache-redis:redis-cluster-3shard
             aws-elasticsearch:es-dev
             aws-elasticsearch:es-medium
             aws-elasticsearch:es-medium-ha
@@ -330,6 +331,19 @@ jobs:
                 SERVICE_PLAN: redis-dev
                 OLD_VERSION: "8.2"
                 NEW_VERSION: "9.1"
+            - task: smoke-tests-redis-cluster-3shard
+              file: aws-broker-app/ci/run-smoke-test-task.yml
+              image: general-task
+              params:
+                BROKER_NAME: ((development-broker-name))
+                CF_API_URL: ((development-cf-api-url))
+                CF_USERNAME: ((development-cf-deploy-username))
+                CF_PASSWORD: ((development-cf-deploy-password))
+                CF_ORGANIZATION: ((development-tests-cf-organization))
+                CF_SPACE: ((development-tests-cf-space))
+                SERVICE_NAME: aws-elasticache-redis
+                SERVICE_PLAN: redis-cluster-3shard
+                REGION: ((development-aws-default-region))
     on_failure:
       put: slack
       params:
