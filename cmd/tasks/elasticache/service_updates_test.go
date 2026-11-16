@@ -341,14 +341,13 @@ func TestDescribeOutstandingServiceUpdates(t *testing.T) {
 				}
 			}
 
-			if name == "more than 20 replication groups is chunked across multiple calls" {
-				if len(test.mockClient.describeUpdateActionsCalls) != 3 {
-					t.Fatalf("expected 45 ids to be chunked into 3 DescribeUpdateActions calls (20/20/5), got %d", len(test.mockClient.describeUpdateActionsCalls))
-				}
-				for i, call := range test.mockClient.describeUpdateActionsCalls {
-					if len(call.ReplicationGroupIds) > maxReplicationGroupIDsPerRequest {
-						t.Fatalf("call %d had %d replication group ids, exceeding the AWS limit of %d", i, len(call.ReplicationGroupIds), maxReplicationGroupIDsPerRequest)
-					}
+			wantCalls := (len(test.groupIDs) + maxReplicationGroupIDsPerRequest - 1) / maxReplicationGroupIDsPerRequest
+			if len(test.mockClient.describeUpdateActionsCalls) != wantCalls {
+				t.Fatalf("expected %d ids to be chunked into %d DescribeUpdateActions calls, got %d", len(test.groupIDs), wantCalls, len(test.mockClient.describeUpdateActionsCalls))
+			}
+			for i, call := range test.mockClient.describeUpdateActionsCalls {
+				if len(call.ReplicationGroupIds) > maxReplicationGroupIDsPerRequest {
+					t.Fatalf("call %d had %d replication group ids, exceeding the AWS limit of %d", i, len(call.ReplicationGroupIds), maxReplicationGroupIDsPerRequest)
 				}
 			}
 
