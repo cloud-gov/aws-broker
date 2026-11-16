@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -107,7 +108,7 @@ func getBrokeredReplicationGroupIDs(db *gorm.DB) ([]string, error) {
 type outstandingUpdatesByName map[string][]string
 
 func isOutstandingUpdateActionStatus(status elasticacheTypes.UpdateActionStatus) bool {
-  return slices.Contains(outstandingUpdateActionStatuses, s)
+	return slices.Contains(outstandingUpdateActionStatuses, status)
 }
 
 // describeOutstandingServiceUpdates returns outstanding service updates for
