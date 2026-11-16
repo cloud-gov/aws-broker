@@ -4,29 +4,48 @@ import argparse
 import os
 from cfenv import AppEnv
 import redis
+from redis.cluster import RedisCluster
+from redis.exceptions import RedisClusterException
 
 
 def redis_client(service_name):
     """
     Connecting to a Redis service
+
+    Plans on a cluster-mode-enabled replication group (e.g.
+    redis-cluster-3shard) bind to the AWS ConfigurationEndpoint, which
+    requires a cluster-aware client: a plain redis.Redis() client does not
+    understand MOVED/slot redirection and will silently touch only one
+    shard, or fail outright. RedisCluster's constructor issues CLUSTER
+    SLOTS during init and raises RedisClusterException if the target does
+    not actually have cluster mode enabled, so we try cluster mode first
+    and fall back to a standard single-node client for every other
+    (cluster-mode-disabled) plan.
     """
     config = dict(host=service_name, port=6379, password="", ssl_cert_reqs=None)
 
     if service_name is None:
         return None
 
+    if "VCAP_SERVICES" in os.environ:
+        env = AppEnv()
+        service = env.get_service(name=service_name)
+        credentials = service.credentials
+
+        config["host"] = credentials["host"]
+        config["ssl"] = True
+        config["port"] = int(credentials["port"])
+        config["password"] = credentials["password"]
+
     try:
-        if "VCAP_SERVICES" in os.environ:
-            env = AppEnv()
-            service = env.get_service(name=service_name)
-            credentials = service.credentials
-
-            config["host"] = credentials["host"]
-            config["ssl"] = True
-            config["port"] = int(credentials["port"])
-            config["password"] = credentials["password"]
-
-        client = redis.Redis(**config)
+        client = RedisCluster(**config)
+    except RedisClusterException:
+        # Cluster mode disabled on the server: fall back to the standard
+        # single-node/single-shard client used by every non-cluster plan.
+        try:
+            client = redis.Redis(**config)
+        except redis.ConnectionError:
+            client = None
     except redis.ConnectionError:
         client = None
 
@@ -132,7 +151,7 @@ parser.add_argument(
 
 # we dont need this but have to accept it
 parser.add_argument(
-    "-r", 
+    "-r",
     "--region_name",
     dest="region_name",
     type=str,
