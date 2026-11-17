@@ -99,10 +99,14 @@ class RedisSmokeTester:
         """
         Method to get loaded data from load_data method
         """
-        keys_str = self.client.keys("key-str*")
-        keys_num = self.client.keys("key-num*")
-        keys_str_ttl = self.client.keys("key-ttl-str*")
-        keys_num_ttl = self.client.keys("key-ttl-num*")
+        keys_kwargs = {}
+        if isinstance(self.client, RedisCluster):
+            keys_kwargs["target_nodes"] = RedisCluster.ALL_NODES
+
+        keys_str = self.client.keys("key-str*", **keys_kwargs)
+        keys_num = self.client.keys("key-num*", **keys_kwargs)
+        keys_str_ttl = self.client.keys("key-ttl-str*", **keys_kwargs)
+        keys_num_ttl = self.client.keys("key-ttl-num*", **keys_kwargs)
 
         return {
             "counts": {
