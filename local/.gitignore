@@ -1,0 +1,12 @@
+# Local dev harness — ignore generated output + un-ignore the seed SQL.
+#
+# A global ~/.gitignore *.sql rule (guards go:embed) would otherwise hide the
+# init seed scripts, and assessment/hardening output must never be committed
+# (it is development signal only, and can contain live DB output).
+
+# Generated assessment/hardening output — never commit (dev signal only).
+reports/
+
+# Force-track the seed SQL despite the global *.sql ignore.
+!init/
+!init/*.sql
