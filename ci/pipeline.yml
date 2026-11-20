@@ -207,19 +207,6 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
-
-      - task: update-broker-search
-        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
-        params:
-          CF_API_URL: ((development-cf-api-url))
-          CF_USERNAME: ((development-cf-deploy-username))
-          CF_PASSWORD: ((development-cf-deploy-password))
-          CF_ORGANIZATION: ((development-cf-organization))
-          CF_SPACE: ((development-cf-space))
-          BROKER_NAME: ((development-broker-name))
-          AUTH_USER: ((development-auth-user))
-          AUTH_PASS: ((development-auth-pass))
-          SERVICES: >-
             aws-elasticsearch:search-medium
             aws-elasticsearch:search-medium-ha
             aws-elasticsearch:search-large
@@ -228,7 +215,6 @@ jobs:
             aws-elasticsearch:search-xlarge-ha
             aws-elasticsearch:search-2xlarge-gp
             aws-elasticsearch:search-2xlarge-gp-ha
-          SERVICE_ORGANIZATION: ((search-plan-cf-orgs-development))
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -1070,19 +1056,6 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
-
-      - task: update-broker-search
-        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
-        params:
-          CF_API_URL: ((staging-cf-api-url))
-          CF_USERNAME: ((staging-cf-deploy-username))
-          CF_PASSWORD: ((staging-cf-deploy-password))
-          CF_ORGANIZATION: ((staging-cf-organization))
-          CF_SPACE: ((staging-cf-space))
-          BROKER_NAME: ((staging-broker-name))
-          AUTH_USER: ((staging-auth-user))
-          AUTH_PASS: ((staging-auth-pass))
-          SERVICES: >-
             aws-elasticsearch:search-medium
             aws-elasticsearch:search-medium-ha
             aws-elasticsearch:search-large
@@ -1091,7 +1064,6 @@ jobs:
             aws-elasticsearch:search-xlarge-ha
             aws-elasticsearch:search-2xlarge-gp
             aws-elasticsearch:search-2xlarge-gp-ha
-          SERVICE_ORGANIZATION: ((search-plan-cf-orgs-staging))
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
@@ -1905,19 +1877,6 @@ jobs:
             aws-elasticsearch:es-2xlarge-gp-ha
             aws-elasticsearch:es-4xlarge-gp
             aws-elasticsearch:es-4xlarge-gp-ha
-
-      - task: update-broker-search
-        file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
-        params:
-          CF_API_URL: ((prod-cf-api-url))
-          CF_USERNAME: ((prod-cf-deploy-username))
-          CF_PASSWORD: ((prod-cf-deploy-password))
-          CF_ORGANIZATION: ((prod-cf-organization))
-          CF_SPACE: ((prod-cf-space))
-          BROKER_NAME: ((prod-broker-name))
-          AUTH_USER: ((prod-auth-user))
-          AUTH_PASS: ((prod-auth-pass))
-          SERVICES: >-
             aws-elasticsearch:search-medium
             aws-elasticsearch:search-medium-ha
             aws-elasticsearch:search-large
@@ -1926,7 +1885,6 @@ jobs:
             aws-elasticsearch:search-xlarge-ha
             aws-elasticsearch:search-2xlarge-gp
             aws-elasticsearch:search-2xlarge-gp-ha
-          SERVICE_ORGANIZATION: ((search-plan-cf-orgs-production))
 
       - task: update-broker-enterprise
         file: pipeline-tasks/register-service-broker-and-set-plan-visibility.yml
