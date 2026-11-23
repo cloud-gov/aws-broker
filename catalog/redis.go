@@ -68,14 +68,30 @@ func (p RedisPlan) ClusterModeEnabled() bool {
 	return p.NumNodeGroups > 1
 }
 
+// maxReplicasPerNodeGroup is AWS's hard limit on read replicas per shard: 5.
+const maxReplicasPerNodeGroup = 5
+
+// maxNodesPerReplicationGroup is AWS's hard ceiling on total nodes (shards *
+// (1 + replicas)) per replication group: 500.
+const maxNodesPerReplicationGroup = 500
+
 func (s RedisService) ValidatePlans() error {
 	for _, plan := range s.RedisPlans {
 		if plan.ClusterModeEnabled() {
 			if plan.ReplicasPerNodeGroup <= 0 {
 				return fmt.Errorf("redis plan %q: replicasPerNodeGroup is required when numberNodeGroups > 1", plan.Name)
 			}
+			if plan.ReplicasPerNodeGroup > maxReplicasPerNodeGroup {
+				return fmt.Errorf("redis plan %q: replicasPerNodeGroup (%d) exceeds the AWS maximum of %d", plan.Name, plan.ReplicasPerNodeGroup, maxReplicasPerNodeGroup)
+			}
 			if !plan.AutomaticFailoverEnabled {
 				return fmt.Errorf("redis plan %q: automaticFailoverEnabled must be true when numberNodeGroups > 1 (required by AWS for cluster mode enabled)", plan.Name)
+			}
+			if totalNodes := plan.NumNodeGroups * (1 + plan.ReplicasPerNodeGroup); totalNodes > maxNodesPerReplicationGroup {
+				return fmt.Errorf(
+					"redis plan %q: numberNodeGroups (%d) * (1 + replicasPerNodeGroup (%d)) = %d nodes, which exceeds the AWS maximum of %d nodes per replication group",
+					plan.Name, plan.NumNodeGroups, plan.ReplicasPerNodeGroup, totalNodes, maxNodesPerReplicationGroup,
+				)
 			}
 		} else if plan.NumCacheClusters <= 0 {
 			return fmt.Errorf("redis plan %q: numberCluster is required when numberNodeGroups is 0 or 1 (cluster mode disabled)", plan.Name)

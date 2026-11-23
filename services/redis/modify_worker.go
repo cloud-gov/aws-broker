@@ -23,6 +23,7 @@ var (
 	ErrIncreasingReplicaCount    = errors.New("increasing replica count")
 	ErrModifyingReplicationGroup = errors.New("modifying replication group")
 	ErrIncreasingShardCount      = errors.New("increasing shard count")
+	ErrMigratingToClusterMode    = errors.New("migrating to cluster mode")
 )
 
 const (
@@ -85,17 +86,27 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance, o
 		return common.FmtErr(ErrPreparingModifyInput, err)
 	}
 
-	if i.NewNumNodeGroups > 0 {
-		err = w.increaseShardCount(ctx, i, operation)
-		if err != nil {
-			return common.FmtErr(ErrIncreasingShardCount, err)
+	if i.MigratingToClusterMode {
+		if err := w.migrateToClusterMode(ctx, i, operation); err != nil {
+			return common.FmtErr(ErrMigratingToClusterMode, err)
 		}
-	}
+	} else {
+		if i.NewNumNodeGroups > 0 {
+			err = w.increaseShardCount(ctx, i, operation)
+			if err != nil {
+				return common.FmtErr(ErrIncreasingShardCount, err)
+			}
+		}
 
-	if i.NewReplicaCount > 0 {
-		err = w.increaseReplicaCount(ctx, i, operation)
-		if err != nil {
-			return common.FmtErr(ErrIncreasingReplicaCount, err)
+		if i.NewReplicaCount > 0 {
+			if i.ClusterModeEnabled() {
+				err = w.reconcileReplicaCountPerShard(ctx, i, operation)
+			} else {
+				err = w.increaseReplicaCount(ctx, i, operation)
+			}
+			if err != nil {
+				return common.FmtErr(ErrIncreasingReplicaCount, err)
+			}
 		}
 	}
 
@@ -124,6 +135,86 @@ func (w *ModifyWorker) asyncModifyRedis(ctx context.Context, i *RedisInstance, o
 
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceReady, "Finished modifying cluster")
 	return nil
+}
+
+func (w *ModifyWorker) migrateToClusterMode(ctx context.Context, i *RedisInstance, operation base.Operation) error {
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Migrating to cluster mode: entering compatible mode")
+
+	clusterParameterGroupName := clusterCacheParameterGroupName(i.Engine, i.EngineVersion)
+	if err := w.setClusterMode(ctx, i, elasticacheTypes.ClusterModeCompatible, &clusterParameterGroupName); err != nil {
+		return err
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Migrating to cluster mode: resharding")
+
+	if err := w.increaseShardCount(ctx, i, operation); err != nil {
+		return err
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Migrating to cluster mode: normalizing replica count per shard")
+
+	if err := w.reconcileReplicaCountPerShard(ctx, i, operation); err != nil {
+		return err
+	}
+
+	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Migrating to cluster mode: finalizing")
+
+	return w.setClusterMode(ctx, i, elasticacheTypes.ClusterModeEnabled, nil)
+}
+
+func (w *ModifyWorker) setClusterMode(ctx context.Context, i *RedisInstance, mode elasticacheTypes.ClusterMode, cacheParameterGroupName *string) error {
+	currentMode, err := w.currentClusterMode(ctx, i)
+	if err != nil {
+		return err
+	}
+	if currentMode == mode {
+		return w.waitForReplicationGroupAvailable(ctx, i)
+	}
+
+	input := &elasticache.ModifyReplicationGroupInput{
+		ReplicationGroupId: &i.ClusterID,
+		ClusterMode:        mode,
+		ApplyImmediately:   aws.Bool(true),
+	}
+	if cacheParameterGroupName != nil {
+		input.CacheParameterGroupName = cacheParameterGroupName
+	}
+
+	_, err = w.elasticache.ModifyReplicationGroup(ctx, input)
+	if err != nil {
+		w.logger.Error("error setting cluster mode", "mode", mode, "err", err)
+		return err
+	}
+
+	return w.waitForReplicationGroupAvailable(ctx, i)
+}
+
+// currentClusterMode returns the replication group's current ClusterMode.
+func (w *ModifyWorker) currentClusterMode(ctx context.Context, i *RedisInstance) (elasticacheTypes.ClusterMode, error) {
+	output, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	})
+	if err != nil {
+		return "", err
+	}
+	if output == nil || len(output.ReplicationGroups) == 0 {
+		return "", fmt.Errorf("DescribeReplicationGroups returned no replication groups for %s", i.ClusterID)
+	}
+	return output.ReplicationGroups[0].ClusterMode, nil
+}
+
+// currentShardCount returns the replication group's current shard count.
+func (w *ModifyWorker) currentShardCount(ctx context.Context, i *RedisInstance) (int, error) {
+	output, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if output == nil || len(output.ReplicationGroups) == 0 {
+		return 0, fmt.Errorf("DescribeReplicationGroups returned no replication groups for %s", i.ClusterID)
+	}
+	return len(output.ReplicationGroups[0].NodeGroups), nil
 }
 
 func verifyModifiedEngineAndVersion(ctx context.Context, client ElasticacheClientInterface, i *RedisInstance) error {
@@ -158,23 +249,7 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	input := &elasticache.IncreaseReplicaCountInput{
 		ReplicationGroupId: &i.ClusterID,
 		ApplyImmediately:   aws.Bool(true),
-	}
-
-	if i.ClusterModeEnabled() {
-		nodeGroupIDs, err := w.nodeGroupIDs(ctx, i)
-		if err != nil {
-			return err
-		}
-		replicaConfiguration := make([]elasticacheTypes.ConfigureShard, 0, len(nodeGroupIDs))
-		for _, nodeGroupID := range nodeGroupIDs {
-			replicaConfiguration = append(replicaConfiguration, elasticacheTypes.ConfigureShard{
-				NodeGroupId:     aws.String(nodeGroupID),
-				NewReplicaCount: newReplicaCount,
-			})
-		}
-		input.ReplicaConfiguration = replicaConfiguration
-	} else {
-		input.NewReplicaCount = newReplicaCount
+		NewReplicaCount:    newReplicaCount,
 	}
 
 	_, err = w.elasticache.IncreaseReplicaCount(ctx, input)
@@ -205,25 +280,104 @@ func (w *ModifyWorker) increaseReplicaCount(ctx context.Context, i *RedisInstanc
 	return nil
 }
 
-func (w *ModifyWorker) nodeGroupIDs(ctx context.Context, i *RedisInstance) ([]string, error) {
+func (w *ModifyWorker) reconcileReplicaCountPerShard(ctx context.Context, i *RedisInstance, operation base.Operation) error {
+	targetReplicaCountPtr, err := common.ConvertIntToInt32Safely(i.NewReplicaCount)
+	if err != nil {
+		return err
+	}
+	targetReplicaCount := *targetReplicaCountPtr
+
 	output, err := w.elasticache.DescribeReplicationGroups(ctx, &elasticache.DescribeReplicationGroupsInput{
 		ReplicationGroupId: &i.ClusterID,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	nodeGroups, err := allNodeGroups(output)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	ids := make([]string, 0, len(nodeGroups))
+
+	var increaseConfig, decreaseConfig []elasticacheTypes.ConfigureShard
 	for _, nodeGroup := range nodeGroups {
-		ids = append(ids, aws.ToString(nodeGroup.NodeGroupId))
+		var currentReplicas int32
+		for _, member := range nodeGroup.NodeGroupMembers {
+			if aws.ToString(member.CurrentRole) == "replica" {
+				currentReplicas++
+			}
+		}
+
+		shardConfig := elasticacheTypes.ConfigureShard{
+			NodeGroupId:     nodeGroup.NodeGroupId,
+			NewReplicaCount: aws.Int32(targetReplicaCount),
+		}
+
+		switch {
+		case currentReplicas < targetReplicaCount:
+			increaseConfig = append(increaseConfig, shardConfig)
+		case currentReplicas > targetReplicaCount:
+			decreaseConfig = append(decreaseConfig, shardConfig)
+		}
 	}
-	return ids, nil
+
+	if len(increaseConfig) > 0 {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding replica nodes to shards below the target replica count")
+
+		_, err := w.elasticache.IncreaseReplicaCount(ctx, &elasticache.IncreaseReplicaCountInput{
+			ReplicationGroupId:   &i.ClusterID,
+			ApplyImmediately:     aws.Bool(true),
+			ReplicaConfiguration: increaseConfig,
+		})
+		if err != nil {
+			w.logger.Error("error increasing replica count per shard", "err", err)
+			return err
+		}
+		if err := w.waitForReplicationGroupAvailable(ctx, i); err != nil {
+			return err
+		}
+	}
+
+	if len(decreaseConfig) > 0 {
+		asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Removing replica nodes from shards above the target replica count")
+
+		_, err := w.elasticache.DecreaseReplicaCount(ctx, &elasticache.DecreaseReplicaCountInput{
+			ReplicationGroupId:   &i.ClusterID,
+			ApplyImmediately:     aws.Bool(true),
+			ReplicaConfiguration: decreaseConfig,
+		})
+		if err != nil {
+			w.logger.Error("error decreasing replica count per shard", "err", err)
+			return err
+		}
+		if err := w.waitForReplicationGroupAvailable(ctx, i); err != nil {
+			return err
+		}
+	}
+
+	return w.verifyIncreasedReplicaCount(ctx, i)
+}
+
+// waitForReplicationGroupAvailable blocks until the replication group
+// reports "available".
+func (w *ModifyWorker) waitForReplicationGroupAvailable(ctx context.Context, i *RedisInstance) error {
+	waiter := elasticache.NewReplicationGroupAvailableWaiter(w.elasticache, func(o *elasticache.ReplicationGroupAvailableWaiterOptions) {
+		o.MinDelay = w.settings.PollAwsMinDelay
+	})
+	return waiter.Wait(ctx, &elasticache.DescribeReplicationGroupsInput{
+		ReplicationGroupId: &i.ClusterID,
+	}, w.settings.PollAwsMaxDuration)
 }
 
 func (w *ModifyWorker) increaseShardCount(ctx context.Context, i *RedisInstance, operation base.Operation) error {
+	currentCount, err := w.currentShardCount(ctx, i)
+	if err != nil {
+		return err
+	}
+	// Skip if a prior retry already resharded.
+	if currentCount == i.NewNumNodeGroups {
+		return nil
+	}
+
 	asyncmessage.WriteAsyncJobMessageAndLogError(w.db, w.logger, i.ServiceID, i.Uuid, operation, base.InstanceInProgress, "Adding new shards")
 
 	nodeGroupCount, err := common.ConvertIntToInt32Safely(i.NewNumNodeGroups)

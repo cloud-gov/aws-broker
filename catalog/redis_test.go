@@ -69,6 +69,106 @@ func TestRedisServiceToBrokerAPIService(t *testing.T) {
 	}
 }
 
+func TestRedisServiceValidatePlans(t *testing.T) {
+	basePlan := func() RedisPlan {
+		return RedisPlan{
+			ServicePlan:              domain.ServicePlan{Name: "plan1"},
+			NumNodeGroups:            3,
+			ReplicasPerNodeGroup:     1,
+			AutomaticFailoverEnabled: true,
+		}
+	}
+
+	testCases := map[string]struct {
+		plan      RedisPlan
+		expectErr bool
+	}{
+		"valid cluster-mode-enabled plan": {
+			plan: basePlan(),
+		},
+		"cluster-mode-disabled plan requires numberCluster": {
+			plan:      RedisPlan{ServicePlan: domain.ServicePlan{Name: "plan1"}, NumCacheClusters: 3},
+			expectErr: false,
+		},
+		"cluster-mode-disabled plan missing numberCluster": {
+			plan:      RedisPlan{ServicePlan: domain.ServicePlan{Name: "plan1"}},
+			expectErr: true,
+		},
+		"missing replicasPerNodeGroup": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.ReplicasPerNodeGroup = 0
+				return p
+			}(),
+			expectErr: true,
+		},
+		"replicasPerNodeGroup exceeds AWS maximum": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.ReplicasPerNodeGroup = 6
+				return p
+			}(),
+			expectErr: true,
+		},
+		"replicasPerNodeGroup at AWS maximum is allowed": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.NumNodeGroups = 83
+				p.ReplicasPerNodeGroup = 5
+				return p
+			}(),
+		},
+		"missing automaticFailoverEnabled": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.AutomaticFailoverEnabled = false
+				return p
+			}(),
+			expectErr: true,
+		},
+		"total node count exceeds AWS maximum": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.NumNodeGroups = 90
+				p.ReplicasPerNodeGroup = 5
+				return p
+			}(),
+			expectErr: true,
+		},
+		"total node count at AWS maximum is allowed": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.NumNodeGroups = 100
+				p.ReplicasPerNodeGroup = 4
+				return p
+			}(),
+		},
+		"total node count one over AWS maximum is rejected": {
+			plan: func() RedisPlan {
+				p := basePlan()
+				p.NumNodeGroups = 100
+				p.ReplicasPerNodeGroup = 4
+				p.NumNodeGroups = 101
+				return p
+			}(),
+			expectErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			service := RedisService{RedisPlans: []RedisPlan{test.plan}}
+			err := service.ValidatePlans()
+			if err != nil && !test.expectErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err == nil && test.expectErr {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
 func TestRedisCheckVersion(t *testing.T) {
 	wd := checkedGetwd(t)
 	path := filepath.Join(wd, "..")

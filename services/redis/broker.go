@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"code.cloudfoundry.org/brokerapi/v13/domain"
@@ -432,6 +433,9 @@ func (broker *redisBroker) GetInstance(id string, details domain.FetchInstanceDe
 		Parameters: map[string]string{
 			"current_engine":               existingInstance.Engine,
 			"current_redis_engine_version": existingInstance.EngineVersion,
+			"cluster_mode_enabled":         strconv.FormatBool(existingInstance.ClusterModeEnabled()),
+			"shard_count":                  strconv.Itoa(existingInstance.NumNodeGroups),
+			"replicas_per_shard":           strconv.Itoa(existingInstance.ReplicasPerNodeGroup),
 		},
 	}, nil
 }
@@ -494,33 +498,44 @@ func validateEngineAndVersion(i *RedisInstance, plan catalog.RedisPlan, options 
 	return nil
 }
 
+// validateShardCountChange enforces the shard/cluster-mode transitions AWS
+// supports for an online ModifyReplicationGroup:
 func validateShardCountChange(existing *RedisInstance, newPlan catalog.RedisPlan) error {
-	currentNumNodeGroups := existing.NumNodeGroups
-	if currentNumNodeGroups <= 0 {
-		currentNumNodeGroups = 1
-	}
-	newNumNodeGroups := newPlan.NumNodeGroups
-	if newNumNodeGroups <= 0 {
-		newNumNodeGroups = 1
-	}
-
 	if existing.ClusterID == "" {
 		return nil
 	}
 
-	if newNumNodeGroups < currentNumNodeGroups {
+	existingClusterModeEnabled := existing.ClusterModeEnabled()
+	newClusterModeEnabled := newPlan.ClusterModeEnabled()
+
+	if existingClusterModeEnabled && !newClusterModeEnabled {
 		return fmt.Errorf(
-			"cannot change plan: reducing the number of shards (from %d to %d) is not supported, as it may result in data loss; to scale down, provision a new instance and migrate data",
-			currentNumNodeGroups, newNumNodeGroups,
+			"cannot change plan: switching from cluster mode enabled to cluster mode disabled is not supported; to migrate, provision a new instance and migrate data",
 		)
 	}
 
-	existingClusterModeEnabled := currentNumNodeGroups > 1
-	newClusterModeEnabled := newNumNodeGroups > 1
-	if existingClusterModeEnabled != newClusterModeEnabled {
-		return fmt.Errorf(
-			"cannot change plan: switching between cluster mode enabled and cluster mode disabled is not supported; to migrate, provision a new instance and migrate data",
-		)
+	if existingClusterModeEnabled && newClusterModeEnabled {
+		if newPlan.NumNodeGroups < existing.NumNodeGroups {
+			return fmt.Errorf(
+				"cannot change plan: reducing the number of shards (from %d to %d) is not supported, as it may result in data loss; to scale down, provision a new instance and migrate data",
+				existing.NumNodeGroups, newPlan.NumNodeGroups,
+			)
+		}
+		return nil
+	}
+
+	if !existingClusterModeEnabled && newClusterModeEnabled {
+		existingNodeCount := existing.NumCacheClusters
+		if existingNodeCount <= 0 {
+			existingNodeCount = 1
+		}
+		if newPlan.NumNodeGroups < existingNodeCount {
+			return fmt.Errorf(
+				"cannot change plan: migrating to cluster mode requires a plan with at least as many shards (%d requested) as the current plan's node count (%d); choose a cluster-mode-enabled plan with %d or more shards",
+				newPlan.NumNodeGroups, existingNodeCount, existingNodeCount,
+			)
+		}
+		return nil
 	}
 
 	return nil

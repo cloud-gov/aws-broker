@@ -38,6 +38,7 @@ type RedisInstance struct {
 	NumNodeGroups              int    `sql:"size(255)"`
 	ReplicasPerNodeGroup       int    `sql:"size(255)"`
 	NewNumNodeGroups           int    `gorm:"-"`
+	MigratingToClusterMode     bool   `gorm:"-"`
 
 	Tags          map[string]string `gorm:"-"`
 	DbSubnetGroup string            `gorm:"-"`
@@ -100,6 +101,7 @@ func (i *RedisInstance) getCredentials(password string) (map[string]string, erro
 		"hostname":                     i.Host,
 		"current_redis_engine_version": i.EngineVersion,
 		"port":                         strconv.FormatInt(i.Port, 10),
+		"cluster_mode_enabled":         strconv.FormatBool(i.ClusterModeEnabled()),
 	}
 	return credentials, nil
 }
@@ -182,23 +184,33 @@ func setInstanceParameters(i *RedisInstance, options RedisOptions, plan catalog.
 		i.NumCacheClusters = plan.NumCacheClusters
 	}
 
+	// Capture pre-modify cluster-mode state before NumNodeGroups is mutated
+	// below, so a disabled -> enabled change is recognized as a migration.
+	wasClusterModeEnabled := i.NumNodeGroups > 1
+	isExistingInstance := i.ClusterID != ""
+
 	planNumNodeGroups := plan.NumNodeGroups
 	if planNumNodeGroups <= 0 {
 		planNumNodeGroups = 1
 	}
 
 	if planNumNodeGroups > i.NumNodeGroups {
-		if i.NumNodeGroups > 0 {
+		if isExistingInstance {
 			i.NewNumNodeGroups = planNumNodeGroups
 		}
 		i.NumNodeGroups = planNumNodeGroups
 	}
 
-	if plan.ClusterModeEnabled() && plan.ReplicasPerNodeGroup > i.ReplicasPerNodeGroup {
+	if plan.ClusterModeEnabled() && plan.ReplicasPerNodeGroup != i.ReplicasPerNodeGroup {
 		if i.ReplicasPerNodeGroup > 0 {
 			i.NewReplicaCount = plan.ReplicasPerNodeGroup
 		}
 		i.ReplicasPerNodeGroup = plan.ReplicasPerNodeGroup
+	}
+
+	if isExistingInstance && !wasClusterModeEnabled && plan.ClusterModeEnabled() {
+		i.MigratingToClusterMode = true
+		i.NewReplicaCount = plan.ReplicasPerNodeGroup
 	}
 
 	i.CacheNodeType = plan.CacheNodeType

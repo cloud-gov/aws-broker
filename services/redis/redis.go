@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 
 	"gorm.io/gorm"
 
@@ -18,8 +20,6 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	elasticacheTypes "github.com/aws/aws-sdk-go-v2/service/elasticache/types"
-
-	"fmt"
 )
 
 type redisAdapter interface {
@@ -325,6 +325,10 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 		}
 		params.NumNodeGroups = numNodeGroups
 		params.ReplicasPerNodeGroup = replicasPerNodeGroup
+		// AWS does not pick a cluster-enabled parameter group on its own --
+		// CreateReplicationGroup otherwise defaults to the cluster-disabled
+		// family for the engine, which is incompatible with NumNodeGroups > 1.
+		params.CacheParameterGroupName = aws.String(clusterCacheParameterGroupName(i.Engine, i.EngineVersion))
 	} else {
 		numCacheClusters, err := common.ConvertIntToInt32Safely(i.NumCacheClusters)
 		if err != nil {
@@ -337,4 +341,19 @@ func prepareCreateReplicationGroupInput(i *RedisInstance) (*elasticache.CreateRe
 		params.EngineVersion = aws.String(i.EngineVersion)
 	}
 	return params, nil
+}
+
+// clusterCacheParameterGroupName returns the AWS-managed default parameter
+// group for a cluster-mode-enabled replication group running the given
+// engine and version
+func clusterCacheParameterGroupName(engine, engineVersion string) string {
+	return fmt.Sprintf("default.%s%s.cluster.on", engine, majorVersion(engineVersion))
+}
+
+// majorVersion returns the portion of a version string before the first dot
+func majorVersion(version string) string {
+	if idx := strings.Index(version, "."); idx != -1 {
+		return version[:idx]
+	}
+	return version
 }

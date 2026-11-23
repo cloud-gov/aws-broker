@@ -59,6 +59,7 @@ func NewTestDedicatedRedisAdapter(
 type mockRedisClient struct {
 	modifyReplicationGroupErr            error
 	increaseReplicaCountErr              error
+	decreaseReplicaCountErr              error
 	modifyReplicationGroupShardConfigErr error
 	describeReplicationGroupsErrs        []error
 	describeReplicationGroupsCallNum     int
@@ -116,6 +117,10 @@ func (m *mockRedisClient) DescribeSnapshots(ctx context.Context, params *elastic
 
 func (m *mockRedisClient) IncreaseReplicaCount(ctx context.Context, params *elasticache.IncreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.IncreaseReplicaCountOutput, error) {
 	return nil, m.increaseReplicaCountErr
+}
+
+func (m *mockRedisClient) DecreaseReplicaCount(ctx context.Context, params *elasticache.DecreaseReplicaCountInput, optFns ...func(*elasticache.Options)) (*elasticache.DecreaseReplicaCountOutput, error) {
+	return nil, m.decreaseReplicaCountErr
 }
 
 func (m *mockRedisClient) ModifyReplicationGroup(ctx context.Context, params *elasticache.ModifyReplicationGroupInput, optFns ...func(*elasticache.Options)) (*elasticache.ModifyReplicationGroupOutput, error) {
