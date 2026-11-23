@@ -155,7 +155,7 @@ redis:
       approvedEngineVersions: *approved-elasticache-versions
       numberNodeGroups: 3
       replicasPerNodeGroup: 1
-      nodeType: cache.t3.micro
+      nodeType: cache.t3.medium
       subnetGroup: (( grab meta.redis.subnet_group ))
       preferredMaintenanceWindow: mon:07:00-mon:08:00
       snapshotWindow: 06:00-07:00

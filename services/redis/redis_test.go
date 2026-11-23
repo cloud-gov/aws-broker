@@ -147,6 +147,7 @@ func TestPrepareCreateReplicationGroupInput(t *testing.T) {
 				Engine:                      aws.String("valkey"),
 				NumNodeGroups:               aws.Int32(int32(3)),
 				ReplicasPerNodeGroup:        aws.Int32(int32(1)),
+				CacheParameterGroupName:     aws.String("default.valkey.cluster.on"),
 				Port:                        aws.Int32(6379),
 				PreferredMaintenanceWindow:  aws.String("1AM"),
 				SnapshotWindow:              aws.String("4AM"),

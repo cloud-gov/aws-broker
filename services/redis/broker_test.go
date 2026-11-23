@@ -1049,6 +1049,88 @@ func TestValidateEngine(t *testing.T) {
 	}
 }
 
+func TestGetInstance(t *testing.T) {
+	brokerDB, err := testDBInit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := map[string]struct {
+		instance *RedisInstance
+		expected domain.GetInstanceDetailsSpec
+	}{
+		"cluster-mode-disabled instance": {
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "plan-1",
+					},
+				},
+				Engine:        "valkey",
+				EngineVersion: "8.2",
+				NumNodeGroups: 1,
+			},
+			expected: domain.GetInstanceDetailsSpec{
+				ServiceID: "service-1",
+				PlanID:    "plan-1",
+				Parameters: map[string]string{
+					"current_engine":               "valkey",
+					"current_redis_engine_version": "8.2",
+					"cluster_mode_enabled":         "false",
+					"shard_count":                  "1",
+					"replicas_per_shard":           "0",
+				},
+			},
+		},
+		"cluster-mode-enabled instance": {
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Uuid: helpers.RandStr(10),
+					Request: request.Request{
+						ServiceID: "service-1",
+						PlanID:    "plan-1",
+					},
+				},
+				Engine:               "valkey",
+				EngineVersion:        "8.2",
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 1,
+			},
+			expected: domain.GetInstanceDetailsSpec{
+				ServiceID: "service-1",
+				PlanID:    "plan-1",
+				Parameters: map[string]string{
+					"current_engine":               "valkey",
+					"current_redis_engine_version": "8.2",
+					"cluster_mode_enabled":         "true",
+					"shard_count":                  "3",
+					"replicas_per_shard":           "1",
+				},
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			if err := brokerDB.Create(test.instance).Error; err != nil {
+				t.Fatal(err)
+			}
+
+			broker := &redisBroker{brokerDB: brokerDB}
+			spec, err := broker.GetInstance(test.instance.Uuid, domain.FetchInstanceDetails{})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := deep.Equal(spec, test.expected); diff != nil {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
 func TestValidateShardCountChange(t *testing.T) {
 	testCases := map[string]struct {
 		existing  *RedisInstance
@@ -1072,8 +1154,12 @@ func TestValidateShardCountChange(t *testing.T) {
 			newPlan:   catalog.RedisPlan{NumNodeGroups: 3},
 			expectErr: true,
 		},
-		"cluster mode disabled to enabled is rejected": {
-			existing:  &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 1},
+		"cluster mode disabled to enabled is allowed when shard count is at least the existing node count": {
+			existing: &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 1, NumCacheClusters: 3},
+			newPlan:  catalog.RedisPlan{NumNodeGroups: 3},
+		},
+		"cluster mode disabled to enabled is rejected when shard count is below the existing node count": {
+			existing:  &RedisInstance{ClusterID: "cluster-1", NumNodeGroups: 1, NumCacheClusters: 5},
 			newPlan:   catalog.RedisPlan{NumNodeGroups: 3},
 			expectErr: true,
 		},

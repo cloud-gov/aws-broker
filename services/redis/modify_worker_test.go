@@ -553,6 +553,14 @@ func TestAsyncModifyRedis(t *testing.T) {
 				},
 				&mockRedisClient{
 					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						// 1: currentShardCount check before resharding (3 != target of 5)
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{{}, {}, {}},
+								},
+							},
+						},
 						{
 							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
 								{Status: aws.String("available")},
@@ -600,6 +608,12 @@ func TestAsyncModifyRedis(t *testing.T) {
 				brokerDB,
 				&config.Settings{},
 				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						// currentShardCount check before resharding (0 != target of 5)
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{{}},
+						},
+					},
 					modifyReplicationGroupShardConfigErr: errors.New("error increasing shard count"),
 				},
 				slog.New(&testutil.MockLogHandler{}),
@@ -701,6 +715,277 @@ func TestAsyncModifyRedis(t *testing.T) {
 				NumNodeGroups:        3,
 				ReplicasPerNodeGroup: 2,
 				NewReplicaCount:      2,
+			},
+		},
+		"migrates cluster-mode-disabled instance to cluster-mode-enabled": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						// 1: setClusterMode(Compatible) checking the current mode (unset, so the transition proceeds)
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{}}},
+						// 2: waiter after setting ClusterMode=Compatible
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 3: increaseShardCount checking the current shard count (1, cluster-mode-disabled, so the reshard proceeds)
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{NodeGroups: []elasticacheTypes.NodeGroup{{}}}}},
+						// 4: waiter after ModifyReplicationGroupShardConfiguration
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 5: verifyIncreasedShardCount
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{{}, {}, {}},
+								},
+							},
+						},
+						// 6: reconcileReplicaCountPerShard reading current per-shard replica counts
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+									},
+								},
+							},
+						},
+						// 7: verifyIncreasedReplicaCount (no increase/decrease needed; both sides already match)
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+									},
+								},
+							},
+						},
+						// 8: setClusterMode(Enabled) checking the current mode (still compatible, so the transition proceeds)
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{ClusterMode: elasticacheTypes.ClusterModeCompatible}}},
+						// 9: waiter after setting ClusterMode=Enabled
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 10: waiter after the ordinary ModifyReplicationGroup call
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 11: verifyModifiedEngineAndVersion
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available"), Engine: aws.String("valkey")}}},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				ClusterID:              "cluster-1",
+				Engine:                 "valkey",
+				EngineVersion:          "8.2",
+				MigratingToClusterMode: true,
+				NumNodeGroups:          3,
+				NewNumNodeGroups:       3,
+			},
+		},
+		"migration is resumable: setClusterMode no-ops when the replication group already reports the target mode": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						// 1: setClusterMode(Compatible) checking the current mode: a previous
+						// attempt already reached Compatible, so this step must skip straight
+						// to waiting for availability rather than resending the transition.
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{ClusterMode: elasticacheTypes.ClusterModeCompatible}}},
+						// 2: waiter consumed by that skip-to-available path
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 3: increaseShardCount checking the current shard count: a previous
+						// attempt already resharded to 3, so this step must skip the AWS call.
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{{}, {}, {}},
+								},
+							},
+						},
+						// 4: reconcileReplicaCountPerShard reading current per-shard replica counts
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+									},
+								},
+							},
+						},
+						// 5: verifyIncreasedReplicaCount (no increase/decrease needed; both sides already match)
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+										{
+											Status:           aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{{CurrentRole: aws.String("primary")}},
+										},
+									},
+								},
+							},
+						},
+						// 6: setClusterMode(Enabled) checking the current mode (still compatible, so the transition proceeds)
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{ClusterMode: elasticacheTypes.ClusterModeCompatible}}},
+						// 7: waiter after setting ClusterMode=Enabled
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 8: waiter after the ordinary ModifyReplicationGroup call
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 9: verifyModifiedEngineAndVersion
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available"), Engine: aws.String("valkey")}}},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				ClusterID:              "cluster-1",
+				Engine:                 "valkey",
+				EngineVersion:          "8.2",
+				MigratingToClusterMode: true,
+				NumNodeGroups:          3,
+				NewNumNodeGroups:       3,
+			},
+		},
+		"cluster-mode-enabled plan change decreases replicas per shard via DecreaseReplicaCount": {
+			ctx: t.Context(),
+			worker: NewModifyWorker(
+				brokerDB,
+				&config.Settings{
+					PollAwsMinDelay:    1 * time.Millisecond,
+					PollAwsMaxDuration: 10 * time.Second,
+				},
+				&mockRedisClient{
+					describeReplicationGroupsResults: []*elasticache.DescribeReplicationGroupsOutput{
+						// 1: reconcileReplicaCountPerShard reading current per-shard replica
+						// counts: every shard currently has 2 replicas, target is 1.
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											NodeGroupId: aws.String("0001"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+										{
+											NodeGroupId: aws.String("0002"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+									},
+								},
+							},
+						},
+						// 2: waiter after DecreaseReplicaCount
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 3: verifyIncreasedReplicaCount
+						{
+							ReplicationGroups: []elasticacheTypes.ReplicationGroup{
+								{
+									NodeGroups: []elasticacheTypes.NodeGroup{
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+										{
+											Status: aws.String("available"),
+											NodeGroupMembers: []elasticacheTypes.NodeGroupMember{
+												{CurrentRole: aws.String("primary")},
+												{CurrentRole: aws.String("replica")},
+											},
+										},
+									},
+								},
+							},
+						},
+						// 4: waiter after the ordinary ModifyReplicationGroup call
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available")}}},
+						// 5: verifyModifiedEngineAndVersion
+						{ReplicationGroups: []elasticacheTypes.ReplicationGroup{{Status: aws.String("available"), Engine: aws.String("valkey")}}},
+					},
+				},
+				slog.New(&testutil.MockLogHandler{}),
+			),
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Request: request.Request{
+						ServiceID: helpers.RandStr(10),
+					},
+					Uuid: helpers.RandStr(10),
+				},
+				Engine:               "valkey",
+				NumNodeGroups:        2,
+				ReplicasPerNodeGroup: 1,
+				NewReplicaCount:      1,
 			},
 		},
 	}
@@ -1044,79 +1329,6 @@ func TestVerifyIncreasedShardCount(t *testing.T) {
 			}
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
-			}
-		})
-	}
-}
-
-func TestNodeGroupIDs(t *testing.T) {
-	brokerDB, err := testDBInit()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCases := map[string]struct {
-		result      *elasticache.DescribeReplicationGroupsOutput
-		err         error
-		expectedIDs []string
-		expectErr   bool
-	}{
-		"returns every shard's NodeGroupId": {
-			result: &elasticache.DescribeReplicationGroupsOutput{
-				ReplicationGroups: []elasticacheTypes.ReplicationGroup{
-					{
-						NodeGroups: []elasticacheTypes.NodeGroup{
-							{NodeGroupId: aws.String("0001")},
-							{NodeGroupId: aws.String("0002")},
-						},
-					},
-				},
-			},
-			expectedIDs: []string{"0001", "0002"},
-		},
-		"describe error is surfaced": {
-			err:       errors.New("boom"),
-			expectErr: true,
-		},
-		"empty response is surfaced": {
-			result:    &elasticache.DescribeReplicationGroupsOutput{},
-			expectErr: true,
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			var results []*elasticache.DescribeReplicationGroupsOutput
-			var errs []error
-			if test.result != nil {
-				results = []*elasticache.DescribeReplicationGroupsOutput{test.result}
-			}
-			if test.err != nil {
-				errs = []error{test.err}
-			}
-
-			worker := NewModifyWorker(
-				brokerDB,
-				&config.Settings{},
-				&mockRedisClient{
-					describeReplicationGroupsResults: results,
-					describeReplicationGroupsErrs:    errs,
-				},
-				slog.New(&testutil.MockLogHandler{}),
-			)
-
-			ids, err := worker.nodeGroupIDs(t.Context(), &RedisInstance{ClusterID: "cluster-1"})
-			if test.expectErr {
-				if err == nil {
-					t.Fatal("expected an error, got nil")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("expected no error, got %v", err)
-			}
-			if diff := deep.Equal(ids, test.expectedIDs); diff != nil {
-				t.Error(diff)
 			}
 		})
 	}

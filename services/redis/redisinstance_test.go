@@ -482,29 +482,59 @@ func TestInitInstanceTags(t *testing.T) {
 }
 
 func TestGetCredentials(t *testing.T) {
-	instance := &RedisInstance{
-		Instance: base.Instance{
-			Host: "host",
-			Port: 6379,
+	testCases := map[string]struct {
+		instance            *RedisInstance
+		expectedCredentials map[string]string
+	}{
+		"cluster mode disabled": {
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Host: "host",
+					Port: 6379,
+				},
+				EngineVersion: "5",
+			},
+			expectedCredentials: map[string]string{
+				"uri":                          "rediss://:foobar@host:6379",
+				"password":                     "foobar",
+				"host":                         "host",
+				"hostname":                     "host",
+				"current_redis_engine_version": "5",
+				"port":                         "6379",
+				"cluster_mode_enabled":         "false",
+			},
 		},
-		EngineVersion: "5",
+		"cluster mode enabled": {
+			instance: &RedisInstance{
+				Instance: base.Instance{
+					Host: "host",
+					Port: 6379,
+				},
+				EngineVersion: "5",
+				NumNodeGroups: 3,
+			},
+			expectedCredentials: map[string]string{
+				"uri":                          "rediss://:foobar@host:6379",
+				"password":                     "foobar",
+				"host":                         "host",
+				"hostname":                     "host",
+				"current_redis_engine_version": "5",
+				"port":                         "6379",
+				"cluster_mode_enabled":         "true",
+			},
+		},
 	}
 
-	credentials, err := instance.getCredentials("foobar")
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedCredentials := map[string]string{
-		"uri":                          "rediss://:foobar@host:6379",
-		"password":                     "foobar",
-		"host":                         "host",
-		"hostname":                     "host",
-		"current_redis_engine_version": "5",
-		"port":                         "6379",
-	}
-
-	if diff := deep.Equal(credentials, expectedCredentials); diff != nil {
-		t.Error(diff)
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			credentials, err := test.instance.getCredentials("foobar")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := deep.Equal(credentials, test.expectedCredentials); diff != nil {
+				t.Error(diff)
+			}
+		})
 	}
 }
 
@@ -618,6 +648,7 @@ func TestSetInstanceParameters(t *testing.T) {
 		},
 		"existing cluster-mode-enabled instance scales up shard count": {
 			instance: &RedisInstance{
+				ClusterID:            "cluster-1",
 				NumNodeGroups:        3,
 				ReplicasPerNodeGroup: 1,
 			},
@@ -627,6 +658,7 @@ func TestSetInstanceParameters(t *testing.T) {
 				ReplicasPerNodeGroup: 1,
 			},
 			expectedInstance: &RedisInstance{
+				ClusterID:                "cluster-1",
 				NumNodeGroups:            5,
 				NewNumNodeGroups:         5,
 				ReplicasPerNodeGroup:     1,
@@ -635,6 +667,7 @@ func TestSetInstanceParameters(t *testing.T) {
 		},
 		"existing cluster-mode-enabled instance scales up replicas per shard": {
 			instance: &RedisInstance{
+				ClusterID:            "cluster-1",
 				NumNodeGroups:        3,
 				ReplicasPerNodeGroup: 1,
 			},
@@ -644,9 +677,51 @@ func TestSetInstanceParameters(t *testing.T) {
 				ReplicasPerNodeGroup: 2,
 			},
 			expectedInstance: &RedisInstance{
+				ClusterID:                "cluster-1",
 				NumNodeGroups:            3,
 				ReplicasPerNodeGroup:     2,
 				NewReplicaCount:          2,
+				AutomaticFailoverEnabled: true,
+			},
+		},
+		"existing cluster-mode-enabled instance scales down replicas per shard": {
+			instance: &RedisInstance{
+				ClusterID:            "cluster-1",
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 2,
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 1,
+			},
+			expectedInstance: &RedisInstance{
+				ClusterID:                "cluster-1",
+				NumNodeGroups:            3,
+				ReplicasPerNodeGroup:     1,
+				NewReplicaCount:          1,
+				AutomaticFailoverEnabled: true,
+			},
+		},
+		"existing cluster-mode-disabled instance migrates to a cluster-mode-enabled plan": {
+			instance: &RedisInstance{
+				ClusterID:        "cluster-1",
+				NumCacheClusters: 3,
+				NumNodeGroups:    1,
+			},
+			options: RedisOptions{},
+			plan: catalog.RedisPlan{
+				NumNodeGroups:        3,
+				ReplicasPerNodeGroup: 1,
+			},
+			expectedInstance: &RedisInstance{
+				ClusterID:                "cluster-1",
+				NumCacheClusters:         3,
+				NumNodeGroups:            3,
+				NewNumNodeGroups:         3,
+				ReplicasPerNodeGroup:     1,
+				NewReplicaCount:          1,
+				MigratingToClusterMode:   true,
 				AutomaticFailoverEnabled: true,
 			},
 		},
